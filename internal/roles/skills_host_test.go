@@ -29,7 +29,7 @@ func TestSkillsReachWorkersWithoutChangingRoleBoundaries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, required := range []string{"skills resolve coordinator", "SHA256", "reading original SKILL.md", "receipts alone prove no loading", "Skills grant no extra writes", "outside workers' write-check intervals"} {
+	for _, required := range []string{"skill resolve coordinator", "SHA256", "reading original SKILL.md", "receipts alone prove no loading", "Skills grant no extra writes", "outside workers' write-check intervals"} {
 		if !strings.Contains(text, required) {
 			t.Errorf("coordinator omits skill handoff requirement %q", required)
 		}

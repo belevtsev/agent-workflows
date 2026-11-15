@@ -12,6 +12,7 @@ import (
 
 // Config is what the program gives the commands.
 type Config struct {
+	Editor        func(context.Context, *UXEditor) error
 	NativeExecute func(context.Context, *advisers.NativeCall) advisers.Execution
 	Version       string
 	Revision      string
@@ -52,8 +53,8 @@ func commands() []command {
 	}
 }
 
-// Execute runs the command the arguments name.
-func Execute(ctx context.Context, args []string, cfg Config) error {
+// executeLegacy preserves the original command handlers and protocols.
+func executeLegacy(ctx context.Context, args []string, cfg Config) error {
 	if len(args) == 0 {
 		printHelp(cfg.Err)
 		return usagef("no command given")

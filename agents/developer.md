@@ -70,7 +70,7 @@ limit nor the developer's approval authority.
   you disagree, with the evidence, instead of ignoring it.
 - Do not commit, do not push, and do not tick a task in `tasks.md`.
 
-Run `kitsu run` when you are done and read the result. Report it as it is: a
+Run `kitsu check run` when you are done and read the result. Report it as it is: a
 check that still fails is reported as failing, with the part of its log that
 shows why.
 

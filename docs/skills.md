@@ -15,8 +15,8 @@ no tools or permissions and change no write limit, independent review, or human 
 Start inside your repository with the host you use:
 
 ```sh
-kitsu skills list --host codex
-kitsu skills list --host claude --json
+kitsu skill list --host codex
+kitsu skill list --host claude --json
 ```
 
 The catalog shows qualified ids and names; `--json` also gives source locations, hashes,
@@ -25,9 +25,9 @@ availability, metadata, and diagnostics. Copy an id from your own output. For ex
 `codex:repo:.agents/skills/project-review`:
 
 ```sh
-kitsu roles set reviewer --host codex --skills codex:repo:.agents/skills/project-review
-kitsu roles --host codex
-kitsu skills resolve reviewer --host codex --json
+kitsu skill attach codex:repo:.agents/skills/project-review --role reviewer --host codex
+kitsu role list --host codex
+kitsu skill resolve reviewer --host codex --json
 ```
 
 The role table now includes **Skills** alongside model, reasoning, and advisers. Resolve returns
@@ -35,9 +35,9 @@ the original `SKILL.md` paths and SHA256 hashes for a fresh worker brief. It rea
 files every time; changing `SKILL.md` changes the hash in the next resolution. Each hash covers
 that file's bytes; sibling scripts and references have no separate receipt hashes.
 
-Use a comma-separated list for several skills. A unique short name can be selected, and Kitsu
+Attach adds one selected skill; `role set --skills id,id` replaces the whole list. A unique short name can be selected, and Kitsu
 saves its qualified id. When two sources have the same name, use the exact qualified id shown
-by `skills list`; Kitsu refuses ambiguity rather than choosing one. Missing, invalid, or
+by `skill list`; Kitsu refuses ambiguity rather than choosing one. Missing, invalid, or
 host-disabled selections also fail before the worker starts.
 
 ## Personal defaults and repository overrides
@@ -45,7 +45,7 @@ host-disabled selections also fail before the worker starts.
 Save a personal selection with `--global`:
 
 ```sh
-kitsu roles set reviewer --host codex --skills codex:user:project-review --global
+kitsu skill attach codex:user:project-review --role reviewer --host codex --global
 ```
 
 This example assumes that id exists in your catalog. Personal bindings live at
@@ -73,17 +73,20 @@ skills, while its model and reasoning remain settings of the host session.
 
 ```sh
 # Clear pinned skills in this repository, including inherited personal selections.
-kitsu roles set reviewer --host codex --skills ''
+kitsu skill clear --role reviewer --host codex
 
-# Remove repository overrides; personal skills and built-in model defaults apply again.
-kitsu roles reset reviewer --host codex
+# Remove only the skill override; personal skills apply and model settings stay intact.
+kitsu skill reset --role reviewer --host codex
 
 # Remove only this host/role's personal skill selection.
-kitsu roles reset reviewer --host codex --global
+kitsu skill reset --role reviewer --host codex --global
 ```
 
-An omitted `--skills` leaves its current override unchanged. Repository reset also removes that
-role's model and reasoning overrides. These settings apply to newly started workers.
+`skill detach <reference> --role <role>` removes a saved selection even if its source has gone.
+For whole-list replacement, use `role set --skills id,id`. Omitting `--skills` keeps the current
+override, and `--skills ''` writes `[]`. General `role reset` also removes model and reasoning overrides;
+`skill reset` changes only skills. These settings apply to newly started workers. A saved
+[CLI host preference](cli.md#select-your-host-once) can replace repeated `--host` flags.
 
 ## Sources and host visibility
 
@@ -111,10 +114,10 @@ are not fully enumerated. Check `skills list --json` diagnostics when a source i
 disabled. Opaque catalogs may need an explicit directory:
 
 ```sh
-kitsu skills list --host codex --root /absolute/path/to/existing-skills
-kitsu roles set developer --host codex --root /absolute/path/to/existing-skills \
+kitsu skill list --host codex --root /absolute/path/to/existing-skills
+kitsu role set developer --host codex --root /absolute/path/to/existing-skills \
   --skills '<qualified-id-from-list>'
-kitsu skills resolve developer --host codex --root /absolute/path/to/existing-skills
+kitsu skill resolve developer --host codex --root /absolute/path/to/existing-skills
 ```
 
 `--root` is repeatable and accepts a single skill directory or a collection containing skill
@@ -141,8 +144,8 @@ are bounded to 1 MiB, and scans to 4,096 directories and depth 12; reached limit
 Before each new role, the coordinator resolves that role's current selection:
 
 ```sh
-kitsu skills resolve reviewer --host codex --task add-order-export --json
-kitsu skills resolve reviewer --host codex --task fix-order-export --workflow small --json
+kitsu skill resolve reviewer --host codex --task add-order-export --json
+kitsu skill resolve reviewer --host codex --task fix-order-export --workflow small --json
 ```
 
 With `--task`, the default workflow is `full`. Resolution appends an immutable version 1 receipt
@@ -154,14 +157,14 @@ paths or skill bodies. Without `--task`, resolve writes no receipt.
 
 When promoting a small task, create its full task folder and resolve with `--workflow full`.
 Kitsu moves the complete small skill history when the full skill destination is absent. It
-refuses competing histories. `kitsu change check` validates receipt structure on both paths
+refuses competing histories. `kitsu task check` validates receipt structure on both paths
 without reading installed skill files.
 
 The coordinator includes the selected ids, original paths, and hashes in the new brief and tells
 the worker to load the original instructions, using a native skill tool where available or an
 explicit read. Relative references stay relative to the original skill directory. Claude Code
 role files include the `Skill` tool; Codex's host performs the execution and delegation.
-The coordinator writes receipts before taking the worker's baseline for `kitsu roles check`;
+The coordinator writes receipts before taking the worker's baseline for `kitsu role check`;
 workers do not write selection history.
 
 A selection receipt is evidence of selection, not of loading or compliance. Its `load_status` is
@@ -183,9 +186,9 @@ illustrative repository ids require your own `SKILL.md` files at the correspondi
 For example:
 
 ```sh
-kitsu roles set developer --host codex --skills codex:repo:.agents/skills/go-backend
-kitsu roles set quality-engineer --host codex --skills codex:repo:.agents/skills/cpp-tests
-kitsu roles set reviewer --host codex --skills codex:repo:.agents/skills/js-ui
+kitsu role set developer --host codex --skills codex:repo:.agents/skills/go-backend
+kitsu role set quality-engineer --host codex --skills codex:repo:.agents/skills/cpp-tests
+kitsu role set reviewer --host codex --skills codex:repo:.agents/skills/js-ui
 ```
 
 Run only the checks the repository already defines. Discovering or selecting these skills does

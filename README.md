@@ -13,7 +13,7 @@ Seven specialist roles, shared task records, and token reporting, with a Git gat
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Runs on Linux, macOS and Windows](https://img.shields.io/badge/runs%20on-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)](#install)
 
-[The roles](#the-roles) · [Quick start](#quick-start) · [Skills](#use-your-existing-skills) · [Advisers](#ask-an-adviser) · [Install](#install) ·
+[The roles](#the-roles) · [Quick start](#quick-start) · [CLI](#find-a-command) · [Skills](#use-your-existing-skills) · [Advisers](#ask-an-adviser) · [Install](#install) ·
 [For a coding agent](#for-a-coding-agent) · [The Git gate](#how-the-gate-decides) · [State](#state) · [Documents](#documents)
 
 </div>
@@ -21,9 +21,9 @@ Seven specialist roles, shared task records, and token reporting, with a Git gat
 | Part | What it does |
 | --- | --- |
 | **Agent coordination** | A coordinator in your coding-agent host delegates work to seven specialist roles, with a defined order, review handoffs, model choices, and limits on what each role may change. |
-| **Shared task records** | Requirements, design decisions, tasks, tests, and review findings give the agents a common record to work from. `kitsu change` checks that record and reports the task's stage. |
+| **Shared task records** | Requirements, design decisions, tasks, tests, and review findings give the agents a common record to work from. `kitsu task` checks that record and reports the task's stage. |
 | **Existing skills** | Select skills from local repository, personal, and installed plugin sources for each role, while keeping their original files and references. |
-| **Token reporting** | `kitsu tokens` reports recorded token usage by task and role, including the coordination overhead. |
+| **Token reporting** | `kitsu usage show` reports recorded token usage by task and role, including the coordination overhead. |
 | **Advisers (experimental)** | Optional Jev, SubQ Snap, and CLI consultations, with recorded answers and decisions. None are enabled by default. |
 | **Git gate** | As a supporting check, Git hooks allow commits and pushes only when the checks declared in `kitsu.toml` have passing evidence for that content. |
 
@@ -54,14 +54,14 @@ required adviser checkpoints are a separate choice. Neither replaces review or y
 | `reviewer` | Reviews a specification, a design or code that another role wrote, and reports findings. | nothing |
 | `git` | Runs the checks and makes the commit through the gate. | nothing |
 
-`kitsu roles` prints the seven roles, each with its model, its effort and what it may write. Use
-`kitsu roles set` to save model, reasoning, and existing-skill selections in `kitsu-roles.toml`. The texts name no language and no build tool; the commands of a repository come from its
+`kitsu role list` prints the seven roles, each with its model, its effort and what it may write. Use
+`kitsu role set` to save model, reasoning, and existing-skill selections in `kitsu-roles.toml`. The texts name no language and no build tool; the commands of a repository come from its
 `kitsu.toml`.
 
-`kitsu roles --host codex` or `kitsu roles --host claude` shows a compact table of role, model,
+`kitsu role list --host codex` or `kitsu role list --host claude` shows a compact table of role, model,
 reasoning effort, selected skills, and allowed advisers. Add `--task <task>` to show a saved task's adviser access.
 Optional, experimental advisers use native APIs or authenticated CLIs configured in `kitsu-advisers.toml` or your personal
-configuration. Roles return questions to the coordinator, which runs `kitsu consult` and records
+configuration. Roles return questions to the coordinator, which runs `kitsu adviser ask` and records
 how the answer was addressed. None are enabled by default; repository role access is an explicit opt-in.
 Adviser answers replace no review or approval.
 
@@ -69,14 +69,14 @@ Adviser answers replace no review or approval.
 - [Skills](docs/skills.md): discover existing skills and select them per role on either host.
 - [Advisers](docs/advisers.md): definitions, role access, advice and decisions, and required checkpoints.
 - [The task workflow](docs/workflow.md): the two paths, the record of a task under `openspec/changes/<task>/`, and
-  what `kitsu change` checks.
+  what `kitsu task` checks.
 - [Tokens](docs/tokens.md): what is counted, and what "workflow tokens" mean.
 
 ## Quick start
 
 1. [Install](#install) the CLI and [add the plugin](#for-a-coding-agent) to your coding-agent host.
-2. Run `kitsu roles --host codex` or `kitsu roles --host claude` to inspect models, reasoning, skills, and advisers.
-   [Set a specialist's model or reasoning](docs/roles.md#changing-a-model) with `kitsu roles set`; your host selects the coordinator.
+2. Run `kitsu role list --host codex` or `kitsu role list --host claude` to inspect models, reasoning, skills, and advisers.
+   [Set a specialist's model or reasoning](docs/roles.md#changing-a-model) with `kitsu role set`; your host selects the coordinator.
    Optionally [select existing skills](#use-your-existing-skills) for a role.
 3. Give the `task` skill a coding task. On Claude Code, invoke `/kitsu:task`; on Codex, use the installed `task` skill.
    The coordinator chooses the workflow, sets up the repository's checks and role paths, and delegates each stage.
@@ -86,22 +86,36 @@ Adviser answers replace no review or approval.
 You can inspect the role instructions and a recorded task from the terminal:
 
 ```sh
-kitsu roles --host codex
-kitsu roles text coordinator
-kitsu change status <task>
-kitsu tokens --task <task>
+kitsu role list --host codex
+kitsu role text coordinator
+kitsu task show <task>
+kitsu usage show --task <task>
 ```
 
 The [task workflow](docs/workflow.md) explains the full path and the shorter path for work whose behavior is already clear.
 Task records and token totals appear as the workflow runs; the commands above do not launch agents themselves.
 
+### Find a command
+
+```sh
+kitsu
+kitsu help skill attach
+kitsu config set host codex
+kitsu role edit developer
+```
+
+The root and preferred groups show help when invoked alone. Help works before repository or
+host setup; only explicit `role edit` and `config edit` open terminal forms. Save a private host
+preference once, or override it with `--host`. The [CLI guide](docs/cli.md) covers the command
+groups, accessible editors, completion, JSON, and quiet compatibility aliases.
+
 Change a role's selection without editing TOML:
 
 ```sh
-kitsu roles set developer --host codex --model gpt-6.1-sol --reasoning max
-kitsu roles set developer --host claude --model opus --reasoning high
-kitsu roles set reviewer --host codex --reasoning high
-kitsu roles reset developer --host codex
+kitsu role set developer --host codex --model gpt-6.1-sol --reasoning max
+kitsu role set developer --host claude --model opus --reasoning high
+kitsu role set reviewer --host codex --reasoning high
+kitsu role reset developer --host codex
 ```
 
 Omit an option to keep that value. Reset removes repository overrides for that role and host;
@@ -113,11 +127,11 @@ List skills already available in supported local directories for your host, then
 the catalog to a role. This example assumes the repository contains the named skill:
 
 ```sh
-kitsu skills list --host codex
-kitsu roles set reviewer --host codex --skills codex:repo:.agents/skills/project-review
-kitsu roles --host codex
-kitsu skills resolve reviewer --host codex --json
-kitsu roles set reviewer --host codex --skills ''
+kitsu skill list --host codex
+kitsu skill attach codex:repo:.agents/skills/project-review --role reviewer --host codex
+kitsu role list --host codex
+kitsu skill resolve reviewer --host codex --json
+kitsu skill clear --role reviewer --host codex
 ```
 
 Discovery and resolution read the original `SKILL.md` files and preserve sibling scripts and
@@ -136,7 +150,7 @@ Advisers are an optional experiment. The normal workflow needs no adviser config
 key, or adviser checkpoint. No adviser is enabled by default, and their effect on code quality,
 cost, and completion time has not been evaluated. The examples below explicitly opt in.
 
-For built-in **TypeSafe Jev** and **SubQ Snap**, run `kitsu advisers providers` to see presets,
+For built-in **TypeSafe Jev** and **SubQ Snap**, run `kitsu adviser providers` to see presets,
 set the provider's API-key environment variable, and explicitly configure role access.
 The [native adviser guide](docs/advisers.md#built-in-decision-advisers) shows the short TOML
 definitions and choice, score, and yes/no requests. Existing CLI advisers work alongside them.
@@ -169,16 +183,16 @@ shows effort selection for both CLIs. Role models and effort remain separately c
 Inspect access and bind a small task. Binding records the selected policy without contacting a provider:
 
 ```sh
-kitsu roles --host codex
-kitsu advisers bind --task advice-demo --workflow small
+kitsu role list --host codex
+kitsu adviser bind advice-demo --workflow small
 ```
 
 Ask a question from the terminal, or let the coordinator broker it for a role. This command invokes
 the authenticated provider CLI and may consume your account's usage:
 
 ```sh
-kitsu consult --task advice-demo --role coordinator --stage code \
-  --adviser second-opinion --request - <<'JSON'
+kitsu adviser ask second-opinion --task advice-demo --role coordinator --stage code \
+  --request - <<'JSON'
 {"version":1,"kind":"advice","question":"What failure cases should an order CSV export cover?"}
 JSON
 ```
@@ -186,9 +200,9 @@ JSON
 Read the answer, then use the returned consultation id to record how you addressed it:
 
 ```sh
-kitsu advisers resolve --task advice-demo <consultation-id> \
-  --disposition accept --reason "Use these cases when planning the export tests."
-kitsu advisers status --task advice-demo
+kitsu adviser accept <consultation-id> --task advice-demo \
+  --reason "Use these cases when planning the export tests."
+kitsu adviser status advice-demo
 ```
 
 The request, answer, execution outcome, and disposition are under
@@ -203,14 +217,14 @@ usage is reported separately when the provider supplies counts.
 In a repository of yours, once `kitsu` is installed:
 
 ```sh
-kitsu init                          # creates kitsu.toml, installs three git hooks
-kitsu add test -- <your test command>
-kitsu run                           # runs the checks and records the result
+kitsu gate init                          # creates kitsu.toml, installs three git hooks
+kitsu check add test -- <your test command>
+kitsu check run                           # runs the checks and records the result
 git add -A
 git commit -m "..."              # allowed: the content has a passing run
 ```
 
-Change a file and commit again without `kitsu run`, and the commit is denied. The message names the check that has no
+Change a file and commit again without `kitsu check run`, and the commit is denied. The message names the check that has no
 passing run and the command to run:
 
 ```text
@@ -261,7 +275,7 @@ The hooks look for `kitsu` only in the entries of `PATH` that are absolute paths
 
 The plugin's `task` skill gives the coding-agent host a coordinator workflow for specification, design, tests,
 implementation, review, and commit. Claude Code receives the seven roles as agents; on Codex, the coordinator uses
-the texts printed by `kitsu roles text <role>`. Execution and delegation are handled by the host.
+the texts printed by `kitsu role text <role>`. Execution and delegation are handled by the host.
 
 The plugin also connects the workflow to supporting checks and token reporting:
 
@@ -269,7 +283,7 @@ The plugin also connects the workflow to supporting checks and token reporting:
 | --- | --- |
 | Context | It tells a new session which repository checks support the workflow. |
 | A guard | It stops a git call that skips the hooks, such as `git commit --no-verify`, a `kitsu` call that turns the gate off, and an edit of [workflow configuration](docs/operations.md#what-it-asks-about), a hook, the git configuration, or a Kitsu record. |
-| Token notices | It gives `kitsu tokens record` the notices that a role or the session has ended. |
+| Token notices | It gives `kitsu usage record` the notices that a role or the session has ended. |
 
 Claude Code asks you before a call that the guard stops. Codex refuses it and gives the reason, because Codex cannot
 ask from a hook; run the call yourself if you want it. The guard is a reminder, not a wall:
@@ -298,18 +312,18 @@ gets no text from `kitsu context`, no guard and no token records. The git hooks 
 
 ## How the gate decides
 
-<img src="docs/diagrams/gate.svg" alt="How the gate decides. First the evidence: kitsu run runs what has not passed and records each run. Then the decision, in enforce mode: git commit or git push starts one of three git hooks, the hook asks kitsu hook, and kitsu hook judges the commit or the pushed tip against the records. When every check passed on exactly this content, git goes on. When not, or when kitsu hook cannot tell, the commit or push is denied and says why: fix, then run again." width="100%">
+<img src="docs/diagrams/gate.svg" alt="How the gate decides. First the evidence: kitsu check run runs what has not passed and records each run. Then the decision, in enforce mode: git commit or git push starts one of three git hooks, the hook asks kitsu hook, and kitsu hook judges the commit or the pushed tip against the records. When every check passed on exactly this content, git goes on. When not, or when kitsu hook cannot tell, the commit or push is denied and says why: fix, then run again." width="100%">
 
-1. **`kitsu run` makes the evidence.** It runs each check of `kitsu.toml` that has no passing run on the working tree as
+1. **`kitsu check run` makes the evidence.** It runs each check of `kitsu.toml` that has no passing run on the working tree as
    it is on disk, and records every run with that content.
-2. **git asks.** `kitsu init` installed three hooks: `pre-commit`, `pre-merge-commit` and `pre-push`. Each one asks
+2. **git asks.** `kitsu gate init` installed three hooks: `pre-commit`, `pre-merge-commit` and `pre-push`. Each one asks
    `kitsu hook` about the content that git is about to record or send: the commit at a commit, and the new tip of each
    branch or tag at a push. A hook runs no check and waits for none.
 3. **`kitsu hook` decides from the records.** When every declared check has a recorded passing run on exactly that
    content, git goes on. Otherwise the commit or the push is denied, also when `kitsu hook` cannot tell, and the message
    names each check that is not satisfied, or the cause.
 
-The picture shows the gate in enforce mode, as `kitsu init` sets it. After `kitsu init --observe` the hooks record what
+The picture shows the gate in enforce mode, as `kitsu gate init` sets it. After `kitsu gate init --observe` the hooks record what
 they would decide and allow every commit and push; see [observe mode](docs/hooks.md#observe-mode). At a push, a ref
 is allowed without a judgement when the push deletes it, when it holds notes, or when it adds nothing to what the
 remote already holds; see [pre-push](docs/hooks.md#pre-push).
@@ -321,7 +335,7 @@ The workflow, adviser records, token reports, and gate share the same CLI:
 
 <img src="docs/diagrams/overview.svg" alt="Kitsu connects four parts. Role selection supplies models and effort to your agent host, which writes a shared task record. Experimental advisers are disabled by default: explicit definition and access enable API or CLI consultations, with recorded answers and decisions. Adviser checkpoints apply only if required by configuration. Host token records supply measured usage. The supporting Git gate runs declared checks and decides commits and pushes from content-bound evidence." width="100%">
 
-The usage column shows host records. `kitsu tokens` also reports provider-supplied API adviser usage
+The usage column shows host records. `kitsu usage show` also reports provider-supplied API adviser usage
 separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advisers.md) shows the opt-in steps.
 
 ## State
@@ -336,6 +350,9 @@ separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advise
 - [Existing skill discovery and role selection](openspec/changes/add-existing-skills/tests.md) passed build, vet, and
   race tests on Linux after integration with native advisers, plus lint and vulnerability checks for all three targets.
   Loading selected skills in a live host remains unverified.
+- The [grouped CLI, editors, and completion](openspec/changes/improve-cli-ux/tests.md) passed full Linux race tests
+  and lint/vulnerability checks for all three targets. Editor PTY flows and all four completion shells were exercised;
+  Windows PowerShell 5.1 runtime testing remains unavailable.
 - Whether the workflow improves code quality or saves tokens compared with one agent is **not measured**.
   Historical scratch runs on two small tasks recorded workflow usage, without a comparative quality result:
   [benchmarks](docs/benchmarks.md). The planned [evaluation](docs/evaluation.md) has not been run.
@@ -347,11 +364,11 @@ separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advise
 
 ## Known limits
 
-- `git commit --no-verify` and `git push --no-verify` skip the hooks. So does a clone in which nobody ran `kitsu init`.
-  A check in continuous integration, `kitsu run --base <rev>`, is the backstop.
+- `git commit --no-verify` and `git push --no-verify` skip the hooks. So does a clone in which nobody ran `kitsu gate init`.
+  A check in continuous integration, `kitsu check run --base <rev>`, is the backstop.
 - A passing run proves that the check passed on that content on that machine. It proves nothing about what the check
   does not test.
-- The hooks judge what git is about to record. They do not run the checks: `kitsu run` does, before the commit.
+- The hooks judge what git is about to record. They do not run the checks: `kitsu check run` does, before the commit.
 - `kitsu` reads the records of Claude Code and Codex to count tokens. Their format is not documented by either host, so
   a count can be `unknown`.
 
@@ -361,6 +378,8 @@ More in [evidence](docs/evidence.md) and [hooks](docs/hooks.md).
 
 | Document | What it holds |
 | --- | --- |
+| [CLI guide](docs/cli.md) | Preferred command groups, complete help, host preferences, explicit editors, completion, and compatibility aliases. |
+| [CLI command reference](docs/cli-reference.md) | Generated help for command operands, options, defaults, and examples. |
 | [Quick start](docs/quickstart.md) | The five commands in a new repository. A test executes them. |
 | [Try it](docs/try-it.md) | Everything that can be tried by hand, with the output to expect, and what was never run. |
 | [Operations](docs/operations.md) | Every command, `kitsu.toml`, the exit statuses and where `kitsu` keeps its records. |
@@ -369,8 +388,8 @@ More in [evidence](docs/evidence.md) and [hooks](docs/hooks.md).
 | [Roles](docs/roles.md) | The seven roles, their models, what each may write, and `kitsu-roles.toml`. |
 | [Skills](docs/skills.md) | Discover existing skills, select them per role, and resolve original sources for a worker brief. |
 | [Advisers](docs/advisers.md) | Built-in decision models and CLI advisers, access by role, shared answers, and required checkpoints. |
-| [The task workflow](docs/workflow.md) | The two paths of a task, its record under `openspec/changes/<task>/`, and `kitsu change`. |
-| [Tokens](docs/tokens.md) | What `kitsu tokens` counts, what "workflow tokens" are, and when a count is unknown. |
+| [The task workflow](docs/workflow.md) | The two paths of a task, its record under `openspec/changes/<task>/`, and `kitsu task`. |
+| [Tokens](docs/tokens.md) | What `kitsu usage show` counts, what "workflow tokens" are, and when a count is unknown. |
 | [Benchmarks](docs/benchmarks.md) | What `kitsu` costs: the time of a commit and of each command, and the tokens of an agent on two small tasks. |
 | [Evaluation](docs/evaluation.md) | The cases only a model run can show, and the comparison with one agent. No case was run; one first trial of the skill `kitsu` is recorded. |
 

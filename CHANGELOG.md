@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A grouped [CLI](docs/cli.md) adds complete help, private host preferences, explicit terminal editors,
+  skill actions, and completion for four shells while preserving existing commands quietly.
 - Select [existing skills](docs/skills.md) per role from local repository, personal, and plugin sources,
   with layered bindings, source hashes, and portable selection receipts.
 - Optional, experimental [Jev and SubQ Snap advisers](docs/advisers.md#built-in-decision-advisers) provide typed decisions and separate token usage.

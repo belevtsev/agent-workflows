@@ -68,7 +68,7 @@ Code:
   wrong direction, a copy of something that exists.
 - Names that mislead, dead code, debugging output.
 
-Run `kitsu run` and `kitsu status` when you review code, and read the result. You
+Run `kitsu check run` and `kitsu gate status` when you review code, and read the result. You
 may run the tests and read anything. You may not edit, create or delete a
 file.
 

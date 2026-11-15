@@ -1,0 +1,1369 @@
+# CLI command reference
+
+Generated from command metadata. For setup and worked examples, see the [CLI guide](cli.md).
+Regenerate with `GOWORK=off go test ./internal/cli -run TestUXCommandReferenceIsGenerated -update-cli-reference`.
+
+## task
+
+### kitsu task list
+
+```text
+usage: kitsu task list [options]
+
+List full tasks and saved small-task histories.
+
+Options:
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task list
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task show
+
+```text
+usage: kitsu task show <task> [options]
+
+Show a full task's stage or a small task's saved history.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task show add-login
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task check
+
+```text
+usage: kitsu task check [<task>]
+
+Check saved task records offline.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task check add-login
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+## role
+
+### kitsu role list
+
+```text
+usage: kitsu role list [options]
+
+List role models, reasoning, skills and adviser access.
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --task <task>            task whose saved records or adviser access to use
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu role list
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu role show
+
+```text
+usage: kitsu role show <role> [options]
+
+Show one role's effective settings and write limits.
+
+Arguments:
+  <role>             specialist role id, or coordinator where supported
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --task <task>            task whose saved records or adviser access to use
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu role show developer
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu role set
+
+```text
+usage: kitsu role set <role> [options]
+
+Change only the supplied role settings.
+
+Arguments:
+  <role>             specialist role id, or coordinator where supported
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --model <model>          set the exact host model id; availability depends on
+                           your account
+  --reasoning <effort>     set reasoning effort; omitted fields stay unchanged
+  --skills <references>    replace skill selections; an empty value suppresses
+                           inheritance
+  --root <directory>       include an original skill directory or collection;
+                           repeatable
+  --global                 edit personal settings instead of repository
+                           settings; role settings permit skills only
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu role set architect --host codex --model gpt-6.1-sol --reasoning max
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu role edit
+
+```text
+usage: kitsu role edit <role> [options]
+
+Interactively edit a role with a preview before saving.
+
+Arguments:
+  <role>             specialist role id, or coordinator where supported
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --global                 edit personal settings instead of repository
+                           settings; role settings permit skills only
+  --root <directory>       include an original skill directory or collection;
+                           repeatable
+  --accessible             use descriptive accessible prompts instead of the
+                           full-screen form
+  --help, -h               show this command's help without executing it
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Editor: F1 opens field help; Save applies the preview; Cancel writes nothing.
+Ctrl+C exits 130 without saving. Requires a terminal; scripts use set with --json.
+
+Examples:
+  kitsu role edit developer
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu role reset
+
+```text
+usage: kitsu role reset <role> [options]
+
+Remove role overrides in this scope; restore model defaults and inherited skills.
+
+Arguments:
+  <role>             specialist role id, or coordinator where supported
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --global                 edit personal settings instead of repository
+                           settings; role settings permit skills only
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu role reset developer --host codex
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu role check
+
+```text
+usage: kitsu role check <role> --from <tree> [options]
+
+Check that a role stayed within its write limits.
+
+Arguments:
+  <role>             specialist role id, or coordinator where supported
+  <tree>             starting Git tree or revision
+
+Options:
+  --from <tree>            required starting Git tree
+  --task <task>            task whose saved records or adviser access to use
+  --finalize               permit spec-writer finalization for the named task
+  --help, -h               show this command's help without executing it
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu role check reviewer --from HEAD
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu role text
+
+```text
+usage: kitsu role text <role>
+
+Print a role's instructions, including coordinator.
+
+Arguments:
+  <role>             specialist role id, or coordinator where supported
+
+Options:
+  --help, -h               show this command's help without executing it
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu role text developer
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+## skill
+
+### kitsu skill list
+
+```text
+usage: kitsu skill list [options]
+
+Discover original host skills without executing them.
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --root <directory>       include an original skill directory or collection;
+                           repeatable
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu skill list --host codex
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu skill show
+
+```text
+usage: kitsu skill show <skill> [options]
+
+Inspect skill metadata, including unavailable sources.
+
+Arguments:
+  <skill>            catalog id, unique skill name, or original absolute path
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --root <directory>       include an original skill directory or collection;
+                           repeatable
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu skill show project-review --host codex
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu skill resolve
+
+```text
+usage: kitsu skill resolve <role> [options]
+
+Resolve a role's current original sources; loading remains unverified.
+
+Arguments:
+  <role>             specialist role id, or coordinator where supported
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --root <directory>       include an original skill directory or collection;
+                           repeatable
+  --task <task>            task whose saved records or adviser access to use
+  --workflow <full|small>  select full or small task history
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu skill resolve developer --host codex
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu skill attach
+
+```text
+usage: kitsu skill attach <skill> --role <role> [options]
+
+Add a skill without replacing existing selections.
+
+Arguments:
+  <skill>            catalog id, unique skill name, or original absolute path
+  <role>             specialist role id, or coordinator where supported
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --role <role>            role requesting advice or receiving skill selections
+  --root <directory>       include an original skill directory or collection;
+                           repeatable
+  --global                 edit personal settings instead of repository
+                           settings; role settings permit skills only
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu skill attach project-review --role developer --host codex
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu skill detach
+
+```text
+usage: kitsu skill detach <skill> --role <role> [options]
+
+Remove a selected skill, even when its original source is gone.
+
+Arguments:
+  <skill>            catalog id, unique skill name, or original absolute path
+  <role>             specialist role id, or coordinator where supported
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --role <role>            role requesting advice or receiving skill selections
+  --root <directory>       include an original skill directory or collection;
+                           repeatable
+  --global                 edit personal settings instead of repository
+                           settings; role settings permit skills only
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu skill detach project-review --role developer --host codex
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu skill clear
+
+```text
+usage: kitsu skill clear  --role <role> [options]
+
+Save an empty skill list, suppressing inherited personal choices.
+
+Arguments:
+  <role>             specialist role id, or coordinator where supported
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --role <role>            role requesting advice or receiving skill selections
+  --root <directory>       include an original skill directory or collection;
+                           repeatable
+  --global                 edit personal settings instead of repository
+                           settings; role settings permit skills only
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu skill clear --role developer --host codex
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu skill reset
+
+```text
+usage: kitsu skill reset  --role <role> [options]
+
+Remove only the skill override and restore inheritance.
+
+Arguments:
+  <role>             specialist role id, or coordinator where supported
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --role <role>            role requesting advice or receiving skill selections
+  --root <directory>       include an original skill directory or collection;
+                           repeatable
+  --global                 edit personal settings instead of repository
+                           settings; role settings permit skills only
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu skill reset --role developer --host codex
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+## adviser
+
+### kitsu adviser list
+
+```text
+usage: kitsu adviser list [options]
+
+List configured experimental advisers or a task's saved binding.
+
+Options:
+  --role <role>            role requesting advice or receiving skill selections
+  --task <task>            task whose saved records or adviser access to use
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu adviser list
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu adviser show
+
+```text
+usage: kitsu adviser show <adviser> [options]
+
+Inspect one configured or task-bound experimental adviser.
+
+Arguments:
+  <adviser>          name of an explicitly configured experimental adviser
+
+Options:
+  --task <task>            task whose saved records or adviser access to use
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu adviser show design
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu adviser providers
+
+```text
+usage: kitsu adviser providers [options]
+
+List experimental provider capabilities and required credential variables offline.
+
+Options:
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu adviser providers
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu adviser bind
+
+```text
+usage: kitsu adviser bind <task> --workflow <workflow> [options]
+
+Save the explicitly enabled adviser policy for a task.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+  <workflow>         full for an existing task folder, or small for lightweight history
+
+Options:
+  --workflow <full|small>  select full or small task history
+  --refresh                explicitly adopt policy changes or promote a small
+                           history
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu adviser bind add-login --workflow full
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu adviser ask
+
+```text
+usage: kitsu adviser ask <adviser> --task <task> --role <role> --stage <stage> --request <file> [options]
+
+Consult an explicitly enabled experimental adviser and record its answer.
+
+Arguments:
+  <adviser>          name of an explicitly configured experimental adviser
+  <task>             task name: lowercase words joined by hyphens
+  <role>             specialist role id, or coordinator where supported
+  <stage>            stage of the role making this request
+  <file>             JSON request file, or - to read standard input
+
+Options:
+  --task <task>            task whose saved records or adviser access to use
+  --role <role>            role requesting advice or receiving skill selections
+  --stage <stage>          required workflow stage of this request
+  --request <file|->       required version 1 or 2 request JSON; use - for
+                           standard input
+  --checkpoint <id>        required checkpoint this request addresses
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Request: CLI advisers accept version 1 advice/decision JSON; native advisers
+accept decision, score and boolean requests (version 2 for score/boolean).
+The call may execute a configured CLI or contact an enabled experimental API.
+The complete exchange is recorded. Answers provide no automatic approval.
+
+Examples:
+  kitsu adviser ask design --task add-login --role architect --stage design --request request.json
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu adviser status
+
+```text
+usage: kitsu adviser status <task> [options]
+
+Inspect status readiness of saved experimental adviser checkpoints.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --checkpoint <id>        consider only this checkpoint
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu adviser status add-login
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu adviser check
+
+```text
+usage: kitsu adviser check <task> [options]
+
+Inspect check readiness of saved experimental adviser checkpoints.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --checkpoint <id>        consider only this checkpoint
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu adviser check add-login
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu adviser accept
+
+```text
+usage: kitsu adviser accept <id> --task <task> --reason <text> [options]
+
+Record an explicit accept disposition without replacing reviews or approvals.
+
+Arguments:
+  <id>               check or consultation id, as appropriate
+  <task>             task name: lowercase words joined by hyphens
+  <text>             explicit explanation of this recorded decision
+
+Options:
+  --task <task>            task whose saved records or adviser access to use
+  --reason <text>          required explanation; keep the original answer
+  --choice <id>            selected choice from a decision request
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu adviser accept <consultation-id> --task add-login --reason 'Reviewed the answer'
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu adviser reject
+
+```text
+usage: kitsu adviser reject <id> --task <task> --reason <text> [options]
+
+Record an explicit reject disposition without replacing reviews or approvals.
+
+Arguments:
+  <id>               check or consultation id, as appropriate
+  <task>             task name: lowercase words joined by hyphens
+  <text>             explicit explanation of this recorded decision
+
+Options:
+  --task <task>            task whose saved records or adviser access to use
+  --reason <text>          required explanation; keep the original answer
+  --choice <id>            selected choice from a decision request
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu adviser reject <consultation-id> --task add-login --reason 'Reviewed the answer'
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu adviser defer
+
+```text
+usage: kitsu adviser defer <id> --task <task> --reason <text> [options]
+
+Record an explicit defer disposition without replacing reviews or approvals.
+
+Arguments:
+  <id>               check or consultation id, as appropriate
+  <task>             task name: lowercase words joined by hyphens
+  <text>             explicit explanation of this recorded decision
+
+Options:
+  --task <task>            task whose saved records or adviser access to use
+  --reason <text>          required explanation; keep the original answer
+  --choice <id>            selected choice from a decision request
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu adviser defer <consultation-id> --task add-login --reason 'Reviewed the answer'
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+## check
+
+### kitsu check list
+
+```text
+usage: kitsu check list [options]
+
+List this repository's declared checks.
+
+Options:
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu check list
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu check add
+
+```text
+usage: kitsu check add <id> -- <program> [<argument>...] [options]
+
+Declare a repository check without invoking a shell.
+
+Arguments:
+  <id>               check or consultation id, as appropriate
+  <program>          executable run directly without a shell
+  <argument>         argument passed unchanged to the check program
+
+Options:
+  --paths <pattern>        dependent paths; repeatable; omitted means all
+                           content
+  --timeout <duration>     check timeout from 1s to 6h; default 10m
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu check add test -- go test ./...
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu check run
+
+```text
+usage: kitsu check run [<id>...] [options]
+
+Run declared checks that lack passing evidence for current content.
+
+Arguments:
+  <id>               check or consultation id, as appropriate
+
+Options:
+  --force                  run even when passing evidence exists
+  --base <rev>             reuse evidence only when checked content matches this
+                           revision
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu check run
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu check stats
+
+```text
+usage: kitsu check stats [options]
+
+Report recorded check runs and gate decisions.
+
+Options:
+  --since <period>         reporting period such as 90m, 7d or 2w; default 30d
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu check stats
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+## gate
+
+### kitsu gate init
+
+```text
+usage: kitsu gate init [options]
+
+Declare checks when needed and install Git hooks.
+
+Options:
+  --observe                record decisions while allowing commits and pushes
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu gate init
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu gate status
+
+```text
+usage: kitsu gate status [options]
+
+Report whether current content has evidence to permit a commit.
+
+Options:
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu gate status
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu gate uninstall
+
+```text
+usage: kitsu gate uninstall
+
+Remove Kitsu's Git hooks and local records; keep configuration.
+
+Options:
+  --help, -h               show this command's help without executing it
+
+Removal: local check evidence and host token records are removed. Configuration
+and shared OpenSpec records remain, including your private CLI host preference.
+
+Examples:
+  kitsu gate uninstall
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+## usage
+
+### kitsu usage show
+
+```text
+usage: kitsu usage show [options]
+
+Report task tokens and workflow overhead; unknown usage stays unknown.
+
+Options:
+  --task <task>            task whose saved records or adviser access to use
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu usage show
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu usage record
+
+```text
+usage: kitsu usage record [options]
+
+Record a host token notice from standard input.
+
+Options:
+  --host <codex|claude>    required notice format; explicit host avoids protocol
+                           guessing
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu usage record --host codex < notice.json
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+## config
+
+### kitsu config show
+
+```text
+usage: kitsu config show [options]
+
+Manage CLI host preferences: show.
+
+Options:
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu config show
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu config get
+
+```text
+usage: kitsu config get <key> [options]
+
+Manage CLI host preferences: get.
+
+Arguments:
+  <key>              CLI preference key; currently host
+
+Options:
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu config get host
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu config set
+
+```text
+usage: kitsu config set <key> <value> [options]
+
+Manage CLI host preferences: set.
+
+Arguments:
+  <key>              CLI preference key; currently host
+  <value>            preference value; host accepts codex or claude
+
+Options:
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --global                 edit personal CLI preferences instead of this private
+                           checkout
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu config set host codex --global
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu config reset
+
+```text
+usage: kitsu config reset <key> [options]
+
+Manage CLI host preferences: reset.
+
+Arguments:
+  <key>              CLI preference key; currently host
+
+Options:
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --global                 edit personal CLI preferences instead of this private
+                           checkout
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu config reset host
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu config edit
+
+```text
+usage: kitsu config edit [options]
+
+Manage CLI host preferences: edit.
+
+Options:
+  --global                 edit personal CLI preferences instead of this private
+                           checkout
+  --accessible             use descriptive accessible prompts instead of the
+                           full-screen form
+  --help, -h               show this command's help without executing it
+
+Editor: F1 opens field help; Save applies the preview; Cancel writes nothing.
+Ctrl+C exits 130 without saving. Requires a terminal; scripts use set with --json.
+
+Examples:
+  kitsu config edit
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+## completion
+
+### kitsu completion bash
+
+```text
+usage: kitsu completion bash
+
+Print a bash completion script for this CLI.
+
+Options:
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu completion bash
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu completion zsh
+
+```text
+usage: kitsu completion zsh
+
+Print a zsh completion script for this CLI.
+
+Options:
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu completion zsh
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu completion fish
+
+```text
+usage: kitsu completion fish
+
+Print a fish completion script for this CLI.
+
+Options:
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu completion fish
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu completion powershell
+
+```text
+usage: kitsu completion powershell
+
+Print a powershell completion script for this CLI.
+
+Options:
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu completion powershell
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+## Compatibility aliases and integrations
+
+Existing spellings retain their original argument rules. Nested help names their preferred replacement.
+
+### kitsu advisers
+
+```text
+usage: kitsu advisers providers [--json] | list [--role <role>] [--task <task>] [--json] | bind | resolve | status | check
+
+Configure optional, experimental advisers; none are enabled by default.
+
+  Opt-in                 configure a definition and repository role access; no advisers or checkpoints are enabled by default
+  providers              list built-in native presets and credentials; offline, works outside a repository
+  list                   print configured advisers; --task selects the saved binding
+  bind                   snapshot configuration with --task and --workflow
+  resolve <id>           append a disposition to a consultation
+  status|check           inspect readiness or require satisfied checkpoints; never invoke models
+  --task <task>          task name; required except with providers or list
+  --role <role>          with list: show only advisers this requester may consult
+  --workflow full|small  with bind: use a change folder or lightweight task record
+  --refresh              with bind: explicitly update the saved policy or promote small to full
+  --disposition <value>  with resolve: accept, reject or defer
+  --reason <text>        with resolve: required explanation of the disposition
+  --choice <id>          with resolve: optional selected option from a decision request
+  --checkpoint <id>      with status/check: consider this required checkpoint only
+  --json                 print one JSON object
+```
+
+### kitsu consult
+
+```text
+usage: kitsu consult --task <task> --role <role> --stage <stage> --adviser <name> --request <file|-> [--checkpoint <id>] [--json]
+
+Ask an explicitly enabled experimental adviser and record the exchange.
+
+  --task <task>       task with a saved adviser binding
+  --role <role>       original requester, including coordinator
+  --stage <stage>     workflow stage of this request
+  --adviser <name>    allowed adviser whose definition still matches the binding
+  --request <file|->  version 1 or 2 JSON file, or standard input; one question
+  --checkpoint <id>   required checkpoint this consultation addresses
+  --json              print the saved consultation, including its ID and outcome
+  Advice JSON         {"version":1,"kind":"advice","question":"What could fail?","context":["src/app.txt"]}
+  Decision JSON       set kind to decision and add choices: [{"id":"a","text":"First option"},{"id":"b","text":"Second option"}]
+  Score JSON          {"version":2,"kind":"score","question":"How complete is the design?","levels":["Incomplete","Partial","Complete"]}
+  Boolean JSON        {"version":2,"kind":"boolean","question":"Does the design handle cancellation?","criteria":{"true":"Explicit cancellation","false":"No cancellation"}}
+  Capabilities        CLI: advice, decision. Native: decision, score, boolean. Results never automatically approve work.
+```
+
+### kitsu roles
+
+```text
+usage: kitsu roles [--host claude|codex] [--task <task>] [--json] | set <role> --host claude|codex [--model <model>] [--reasoning <effort>] [--skills <references>] [--global] [--root <directory>] [--json] | reset <role> --host claude|codex [--global] [--json] | check <role> --from <tree> [--task <task>] [--finalize] | text <role>
+
+Print or configure role models, reasoning and skills, list advisers, check writes, or print instructions.
+
+  --host claude|codex         select a host; required with set and reset
+  --json                      print the roles as one JSON object
+  set <role>                  save model, reasoning, and/or skill overrides in kitsu-roles.toml
+  --model <model>             with set: change only this role's model for the selected host
+  --reasoning <effort>        with set: change reasoning effort; omit either option to keep its current setting
+  --skills <references>       with set: comma-separated skill IDs or unique names; an empty value clears selections
+  --root <directory>          with set and --skills: add an explicit skill root; repeat for more roots
+  --global                    save or reset personal skills in the user config directory's kitsu/roles.toml; skills only
+  reset <role>                remove role overrides in the selected scope; repository skills then inherit personal choices
+  --task <task>               with the table: read bound adviser access; with check: set the task write scope
+  check <role> --from <tree>  exit 5 when writes since this tree exceed the role's scope
+  --finalize                  with spec-writer and --task: allow current specs for capabilities in --from
+  text <role>                 print one role's instructions, or coordinator
+```
+
+### kitsu skills
+
+```text
+usage: kitsu skills list --host claude|codex [--root <directory>] [--json] | resolve <role> --host claude|codex [--task <task>] [--workflow full|small] [--root <directory>] [--json]
+
+List existing host skills or resolve a role's selection without executing skills.
+
+  list                   print existing host skill metadata and discovery warnings
+  resolve <role>         resolve configured skill references for this role, including coordinator
+  --host claude|codex    select the native host inventory; required
+  --root <directory>     add an explicit skill collection or directory with SKILL.md; repeat for more
+  --task <task>          with resolve: record the selection for this task; without it, read only
+  --workflow full|small  with resolve and --task: select the receipt location; defaults to full
+  --json                 print metadata or resolved sources as one JSON object; loading remains unverified
+```
+
+### kitsu change
+
+```text
+usage: kitsu change status [<task>] [--json] | check [<task>]
+
+Print the stage of a task's change folder, or check the rules its files must obey.
+
+  status [<task>]  print the stage of one task, or of every task
+  --json           with status: print one JSON object instead of text
+  check [<task>]   exit 5 when the files of one task, or of any task, break a rule
+```
+
+### kitsu tokens
+
+```text
+usage: kitsu tokens [--task <task>] [--json] | record [--host claude|codex]
+
+Report the tokens a task used and the share the workflow itself took, or record them from a host's notice.
+
+  --task <task>               print the roles and the stages of one task
+  --json                      print one JSON object instead of text
+  record --host claude|codex  record the tokens from the host's notice on standard input; without --host, claude
+```
+
+### kitsu init
+
+```text
+usage: kitsu init [--observe]
+
+Create kitsu.toml if it is missing and install the git hooks.
+
+  --observe  record what the hooks would decide, and allow every commit and push
+```
+
+### kitsu add
+
+```text
+usage: kitsu add <id> [--paths <pattern>]... [--timeout <duration>] -- <program> [<argument>...]
+
+Append one check to kitsu.toml.
+
+  <id>                          the name of the check
+  --paths <pattern>             a path pattern the check depends on; give it once for each pattern; without it, every path
+  --timeout <duration>          the time the check may take, from 1s to 6h; without it, 10m
+  -- <program> [<argument>...]  the program of the check and its arguments, started without a shell
+```
+
+### kitsu run
+
+```text
+usage: kitsu run [<id>...] [--force] [--base <rev>]
+
+Execute the declared checks that have no passing run on this content.
+
+  <id>...       consider only these checks
+  --force       execute them even when they have a passing run on this content
+  --base <rev>  count a check as passed when its checked content is the same as in the revision <rev>
+```
+
+### kitsu status
+
+```text
+usage: kitsu status [--json]
+
+Say whether a commit of the working tree would be allowed, and what is missing.
+
+  --json  print one JSON object instead of text
+```
+
+### kitsu stats
+
+```text
+usage: kitsu stats [--since <period>] [--json]
+
+Count the runs and the hook decisions this repository recorded.
+
+  --since <period>  count the records of this period, such as 90m, 36h, 7d or 2w; without it, 30d
+  --json            print one JSON object instead of text
+```
+
+### kitsu context
+
+```text
+usage: kitsu context [--host claude|codex]
+
+Print what an agent should know at the start of a session here.
+
+  --host claude|codex  read the host's notice from standard input and judge the directory it names
+```
+
+### kitsu hook
+
+```text
+usage: kitsu hook <name> [<argument>...]
+
+Decide for git: pre-commit, pre-merge-commit or pre-push.
+
+  <name>         pre-commit, pre-merge-commit or pre-push
+  <argument>...  what git gives that hook; the hook files that kitsu init writes pass them on
+```
+
+### kitsu guard
+
+```text
+usage: kitsu guard [--host claude|codex]
+
+For an agent host's hook: ask before a git call that skips the hooks, or an edit of kitsu.toml, a hook or a record.
+
+  --host claude  the answer asks the user; this is the default
+  --host codex   the answer denies the call and gives the reason
+```
+
+### kitsu uninstall
+
+```text
+usage: kitsu uninstall
+
+Remove the hooks kitsu wrote and its records; kitsu.toml stays.
+```
+
+### kitsu version
+
+```text
+usage: kitsu version
+
+Print the version, the revision and the build time.
+```
