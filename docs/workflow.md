@@ -21,6 +21,9 @@ Optional, experimental [advisers](advisers.md) answer a role's question through 
 CLI. The coordinator brokers these calls and records how each answer was addressed. Required
 checkpoints can hold a stage until advice on its current content has been addressed. No adviser
 or adviser checkpoint is enabled by default; the normal workflow needs neither.
+Optional [existing skills](skills.md) supply expertise from original local sources. The
+coordinator resolves each role's selected skills before its start and includes those sources in
+the brief. A saved selection does not prove that the host loaded or followed it.
 
 ## The flow
 
@@ -109,6 +112,8 @@ the stage, the round and the open findings. Adviser history, when configured, is
 under `openspec/changes/.advice/<task>/`. Promotion to the full path uses
 `kitsu advisers bind --task <task> --workflow full --refresh` and moves that whole history; competing
 small and full histories are an error.
+Skill selection history uses `openspec/changes/.skills/<task>/`. Full resolution moves that whole
+history into the new task's `skills/` when no competing full skill history exists.
 
 ### Starting a role
 
@@ -124,8 +129,28 @@ small and full histories are an error.
 - The developer's own instruction about models comes first. When it names a model for agents, the
   coordinator uses it and says once which roles it changes.
 - The first line of every brief is `kitsu-task: <task> <stage> <round>`.
+- Before the start, the coordinator runs `kitsu skills resolve <role> --host <host> --task <task>`
+  with `--workflow small` on the small path. It includes selected ids, original paths, and hashes
+  and tells the worker to load the original instructions through a native skill tool or explicit
+  reading. Missing, ambiguous, invalid, host-disabled, or manual-only selections stop the handoff.
 - The brief names the files to read and what to hand back. A brief for `reviewer` holds no opinion,
   summary or excuse from the role that wrote the work.
+
+### Selected skills
+
+`kitsu skills list --host codex|claude` inventories supported local sources.
+`kitsu roles set <role> --host <host> --skills <ids>` pins existing skills for that host and role;
+`--global` saves personal skill bindings. Repository arrays replace personal lists, and `[]`
+suppresses inheritance. With neither selection, the host's native skills remain available.
+
+Resolution reads the current original source and records an immutable portable selection receipt
+for each distinct resolution, under the full task's `skills/` or the small task's `.skills/`
+history. No skill bodies or machine absolute paths go in the receipt. `load_status` stays
+`unverified`: the command starts no host process and observes no loading. Skills grant no tools,
+permissions, or additional writes, and replace no independent review or human approval.
+The coordinator writes receipts before taking a worker's write-check baseline; workers write
+no skill records.
+[Skills](skills.md) covers explicit roots, ids, configuration, and manual-only metadata.
 
 ### Advice and decisions
 
@@ -153,8 +178,9 @@ developer opts in. With no role access and no existing task binding, skip advise
    and no call is retried automatically. Dispositions preserve the original answer. Real findings
    follow the existing severity rules; advice replaces no review or human approval.
 
-`kitsu roles --host codex --task <task>` shows the role, model, reasoning effort, and adviser access
-in one table. [Advisers](advisers.md) gives the configuration and the request JSON format.
+`kitsu roles --host codex --task <task>` shows the role, model, reasoning effort, current skill
+selections, and adviser access in one table. [Advisers](advisers.md) gives the configuration and
+the request JSON format.
 
 ### After every role
 
@@ -232,6 +258,8 @@ runs `kitsu tokens --task <task>` and gives the developer the totals.
 
 The workflow keeps task state in its change folder and git, with small-task adviser history under
 `openspec/changes/.advice/<task>/`. Another session can continue a full task from its record alone.
+Skill receipts live in the full task's `skills/` or `openspec/changes/.skills/<task>/`. They can
+be checked offline; resolving a new worker still needs the selected original local sources.
 An unfinished or abandoned change folder
 blocks nothing: the gate does not read change folders unless a repository declares
 `kitsu change check` as a check.
@@ -245,6 +273,8 @@ blocks nothing: the gate does not read change folders unless a repository declar
 | The files of a change folder obey their rules | `kitsu change check` | when someone runs it, or at every commit when `kitsu.toml` declares it as a check |
 | The stage of a task, and whether a review or an approval is of the current content | `kitsu change status` | when someone runs it; it reports and changes nothing |
 | Required adviser receipts match the binding, requester, adviser, checkpoint, and current content, and have a disposition | `kitsu advisers check`; `kitsu change status` at the corresponding stage | only when run; `kitsu change check` validates record structure without requiring future advice |
+| Selected skills exist, are valid and available, and are suitable for automatic role loading | `kitsu skills resolve` | before each new worker; reads original local sources without executing them |
+| Skill selection receipts are structurally valid and portable | `kitsu change check` | for full and small histories, without the installed skill sources |
 | A git call that skips the hooks, or an edit of `kitsu.toml`, `kitsu-roles.toml`, `kitsu-advisers.toml`, a hook, or a Kitsu record | the plugin's `PreToolUse` hook | on Claude Code it asks first; on Codex it refuses (see [hooks](hooks.md)) |
 
 What no program checks:
@@ -259,6 +289,7 @@ What no program checks:
 - Which model a role ran on. [`kitsu tokens`](tokens.md) shows the model names the host's record
   gives.
 - On Claude Code, the host applies the `tools` list of each role file. `kitsu` does not.
+- Whether a selected skill was loaded or followed. A selection receipt records `unverified`.
 
 ## The record of a task
 
@@ -274,6 +305,7 @@ lower-case words joined by hyphens. `kitsu` reads the folder itself and needs no
 | `tests.md` | `quality-engineer` | A table with the columns Scenario, Test file, Text. A row that is not automated holds `not automated` as its file and a reason as its text. Under `## Changed tests`, one line for each existing test it changed or removed, with the requirement or the reason; `kitsu` does not read it. |
 | `reviews.md` | the coordinator | Under `## Reviews` the columns Stage, Round, Date, Content; under `## Findings` the columns Id, Stage, Round, Severity, Where, Finding, Disposition, Reason; under `## Approvals` the columns What, Date, Content. |
 | `advisers/` | adviser commands run by the coordinator | Saved policy revisions, immutable consultations, and appended dispositions; see [advisers](advisers.md). |
+| `skills/` | `kitsu skills resolve` run by the coordinator | Immutable version 1 selections with ids, scopes, source hashes, and unverified loading; see [skills](skills.md). |
 
 How `kitsu` reads these files:
 
@@ -546,6 +578,11 @@ These checks validate record structure and references, leaving missing or pendin
 for `kitsu advisers check`. Malformed records, conflicting histories, invalid task entries, and
 symlink record paths fail. `kitsu change status` remains full-path only; small tasks use
 `kitsu advisers status` for checkpoint readiness.
+
+It also checks skill receipts under full tasks' `skills/` and small tasks'
+`openspec/changes/.skills/<task>/`, including named small tasks without a full folder. These
+checks need no installed skill sources and do not prove loading. Malformed or conflicting
+histories and symlink record paths fail.
 
 ### The rules
 

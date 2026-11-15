@@ -7,6 +7,8 @@ which paths a role changed. The roles run inside the developer's coding agent, a
 does there is an instruction to a model. Optional, experimental [advisers](advisers.md) use native decision APIs
 or configured CLI commands through the coordinator; they change neither the role's job nor its write limit.
 None are enabled by default. Roles continue without advisers when none are allowed.
+Optional [existing skills](skills.md) add instructions from their original directories. They
+also change no role job, write limit, tool grant, review, or approval rule.
 
 The roles have run with a model in two scratch repositories only, on one small task each. See
 [What is not known](#what-is-not-known).
@@ -32,7 +34,8 @@ or configure them.
 | `git` | `haiku` | `low` | `gpt-6-luna` | `low` |
 
 For the coordinator session, the recommendation is `gpt-6.1-sol` with `max` on Codex or `opus`
-with `xhigh` on Claude Code. Select that in the host; `kitsu-roles.toml` configures specialists.
+with `xhigh` on Claude Code. Select that in the host; `kitsu-roles.toml` configures specialist
+models and can select skills for specialists or the coordinator.
 These selections are recommendations based on the jobs, not results of a benchmark:
 
 | Role | Why this selection | When to choose a stronger setting explicitly |
@@ -52,7 +55,7 @@ supported levels; availability still depends on the host and account. Historical
 results below used earlier defaults and do not validate this routing.
 
 `kitsu roles --host codex` or `kitsu roles --host claude` prints the selected host in a compact
-**Role / Model / Reasoning / Advisers** table. Adviser access is configured separately in
+**Role / Model / Reasoning / Advisers** table with a **Skills** line beneath each role. Adviser access is configured separately in
 `kitsu-advisers.toml`; `--task <task>` reads a saved task binding, including access, without the
 personal adviser configuration. Change a specialist's model or reasoning in
 [`kitsu-roles.toml`](#kitsu-rolestoml); configure adviser models and arguments as described in
@@ -60,13 +63,13 @@ personal adviser configuration. Change a specialist's model or reasoning in
 
 | Role | Job | May change | Tools on Claude Code |
 | --- | --- | --- | --- |
-| `lookup` | Finds files, facts and existing specifications, and reports where they are. | nothing | Read, Grep, Glob, WebFetch, WebSearch |
-| `spec-writer` | Writes the requirements and their scenarios from the request and its sources. | `proposal.md` and `specs/` of the task's change folder | Read, Grep, Glob, Edit, Write |
-| `architect` | Designs the building blocks, their dependencies and the tasks. | `design.md` and `tasks.md` of the task's change folder | Read, Grep, Glob, Edit, Write |
-| `quality-engineer` | Writes the tests of the scenarios before the code exists. | the test paths, and `tests.md` of the task's change folder | Read, Grep, Glob, Edit, Write, Bash |
-| `developer` | Writes the code that makes the tests pass, within the design. | any other path except `kitsu.toml`, `kitsu-roles.toml`, `kitsu-advisers.toml` and `openspec/`; may add a test, may not change or remove one | Read, Grep, Glob, Edit, Write, Bash |
-| `reviewer` | Reviews a specification, a design or code that another role wrote, and reports findings. | nothing | Read, Grep, Glob, Bash |
-| `git` | Runs the checks and makes the commit through the gate. | nothing | Read, Grep, Glob, Bash |
+| `lookup` | Finds files, facts and existing specifications, and reports where they are. | nothing | Read, Grep, Glob, WebFetch, WebSearch, Skill |
+| `spec-writer` | Writes the requirements and their scenarios from the request and its sources. | `proposal.md` and `specs/` of the task's change folder | Read, Grep, Glob, Edit, Write, Skill |
+| `architect` | Designs the building blocks, their dependencies and the tasks. | `design.md` and `tasks.md` of the task's change folder | Read, Grep, Glob, Edit, Write, Skill |
+| `quality-engineer` | Writes the tests of the scenarios before the code exists. | the test paths, and `tests.md` of the task's change folder | Read, Grep, Glob, Edit, Write, Bash, Skill |
+| `developer` | Writes the code that makes the tests pass, within the design. | any other path except `kitsu.toml`, `kitsu-roles.toml`, `kitsu-advisers.toml` and `openspec/`; may add a test, may not change or remove one | Read, Grep, Glob, Edit, Write, Bash, Skill |
+| `reviewer` | Reviews a specification, a design or code that another role wrote, and reports findings. | nothing | Read, Grep, Glob, Bash, Skill |
+| `git` | Runs the checks and makes the commit through the gate. | nothing | Read, Grep, Glob, Bash, Skill |
 
 "The test paths" are the patterns that `kitsu-roles.toml`
 names under `[paths]`. No role file gives a role the tool that starts another role; only the
@@ -83,6 +86,10 @@ Each role may return a question, choices, and explicit source paths for an advis
 brief. The coordinator checks its writes, runs the consultation, and returns the record before
 the role resumes. Roles never execute advisers or write adviser records themselves. Reviewers
 first form their own assessment and receive none of the author's consultations as review guidance.
+Before each start, the coordinator runs `kitsu skills resolve <role> --host <host>` with the task
+and workflow, includes selected ids, original paths, and hashes in the brief, and tells the
+worker to load those originals. The `Skill` tool on Claude Code or an explicit file read supplies
+instructions; the host still owns execution. Selection receipts keep loading `unverified`.
 
 ### lookup
 
@@ -160,8 +167,11 @@ model for agents, the coordinator uses it and says once which roles it changes. 
 ## kitsu-roles.toml
 
 `kitsu-roles.toml` is an optional file at the root of a repository. It sets the test paths and,
-for any role on either host, another model or effort. Without the file every role has its
-default, and `kitsu roles check developer` and `kitsu roles check quality-engineer` exit 1, because their
+for a specialist on either host, another model or effort. It can also select existing skills
+for any specialist or the coordinator. Without model overrides every specialist has its built-in
+default. Skills inherit from personal bindings unless a repository array replaces them; with
+neither file, no skills are pinned. Without test paths,
+`kitsu roles check developer` and `kitsu roles check quality-engineer` exit 1, because their
 limits depend on the test paths.
 
 ### Format
@@ -175,9 +185,13 @@ tests = ["tests/**", "**/*_test.*"]
 [claude.developer]
 model = "opus"
 effort = "high"
+skills = ["claude:repo:.claude/skills/project-style"]
 
 [codex.git]
 model = "<another model name>"
+
+[codex.coordinator]
+skills = []
 ```
 
 - `version` must be `1`.
@@ -185,8 +199,12 @@ model = "<another model name>"
   In a pattern `**` as a whole segment matches any number of segments, also none; `*` matches any
   run of characters inside one segment; `?` matches one character. Case is respected. A pattern
   with an empty segment (a leading `/`, a trailing `/` or `//`) is refused.
-- `[claude.<role>]` and `[codex.<role>]` hold `model`, `effort`, or both. Each is a text that is
-  not empty. A field that is left out keeps the default.
+- `[claude.<role>]` and `[codex.<role>]` hold optional `model`, `effort`, and `skills`. Model and
+  effort are nonempty texts; an omitted field keeps the default. `skills` is an array of skill
+  references. Each repository array replaces the personal list; `[]` suppresses inheritance.
+- The `coordinator` tables accept only `skills`; the host selects its model and reasoning.
+- Personal skill bindings use `os.UserConfigDir()/kitsu/roles.toml` and accept no models, effort,
+  or test paths. See [skills](skills.md#personal-defaults-and-repository-overrides).
 
 ### Changing a model
 
@@ -200,16 +218,19 @@ kitsu roles --host codex
 kitsu roles reset developer --host codex
 ```
 
-`set` requires `--host claude|codex` and at least one of `--model` or `--reasoning`.
+`set` requires `--host claude|codex` and at least one of `--model`, `--reasoning`, or `--skills`.
 An omitted option keeps its current override or default. `--reasoning` is saved as `effort`.
-`reset` removes both overrides for that role and host, restoring the built-in defaults.
-Both commands print the resulting selection; `--json` returns `role`, `host`, `model`, and `effort`.
+`reset` removes model, effort, and skill overrides for that role and host, restoring the built-in
+model defaults and any personal skill selection. Both commands print the resulting selection;
+`--json` includes the role, host, model, effort, and skills.
 
 The commands update the repository root's `kitsu-roles.toml`, creating a version 1 file when needed.
 They preserve other roles, hosts, test paths, and unrelated comments; an edited inline table may be
 reformatted. An invalid file or a symbolic link is refused without writing it. Resetting a missing
-file creates nothing. Commit the file to share the selection with the team; there is no personal or
-per-task override in these commands. They affect newly started specialists, not workers already running.
+file creates nothing. Commit the file to share the selection with the team. `--global` updates
+only personal skill bindings and rejects model or reasoning options; global reset removes only
+that host/role's personal skill selection. See [the skill guide](skills.md) for discovery,
+`--skills ''`, duplicates, and extra roots. Settings affect newly started workers.
 The coordinator uses the model and reasoning selected in your host session.
 
 `kitsu` does not judge a model name. `model = "no-such-model"` is accepted and printed; a wrong name
@@ -225,20 +246,17 @@ of every role.
 
 ### What is refused
 
-Every broken rule is printed as `kitsu-roles.toml:<line>: <rule>` on standard error, and the command
-exits 1. All the problems of the file are listed at once. For example, a file with a table
-`[gemini.git]` at line 6 and a key `temperature` under `[claude.git]` at line 9:
-
-```text
-kitsu: kitsu-roles.toml:9: unknown key `temperature` under [claude.git]; it holds `model` and `effort`
-kitsu-roles.toml:6: unknown key `gemini`; the file holds `version`, `[paths]`, and `[claude.<role>]` and `[codex.<role>]`
-```
+Broken configuration rules are printed with their source file and line on standard error, and
+the command exits 1. Unknown hosts such as `[gemini.git]` and unknown keys such as `temperature`
+are refused.
 
 Refused are: a file that is not valid TOML; a `version` other than `1`; any top-level key other
 than `version`, `paths`, `claude` and `codex`; a key under `[paths]` other than `tests`; `tests`
-that is not an array of texts, or holds a pattern with an empty segment; a role that is not one
-of the seven (`unknown role `tester`; the roles are lookup, spec-writer, ...`); a key under a role
-other than `model` and `effort`; an empty or non-text `model` or `effort`.
+that is not an array of texts, or holds a pattern with an empty segment; an unknown role; a key
+under a role other than `model`, `effort`, and `skills`; an empty or non-text `model` or `effort`;
+invalid or duplicate skill references; or a coordinator model or effort override. The personal
+file is skills-only. Selection and resolution also refuse missing, ambiguous, invalid,
+host-disabled, and manual-only skill entries.
 
 `kitsu roles`, `set`, `reset`, and `check` read the file and refuse it. `kitsu roles text` does not read it, so
 it works even when the file is invalid.
@@ -253,8 +271,8 @@ kitsu roles [--host claude|codex] [--task <task>] [--json]
 
 Without `--host`, prints one row for each specialist role: its id, its model and effort on Claude
 Code and on Codex, and the size of its text in characters. Below each row stand its job, what it
-may write, and its allowed advisers. With `--host`, the compact table includes the coordinator
-and separates model, reasoning, and allowed advisers. The coordinator's model and reasoning are
+may write, selected skills, and allowed advisers. With `--host`, the compact table includes the
+coordinator and separates model, reasoning, skills, and allowed advisers. The coordinator's model and reasoning are
 shown as the host session because Kitsu has no configured values for them. With `--task`, adviser
 access comes from that task's binding and can be read offline. Examples:
 
@@ -271,6 +289,8 @@ lookup            haiku, medium   gpt-6-luna, medium  2283
     Finds files, facts and existing specifications, and reports where they are.
     May write: nothing.
     Advisers: none.
+    Skills (claude): none pinned.
+    Skills (codex): none pinned.
 ```
 
 Below the table it prints the size of the coordinator's instructions. With `--json` it prints one object. Here it is shortened to one
@@ -285,6 +305,10 @@ of the seven entries of `roles`:
       "writes": "design.md and tasks.md of the task's change folder",
       "text_chars": 4230,
       "advisers": null,
+      "skills": {
+        "claude": [],
+        "codex": []
+      },
       "models": {
         "claude": {
           "model": "opus",
@@ -297,17 +321,22 @@ of the seven entries of `roles`:
       }
     }
   ],
-  "coordinator_text_chars": 11887
+  "coordinator_text_chars": 11887,
+  "coordinator_skills": {
+    "claude": [],
+    "codex": []
+  }
 }
 ```
 
 The sizes are illustrative; `kitsu roles` prints the current values. It reads `kitsu-roles.toml` of the repository it runs
-in. Outside a git repository it prints the defaults.
+in and personal skill bindings. Outside a git repository it prints model defaults with any
+personal skill selections.
 
 | Exit | When |
 | --- | --- |
 | 0 | The roles are printed. |
-| 1 | `kitsu-roles.toml` is invalid. |
+| 1 | Repository or personal role configuration is invalid. |
 | 2 | The command line is wrong, for example an extra argument. |
 
 ### kitsu roles text

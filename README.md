@@ -13,7 +13,7 @@ Seven specialist roles, shared task records, and token reporting, with a Git gat
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Runs on Linux, macOS and Windows](https://img.shields.io/badge/runs%20on-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)](#install)
 
-[The roles](#the-roles) · [Quick start](#quick-start) · [Advisers](#ask-an-adviser) · [Install](#install) ·
+[The roles](#the-roles) · [Quick start](#quick-start) · [Skills](#use-your-existing-skills) · [Advisers](#ask-an-adviser) · [Install](#install) ·
 [For a coding agent](#for-a-coding-agent) · [The Git gate](#how-the-gate-decides) · [State](#state) · [Documents](#documents)
 
 </div>
@@ -22,6 +22,7 @@ Seven specialist roles, shared task records, and token reporting, with a Git gat
 | --- | --- |
 | **Agent coordination** | A coordinator in your coding-agent host delegates work to seven specialist roles, with a defined order, review handoffs, model choices, and limits on what each role may change. |
 | **Shared task records** | Requirements, design decisions, tasks, tests, and review findings give the agents a common record to work from. `kitsu change` checks that record and reports the task's stage. |
+| **Existing skills** | Select skills from local repository, personal, and installed plugin sources for each role, while keeping their original files and references. |
 | **Token reporting** | `kitsu tokens` reports recorded token usage by task and role, including the coordination overhead. |
 | **Advisers (experimental)** | Optional Jev, SubQ Snap, and CLI consultations, with recorded answers and decisions. None are enabled by default. |
 | **Git gate** | As a supporting check, Git hooks allow commits and pushes only when the checks declared in `kitsu.toml` have passing evidence for that content. |
@@ -54,17 +55,18 @@ required adviser checkpoints are a separate choice. Neither replaces review or y
 | `git` | Runs the checks and makes the commit through the gate. | nothing |
 
 `kitsu roles` prints the seven roles, each with its model, its effort and what it may write. Use
-`kitsu roles set` to save model and reasoning overrides in `kitsu-roles.toml`. The texts name no language and no build tool; the commands of a repository come from its
+`kitsu roles set` to save model, reasoning, and existing-skill selections in `kitsu-roles.toml`. The texts name no language and no build tool; the commands of a repository come from its
 `kitsu.toml`.
 
 `kitsu roles --host codex` or `kitsu roles --host claude` shows a compact table of role, model,
-reasoning effort, and allowed advisers. Add `--task <task>` to show a saved task's adviser access.
+reasoning effort, selected skills, and allowed advisers. Add `--task <task>` to show a saved task's adviser access.
 Optional, experimental advisers use native APIs or authenticated CLIs configured in `kitsu-advisers.toml` or your personal
 configuration. Roles return questions to the coordinator, which runs `kitsu consult` and records
 how the answer was addressed. None are enabled by default; repository role access is an explicit opt-in.
 Adviser answers replace no review or approval.
 
 - [Roles](docs/roles.md): what each role does and may change.
+- [Skills](docs/skills.md): discover existing skills and select them per role on either host.
 - [Advisers](docs/advisers.md): definitions, role access, advice and decisions, and required checkpoints.
 - [The task workflow](docs/workflow.md): the two paths, the record of a task under `openspec/changes/<task>/`, and
   what `kitsu change` checks.
@@ -73,8 +75,9 @@ Adviser answers replace no review or approval.
 ## Quick start
 
 1. [Install](#install) the CLI and [add the plugin](#for-a-coding-agent) to your coding-agent host.
-2. Run `kitsu roles --host codex` or `kitsu roles --host claude` to inspect the role/model/reasoning/advisers table.
+2. Run `kitsu roles --host codex` or `kitsu roles --host claude` to inspect models, reasoning, skills, and advisers.
    [Set a specialist's model or reasoning](docs/roles.md#changing-a-model) with `kitsu roles set`; your host selects the coordinator.
+   Optionally [select existing skills](#use-your-existing-skills) for a role.
 3. Give the `task` skill a coding task. On Claude Code, invoke `/kitsu:task`; on Codex, use the installed `task` skill.
    The coordinator chooses the workflow, sets up the repository's checks and role paths, and delegates each stage.
 4. Review the proposed specification and design when the task changes behavior, then follow implementation,
@@ -101,7 +104,31 @@ kitsu roles set reviewer --host codex --reasoning high
 kitsu roles reset developer --host codex
 ```
 
-Omit `--model` or `--reasoning` to keep that value. Reset restores both defaults for that role and host.
+Omit an option to keep that value. Reset removes repository overrides for that role and host;
+model defaults and any personal skill selection apply again.
+
+### Use your existing skills
+
+List skills already available in supported local directories for your host, then copy an id from
+the catalog to a role. This example assumes the repository contains the named skill:
+
+```sh
+kitsu skills list --host codex
+kitsu roles set reviewer --host codex --skills codex:repo:.agents/skills/project-review
+kitsu roles --host codex
+kitsu skills resolve reviewer --host codex --json
+kitsu roles set reviewer --host codex --skills ''
+```
+
+Discovery and resolution read the original `SKILL.md` files and preserve sibling scripts and
+references. They install nothing and execute no skill code or model. The coordinator resolves
+before each new worker and tells it to load the selected original instructions; a selection
+receipt alone does not prove loading. Skills change no role write limit or approval rule.
+
+The [skill guide](docs/skills.md) covers personal selections with `--global`, repository overrides,
+duplicate names, explicit roots, portable receipts, and examples for your own Go, C++, and
+JavaScript skills. Unsupported host catalog layouts need a local root; catalog completeness and
+live host loading remain unverified.
 
 ### Ask an adviser
 
@@ -306,6 +333,9 @@ separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advise
 - Local build, vet, and race-enabled tests passed on Linux. Lint and vulnerability checks passed for Linux,
   macOS, and Windows targets. See the [adviser change checks](openspec/changes/add-configurable-advisers/tests.md)
   and [installer validation](docs/release-install.md#what-ci-checks) for their scope.
+- [Existing skill discovery and role selection](openspec/changes/add-existing-skills/tests.md) passed build, vet, and
+  race tests on Linux after integration with native advisers, plus lint and vulnerability checks for all three targets.
+  Loading selected skills in a live host remains unverified.
 - Whether the workflow improves code quality or saves tokens compared with one agent is **not measured**.
   Historical scratch runs on two small tasks recorded workflow usage, without a comparative quality result:
   [benchmarks](docs/benchmarks.md). The planned [evaluation](docs/evaluation.md) has not been run.
@@ -337,6 +367,7 @@ More in [evidence](docs/evidence.md) and [hooks](docs/hooks.md).
 | [Hooks](docs/hooks.md) | The three git hooks, a hook shared with another tool, the plugin's hooks, and the known limits. |
 | [Evidence](docs/evidence.md) | What a recorded passing run is, what it proves and what it does not. |
 | [Roles](docs/roles.md) | The seven roles, their models, what each may write, and `kitsu-roles.toml`. |
+| [Skills](docs/skills.md) | Discover existing skills, select them per role, and resolve original sources for a worker brief. |
 | [Advisers](docs/advisers.md) | Built-in decision models and CLI advisers, access by role, shared answers, and required checkpoints. |
 | [The task workflow](docs/workflow.md) | The two paths of a task, its record under `openspec/changes/<task>/`, and `kitsu change`. |
 | [Tokens](docs/tokens.md) | What `kitsu tokens` counts, what "workflow tokens" are, and when a count is unknown. |

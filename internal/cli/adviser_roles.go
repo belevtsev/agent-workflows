@@ -55,17 +55,18 @@ func adviserListText(access map[string][]string, role string) string {
 	return strings.Join(names, ", ")
 }
 
-func printHostRoles(cfg Config, all []roles.Role, host string, access map[string][]string, asJSON bool) error {
+func printHostRoles(cfg Config, all []roles.Role, config *roles.Config, host string, access map[string][]string, asJSON bool) error {
 	type row struct {
 		Role      string   `json:"role"`
 		Model     string   `json:"model"`
 		Reasoning string   `json:"reasoning"`
 		Advisers  []string `json:"advisers"`
+		Skills    []string `json:"skills"`
 	}
-	rows := []row{{Role: "coordinator", Model: "host session", Reasoning: "host setting", Advisers: allowedAdviserList(access, "coordinator")}}
+	rows := []row{{Role: "coordinator", Model: "host session", Reasoning: "host setting", Advisers: allowedAdviserList(access, "coordinator"), Skills: selectedSkills(config, host, roles.Coordinator)}}
 	for _, role := range all {
 		selected := role.Models[host]
-		rows = append(rows, row{role.ID, selected.Model, selected.Effort, allowedAdviserList(access, role.ID)})
+		rows = append(rows, row{role.ID, selected.Model, selected.Effort, allowedAdviserList(access, role.ID), selectedSkills(config, host, role.ID)})
 	}
 	if asJSON {
 		return printJSON(cfg, struct {
@@ -73,12 +74,22 @@ func printHostRoles(cfg Config, all []roles.Role, host string, access map[string
 			Roles []row  `json:"roles"`
 		}{host, rows})
 	}
-	w := tabwriter.NewWriter(cfg.Out, 0, 0, 2, ' ', 0)
+	var table strings.Builder
+	w := tabwriter.NewWriter(&table, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "ROLE\tMODEL\tREASONING\tADVISERS")
 	for _, row := range rows {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", row.Role, row.Model, row.Reasoning, adviserListText(access, row.Role))
 	}
-	return w.Flush()
+	if err := w.Flush(); err != nil {
+		return err
+	}
+	lines := strings.Split(table.String(), "\n")
+	writeRoleLine(cfg.Out, lines[0])
+	for i, row := range rows {
+		writeRoleLine(cfg.Out, lines[i+1])
+		writeRoleLine(cfg.Out, "    Skills: "+skillListText(row.Skills))
+	}
+	return nil
 }
 
 func applyAdviserRequirements(root string, report *change.Report, historical string) error {

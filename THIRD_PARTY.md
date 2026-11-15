@@ -13,6 +13,7 @@ their notices:
 | [Go runtime and standard library](https://github.com/golang/go/tree/go1.27.4) | go1.27.4 | [BSD notice](licenses/go-LICENSE) |
 | [pelletier/go-toml](https://github.com/pelletier/go-toml) | v2.4.3 | [MIT notice](licenses/go-toml-LICENSE) |
 | [golang.org/x/sys](https://golang.org/x/sys) | v0.50.0 | [LICENSE](licenses/module-golang.org_x_sys-LICENSE) |
+| [YAML organization/go-yaml](https://github.com/yaml/go-yaml) | v4.0.0 | [Apache-2.0](licenses/module-go.yaml.in_yaml_v4-LICENSE), [MIT](licenses/module-go.yaml.in_yaml_v4-MIT-LICENSE), [NOTICE](licenses/module-go.yaml.in_yaml_v4-NOTICE) |
 
 ## Documents
 

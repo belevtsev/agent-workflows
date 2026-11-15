@@ -125,7 +125,7 @@ func NewRepo(t testing.TB) *Repo {
 	for _, kv := range os.Environ() {
 		name, _, _ := strings.Cut(kv, "=")
 		upper := strings.ToUpper(name)
-		if strings.HasPrefix(upper, "GIT_") || upper == "HOME" || upper == "USERPROFILE" || upper == "PATH" || strings.HasPrefix(upper, "XDG_") {
+		if strings.HasPrefix(upper, "GIT_") || upper == "HOME" || upper == "USERPROFILE" || upper == "APPDATA" || upper == "PATH" || strings.HasPrefix(upper, "XDG_") {
 			continue
 		}
 		repo.env = append(repo.env, kv)
@@ -133,6 +133,7 @@ func NewRepo(t testing.TB) *Repo {
 	repo.env = append(repo.env,
 		"PATH="+Binary(t)+string(os.PathListSeparator)+os.Getenv("PATH"),
 		"HOME="+repo.Home, "USERPROFILE="+repo.Home,
+		"APPDATA="+filepath.Join(repo.Home, "AppData", "Roaming"),
 		"GIT_CONFIG_NOSYSTEM=1", "GIT_TERMINAL_PROMPT=0",
 		"GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@example.com",
 		"GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.com",
