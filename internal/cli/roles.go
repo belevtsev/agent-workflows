@@ -10,9 +10,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/gate"
-	"github.com/belevtsev/agent-workflows/v3/internal/gitx"
-	"github.com/belevtsev/agent-workflows/v3/internal/roles"
+	"github.com/belevtsev/gatecub/v3/internal/gate"
+	"github.com/belevtsev/gatecub/v3/internal/gitx"
+	"github.com/belevtsev/gatecub/v3/internal/roles"
 )
 
 // taskName is the form of a task's name: lower-case words joined by hyphens.
@@ -35,7 +35,7 @@ func runRoles(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	if len(p.pos) > 0 || p.dash {
-		return usagef("usage: cw roles [--json], cw roles check <role> --from <tree> [--task <task>], or cw roles text <role>")
+		return usagef("usage: gatecub roles [--json], gatecub roles check <role> --from <tree> [--task <task>] [--finalize], or gatecub roles text <role>")
 	}
 	config, err := rolesConfig(ctx)
 	if err != nil {
@@ -68,7 +68,7 @@ func runRoles(ctx context.Context, cfg Config, args []string) error {
 	return nil
 }
 
-// rolesConfig reads cw-roles.toml of the repository the command runs in.
+// rolesConfig reads gatecub-roles.toml of the repository the command runs in.
 // Outside a repository the roles have their defaults.
 func rolesConfig(ctx context.Context) (*roles.Config, error) {
 	dir, err := os.Getwd()
@@ -117,7 +117,7 @@ func runRolesText(cfg Config, args []string) error {
 		return err
 	}
 	if len(p.pos) != 1 || p.dash {
-		return usagef("usage: cw roles text <role>; the roles are %s, and %s", strings.Join(roles.IDs(), ", "), roles.Coordinator)
+		return usagef("usage: gatecub roles text <role>; the roles are %s, and %s", strings.Join(roles.IDs(), ", "), roles.Coordinator)
 	}
 	text, err := roles.Text(p.pos[0])
 	if err != nil {
@@ -134,11 +134,12 @@ func runRolesCheck(ctx context.Context, cfg Config, args []string) error {
 	flags := newFlags("roles check")
 	from := flags.String("from", "", "")
 	task := flags.String("task", "", "")
+	finalize := flags.Bool("finalize", false, "")
 	p, err := parseArgs(flags, args)
 	if err != nil {
 		return err
 	}
-	const usage = "usage: cw roles check <role> --from <tree> [--task <task>]"
+	const usage = "usage: gatecub roles check <role> --from <tree> [--task <task>] [--finalize]"
 	switch {
 	case len(p.pos) != 1 || p.dash || *from == "":
 		return usagef("%s", usage)
@@ -146,6 +147,8 @@ func runRolesCheck(ctx context.Context, cfg Config, args []string) error {
 		return usagef("unknown role %q; the roles are %s", p.pos[0], strings.Join(roles.IDs(), ", "))
 	case *task != "" && !taskName.MatchString(*task):
 		return usagef("%q is not the name of a task: lower-case words joined by hyphens", *task)
+	case *finalize && (p.pos[0] != "spec-writer" || *task == ""):
+		return usagef("--finalize requires spec-writer and --task <task>; %s", usage)
 	}
 	role := p.pos[0]
 	s, err := open(ctx, cfg, true)
@@ -156,11 +159,16 @@ func runRolesCheck(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return failf("%v", err)
 	}
-	changes, err := s.changedSince(ctx, *from)
+	changes, before, err := s.changedSince(ctx, *from)
 	if err != nil {
 		return failf("%v", err)
 	}
-	outside, err := roles.Check(role, changes, config.Tests, *task)
+	var outside []roles.Violation
+	if *finalize {
+		outside, err = s.checkFinalization(ctx, changes, before, *task)
+	} else {
+		outside, err = roles.Check(role, changes, config.Tests, *task)
+	}
 	switch {
 	case errors.Is(err, roles.ErrNeedsTask):
 		return usagef("%v; %s", err, usage)
@@ -170,11 +178,15 @@ func runRolesCheck(ctx context.Context, cfg Config, args []string) error {
 	if gate.State(ctx, s.repo) != gate.Installed {
 		s.warn([]string{hooksAdvice(ctx, s.repo)})
 	}
+	return printRoleCheck(cfg, role, *from, len(changes), outside)
+}
+
+func printRoleCheck(cfg Config, role, from string, changed int, outside []roles.Violation) error {
 	if len(outside) == 0 {
-		fmt.Fprintf(cfg.Out, "`%s` stayed within its limit: %s from %s\n", role, plural(len(changes), "path differs", "paths differ"), *from)
+		fmt.Fprintf(cfg.Out, "`%s` stayed within its limit: %s from %s\n", role, plural(changed, "path differs", "paths differ"), from)
 		return nil
 	}
-	fmt.Fprintf(cfg.Out, "`%s` changed %d of %d paths outside its limit:\n", role, len(outside), len(changes))
+	fmt.Fprintf(cfg.Out, "`%s` changed %d of %d paths outside its limit:\n", role, len(outside), changed)
 	for _, v := range outside {
 		fmt.Fprintf(cfg.Out, "  %s (%s): %s\n", v.Path, v.Kind, v.Why)
 	}
@@ -189,18 +201,32 @@ func runRolesCheck(ctx context.Context, cfg Config, args []string) error {
 }
 
 // changedSince lists the paths of the working tree, as it is on disk, that
-// differ from a tree.
-func (s *session) changedSince(ctx context.Context, from string) ([]gitx.Change, error) {
+// differ from a tree, and returns that starting tree's resolved id.
+func (s *session) changedSince(ctx context.Context, from string) ([]gitx.Change, string, error) {
 	before, found, err := s.repo.TreeOf(ctx, from)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if !found {
-		return nil, fmt.Errorf("`%s` names no tree of this repository", from)
+		return nil, "", fmt.Errorf("`%s` names no tree of this repository", from)
 	}
 	snapshot, err := s.repo.Snapshot(ctx, s.store.Tmp())
 	if err != nil {
+		return nil, "", err
+	}
+	changes, err := s.repo.Diff(ctx, before, snapshot)
+	return changes, before, err
+}
+
+func (s *session) checkFinalization(ctx context.Context, changes []gitx.Change, before, task string) ([]roles.Violation, error) {
+	var entries []string
+	err := s.repo.Entries(ctx, before, func(_ []byte, path string) {
+		if strings.HasPrefix(path, roles.ChangeFolder(task)+"specs/") {
+			entries = append(entries, path)
+		}
+	})
+	if err != nil {
 		return nil, err
 	}
-	return s.repo.Diff(ctx, before, snapshot)
+	return roles.CheckFinalization(changes, task, entries)
 }

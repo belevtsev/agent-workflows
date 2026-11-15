@@ -1,16 +1,16 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
-  "name": "agent-workflows",
+  "name": "gatecub",
   "owner": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
   "metadata": {
-    "description": "cw: a gate on commits and pushes, roles for a task, and a token count.",
-    "version": "3.0.0-beta.1"
+    "description": "Gatecub: a gate on commits and pushes, roles for a task, and a token count.",
+    "version": "3.0.0-beta.2"
   },
   "plugins": [
     {
-      "name": "agent-workflows",
+      "name": "gatecub",
       "source": "./",
-      "description": "Session context for the cw gate, a question before a command that would skip it, a skill on how to work with the gate, seven roles and a skill for a task workflow, and a record of the tokens a task used.",
+      "description": "Session context for the gatecub gate, a question before a command that would skip it, a skill on how to work with the gate, seven roles and a skill for a task workflow, and a record of the tokens a task used.",
       "category": "development"
     }
   ]

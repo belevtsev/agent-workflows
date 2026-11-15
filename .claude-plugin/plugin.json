@@ -1,13 +1,14 @@
 {
-  "name": "agent-workflows",
-  "version": "3.0.0-beta.1",
-  "description": "cw for Claude Code: tells the session that commits and pushes are gated on recorded passing checks, asks before a command that would skip the gate, ships the skill `cw` on how to work with the gate, and seven roles and the skill `task` for a task workflow, and records the tokens a task used.",
+  "name": "gatecub",
+  "version": "3.0.0-beta.2",
+  "icon": "./docs/brand/gatecub-mascot.png",
+  "description": "Gatecub for Claude Code: tells the session that commits and pushes are gated on recorded passing checks, asks before a command that would skip the gate, ships the skill `gatecub` on how to work with the gate, and seven roles and the skill `task` for a task workflow, and records the tokens a task used.",
   "author": {
     "name": "Pavlo Belevtsev",
     "url": "https://github.com/belevtsev"
   },
-  "homepage": "https://github.com/belevtsev/agent-workflows",
-  "repository": "https://github.com/belevtsev/agent-workflows",
+  "homepage": "https://github.com/belevtsev/gatecub",
+  "repository": "https://github.com/belevtsev/gatecub",
   "license": "MIT",
   "keywords": [
     "claude-code",

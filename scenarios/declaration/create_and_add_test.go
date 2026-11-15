@@ -7,20 +7,20 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // Requirement "Missing declaration", scenario "No file".
 func TestMissingDeclarationPointsToInit(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
-	repo.Remove("cw.toml")
+	repo := gatecubtest.Demo(t)
+	repo.Remove("gatecub.toml")
 
-	result := repo.CW("status")
+	result := repo.Gatecub("status")
 	if result.Code != 1 {
-		t.Errorf("cw status exited %d, want 1", result.Code)
+		t.Errorf("gatecub status exited %d, want 1", result.Code)
 	}
-	for _, want := range []string{"cw.toml", "cw init"} {
+	for _, want := range []string{"gatecub.toml", "gatecub init"} {
 		if !strings.Contains(result.Output(), want) {
 			t.Errorf("the output does not hold %q:\n%s", want, result.Output())
 		}
@@ -30,19 +30,19 @@ func TestMissingDeclarationPointsToInit(t *testing.T) {
 // Requirement "Create a declaration", scenario "A new repository".
 func TestInitCreatesADeclarationWithNoChecks(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.NewRepo(t)
+	repo := gatecubtest.NewRepo(t)
 	repo.Write("README.md", "# new\n")
 	commitAll(repo, "first")
 
-	if result := repo.CW("init"); !repo.Exists("cw.toml") {
-		t.Fatalf("cw init (exit %d) created no cw.toml:\n%s", result.Code, result.Output())
+	if result := repo.Gatecub("init"); !repo.Exists("gatecub.toml") {
+		t.Fatalf("gatecub init (exit %d) created no gatecub.toml:\n%s", result.Code, result.Output())
 	}
-	result := repo.CW("status")
+	result := repo.Gatecub("status")
 	if result.Code != 0 {
-		t.Errorf("cw status exited %d, want 0", result.Code)
+		t.Errorf("gatecub status exited %d, want 0", result.Code)
 	}
 	if !strings.Contains(strings.ToLower(result.Output()), "no check") {
-		t.Errorf("cw status does not say that no checks are declared:\n%s", result.Output())
+		t.Errorf("gatecub status does not say that no checks are declared:\n%s", result.Output())
 	}
 }
 
@@ -50,12 +50,12 @@ func TestInitCreatesADeclarationWithNoChecks(t *testing.T) {
 // kept".
 func TestInitKeepsAnExistingDeclaration(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
-	before := sha256File(repo, "cw.toml")
+	repo := gatecubtest.Demo(t)
+	before := sha256File(repo, "gatecub.toml")
 
-	result := repo.CW("init")
-	if after := sha256File(repo, "cw.toml"); after != before {
-		t.Errorf("cw init (exit %d) changed cw.toml:\n%s", result.Code, repo.Read("cw.toml"))
+	result := repo.Gatecub("init")
+	if after := sha256File(repo, "gatecub.toml"); after != before {
+		t.Errorf("gatecub init (exit %d) changed gatecub.toml:\n%s", result.Code, repo.Read("gatecub.toml"))
 	}
 }
 
@@ -63,13 +63,13 @@ func TestInitKeepsAnExistingDeclaration(t *testing.T) {
 // appended".
 func TestAddAppendsACheck(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
-	before := repo.Read("cw.toml")
+	repo := gatecubtest.Demo(t)
+	before := repo.Read("gatecub.toml")
 
-	result := repo.CW("add", "build", "--timeout", "5m", "--", "make", "-j4", "build")
-	after := repo.Read("cw.toml")
+	result := repo.Gatecub("add", "build", "--timeout", "5m", "--", "make", "-j4", "build")
+	after := repo.Read("gatecub.toml")
 	if !strings.HasPrefix(after, before) {
-		t.Fatalf("cw add (exit %d) did not keep the previous content of cw.toml:\n%s\n%s", result.Code, after, result.Output())
+		t.Fatalf("gatecub add (exit %d) did not keep the previous content of gatecub.toml:\n%s\n%s", result.Code, after, result.Output())
 	}
 	var declaration struct {
 		Check []struct {
@@ -79,10 +79,10 @@ func TestAddAppendsACheck(t *testing.T) {
 		} `toml:"check"`
 	}
 	if err := toml.Unmarshal([]byte(after), &declaration); err != nil {
-		t.Fatalf("cw.toml after cw add: %v\n%s", err, after)
+		t.Fatalf("gatecub.toml after gatecub add: %v\n%s", err, after)
 	}
 	if len(declaration.Check) == 0 {
-		t.Fatalf("cw.toml declares no checks:\n%s", after)
+		t.Fatalf("gatecub.toml declares no checks:\n%s", after)
 	}
 	last := declaration.Check[len(declaration.Check)-1]
 	if last.ID != "build" {
@@ -103,23 +103,23 @@ func TestAddAppendsACheck(t *testing.T) {
 // with the same id is refused".
 func TestAddRefusesAnIDThatExists(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
-	sum := sha256File(repo, "cw.toml")
+	repo := gatecubtest.Demo(t)
+	sum := sha256File(repo, "gatecub.toml")
 	before := fingerprint(t, repo.Dir, repo.Home)
 
-	result := repo.CW("add", "unit", "--", "true")
+	result := repo.Gatecub("add", "unit", "--", "true")
 	if result.Code != 1 {
-		t.Errorf("cw add exited %d, want 1", result.Code)
+		t.Errorf("gatecub add exited %d, want 1", result.Code)
 	}
 	if !strings.Contains(result.Output(), "unit") {
 		t.Errorf("the output does not name unit:\n%s", result.Output())
 	}
 	// Second challenge, finding U7: the user learns how to change a check.
-	if !strings.Contains(result.Output(), "`cw add` only appends a check") {
-		t.Errorf("the output does not say that `cw add` only appends a check:\n%s", result.Output())
+	if !strings.Contains(result.Output(), "`gatecub add` only appends a check") {
+		t.Errorf("the output does not say that `gatecub add` only appends a check:\n%s", result.Output())
 	}
-	if after := sha256File(repo, "cw.toml"); after != sum {
-		t.Errorf("cw add changed cw.toml:\n%s", repo.Read("cw.toml"))
+	if after := sha256File(repo, "gatecub.toml"); after != sum {
+		t.Errorf("gatecub add changed gatecub.toml:\n%s", repo.Read("gatecub.toml"))
 	}
 	assertWroteNothing(t, repo, before)
 }

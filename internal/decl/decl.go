@@ -1,4 +1,4 @@
-// Package decl reads and writes cw.toml, the file that declares the checks
+// Package decl reads and writes gatecub.toml, the file that declares the checks
 // of a repository.
 package decl
 
@@ -16,7 +16,7 @@ import (
 )
 
 // FileName is the declaration at the root of a tree.
-const FileName = "cw.toml"
+const FileName = "gatecub.toml"
 
 // The bounds and the default of a check's timeout.
 const (
@@ -81,7 +81,7 @@ var deviceName = regexp.MustCompile(`^(con|prn|aux|nul|com[0-9]|lpt[0-9])$`)
 
 // Plain returns text as it is when it holds no control character, and
 // quoted otherwise, so that a name a repository holds can add neither a line
-// nor a terminal command to what cw prints.
+// nor a terminal command to what gatecub prints.
 func Plain(text string) string {
 	for _, r := range text {
 		if r < 0x20 || r >= 0x7f && r < 0xa0 || r == utf8.RuneError {

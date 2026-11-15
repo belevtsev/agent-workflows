@@ -167,16 +167,15 @@ func (e indexEntry) mark() string {
 	return ""
 }
 
-// checkEntries refuses a working tree whose content the index copy does not
-// hold: a marked file that is absent or differs, and a submodule or nested
-// repository with changes it has not committed. `git add -A` leaves marked
-// entries as they were, so the copy still shows the marks.
+// checkEntries rejects marked files that are missing or changed and nested
+// repositories with uncommitted changes. `git add -A` leaves marked entries
+// untouched; restaging them in the copy compares Git's file modes, symlinks
+// and filtered content without relying on hashes of dereferenced paths.
 func (r *Repo) checkEntries(ctx context.Context, env []string) error {
 	entries, err := indexEntries(ctx, call{dir: r.dir, env: env})
 	if err != nil {
 		return err
 	}
-	var present []indexEntry
 	for _, entry := range entries {
 		full := filepath.Join(r.Root, filepath.FromSlash(entry.path))
 		if entry.mode == "160000" {
@@ -191,19 +190,20 @@ func (r *Repo) checkEntries(ctx context.Context, env []string) error {
 			}
 			return &WorktreeError{Path: entry.path, Cause: "is marked " + entry.mark() + " and is missing from disk"}
 		}
-		present = append(present, entry)
-	}
-	return r.checkMarked(ctx, present)
-}
-
-// checkMarked compares marked files that are on disk with the index.
-func (r *Repo) checkMarked(ctx context.Context, entries []indexEntry) error {
-	for _, entry := range entries {
-		out, err := r.git(ctx, nil, "hash-object", "--", entry.path)
+		// update-index changes only one of these flags per invocation.
+		for _, mark := range []string{"assume-unchanged", "skip-worktree"} {
+			if _, err := r.git(ctx, env, "update-index", "--no-"+mark, "--", entry.path); err != nil {
+				return err
+			}
+		}
+		if _, err := r.git(ctx, env, "-c", "core.sparseCheckout=false", "--literal-pathspecs", "add", "--renormalize", "--", entry.path); err != nil {
+			return err
+		}
+		out, err := r.git(ctx, env, "--literal-pathspecs", "ls-files", "-s", "-z", "--", entry.path)
 		if err != nil {
 			return err
 		}
-		if out != entry.object {
+		if out != entry.mode+" "+entry.object+" 0\t"+entry.path+"\x00" {
 			return &WorktreeError{Path: entry.path, Cause: "is marked " + entry.mark() + " and differs from the index"}
 		}
 	}

@@ -67,15 +67,15 @@ func TestTheBranchThatIsPushedIsTheOneJudged(t *testing.T) {
 	repo.Git("switch", "-q", "-c", "feature")
 	repo.Write("src/app.txt", "broken\n")
 	commitAround(repo, "broken")
-	mustCW(t, repo, 5, "run")
+	mustGatecub(t, repo, 5, "run")
 	repo.Git("switch", "-q", "main")
 	checked(t, repo)
 
 	push := repo.TryGit("push", "origin", "feature")
 	reason := assertDenied(t, push, origin, map[string]string{"refs/heads/feature": ""})
 	// The working tree holds other checked content than the tip of feature,
-	// so cw run here would not check it (second challenge, finding U5).
-	for _, want := range []string{"refs/heads/feature", "cw run", "checkout", "git worktree add --detach"} {
+	// so gatecub run here would not check it (second challenge, finding U5).
+	for _, want := range []string{"refs/heads/feature", "gatecub run", "checkout", "git worktree add --detach"} {
 		if !strings.Contains(reason, want) {
 			t.Errorf("the reason does not hold %q:\n%s", want, reason)
 		}

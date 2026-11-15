@@ -82,7 +82,7 @@ func TestOpenBare(t *testing.T) {
 	if repo.Root != "" || repo.GitDir != bare {
 		t.Errorf("bare: Root = %q, GitDir = %q", repo.Root, repo.GitDir)
 	}
-	if _, err := repo.Snapshot(t.Context(), filepath.Join(bare, "cw", "tmp")); err == nil {
+	if _, err := repo.Snapshot(t.Context(), filepath.Join(bare, "gatecub", "tmp")); err == nil {
 		t.Error("Snapshot of a bare repository gave a tree")
 	}
 }
@@ -223,14 +223,14 @@ func TestDiffModeChange(t *testing.T) {
 }
 
 func TestDeclaration(t *testing.T) {
-	dir, repo := committed(t, map[string]string{"cw.toml": "version = 1\n", "sub/cw.toml": "other\n"})
+	dir, repo := committed(t, map[string]string{"gatecub.toml": "version = 1\n", "sub/gatecub.toml": "other\n"})
 	tree := git(t, dir, "rev-parse", "HEAD^{tree}")
-	data, found, err := repo.Declaration(t.Context(), tree, "cw.toml")
+	data, found, err := repo.Declaration(t.Context(), tree, "gatecub.toml")
 	if err != nil || !found || string(data) != "version = 1\n" {
 		t.Errorf("Declaration = %q, %v, %v", data, found, err)
 	}
 
-	blob := git(t, dir, "rev-parse", "HEAD:cw.toml")
+	blob := git(t, dir, "rev-parse", "HEAD:gatecub.toml")
 	subtree := git(t, dir, "rev-parse", "HEAD:sub")
 	head := git(t, dir, "rev-parse", "HEAD")
 	cases := []struct {
@@ -240,25 +240,25 @@ func TestDeclaration(t *testing.T) {
 		wantErr bool
 	}{
 		{"no entry", "100644 blob " + blob + "\tother.toml\n", false, false},
-		{"executable file", "100755 blob " + blob + "\tcw.toml\n", true, false},
-		{"directory", "040000 tree " + subtree + "\tcw.toml\n", true, true},
-		{"symbolic link", "120000 blob " + blob + "\tcw.toml\n", true, true},
-		{"submodule", "160000 commit " + head + "\tcw.toml\n", true, true},
+		{"executable file", "100755 blob " + blob + "\tgatecub.toml\n", true, false},
+		{"directory", "040000 tree " + subtree + "\tgatecub.toml\n", true, true},
+		{"symbolic link", "120000 blob " + blob + "\tgatecub.toml\n", true, true},
+		{"submodule", "160000 commit " + head + "\tgatecub.toml\n", true, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			tree := gitIn(t, dir, tc.entries, "mktree")
-			data, found, err := repo.Declaration(t.Context(), tree, "cw.toml")
+			data, found, err := repo.Declaration(t.Context(), tree, "gatecub.toml")
 			if found != tc.found || (err != nil) != tc.wantErr {
 				t.Errorf("Declaration = %q, found %v, err %v", data, found, err)
 			}
 		})
 	}
 	empty := gitIn(t, dir, "", "mktree")
-	if _, found, err := repo.Declaration(t.Context(), empty, "cw.toml"); found || err != nil {
+	if _, found, err := repo.Declaration(t.Context(), empty, "gatecub.toml"); found || err != nil {
 		t.Errorf("Declaration of an empty tree: found %v, err %v", found, err)
 	}
-	if _, _, err := repo.Declaration(t.Context(), "nosuch", "cw.toml"); err == nil {
+	if _, _, err := repo.Declaration(t.Context(), "nosuch", "gatecub.toml"); err == nil {
 		t.Error("Declaration of an unknown tree gave no error")
 	}
 }

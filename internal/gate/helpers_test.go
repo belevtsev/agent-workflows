@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/evidence"
-	"github.com/belevtsev/agent-workflows/v3/internal/gitx"
-	"github.com/belevtsev/agent-workflows/v3/internal/store"
+	"github.com/belevtsev/gatecub/v3/internal/evidence"
+	"github.com/belevtsev/gatecub/v3/internal/gitx"
+	"github.com/belevtsev/gatecub/v3/internal/store"
 )
 
 const declaration = `version = 1
@@ -89,12 +89,12 @@ func newEnv(t *testing.T, files map[string]string) *env {
 func demo(t *testing.T) *env {
 	t.Helper()
 	return newEnv(t, map[string]string{
-		"cw.toml":     declaration,
-		"src/app.txt": "ok\n",
-		"unit.sh":     "test \"$(cat src/app.txt)\" = ok || exit 3\n",
-		"lint.sh":     "test ! -e BAD\n",
-		"README.md":   "# demo\n",
-		".gitignore":  "build/\n",
+		"gatecub.toml": declaration,
+		"src/app.txt":  "ok\n",
+		"unit.sh":      "test \"$(cat src/app.txt)\" = ok || exit 3\n",
+		"lint.sh":      "test ! -e BAD\n",
+		"README.md":    "# demo\n",
+		".gitignore":   "build/\n",
 	})
 }
 

@@ -1,8 +1,8 @@
 # install-test.ps1 -Tag TAG -Revision REVISION [-Archives DIRECTORY]
 #
-# Follows the first install instruction of README.md for Windows, on a PATH
+# Follows the first install instruction of docs/release-install.md for Windows, on a PATH
 # that holds no go, in the PowerShell that runs this script, and exits 0 only
-# when `cw version` then prints TAG and REVISION.
+# when `gatecub version` then prints TAG and REVISION.
 #
 # With -Archives, a directory that holds the archives and SHA256SUMS, the
 # instruction downloads from this machine in place of the release; nothing
@@ -10,7 +10,7 @@
 # one byte of the archive changed, and must fail and install nothing. The
 # changed archive still unpacks, so only the checksum step can refuse it.
 #
-# Without -Archives the instruction runs exactly as the README gives it, so it
+# Without -Archives the instruction runs exactly as the release-install document gives it, so it
 # needs the published release.
 #
 # It needs python to serve the archives. Run it in the root of the repository.
@@ -21,24 +21,24 @@ param(
 )
 $ErrorActionPreference = "Stop"
 $port = 18719
-$work = Join-Path ([IO.Path]::GetTempPath()) ("cw-install-" + [guid]::NewGuid())
+$work = Join-Path ([IO.Path]::GetTempPath()) ("gatecub-install-" + [guid]::NewGuid())
 New-Item -ItemType Directory $work | Out-Null
 
 # The instruction is the first powershell block after the line that starts it.
 $instruction = @()
 $seen = $false
 $inside = $false
-foreach ($line in Get-Content README.md) {
+foreach ($line in Get-Content docs/release-install.md) {
     if ($line.StartsWith("**From a release, without Go.**")) { $seen = $true }
     elseif ($seen -and -not $inside -and $line -eq '```powershell') { $inside = $true }
     elseif ($inside -and $line -eq '```') { break }
     elseif ($inside) { $instruction += $line }
 }
 if (-not ($instruction -contains ('$tag = "' + $Tag + '"'))) {
-    throw "The first install instruction of README.md for Windows does not install $Tag."
+    throw "The first install instruction of docs/release-install.md for Windows does not install $Tag."
 }
 if (-not ($instruction | Where-Object { $_.StartsWith('$base = "https://') })) {
-    throw 'The first install instruction of README.md for Windows has no line that starts with $base = "https://.'
+    throw 'The first install instruction of docs/release-install.md for Windows has no line that starts with $base = "https://.'
 }
 
 # A PATH without go.
@@ -71,7 +71,7 @@ try {
     }
     else {
         $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
-        $zip = "cw_${Tag}_windows_${arch}.zip"
+        $zip = "gatecub_${Tag}_windows_${arch}.zip"
         foreach ($name in "good", "damaged") {
             New-Item -ItemType Directory (Join-Path $work $name) | Out-Null
             Copy-Item (Join-Path $Archives $zip), (Join-Path $Archives "SHA256SUMS") (Join-Path $work $name)
@@ -84,7 +84,7 @@ try {
         $bytes[10] = ($bytes[10] + 1) % 256
         [IO.File]::WriteAllBytes($damaged, $bytes)
         Expand-Archive $damaged -DestinationPath (Join-Path $work "unpacked")
-        if (-not (Test-Path (Join-Path $work "unpacked\cw.exe"))) {
+        if (-not (Test-Path (Join-Path $work "unpacked\gatecub.exe"))) {
             throw "The damaged copy does not unpack, so it cannot show that the checksum is checked."
         }
 
@@ -109,14 +109,14 @@ try {
     }
 
     if ((Follow "good") -ne 0) { throw "The install instruction failed." }
-    $printed = & (Join-Path $work "local-good\cw\cw.exe") version
+    $printed = & (Join-Path $work "local-good\gatecub\gatecub.exe") version
     $printed | Out-Host
-    if (-not ($printed -contains "cw $Tag")) { throw "cw version does not print the tag $Tag." }
-    if (-not ($printed -contains "revision $Revision")) { throw "cw version does not print the revision $Revision." }
+    if (-not ($printed -contains "gatecub $Tag")) { throw "gatecub version does not print the tag $Tag." }
+    if (-not ($printed -contains "revision $Revision")) { throw "gatecub version does not print the revision $Revision." }
 
     if ($Archives -ne "") {
         if ((Follow "damaged") -eq 0) { throw "The install instruction succeeded with a damaged archive." }
-        if (Test-Path (Join-Path $work "local-damaged\cw")) { throw "cw was installed from a damaged archive." }
+        if (Test-Path (Join-Path $work "local-damaged\gatecub")) { throw "gatecub was installed from a damaged archive." }
         "A damaged archive was refused and nothing was installed." | Out-Host
     }
 }

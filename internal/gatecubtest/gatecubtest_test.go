@@ -1,26 +1,26 @@
-package cwtest_test
+package gatecubtest_test
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 func TestDemoRepositoryRunsItsChecks(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
-	if got := repo.CW("version"); got.Code != 0 || !strings.HasPrefix(got.Stdout, "cw ") {
-		t.Fatalf("cw version: exit %d, output %q", got.Code, got.Output())
+	repo := gatecubtest.Demo(t)
+	if got := repo.Gatecub("version"); got.Code != 0 || !strings.HasPrefix(got.Stdout, "gatecub ") {
+		t.Fatalf("gatecub version: exit %d, output %q", got.Code, got.Output())
 	}
-	if got := repo.CW("run"); got.Code != 0 {
-		t.Fatalf("cw run in the demo repository: exit %d\n%s", got.Code, got.Output())
+	if got := repo.Gatecub("run"); got.Code != 0 {
+		t.Fatalf("gatecub run in the demo repository: exit %d\n%s", got.Code, got.Output())
 	}
 	if files := repo.RecordFiles("unit"); len(files) != 1 {
 		t.Fatalf("records of unit: %v, want one", files)
 	}
-	if got := repo.CW("status"); got.Code != 0 {
-		t.Fatalf("cw status after a passing run: exit %d\n%s", got.Code, got.Output())
+	if got := repo.Gatecub("status"); got.Code != 0 {
+		t.Fatalf("gatecub status after a passing run: exit %d\n%s", got.Code, got.Output())
 	}
 }
 
@@ -29,7 +29,7 @@ func TestDemoRepositoryRunsItsChecks(t *testing.T) {
 // while a test compares the files before and after a command.
 func TestCommitStartsNoBackgroundMaintenance(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.NewRepo(t)
+	repo := gatecubtest.NewRepo(t)
 	repo.Setenv("GIT_TRACE", "1")
 	got := repo.TryGit("commit", "-q", "--allow-empty", "-m", "first")
 	if got.Code != 0 {

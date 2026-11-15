@@ -28,11 +28,11 @@ func TestAMovedFileIsListedAtBothPaths(t *testing.T) {
 }
 
 // Sources, second script: "In a new repository with an untracked
-// `cw.toml`, `git commit` records nothing."
+// `gatecub.toml`, `git commit` records nothing."
 func TestACommitInANewRepositoryWithAnUntrackedFileRecordsNothing(t *testing.T) {
 	t.Parallel()
 	repo := newRepo(t)
-	repo.Write("cw.toml", "version = 1\n")
+	repo.Write("gatecub.toml", "version = 1\n")
 	if result := repo.TryGit("commit", "-q", "-m", "first"); result.Code == 0 {
 		t.Errorf("git commit exited 0 with nothing staged\n%s", result.Output())
 	}

@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // codexWindowsCommands are the commandWindows of hooks/codex-hooks.json by
@@ -70,7 +70,7 @@ var cmdWays = []string{"argument", "raw command line"}
 
 // runCmd runs command with cmd.exe /C in dir, with PATH set to path and the
 // notice on standard input, in one of cmdWays.
-func runCmd(t *testing.T, way, dir, path, command string, notice map[string]any) cwtest.Result {
+func runCmd(t *testing.T, way, dir, path, command string, notice map[string]any) gatecubtest.Result {
 	t.Helper()
 	input, err := json.Marshal(notice)
 	if err != nil {
@@ -91,7 +91,7 @@ func runCmd(t *testing.T, way, dir, path, command string, notice map[string]any)
 	var stdout, stderr strings.Builder
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err = cmd.Run()
-	result := cwtest.Result{Stdout: stdout.String(), Stderr: stderr.String()}
+	result := gatecubtest.Result{Stdout: stdout.String(), Stderr: stderr.String()}
 	var exit *exec.ExitError
 	switch {
 	case err == nil:
@@ -114,7 +114,7 @@ func codexNotice(event, dir string) map[string]any {
 	return notice
 }
 
-// systemPath is a PATH with the folder of cmd.exe and nothing that holds cw.
+// systemPath is a PATH with the folder of cmd.exe and nothing that holds gatecub.
 func systemPath() string {
 	root := os.Getenv("SystemRoot")
 	if root == "" {
@@ -123,12 +123,12 @@ func systemPath() string {
 	return filepath.Join(root, "System32")
 }
 
-// Requirement "Hooks on Windows", scenario "A cw of the working directory".
-func TestCodexWindowsCommandsRunNoCWOfTheWorkingDirectory(t *testing.T) {
+// Requirement "Hooks on Windows", scenario "A gatecub of the working directory".
+func TestCodexWindowsCommandsRunNoGatecubOfTheWorkingDirectory(t *testing.T) {
 	t.Parallel()
 	repo := portable(t, "")
-	marker := filepath.Join(t.TempDir(), "folder-cw-ran")
-	repo.Write("cw.bat", "@echo off\r\necho ran> \""+marker+"\"\r\necho {\"hookSpecificOutput\":{}}\r\n")
+	marker := filepath.Join(t.TempDir(), "folder-gatecub-ran")
+	repo.Write("gatecub.bat", "@echo off\r\necho ran> \""+marker+"\"\r\necho {\"hookSpecificOutput\":{}}\r\n")
 	for event, commands := range codexWindowsCommands(t) {
 		for _, command := range commands {
 			for _, way := range cmdWays {
@@ -138,10 +138,10 @@ func TestCodexWindowsCommandsRunNoCWOfTheWorkingDirectory(t *testing.T) {
 						t.Errorf("exit status %d, want 0:\n%s", result.Code, result.Output())
 					}
 					if exists(marker) {
-						t.Errorf("the command ran cw.bat of the working directory")
+						t.Errorf("the command ran gatecub.bat of the working directory")
 					}
 					if strings.Contains(result.Stdout, "hookSpecificOutput") {
-						t.Errorf("the command printed what cw.bat of the working directory prints:\n%s", result.Stdout)
+						t.Errorf("the command printed what gatecub.bat of the working directory prints:\n%s", result.Stdout)
 					}
 				})
 			}
@@ -156,23 +156,23 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 	repo := portable(t, "")
 	marker := filepath.Join(t.TempDir(), "repository-program-ran")
 	planted := "@echo off\r\necho ran> \"" + marker + "\"\r\necho {\"hookSpecificOutput\":{}}\r\n"
-	for _, name := range []string{"cw.bat", "git.bat", "where.bat", "tools/cw.bat", "tools/git.bat"} {
+	for _, name := range []string{"gatecub.bat", "git.bat", "where.bat", "tools/gatecub.bat", "tools/git.bat"} {
 		repo.Write(name, planted)
 	}
 	// The control used below works: through the PATH of the repository
-	// cmd.exe runs the installed cw from a folder that holds nothing.
-	const askCmd = "set NoDefaultCurrentDirectoryInExePath=1& cw version"
-	if control := runCmd(t, cmdWays[0], t.TempDir(), pathOf(repo), askCmd, codexNotice("PreToolUse", repo.Dir)); !strings.HasPrefix(strings.TrimSpace(control.Stdout), "cw ") {
-		t.Fatalf("cmd.exe does not run `cw version` through the PATH of the repository, so the control proves nothing:\n%s", control.Output())
+	// cmd.exe runs the installed gatecub from a folder that holds nothing.
+	const askCmd = "set NoDefaultCurrentDirectoryInExePath=1& gatecub version"
+	if control := runCmd(t, cmdWays[0], t.TempDir(), pathOf(repo), askCmd, codexNotice("PreToolUse", repo.Dir)); !strings.HasPrefix(strings.TrimSpace(control.Stdout), "gatecub ") {
+		t.Fatalf("cmd.exe does not run `gatecub version` through the PATH of the repository, so the control proves nothing:\n%s", control.Output())
 	}
 	for _, first := range []string{".", "tools", `.\tools`, ""} {
 		path := first + string(os.PathListSeparator) + systemPath()
 		// cmd.exe finds the planted file through such an entry, so a command
 		// that stayed in the repository would run it.
 		if first != "" {
-			probe := runCmd(t, cmdWays[0], repo.Dir, path, "set NoDefaultCurrentDirectoryInExePath=1& cw", codexNotice("SessionStart", repo.Dir))
+			probe := runCmd(t, cmdWays[0], repo.Dir, path, "set NoDefaultCurrentDirectoryInExePath=1& gatecub", codexNotice("SessionStart", repo.Dir))
 			if !strings.Contains(probe.Stdout, "hookSpecificOutput") {
-				t.Fatalf("with PATH=%s cmd.exe does not find the planted cw.bat, so the test proves nothing:\n%s", path, probe.Output())
+				t.Fatalf("with PATH=%s cmd.exe does not find the planted gatecub.bat, so the test proves nothing:\n%s", path, probe.Output())
 			}
 			if err := os.Remove(marker); err != nil {
 				t.Fatal(err)
@@ -196,12 +196,12 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 				}
 			}
 		}
-		// With the installed cw in a later entry the guard still decides.
+		// With the installed gatecub in a later entry the guard still decides.
 		installed := first + string(os.PathListSeparator) + pathOf(repo)
 		neutral := t.TempDir()
 		for _, command := range codexWindowsCommands(t)["PreToolUse"] {
 			for _, way := range cmdWays {
-				t.Run("PreToolUse with the installed cw/"+way+"/PATH="+first, func(t *testing.T) {
+				t.Run("PreToolUse with the installed gatecub/"+way+"/PATH="+first, func(t *testing.T) {
 					notice := codexNotice("PreToolUse", repo.Dir)
 					result := runCmd(t, way, repo.Dir, installed, command, notice)
 					if result.Code != 0 {
@@ -214,31 +214,31 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 						return
 					}
 					// Behind an empty first entry cmd.exe may find no program
-					// at all. Then the command has no cw to run, and that is
-					// the system's doing: the control asks cmd.exe for cw
+					// at all. Then the command has no gatecub to run, and that is
+					// the system's doing: the control asks cmd.exe for gatecub
 					// from a folder that holds nothing.
 					control := runCmd(t, way, neutral, installed, askCmd, notice)
-					if first == "" && !strings.HasPrefix(strings.TrimSpace(control.Stdout), "cw ") {
+					if first == "" && !strings.HasPrefix(strings.TrimSpace(control.Stdout), "gatecub ") {
 						if strings.TrimSpace(result.Stdout) != "" {
-							t.Errorf("cmd.exe finds no cw through this PATH, and the command printed, want nothing:\n%s", result.Output())
+							t.Errorf("cmd.exe finds no gatecub through this PATH, and the command printed, want nothing:\n%s", result.Output())
 						}
 						return
 					}
 					// What follows only says more about the failure.
 					loud := runCmd(t, way, repo.Dir, installed, strings.ReplaceAll(command, " 2>nul", ""), notice)
 					git := runCmd(t, way, neutral, installed, "set NoDefaultCurrentDirectoryInExePath=1& git --version", notice)
-					status := runCmd(t, way, neutral, installed, "set NoDefaultCurrentDirectoryInExePath=1& cd /d %SystemRoot% && cw context --host codex", codexNotice("SessionStart", repo.Dir))
-					t.Errorf("the command printed no decision deny:\n%s\n`cw version` through the same PATH (exit status %d):\n%s\nthe command without 2>nul (exit status %d):\n%s\n`git --version` (exit status %d):\n%s\n`cw context` from the Windows folder (exit status %d):\n%s",
+					status := runCmd(t, way, neutral, installed, "set NoDefaultCurrentDirectoryInExePath=1& cd /d %SystemRoot% && gatecub context --host codex", codexNotice("SessionStart", repo.Dir))
+					t.Errorf("the command printed no decision deny:\n%s\n`gatecub version` through the same PATH (exit status %d):\n%s\nthe command without 2>nul (exit status %d):\n%s\n`git --version` (exit status %d):\n%s\n`gatecub context` from the Windows folder (exit status %d):\n%s",
 						result.Output(), control.Code, control.Output(), loud.Code, loud.Output(), git.Code, git.Output(), status.Code, status.Output())
 				})
 			}
 		}
-		// And the session still gets what `cw context` prints. Where cmd.exe
-		// finds no cw behind an empty first entry, the session is told that
-		// cw is not installed, as for a missing cw.
+		// And the session still gets what `gatecub context` prints. Where cmd.exe
+		// finds no gatecub behind an empty first entry, the session is told that
+		// gatecub is not installed, as for a missing gatecub.
 		for _, command := range codexWindowsCommands(t)["SessionStart"] {
 			for _, way := range cmdWays {
-				t.Run("SessionStart with the installed cw/"+way+"/PATH="+first, func(t *testing.T) {
+				t.Run("SessionStart with the installed gatecub/"+way+"/PATH="+first, func(t *testing.T) {
 					notice := codexNotice("SessionStart", repo.Dir)
 					result := runCmd(t, way, repo.Dir, installed, command, notice)
 					if result.Code != 0 {
@@ -247,17 +247,17 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 					if exists(marker) {
 						t.Errorf("the command ran a program of the repository")
 					}
-					said := strings.Contains(result.Stdout, "cw is not installed")
+					said := strings.Contains(result.Stdout, "gatecub is not installed")
 					// The control asks from the Windows folder, where the
-					// command itself runs cw.
+					// command itself runs gatecub.
 					control := runCmd(t, way, filepath.Dir(systemPath()), installed, askCmd, notice)
-					switch found := strings.HasPrefix(strings.TrimSpace(control.Stdout), "cw "); {
-					case found && (said || !strings.Contains(result.Stdout, "declared in cw.toml")):
-						t.Errorf("cmd.exe finds cw through this PATH, and the command did not print what `cw context` prints:\n%s", result.Output())
+					switch found := strings.HasPrefix(strings.TrimSpace(control.Stdout), "gatecub "); {
+					case found && (said || !strings.Contains(result.Stdout, "declared in gatecub.toml")):
+						t.Errorf("cmd.exe finds gatecub through this PATH, and the command did not print what `gatecub context` prints:\n%s", result.Output())
 					case !found && first != "":
-						t.Errorf("cmd.exe finds no cw through this PATH:\n%s", control.Output())
+						t.Errorf("cmd.exe finds no gatecub through this PATH:\n%s", control.Output())
 					case !found && !said:
-						t.Errorf("cmd.exe finds no cw through this PATH, and the command did not say that cw is not installed:\n%s", result.Output())
+						t.Errorf("cmd.exe finds no gatecub through this PATH, and the command did not say that gatecub is not installed:\n%s", result.Output())
 					}
 				})
 			}
@@ -298,19 +298,19 @@ func TestCodexWindowsCommandsRunNoProgramOfADriveRelativeEntryOfPATH(t *testing.
 	repo := portable(t, "")
 	marker := filepath.Join(t.TempDir(), "repository-program-ran")
 	planted := "@echo off\r\necho ran> \"" + marker + "\"\r\necho {\"hookSpecificOutput\":{}}\r\n"
-	for _, name := range []string{"cw.bat", "tools/cw.bat"} {
+	for _, name := range []string{"gatecub.bat", "tools/gatecub.bat"} {
 		repo.Write(name, planted)
 	}
 	drive := substDrive(t, filepath.Dir(repo.Dir))
 	session := drive + `\` + filepath.Base(repo.Dir)
-	if !exists(filepath.Join(session, "cw.toml")) {
+	if !exists(filepath.Join(session, "gatecub.toml")) {
 		t.Fatalf("%s does not show the repository", session)
 	}
 	// From another drive cmd.exe still finds the planted file through an
 	// entry such as Z:tools: it leads into the directory left on drive Z.
-	probe := runCmd(t, cmdWays[0], session, drive+"tools"+string(os.PathListSeparator)+systemPath(), "set NoDefaultCurrentDirectoryInExePath=1& cd /d %SystemRoot% && cw", codexNotice("SessionStart", session))
+	probe := runCmd(t, cmdWays[0], session, drive+"tools"+string(os.PathListSeparator)+systemPath(), "set NoDefaultCurrentDirectoryInExePath=1& cd /d %SystemRoot% && gatecub", codexNotice("SessionStart", session))
 	if !strings.Contains(probe.Stdout, "hookSpecificOutput") {
-		t.Fatalf("with PATH=%stools cmd.exe does not find the planted cw.bat from another drive, so the test proves nothing:\n%s", drive, probe.Output())
+		t.Fatalf("with PATH=%stools cmd.exe does not find the planted gatecub.bat from another drive, so the test proves nothing:\n%s", drive, probe.Output())
 	}
 	if err := os.Remove(marker); err != nil {
 		t.Fatal(err)
@@ -338,13 +338,13 @@ func TestCodexWindowsCommandsRunNoProgramOfADriveRelativeEntryOfPATH(t *testing.
 	}
 }
 
-// Requirement "Hooks on Windows", scenario "A file named `cw` that Windows
+// Requirement "Hooks on Windows", scenario "A file named `gatecub` that Windows
 // cannot run".
-func TestCodexWindowsSessionStartSaysWhenCWCannotBeRun(t *testing.T) {
+func TestCodexWindowsSessionStartSaysWhenGatecubCannotBeRun(t *testing.T) {
 	t.Parallel()
 	repo := portable(t, "")
 	folder := t.TempDir()
-	if err := os.WriteFile(filepath.Join(folder, "cw"), []byte("#!/bin/sh\necho ran\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(folder, "gatecub"), []byte("#!/bin/sh\necho ran\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	path := folder + string(os.PathListSeparator) + systemPath()
@@ -352,8 +352,8 @@ func TestCodexWindowsSessionStartSaysWhenCWCannotBeRun(t *testing.T) {
 		for _, way := range cmdWays {
 			t.Run(way, func(t *testing.T) {
 				result := runCmd(t, way, repo.Dir, path, command, codexNotice("SessionStart", repo.Dir))
-				if result.Code != 0 || !strings.Contains(result.Stdout, "cw is not installed") {
-					t.Errorf("exit status %d, want 0 and the line that says cw is not installed:\n%s", result.Code, result.Output())
+				if result.Code != 0 || !strings.Contains(result.Stdout, "gatecub is not installed") {
+					t.Errorf("exit status %d, want 0 and the line that says gatecub is not installed:\n%s", result.Code, result.Output())
 				}
 			})
 		}
@@ -364,7 +364,7 @@ func TestCodexWindowsSessionStartSaysWhenCWCannotBeRun(t *testing.T) {
 func TestCodexWindowsGuardDenies(t *testing.T) {
 	t.Parallel()
 	repo := portable(t, "")
-	path := pathOf(repo) // cw under test first, then git and the rest
+	path := pathOf(repo) // gatecub under test first, then git and the rest
 	for _, command := range codexWindowsCommands(t)["PreToolUse"] {
 		for _, way := range cmdWays {
 			t.Run(way, func(t *testing.T) {
@@ -385,12 +385,12 @@ func TestCodexWindowsGuardDenies(t *testing.T) {
 	}
 }
 
-// Requirement "Hooks on Windows", scenario "An older cw on Windows".
-func TestCodexWindowsCommandsExitZeroWithAnOlderCW(t *testing.T) {
+// Requirement "Hooks on Windows", scenario "An older gatecub on Windows".
+func TestCodexWindowsCommandsExitZeroWithAnOlderGatecub(t *testing.T) {
 	t.Parallel()
 	repo := portable(t, "")
 	older := t.TempDir()
-	if err := os.WriteFile(filepath.Join(older, "cw.bat"), []byte("@echo off\r\necho usage: cw ^<command^> 1>&2\r\nexit /b 2\r\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(older, "gatecub.bat"), []byte("@echo off\r\necho usage: gatecub ^<command^> 1>&2\r\nexit /b 2\r\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	path := older + string(os.PathListSeparator) + systemPath()
@@ -409,30 +409,30 @@ func TestCodexWindowsCommandsExitZeroWithAnOlderCW(t *testing.T) {
 }
 
 // Requirement "Hooks on Windows", scenario "Codex starts a session on Windows
-// without `cw`".
-func TestCodexWindowsSessionStartSaysWhenCWIsMissing(t *testing.T) {
+// without `gatecub`".
+func TestCodexWindowsSessionStartSaysWhenGatecubIsMissing(t *testing.T) {
 	t.Parallel()
 	repo := portable(t, "")
 	git, err := exec.LookPath("git")
 	if err != nil {
 		t.Fatal(err)
 	}
-	withoutCW := filepath.Dir(git) + string(os.PathListSeparator) + systemPath()
+	withoutGatecub := filepath.Dir(git) + string(os.PathListSeparator) + systemPath()
 	outside := t.TempDir()
 	for _, command := range codexWindowsCommands(t)["SessionStart"] {
 		for _, way := range cmdWays {
 			t.Run(way, func(t *testing.T) {
-				missing := runCmd(t, way, repo.Dir, withoutCW, command, codexNotice("SessionStart", repo.Dir))
-				if missing.Code != 0 || !strings.Contains(missing.Stdout, "cw is not installed") || !strings.Contains(missing.Stdout, "#install") {
-					t.Errorf("without cw in a repository with cw.toml: exit status %d, want 0 and the line that says cw is not installed:\n%s", missing.Code, missing.Output())
+				missing := runCmd(t, way, repo.Dir, withoutGatecub, command, codexNotice("SessionStart", repo.Dir))
+				if missing.Code != 0 || !strings.Contains(missing.Stdout, "gatecub is not installed") || !strings.Contains(missing.Stdout, "#install") {
+					t.Errorf("without gatecub in a repository with gatecub.toml: exit status %d, want 0 and the line that says gatecub is not installed:\n%s", missing.Code, missing.Output())
 				}
-				elsewhere := runCmd(t, way, outside, withoutCW, command, codexNotice("SessionStart", outside))
+				elsewhere := runCmd(t, way, outside, withoutGatecub, command, codexNotice("SessionStart", outside))
 				if elsewhere.Code != 0 || strings.TrimSpace(elsewhere.Stdout) != "" {
-					t.Errorf("without cw outside a repository: exit status %d and printed, want 0 and nothing:\n%s", elsewhere.Code, elsewhere.Output())
+					t.Errorf("without gatecub outside a repository: exit status %d and printed, want 0 and nothing:\n%s", elsewhere.Code, elsewhere.Output())
 				}
 				present := runCmd(t, way, repo.Dir, pathOf(repo), command, codexNotice("SessionStart", repo.Dir))
-				if present.Code != 0 || strings.TrimSpace(present.Stdout) == "" || strings.Contains(present.Stdout, "cw is not installed") {
-					t.Errorf("with cw on PATH: exit status %d, want 0 and what `cw context` prints:\n%s", present.Code, present.Output())
+				if present.Code != 0 || strings.TrimSpace(present.Stdout) == "" || strings.Contains(present.Stdout, "gatecub is not installed") {
+					t.Errorf("with gatecub on PATH: exit status %d, want 0 and what `gatecub context` prints:\n%s", present.Code, present.Output())
 				}
 			})
 		}

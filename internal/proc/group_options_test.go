@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/proc"
-	"github.com/belevtsev/agent-workflows/v3/internal/proc/proctest"
+	"github.com/belevtsev/gatecub/v3/internal/proc"
+	"github.com/belevtsev/gatecub/v3/internal/proc/proctest"
 )
 
 // Oracle: after the program exits 0, a member it left in its group is killed

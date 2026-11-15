@@ -6,14 +6,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // freshClone clones the demo repository, so that origin/main exists in a
 // repository that holds no records.
-func freshClone(t *testing.T) *cwtest.Repo {
+func freshClone(t *testing.T) *gatecubtest.Repo {
 	t.Helper()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	dir := filepath.Join(t.TempDir(), "clone")
 	repo.Git("clone", "-q", repo.Dir, dir)
 	clone := repo.In(dir)
@@ -48,12 +48,12 @@ func TestCheckNewInTheChangeAlwaysRuns(t *testing.T) {
 	t.Parallel()
 	clone := freshClone(t)
 	executed := filepath.Join(t.TempDir(), "build-executed")
-	clone.Write("cw.toml", cwtest.DemoDeclaration+"\n[[check]]\nid = \"build\"\nrun = [\"sh\", \"-c\", ': >\"$0\"', '"+filepath.ToSlash(executed)+"']\npaths = [\"src/**\"]\n")
+	clone.Write("gatecub.toml", gatecubtest.DemoDeclaration+"\n[[check]]\nid = \"build\"\nrun = [\"sh\", \"-c\", ': >\"$0\"', '"+filepath.ToSlash(executed)+"']\npaths = [\"src/**\"]\n")
 	clone.Git("commit", "-q", "-am", "declare build")
 
-	result := clone.CW("run", "--base", "origin/main")
+	result := clone.Gatecub("run", "--base", "origin/main")
 
 	if _, err := os.Stat(executed); err != nil {
-		t.Errorf("the program of build was not executed (cw run exit status %d):\n%s", result.Code, result.Output())
+		t.Errorf("the program of build was not executed (gatecub run exit status %d):\n%s", result.Code, result.Output())
 	}
 }

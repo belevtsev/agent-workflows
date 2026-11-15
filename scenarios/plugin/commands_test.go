@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // hookEvents are the events both hook files handle, with the tool or the
@@ -61,7 +61,7 @@ func shells(t *testing.T) map[string]string {
 }
 
 // toolFolder is a folder that holds git, bash and sh, which the hook
-// commands need, and no cw. sh is the program of that name on this machine,
+// commands need, and no gatecub. sh is the program of that name on this machine,
 // or bash, as on macOS.
 func toolFolder(t *testing.T, sh string) string {
 	t.Helper()
@@ -78,15 +78,15 @@ func toolFolder(t *testing.T, sh string) string {
 	return bin
 }
 
-// Requirement "Instruction text comes from `cw`", scenario "A program named
-// `cw` in the repository".
-func TestHookCommandsRunNoCWOfTheRepository(t *testing.T) {
+// Requirement "Instruction text comes from `gatecub`", scenario "A program named
+// `gatecub` in the repository".
+func TestHookCommandsRunNoGatecubOfTheRepository(t *testing.T) {
 	t.Parallel()
 	needShell(t)
 	repo := gatedDemo(t)
-	marker := filepath.Join(t.TempDir(), "repository-cw-ran")
+	marker := filepath.Join(t.TempDir(), "repository-gatecub-ran")
 	gitMarker := filepath.Join(t.TempDir(), "repository-git-ran")
-	for name, file := range map[string]string{"cw": marker, "git": gitMarker} {
+	for name, file := range map[string]string{"gatecub": marker, "git": gitMarker} {
 		writeProgram(t, repo.Path(name), "#!/bin/sh\necho ran > '"+file+"'\n")
 	}
 	for _, innerSh := range []string{"sh", "bash"} {
@@ -95,10 +95,10 @@ func TestHookCommandsRunNoCWOfTheRepository(t *testing.T) {
 			env := withPath(repo.Env(), first+string(os.PathListSeparator)+bin)
 			// The shell finds the planted file, so a command that ran what
 			// `command -v` gives would run it.
-			probe := exec.Command("sh", "-c", "command -v cw")
+			probe := exec.Command("sh", "-c", "command -v gatecub")
 			probe.Dir, probe.Env = repo.Dir, env
 			if out, _ := probe.Output(); strings.TrimSpace(string(out)) == "" {
-				t.Fatalf("with PATH=%s%c<tools> the shell does not find the planted cw, so the test proves nothing", first, os.PathListSeparator)
+				t.Fatalf("with PATH=%s%c<tools> the shell does not find the planted gatecub, so the test proves nothing", first, os.PathListSeparator)
 			}
 			for _, h := range hostFiles {
 				for label, shell := range shells(t) {
@@ -109,7 +109,7 @@ func TestHookCommandsRunNoCWOfTheRepository(t *testing.T) {
 								t.Errorf("the %s command exited %d, want 0:\n%s", e.event, result.Code, result.Output())
 							}
 							if _, err := os.Stat(marker); err == nil {
-								t.Errorf("the %s command ran the file cw of the repository", e.event)
+								t.Errorf("the %s command ran the file gatecub of the repository", e.event)
 							}
 							if _, err := os.Stat(gitMarker); err == nil {
 								t.Errorf("the %s command ran the file git of the repository", e.event)
@@ -125,7 +125,7 @@ func TestHookCommandsRunNoCWOfTheRepository(t *testing.T) {
 	}
 }
 
-// Requirement "Instruction text comes from `cw`", scenario "No absolute entry
+// Requirement "Instruction text comes from `gatecub`", scenario "No absolute entry
 // in `PATH`". Codex starts `sh` itself, so only the commands of Claude Code
 // can run with such a PATH.
 func TestHookCommandsRunNothingWithoutAnAbsoluteEntryOfPATH(t *testing.T) {
@@ -133,7 +133,7 @@ func TestHookCommandsRunNothingWithoutAnAbsoluteEntryOfPATH(t *testing.T) {
 	needShell(t)
 	repo := gatedDemo(t)
 	marker := filepath.Join(t.TempDir(), "repository-program-ran")
-	for _, name := range []string{"cw", "git"} {
+	for _, name := range []string{"gatecub", "git"} {
 		writeProgram(t, repo.Path(name), "#!/bin/sh\necho ran > '"+marker+"'\n")
 	}
 	for label, shell := range shells(t) {
@@ -160,14 +160,14 @@ func TestHookCommandsRunNothingWithoutAnAbsoluteEntryOfPATH(t *testing.T) {
 	}
 }
 
-// Requirement "Instruction text comes from `cw`", scenario "A relative entry
-// before the installed `cw`".
-func TestHookCommandsRunTheInstalledCWAfterARelativeEntry(t *testing.T) {
+// Requirement "Instruction text comes from `gatecub`", scenario "A relative entry
+// before the installed `gatecub`".
+func TestHookCommandsRunTheInstalledGatecubAfterARelativeEntry(t *testing.T) {
 	t.Parallel()
 	needShell(t)
 	repo := gatedDemo(t)
 	marker := filepath.Join(t.TempDir(), "repository-program-ran")
-	for _, name := range []string{"cw", "git"} {
+	for _, name := range []string{"gatecub", "git"} {
 		writeProgram(t, repo.Path(name), "#!/bin/sh\necho ran > '"+marker+"'\n")
 	}
 	for _, first := range []string{"", "."} {
@@ -185,12 +185,12 @@ func TestHookCommandsRunTheInstalledCWAfterARelativeEntry(t *testing.T) {
 						}
 						switch e.event {
 						case "SessionStart":
-							if strings.TrimSpace(result.Stdout) == "" || strings.Contains(result.Stdout, "cw is not installed") {
-								t.Errorf("the session did not get the context of the installed cw:\n%s", result.Output())
+							if strings.TrimSpace(result.Stdout) == "" || strings.Contains(result.Stdout, "gatecub is not installed") {
+								t.Errorf("the session did not get the context of the installed gatecub:\n%s", result.Output())
 							}
 						case "PreToolUse":
 							if !strings.Contains(result.Stdout, "permissionDecision") {
-								t.Errorf("the guard of the installed cw did not speak up:\n%s", result.Output())
+								t.Errorf("the guard of the installed gatecub did not speak up:\n%s", result.Output())
 							}
 						}
 					})
@@ -200,14 +200,14 @@ func TestHookCommandsRunTheInstalledCWAfterARelativeEntry(t *testing.T) {
 	}
 }
 
-// Requirement "Instruction text comes from `cw`", scenario "A `cw` that
+// Requirement "Instruction text comes from `gatecub`", scenario "A `gatecub` that
 // cannot be run".
-func TestSessionStartSaysWhenTheCWFoundCannotBeRun(t *testing.T) {
+func TestSessionStartSaysWhenTheGatecubFoundCannotBeRun(t *testing.T) {
 	t.Parallel()
 	needShell(t)
 	repo := gatedDemo(t)
 	folder := t.TempDir()
-	if err := os.WriteFile(filepath.Join(folder, "cw"), []byte("#!/bin/sh\necho ran\n"), 0o644); err != nil { //nolint:gosec // the file must be readable and not executable
+	if err := os.WriteFile(filepath.Join(folder, "gatecub"), []byte("#!/bin/sh\necho ran\n"), 0o644); err != nil { //nolint:gosec // the file must be readable and not executable
 		t.Fatal(err)
 	}
 	env := withPath(repo.Env(), folder+string(os.PathListSeparator)+toolFolder(t, "sh"))
@@ -215,22 +215,22 @@ func TestSessionStartSaysWhenTheCWFoundCannotBeRun(t *testing.T) {
 		for label, shell := range shells(t) {
 			t.Run(h.host+"/"+label, func(t *testing.T) {
 				result := runHooksIn(t, shell, repo.Dir, env, hookCommands(t, h.file, "SessionStart", "startup"), noticeFor("SessionStart", repo.Dir))
-				if result.Code != 0 || !strings.Contains(result.Stdout, "cw is not installed") || strings.Contains(result.Stdout, "ran") {
-					t.Errorf("exit status %d, want 0 and the line that says cw is not installed:\n%s", result.Code, result.Output())
+				if result.Code != 0 || !strings.Contains(result.Stdout, "gatecub is not installed") || strings.Contains(result.Stdout, "ran") {
+					t.Errorf("exit status %d, want 0 and the line that says gatecub is not installed:\n%s", result.Code, result.Output())
 				}
 			})
 		}
 	}
 }
 
-// Requirement "Instruction text comes from `cw`", scenario "An older `cw`".
-func TestOlderCWBlocksNoToolCall(t *testing.T) {
+// Requirement "Instruction text comes from `gatecub`", scenario "An older `gatecub`".
+func TestOlderGatecubBlocksNoToolCall(t *testing.T) {
 	t.Parallel()
 	needShell(t)
 	repo := gatedDemo(t)
 	older := t.TempDir()
-	script := "#!/bin/sh\necho 'usage: cw <command> [arguments]' >&2\nexit 2\n"
-	writeProgram(t, filepath.Join(older, "cw"), script)
+	script := "#!/bin/sh\necho 'usage: gatecub <command> [arguments]' >&2\nexit 2\n"
+	writeProgram(t, filepath.Join(older, "gatecub"), script)
 	env := withPath(repo.Env(), older+string(os.PathListSeparator)+pathOf(repo.Env()))
 	for _, h := range hostFiles {
 		for _, e := range hookEvents {
@@ -244,8 +244,8 @@ func TestOlderCWBlocksNoToolCall(t *testing.T) {
 	}
 }
 
-// Requirements "Instruction text comes from `cw`" and "Ask before skipping":
-// each command runs cw only by an absolute path and ends with exit status 0;
+// Requirements "Instruction text comes from `gatecub`" and "Ask before skipping":
+// each command runs gatecub only by an absolute path and ends with exit status 0;
 // a command for Codex runs in sh whatever the user's shell is, and its
 // Windows form searches no working directory, leaves the folder of the
 // session's drive and goes to the Windows folder, holds no double quote and
@@ -286,9 +286,9 @@ func TestHookCommandsHaveTheirSafeShape(t *testing.T) {
 func checkCommandShape(t *testing.T, file, event, command, windows string) {
 	t.Helper()
 	if !strings.Contains(command, `case "$c" in /*)`) {
-		t.Errorf("%s %s does not run cw only by an absolute path: %s", file, event, command)
+		t.Errorf("%s %s does not run gatecub only by an absolute path: %s", file, event, command)
 	}
-	if !strings.Contains(command, `[ -n "$p" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); [ -x "$c" ] || c=;`) {
+	if !strings.Contains(command, `[ -n "$p" ] || exit 0; PATH=$p; c=$(command -v gatecub 2>/dev/null); [ -x "$c" ] || c=;`) {
 		t.Errorf("%s %s does not keep only the absolute entries of PATH for all it runs: %s", file, event, command)
 	}
 	if file == claudeHooks {
@@ -306,7 +306,7 @@ func checkCommandShape(t *testing.T, file, event, command, windows string) {
 	// A relative entry of PATH leads into the directory cmd.exe is in, and
 	// one such as D:tools into the directory it left on that drive. So the
 	// command goes to the root of the session's drive and then to the
-	// Windows folder before it looks for cw.
+	// Windows folder before it looks for gatecub.
 	rest := strings.TrimPrefix(strings.TrimPrefix(windows, "set NoDefaultCurrentDirectoryInExePath=1& "), "pushd .& ")
 	if !strings.HasPrefix(rest, `cd \& cd /d %SystemRoot% && `) {
 		t.Errorf("%s %s has a commandWindows that does not go to the Windows folder first: %q", file, event, windows)
@@ -329,7 +329,7 @@ func TestSessionContextUsesTheDirectoryOfTheNotice(t *testing.T) {
 		commands := hookCommands(t, h.file, "SessionStart", "startup")
 		t.Run(h.host+"/started outside, session in demo", func(t *testing.T) {
 			result := runHooks(t, outside, repo.Env(), commands, noticeFor("SessionStart", repo.Dir))
-			if result.Code != 0 || !strings.Contains(result.Stdout, "cw run") {
+			if result.Code != 0 || !strings.Contains(result.Stdout, "gatecub run") {
 				t.Errorf("the SessionStart command exited %d and printed no context of demo:\n%s", result.Code, result.Output())
 			}
 		})
@@ -342,11 +342,11 @@ func TestSessionContextUsesTheDirectoryOfTheNotice(t *testing.T) {
 	}
 }
 
-// Requirement "Session context", scenario "`cw context` in a terminal".
+// Requirement "Session context", scenario "`gatecub context` in a terminal".
 func TestContextWithoutAHostReadsNoInput(t *testing.T) {
 	t.Parallel()
 	repo := gatedDemo(t)
-	program := filepath.Join(cwtest.Binary(t), "cw")
+	program := filepath.Join(gatecubtest.Binary(t), "gatecub")
 	if runtime.GOOS == "windows" {
 		program += ".exe"
 	}
@@ -368,10 +368,10 @@ func TestContextWithoutAHostReadsNoInput(t *testing.T) {
 			cmd.Dir, cmd.Env, cmd.Stdin = repo.Dir, repo.Env(), input
 			out, err := cmd.Output()
 			if ctx.Err() != nil {
-				t.Fatalf("cw context did not return within 30 seconds: it waits for its input")
+				t.Fatalf("gatecub context did not return within 30 seconds: it waits for its input")
 			}
-			if err != nil || !strings.Contains(string(out), "cw run") {
-				t.Errorf("cw context ended with %v and printed no context:\n%s", err, out)
+			if err != nil || !strings.Contains(string(out), "gatecub run") {
+				t.Errorf("gatecub context ended with %v and printed no context:\n%s", err, out)
 			}
 		})
 	}

@@ -31,7 +31,7 @@ func exists(path string) bool {
 func TestOpenAndPaths(t *testing.T) {
 	common := t.TempDir()
 	s := Open(common)
-	if s.Dir != filepath.Join(common, "cw") {
+	if s.Dir != filepath.Join(common, "gatecub") {
 		t.Errorf("Dir = %q", s.Dir)
 	}
 	if exists(s.Dir) {
@@ -117,7 +117,7 @@ func TestSetMode(t *testing.T) {
 func TestModeStoreUnreadable(t *testing.T) {
 	common := t.TempDir()
 	// The store is a file, so the mode under it cannot be read.
-	writeFile(t, filepath.Join(common, "cw"), []byte("x"))
+	writeFile(t, filepath.Join(common, "gatecub"), []byte("x"))
 	mode, err := Open(common).Mode()
 	if err == nil {
 		t.Errorf("Mode() = %q with no error for a store that is a file", mode)

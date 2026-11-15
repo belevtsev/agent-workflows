@@ -9,29 +9,29 @@ import (
 	"testing"
 )
 
-// Requirement "Instruction text comes from cw", scenario "cw is upgraded".
-func TestSessionContextComesFromTheInstalledCW(t *testing.T) {
+// Requirement "Instruction text comes from gatecub", scenario "gatecub is upgraded".
+func TestSessionContextComesFromTheInstalledGatecub(t *testing.T) {
 	t.Parallel()
 	needShell(t)
 	repo := gatedDemo(t)
-	const newer = "Newer cw text 7f3a: run the checks with cw verify."
+	const newer = "Newer gatecub text 7f3a: run the checks with gatecub verify."
 	fake := t.TempDir()
 	script := "#!/bin/sh\nif [ \"$1\" = context ]; then echo '" + newer + "'; exit 0; fi\nexit 2\n"
-	writeProgram(t, filepath.Join(fake, "cw"), script)
+	writeProgram(t, filepath.Join(fake, "gatecub"), script)
 	env := withPath(repo.Env(), fake+string(os.PathListSeparator)+pathOf(repo.Env()))
 	for _, h := range hostFiles {
 		t.Run(h.host, func(t *testing.T) {
 			result := sessionStart(t, repo, env, h.file)
 			if !strings.Contains(result.Stdout, newer) {
-				t.Errorf("the context (exit %d) does not hold the text of the newer cw:\n%s", result.Code, result.Output())
+				t.Errorf("the context (exit %d) does not hold the text of the newer gatecub:\n%s", result.Code, result.Output())
 			}
 		})
 	}
 }
 
-// Requirement "Instruction text comes from cw", scenario "cw is not
+// Requirement "Instruction text comes from gatecub", scenario "gatecub is not
 // installed".
-func TestSessionContextWhenCWIsNotInstalled(t *testing.T) {
+func TestSessionContextWhenGatecubIsNotInstalled(t *testing.T) {
 	t.Parallel()
 	needShell(t)
 	repo := gatedDemo(t)
@@ -55,8 +55,8 @@ func TestSessionContextWhenCWIsNotInstalled(t *testing.T) {
 			if text == "" || strings.ContainsAny(text, "\r\n") {
 				t.Fatalf("the context (exit %d) is not one line:\n%s", result.Code, result.Output())
 			}
-			if !strings.Contains(lower, "cw is not installed") {
-				t.Errorf("the line does not say that cw is not installed:\n%s", text)
+			if !strings.Contains(lower, "gatecub is not installed") {
+				t.Errorf("the line does not say that gatecub is not installed:\n%s", text)
 			}
 			if !strings.Contains(lower, "commit") || !strings.Contains(lower, "denied") {
 				t.Errorf("the line does not say that commits will be denied:\n%s", text)
@@ -71,17 +71,17 @@ func TestSessionContextWhenCWIsNotInstalled(t *testing.T) {
 	}
 }
 
-// Requirement "Instruction text comes from cw": the plugin holds neither a
-// copy of the session text nor a cw version number, and (scenario "cw is not
+// Requirement "Instruction text comes from gatecub": the plugin holds neither a
+// copy of the session text nor a gatecub version number, and (scenario "gatecub is not
 // installed") names no Go command.
 func TestHookFilesHoldNoCopyVersionOrGoCommand(t *testing.T) {
 	t.Parallel()
 	repo := gatedDemo(t)
-	context := repo.CW("context")
+	context := repo.Gatecub("context")
 	if context.Code != 0 || context.Stdout == "" {
-		t.Fatalf("cw context exited %d and printed:\n%s", context.Code, context.Output())
+		t.Fatalf("gatecub context exited %d and printed:\n%s", context.Code, context.Output())
 	}
-	version := regexp.MustCompile(`\bv?\d+\.\d+\.\d+|cw@`)
+	version := regexp.MustCompile(`\bv?\d+\.\d+\.\d+|gatecub@`)
 	goCommand := regexp.MustCompile(`\bgo (install|build|run|get)\b`)
 	for _, h := range hostFiles {
 		t.Run(h.host, func(t *testing.T) {

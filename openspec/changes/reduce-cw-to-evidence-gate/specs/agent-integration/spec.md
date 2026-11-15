@@ -28,23 +28,23 @@ Source: review findings M1, M2 and M3 (the plugin hook is a second, weaker gate 
 
 ### Requirement: Session context
 
-In a repository whose root holds `cw.toml`, the plugin SHALL add to the agent's context at the start of a session the text that `cw context` prints. That text SHALL say that commits and pushes are gated, that `cw run` produces the evidence, that `cw status` shows what is missing, and whether the hooks are installed. The session's directory SHALL be the one the host names in its notice. In any other directory the plugin SHALL add nothing.
+In a repository whose root holds `gatecub.toml`, the plugin SHALL add to the agent's context at the start of a session the text that `gatecub context` prints. That text SHALL say that commits and pushes are gated, that `gatecub run` produces the evidence, that `gatecub status` shows what is missing, and whether the hooks are installed. The session's directory SHALL be the one the host names in its notice. In any other directory the plugin SHALL add nothing.
 
 Source: `hooks/hooks.json` (a session-start hook loads conventions today); review finding M24 (the agent-facing text is long); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), findings C7 and U6.
 
 #### Scenario: A gated repository
 
 - **WHEN** a session starts in `demo`
-- **THEN** the agent's context holds `cw run` and `cw status`, in at most 1,000 characters
+- **THEN** the agent's context holds `gatecub run` and `gatecub status`, in at most 1,000 characters
 
 #### Scenario: Hooks are not installed in this clone
 
-- **WHEN** a session starts in a fresh clone of `demo` in which `cw init` has not run
-- **THEN** the context starts by saying that the hooks are not installed and that nothing is gated yet, and says that `cw init` installs them
+- **WHEN** a session starts in a fresh clone of `demo` in which `gatecub init` has not run
+- **THEN** the context starts by saying that the hooks are not installed and that nothing is gated yet, and says that `gatecub init` installs them
 
 #### Scenario: A repository without a declaration
 
-- **WHEN** a session starts in a repository that has no `cw.toml`
+- **WHEN** a session starts in a repository that has no `gatecub.toml`
 - **THEN** the plugin adds nothing to the context
 
 #### Scenario: The host names the session's directory
@@ -52,55 +52,55 @@ Source: `hooks/hooks.json` (a session-start hook loads conventions today); revie
 - **WHEN** the host starts the session-start command in a folder outside any repository, and its notice names `demo` as the session's directory
 - **THEN** the context of `demo` is added; the other way round, nothing is added
 
-#### Scenario: `cw context` in a terminal
+#### Scenario: `gatecub context` in a terminal
 
-- **WHEN** a user runs `cw context` without `--host` in `demo`, and its standard input never ends
-- **THEN** `cw context` prints the context and returns without reading its input
+- **WHEN** a user runs `gatecub context` without `--host` in `demo`, and its standard input never ends
+- **THEN** `gatecub context` prints the context and returns without reading its input
 
-### Requirement: Instruction text comes from `cw`
+### Requirement: Instruction text comes from `gatecub`
 
-The plugin SHALL take the session text from the installed `cw`, and SHALL hold neither a copy of that text nor a `cw` version number. When `cw` is not on `PATH`, the plugin SHALL add one line that says so. Its commands for a POSIX shell SHALL run `cw` and `git` only from the entries of `PATH` that are absolute paths; `platform-support` (Hooks on Windows) holds the rule for its Windows commands. The plugin SHALL block no tool call when `cw` fails.
+The plugin SHALL take the session text from the installed `gatecub`, and SHALL hold neither a copy of that text nor a `gatecub` version number. When `gatecub` is not on `PATH`, the plugin SHALL add one line that says so. Its commands for a POSIX shell SHALL run `gatecub` and `git` only from the entries of `PATH` that are absolute paths; `platform-support` (Hooks on Windows) holds the rule for its Windows commands. The plugin SHALL block no tool call when `gatecub` fails.
 
-Source: review finding C1 (README, both hook files and SKILL.md pin `cw@v3.0.0-rc.2`, which no release matches); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), findings S1, C1, X2 and X7.
+Source: review finding C1 (README, both hook files and SKILL.md pin `gatecub@v3.0.0-rc.2`, which no release matches); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), findings S1, C1, X2 and X7.
 
-#### Scenario: `cw` is upgraded
+#### Scenario: `gatecub` is upgraded
 
-- **WHEN** a newer `cw` whose `cw context` prints different text is installed, the plugin is unchanged, and a session starts in `demo`
-- **THEN** the context holds the text of the newer `cw`
+- **WHEN** a newer `gatecub` whose `gatecub context` prints different text is installed, the plugin is unchanged, and a session starts in `demo`
+- **THEN** the context holds the text of the newer `gatecub`
 
-#### Scenario: `cw` is not installed
+#### Scenario: `gatecub` is not installed
 
-- **WHEN** `cw` is not on `PATH` and a session starts in `demo`
-- **THEN** the context holds one line that says `cw` is not installed and that commits in this repository will be denied, says where the install instruction is, and names no Go command
+- **WHEN** `gatecub` is not on `PATH` and a session starts in `demo`
+- **THEN** the context holds one line that says `gatecub` is not installed and that commits in this repository will be denied, says where the install instruction is, and names no Go command
 
-#### Scenario: A program named `cw` in the repository
+#### Scenario: A program named `gatecub` in the repository
 
-- **WHEN** the root of `demo` holds executable files `cw` and `git`, the first entry of `PATH` is empty or `.`, no other `cw` is on `PATH`, and a session starts or the agent is about to run a shell command
+- **WHEN** the root of `demo` holds executable files `gatecub` and `git`, the first entry of `PATH` is empty or `.`, no other `gatecub` is on `PATH`, and a session starts or the agent is about to run a shell command
 - **THEN** neither file is run, and each command of the plugin exits 0
 
-#### Scenario: A relative entry before the installed `cw`
+#### Scenario: A relative entry before the installed `gatecub`
 
-- **WHEN** the root of `demo` holds executable files `cw` and `git`, the first entry of `PATH` is empty or `.`, a later entry that is an absolute path holds the installed `cw`, and a session starts or the agent is about to run `git commit --no-verify`
-- **THEN** neither file of `demo` is run, the session gets the context of the installed `cw`, and the guard speaks up
+- **WHEN** the root of `demo` holds executable files `gatecub` and `git`, the first entry of `PATH` is empty or `.`, a later entry that is an absolute path holds the installed `gatecub`, and a session starts or the agent is about to run `git commit --no-verify`
+- **THEN** neither file of `demo` is run, the session gets the context of the installed `gatecub`, and the guard speaks up
 
-#### Scenario: A `cw` that cannot be run
+#### Scenario: A `gatecub` that cannot be run
 
-- **WHEN** the only file `cw` in the folders of `PATH` is not executable, and a session starts in `demo`
-- **THEN** the context holds one line that says that `cw` is not installed and where the install instruction is, and the command exits 0
+- **WHEN** the only file `gatecub` in the folders of `PATH` is not executable, and a session starts in `demo`
+- **THEN** the context holds one line that says that `gatecub` is not installed and where the install instruction is, and the command exits 0
 
 #### Scenario: No absolute entry in `PATH`
 
-- **WHEN** the root of `demo` holds executable files `cw` and `git`, `PATH` is empty, `.`, `:` or `.:bin`, and Claude Code runs each command of the plugin
+- **WHEN** the root of `demo` holds executable files `gatecub` and `git`, `PATH` is empty, `.`, `:` or `.:bin`, and Claude Code runs each command of the plugin
 - **THEN** neither file is run, and each command exits 0 and prints nothing
 
-#### Scenario: An older `cw`
+#### Scenario: An older `gatecub`
 
-- **WHEN** the `cw` on `PATH` prints its usage and exits 2 for every command it is given, and a session starts, the agent is about to run a shell command, a role ends or the session ends
+- **WHEN** the `gatecub` on `PATH` prints its usage and exits 2 for every command it is given, and a session starts, the agent is about to run a shell command, a role ends or the session ends
 - **THEN** each command of the plugin exits 0 and the host is neither asked nor told to deny
 
 ### Requirement: Ask before skipping
 
-Before the agent runs a shell command in which a call of git skips the hooks or a call of `cw` turns the gate off, or changes `cw.toml`, a git hook, the git configuration or a record of `cw`, the plugin SHALL ask the user where the host can ask, and SHALL otherwise deny with the reason. It SHALL read the command as shell words, so that `--no-verify`, `-n` of `git commit` and a setting of `core.hooksPath` count only as arguments of git. The plugin SHALL NOT act on any other tool call.
+Before the agent runs a shell command in which a call of git skips the hooks or a call of `gatecub` turns the gate off, or changes `gatecub.toml`, a git hook, the git configuration or a record of `gatecub`, the plugin SHALL ask the user where the host can ask, and SHALL otherwise deny with the reason. It SHALL read the command as shell words, so that `--no-verify`, `-n` of `git commit` and a setting of `core.hooksPath` count only as arguments of git. The plugin SHALL NOT act on any other tool call.
 
 Source: proposal, Open Questions 4 and 6; review finding M3 (Codex denies where Claude Code asks); `docs/other-tools.md`, row G-2 (matching a command as text is fragile in both directions); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), findings S4, S8, C3, X3 and A1.
 
@@ -111,7 +111,7 @@ Source: proposal, Open Questions 4 and 6; review finding M3 (Codex denies where 
 
 #### Scenario: A change to the declaration
 
-- **WHEN** the agent in Claude Code is about to edit `cw.toml` with its file-editing tool
+- **WHEN** the agent in Claude Code is about to edit `gatecub.toml` with its file-editing tool
 - **THEN** the user is asked, and the question says that the edit changes the required checks
 
 #### Scenario: The short form of the option
@@ -136,7 +136,7 @@ Source: proposal, Open Questions 4 and 6; review finding M3 (Codex denies where 
 
 #### Scenario: An edit of a hook or of a record
 
-- **WHEN** the agent in Claude Code is about to change `.git/hooks/pre-commit` or a file under `.git/cw/` with its file-editing tool
+- **WHEN** the agent in Claude Code is about to change `.git/hooks/pre-commit` or a file under `.git/gatecub/` with its file-editing tool
 - **THEN** the user is asked, and the question says what the edit changes
 
 #### Scenario: An ordinary command
@@ -151,7 +151,7 @@ Source: proposal, Open Questions 4 and 6; review finding M3 (Codex denies where 
 
 #### Scenario: A call that turns the gate off
 
-- **WHEN** the agent is about to run `cw uninstall` or `cw init --observe`
+- **WHEN** the agent is about to run `gatecub uninstall` or `gatecub init --observe`
 - **THEN** in Claude Code the user is asked and in Codex the call is denied, and the reason says that the command skips the commit gate
 
 #### Scenario: An edit of the git configuration
@@ -166,8 +166,8 @@ Source: proposal, Open Questions 4 and 6; review finding M3 (Codex denies where 
 
 #### Scenario: An edit through a link
 
-- **WHEN** `alias.toml` is a symbolic link to `cw.toml` and the agent in Claude Code is about to write `alias.toml`
-- **THEN** the user is asked, and the question names `cw.toml`
+- **WHEN** `alias.toml` is a symbolic link to `gatecub.toml` and the agent in Claude Code is about to write `alias.toml`
+- **THEN** the user is asked, and the question names `gatecub.toml`
 
 #### Scenario: A command given as a list
 
@@ -176,13 +176,13 @@ Source: proposal, Open Questions 4 and 6; review finding M3 (Codex denies where 
 
 #### Scenario: A notice larger than 16 MiB
 
-- **WHEN** the agent in Claude Code is about to write `cw.toml` with a content of more than 16 MiB
+- **WHEN** the agent in Claude Code is about to write `gatecub.toml` with a content of more than 16 MiB
 - **THEN** the user is asked
 
 #### Scenario: A patch given to the shell
 
-- **WHEN** the agent is about to run `apply_patch` in the shell with a patch, given as a here-document, that updates `cw.toml`
-- **THEN** in Claude Code the user is asked and in Codex the call is denied, and the reason names `cw.toml`
+- **WHEN** the agent is about to run `apply_patch` in the shell with a patch, given as a here-document, that updates `gatecub.toml`
+- **THEN** in Claude Code the user is asked and in Codex the call is denied, and the reason names `gatecub.toml`
 
 #### Scenario: An edit of another file
 
@@ -212,23 +212,23 @@ Source: review findings M1, M2, M3 and H8 (`internal/gate/scan.go`, `internal/ga
 
 ### Requirement: Usage skill
 
-The plugin SHALL ship one skill, `cw`, that tells an agent how to work in a gated repository: what to run before and after a change, what each denial and each outcome of a check means, and when the task workflow fits. The skill SHALL name only commands that `cw help` lists and no `cw` version number, and a test SHALL replay every example beside it against the `cw` of the same commit. The head of every skill of the plugin SHALL hold no key that a host rejects.
+The plugin SHALL ship one skill, `gatecub`, that tells an agent how to work in a gated repository: what to run before and after a change, what each denial and each outcome of a check means, and when the task workflow fits. The skill SHALL name only commands that `gatecub help` lists and no `gatecub` version number, and a test SHALL replay every example beside it against the `gatecub` of the same commit. The head of every skill of the plugin SHALL hold no key that a host rejects.
 
 Source: the owner's statement of 14 November 2026 (a skill for an agent on how to use the tool for any task, with examples); `docs/other-tools.md`, Skills.
 
-#### Scenario: An example shows output that `cw` does not print
+#### Scenario: An example shows output that `gatecub` does not print
 
-- **WHEN** an example under `skills/cw/examples/` shows, for one of its commands, other output or another exit status than `cw` gives for it in the repository of the example
+- **WHEN** an example under `skills/gatecub/examples/` shows, for one of its commands, other output or another exit status than `gatecub` gives for it in the repository of the example
 - **THEN** the tests fail and name the command
 
 #### Scenario: A command that does not exist
 
-- **WHEN** `skills/cw/SKILL.md` names `cw verify`
-- **THEN** the tests fail, because `cw help` lists no such command
+- **WHEN** `skills/gatecub/SKILL.md` names `gatecub verify`
+- **THEN** the tests fail, because `gatecub help` lists no such command
 
 #### Scenario: An example the skill does not name
 
-- **WHEN** a file is added under `skills/cw/examples/` and `skills/cw/SKILL.md` does not link it
+- **WHEN** a file is added under `skills/gatecub/examples/` and `skills/gatecub/SKILL.md` does not link it
 - **THEN** the tests fail and name the file
 
 #### Scenario: A head that a host rejects

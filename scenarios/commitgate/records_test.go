@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // Requirement "Hooks decide from records", scenario "A denied commit starts
@@ -26,7 +26,7 @@ func TestDeniedCommitStartsNoCheck(t *testing.T) {
 	g.checked()
 	for _, name := range []string{"unit.sh", "lint.sh"} {
 		if err := os.Remove(filepath.Join(marks, name)); err != nil {
-			t.Fatalf("cw run did not execute %s: %v", name, err)
+			t.Fatalf("gatecub run did not execute %s: %v", name, err)
 		}
 	}
 
@@ -49,10 +49,10 @@ func TestRunningCheckDoesNotHoldUpCommit(t *testing.T) {
 		t.Skip("finds the check's process through /proc")
 	}
 	g := newGate(t)
-	g.Write("cw.toml", g.Read("cw.toml")+"\n[[check]]\nid = \"slow\"\nrun = [\"sleep\", \"60\"]\n")
+	g.Write("gatecub.toml", g.Read("gatecub.toml")+"\n[[check]]\nid = \"slow\"\nrun = [\"sleep\", \"60\"]\n")
 	g.commitNoVerify("a slow check")
 
-	background := g.Command(filepath.Join(cwtest.Binary(t), "cw"), "run")
+	background := g.Command(filepath.Join(gatecubtest.Binary(t), "gatecub"), "run")
 	var output bytes.Buffer
 	background.Stdout, background.Stderr = &output, &output
 	if err := background.Start(); err != nil {
@@ -75,7 +75,7 @@ func TestRunningCheckDoesNotHoldUpCommit(t *testing.T) {
 		}
 		for _, pid := range sleeps {
 			if alive(pid) {
-				t.Logf("the check's sleep (pid %d) outlived cw run; killing it", pid)
+				t.Logf("the check's sleep (pid %d) outlived gatecub run; killing it", pid)
 				if process, err := os.FindProcess(pid); err == nil {
 					_ = process.Kill()
 				}
@@ -100,7 +100,7 @@ func TestRunningCheckDoesNotHoldUpCommit(t *testing.T) {
 		}
 		select {
 		case <-done:
-			t.Fatalf("cw run ended before the slow check ran:\n%s", output.String())
+			t.Fatalf("gatecub run ended before the slow check ran:\n%s", output.String())
 		default:
 		}
 		if time.Now().After(deadline) {
@@ -122,7 +122,7 @@ func TestRunningCheckDoesNotHoldUpCommit(t *testing.T) {
 	}
 	select {
 	case <-done:
-		t.Errorf("the background cw run ended while its check should still sleep:\n%s", output.String())
+		t.Errorf("the background gatecub run ended while its check should still sleep:\n%s", output.String())
 	default:
 	}
 }

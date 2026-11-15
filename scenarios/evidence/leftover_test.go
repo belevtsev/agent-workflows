@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // Requirement "Leftover processes", scenario "A timeout stops the whole
@@ -16,7 +16,7 @@ import (
 func TestTimeoutStopsTheWholeProcessTree(t *testing.T) {
 	skipOnWindows(t)
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	// Durations no other test uses, so that pgrep finds only these.
 	const pattern = "sleep 6123[45]"
 	killMatching(t, pattern)
@@ -25,7 +25,7 @@ func TestTimeoutStopsTheWholeProcessTree(t *testing.T) {
 	result, took := runLimited(t, repo, 60*time.Second, "run", "tree")
 
 	if took > 10*time.Second {
-		t.Errorf("cw run took %s, want at most 10s", took)
+		t.Errorf("gatecub run took %s, want at most 10s", took)
 	}
 	if outcome := lastRecord(t, repo, "tree")["outcome"]; outcome != "timed_out" {
 		t.Errorf("tree ended %v, want timed_out", outcome)
@@ -43,7 +43,7 @@ func TestTimeoutStopsTheWholeProcessTree(t *testing.T) {
 func TestBackgroundProcessLeftBehindIsStoppedWithAWarning(t *testing.T) {
 	skipOnWindows(t)
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	const pattern = "sleep 61236"
 	killMatching(t, pattern)
 	declare(t, repo, "[[check]]\nid = \"bg\"\nrun = [\"sh\", \"-c\", \"sleep 61236 & exit 0\"]\n")
@@ -51,7 +51,7 @@ func TestBackgroundProcessLeftBehindIsStoppedWithAWarning(t *testing.T) {
 	result, took := runLimited(t, repo, 60*time.Second, "run", "bg")
 
 	if took > 10*time.Second {
-		t.Errorf("cw run took %s, want at most 10s", took)
+		t.Errorf("gatecub run took %s, want at most 10s", took)
 	}
 	if outcome := lastRecord(t, repo, "bg")["outcome"]; outcome != "passed" {
 		t.Errorf("bg ended %v, want passed", outcome)
@@ -73,18 +73,18 @@ func TestBackgroundProcessLeftBehindIsStoppedWithAWarning(t *testing.T) {
 func TestTimeoutStopsTheWholeProcessTreeOnWindows(t *testing.T) {
 	onlyOnWindows(t)
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	pidFile := filepath.Join(t.TempDir(), "pids")
 	// The program starts a second program, writes both process ids, and
 	// neither ends for 600 seconds. It is a compiled program, not a script:
 	// under load PowerShell alone can take longer to start than the timeout.
-	program := buildProgram(t, "cw-test-tree", treeProgram)
+	program := buildProgram(t, "gatecub-test-tree", treeProgram)
 	declare(t, repo, "[[check]]\nid = \"tree\"\ntimeout = \"2s\"\nrun = [\""+filepath.ToSlash(program)+"\", \""+filepath.ToSlash(pidFile)+"\"]\n")
 
 	result, took := runLimited(t, repo, 60*time.Second, "run", "tree")
 
 	if took > 10*time.Second {
-		t.Errorf("cw run took %s, want at most 10s", took)
+		t.Errorf("gatecub run took %s, want at most 10s", took)
 	}
 	if outcome := lastRecord(t, repo, "tree")["outcome"]; outcome != "timed_out" {
 		t.Errorf("tree ended %v, want timed_out", outcome)
@@ -94,7 +94,7 @@ func TestTimeoutStopsTheWholeProcessTreeOnWindows(t *testing.T) {
 		t.Fatalf("the program did not write its process ids: %v\n%s", err, result.Output())
 	}
 	for _, pid := range strings.Fields(string(data)) {
-		// cw has ended, so the id may already belong to another process.
+		// gatecub has ended, so the id may already belong to another process.
 		// Only one that still runs the check's program counts.
 		if running, found := watchProcess(t, pid, filepath.Base(program)); found && running() {
 			t.Errorf("process %s started by the check still runs", pid)

@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/decl"
-	"github.com/belevtsev/agent-workflows/v3/internal/gitx"
-	"github.com/belevtsev/agent-workflows/v3/internal/store"
+	"github.com/belevtsev/gatecub/v3/internal/decl"
+	"github.com/belevtsev/gatecub/v3/internal/gitx"
+	"github.com/belevtsev/gatecub/v3/internal/store"
 )
 
 // The states of a check for a tree.
@@ -31,8 +31,8 @@ const (
 // is removed, on purpose: a run that decides always has its log.
 const MaxAge = store.LogAge
 
-// ErrNoDeclaration is a tree without cw.toml at its root.
-var ErrNoDeclaration = errors.New("the tree has no declaration: there is no " + decl.FileName + " at its root; `cw init` creates one")
+// ErrNoDeclaration is a tree without gatecub.toml at its root.
+var ErrNoDeclaration = errors.New("the tree has no declaration: there is no " + decl.FileName + " at its root; `gatecub init` creates one")
 
 // StoreError is a store that cannot be read.
 type StoreError struct {
@@ -146,7 +146,7 @@ func Keys(ctx context.Context, repo *gitx.Repo, tree string, checks []decl.Check
 }
 
 // Base holds the checks a base revision declares and their content keys.
-// `cw run --base` counts such a check as passed on that content.
+// `gatecub run --base` counts such a check as passed on that content.
 type Base struct {
 	checks map[string]Check
 }

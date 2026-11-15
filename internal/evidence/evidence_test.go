@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/decl"
-	"github.com/belevtsev/agent-workflows/v3/internal/gitx"
-	"github.com/belevtsev/agent-workflows/v3/internal/store"
+	"github.com/belevtsev/gatecub/v3/internal/decl"
+	"github.com/belevtsev/gatecub/v3/internal/gitx"
+	"github.com/belevtsev/gatecub/v3/internal/store"
 )
 
 const declaration = `version = 1
@@ -75,7 +75,7 @@ func newEnv(t *testing.T) *env {
 	}
 	e := &env{t: t, dir: dir}
 	e.git("init", "-q", "-b", "main", ".")
-	e.write("cw.toml", declaration)
+	e.write("gatecub.toml", declaration)
 	e.write("src/app.txt", "ok\n")
 	e.write("unit.sh", "test \"$(cat src/app.txt)\" = ok || exit 3\n")
 	e.write("lint.sh", "test ! -e BAD\n")
@@ -279,7 +279,7 @@ func TestContentCheckedEarlierIsRecognised(t *testing.T) {
 func TestChangedRunNeedsNewRun(t *testing.T) {
 	e := newEnv(t)
 	e.passBoth(e.tree())
-	e.write("cw.toml", strings.Replace(declaration, `run = ["sh", "unit.sh"]`, `run = ["sh", "unit.sh", "-v"]`, 1))
+	e.write("gatecub.toml", strings.Replace(declaration, `run = ["sh", "unit.sh"]`, `run = ["sh", "unit.sh", "-v"]`, 1))
 	tree := e.commit("verbose")
 	expect(t, e.judge(tree, nil), map[string]string{"unit": NotRun, "lint": NotRun})
 }
@@ -436,7 +436,7 @@ func TestRunningAndLast(t *testing.T) {
 
 func TestNoDeclaration(t *testing.T) {
 	e := newEnv(t)
-	e.git("rm", "-q", "cw.toml")
+	e.git("rm", "-q", "gatecub.toml")
 	tree := e.commit("remove")
 	if _, err := Judge(t.Context(), e.repo, e.store, tree, now, nil); !errors.Is(err, ErrNoDeclaration) {
 		t.Errorf("Judge = %v, want ErrNoDeclaration", err)
@@ -445,19 +445,19 @@ func TestNoDeclaration(t *testing.T) {
 
 func TestInvalidDeclaration(t *testing.T) {
 	e := newEnv(t)
-	e.write("cw.toml", declaration+"tiemout = \"5m\"\n")
+	e.write("gatecub.toml", declaration+"tiemout = \"5m\"\n")
 	tree := e.commit("typo")
 	_, err := Judge(t.Context(), e.repo, e.store, tree, now, nil)
 	var invalid *decl.Error
-	if !errors.As(err, &invalid) || !strings.Contains(err.Error(), "cw.toml:11") {
-		t.Errorf("Judge = %v, want a *decl.Error naming cw.toml:11", err)
+	if !errors.As(err, &invalid) || !strings.Contains(err.Error(), "gatecub.toml:11") {
+		t.Errorf("Judge = %v, want a *decl.Error naming gatecub.toml:11", err)
 	}
 }
 
 func TestDeclarationThatIsNotAFile(t *testing.T) {
 	e := newEnv(t)
-	e.git("rm", "-q", "cw.toml")
-	e.write("cw.toml/x", "x\n")
+	e.git("rm", "-q", "gatecub.toml")
+	e.write("gatecub.toml/x", "x\n")
 	tree := e.commit("dir")
 	_, err := Judge(t.Context(), e.repo, e.store, tree, now, nil)
 	var invalid *decl.Error
@@ -468,7 +468,7 @@ func TestDeclarationThatIsNotAFile(t *testing.T) {
 
 func TestEmptyDeclarationIsVerified(t *testing.T) {
 	e := newEnv(t)
-	e.write("cw.toml", "version = 1\n")
+	e.write("gatecub.toml", "version = 1\n")
 	tree := e.commit("empty")
 	v := e.judge(tree, nil)
 	if !v.Verified || len(v.Checks) != 0 {
@@ -478,8 +478,8 @@ func TestEmptyDeclarationIsVerified(t *testing.T) {
 
 func TestStoreErrorUnwraps(t *testing.T) {
 	inner := errors.New("denied")
-	err := &StoreError{Dir: "/x/cw", Err: inner}
-	if !errors.Is(err, inner) || !strings.Contains(err.Error(), "/x/cw") {
+	err := &StoreError{Dir: "/x/gatecub", Err: inner}
+	if !errors.Is(err, inner) || !strings.Contains(err.Error(), "/x/gatecub") {
 		t.Errorf("StoreError = %v", err)
 	}
 }
@@ -512,7 +512,7 @@ func TestBaseImpliesUnchangedCheck(t *testing.T) {
 func TestBaseDoesNotImplyChangedOrNewCheck(t *testing.T) {
 	e := newEnv(t)
 	e.git("tag", "base")
-	e.write("cw.toml", strings.Replace(declaration, `run = ["sh", "unit.sh"]`, `run = ["sh", "unit.sh", "-v"]`, 1)+
+	e.write("gatecub.toml", strings.Replace(declaration, `run = ["sh", "unit.sh"]`, `run = ["sh", "unit.sh", "-v"]`, 1)+
 		"\n[[check]]\nid = \"build\"\nrun = [\"make\"]\npaths = [\"src/**\"]\n")
 	tree := e.commit("change checks")
 	base, err := LoadBase(t.Context(), e.repo, "base")
@@ -559,14 +559,14 @@ func TestBaseDoesNotImplyOverAgedOutRecord(t *testing.T) {
 
 func TestBaseWithoutDeclarationImpliesNothing(t *testing.T) {
 	e := newEnv(t)
-	e.git("rm", "-q", "cw.toml")
+	e.git("rm", "-q", "gatecub.toml")
 	e.commit("no declaration")
 	e.git("tag", "bare")
 	base, err := LoadBase(t.Context(), e.repo, "bare")
 	if err != nil {
 		t.Fatalf("LoadBase of a tree without a declaration: %v", err)
 	}
-	e.git("checkout", "-q", "HEAD~1", "--", "cw.toml")
+	e.git("checkout", "-q", "HEAD~1", "--", "gatecub.toml")
 	tree := e.commit("back")
 	if c := state(e.judge(tree, base), "unit"); c.Implied {
 		t.Error("a base without a declaration implied a check")

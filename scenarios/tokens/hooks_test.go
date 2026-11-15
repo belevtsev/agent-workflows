@@ -38,7 +38,7 @@ type hookFile struct {
 	} `json:"hooks"`
 }
 
-// Task 4.4: the plugin runs cw tokens record when a role (SubagentStop) or
+// Task 4.4: the plugin runs gatecub tokens record when a role (SubagentStop) or
 // the session (SessionEnd) ends, on Claude Code and on Codex.
 func TestPluginHooksRecordTokens(t *testing.T) {
 	t.Parallel()
@@ -62,7 +62,7 @@ func TestPluginHooksRecordTokens(t *testing.T) {
 				}
 			}
 			if found != 1 {
-				t.Errorf("%s: %d commands for %s run cw tokens record --host %s, want one", file, found, event, host)
+				t.Errorf("%s: %d commands for %s run gatecub tokens record --host %s, want one", file, found, event, host)
 			}
 		}
 	}

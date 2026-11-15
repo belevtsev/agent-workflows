@@ -12,9 +12,9 @@ import (
 func TestTheTable(t *testing.T) {
 	t.Parallel()
 	repo := demo(t)
-	result := repo.CW("roles")
+	result := repo.Gatecub("roles")
 	if result.Code != 0 {
-		t.Errorf("cw roles exited %d, want 0:\n%s", result.Code, result.Output())
+		t.Errorf("gatecub roles exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 	rows := map[string]int{}
 	total := 0
@@ -28,11 +28,11 @@ func TestTheTable(t *testing.T) {
 	}
 	for _, id := range roleIDs {
 		if rows[id] != 1 {
-			t.Errorf("cw roles prints %d rows for %s, want 1", rows[id], id)
+			t.Errorf("gatecub roles prints %d rows for %s, want 1", rows[id], id)
 		}
 	}
 	if total != 7 {
-		t.Errorf("cw roles prints %d role rows, want 7:\n%s", total, result.Stdout)
+		t.Errorf("gatecub roles prints %d role rows, want 7:\n%s", total, result.Stdout)
 	}
 }
 
@@ -41,17 +41,17 @@ func TestTheTable(t *testing.T) {
 func TestTheTableFitsATerminal(t *testing.T) {
 	t.Parallel()
 	repo := demo(t)
-	lines := strings.Split(repo.CW("roles").Stdout, "\n")
+	lines := strings.Split(repo.Gatecub("roles").Stdout, "\n")
 	for _, line := range lines {
 		if utf8.RuneCountInString(line) > 120 {
-			t.Errorf("a line of cw roles has %d columns, want at most 120:\n%s", utf8.RuneCountInString(line), line)
+			t.Errorf("a line of gatecub roles has %d columns, want at most 120:\n%s", utf8.RuneCountInString(line), line)
 		}
 	}
 	var out struct {
 		Roles []struct{ ID, Job, Writes string } `json:"roles"`
 	}
-	if err := json.Unmarshal([]byte(repo.CW("roles", "--json").Stdout), &out); err != nil || len(out.Roles) != 7 {
-		t.Fatalf("cw roles --json: %v, %d roles", err, len(out.Roles))
+	if err := json.Unmarshal([]byte(repo.Gatecub("roles", "--json").Stdout), &out); err != nil || len(out.Roles) != 7 {
+		t.Fatalf("gatecub roles --json: %v, %d roles", err, len(out.Roles))
 	}
 	for _, role := range out.Roles {
 		found := false
@@ -70,15 +70,15 @@ func TestTheTableFitsATerminal(t *testing.T) {
 func TestTheTableAsJSON(t *testing.T) {
 	t.Parallel()
 	repo := demo(t)
-	result := repo.CW("roles", "--json")
+	result := repo.Gatecub("roles", "--json")
 	if result.Code != 0 {
-		t.Fatalf("cw roles --json exited %d:\n%s", result.Code, result.Output())
+		t.Fatalf("gatecub roles --json exited %d:\n%s", result.Code, result.Output())
 	}
 	var out struct {
 		Roles []map[string]json.RawMessage `json:"roles"`
 	}
 	if err := json.Unmarshal([]byte(result.Stdout), &out); err != nil {
-		t.Fatalf("cw roles --json did not print one JSON object: %v\n%s", err, result.Stdout)
+		t.Fatalf("gatecub roles --json did not print one JSON object: %v\n%s", err, result.Stdout)
 	}
 	var architect map[string]json.RawMessage
 	for _, entry := range out.Roles {
@@ -141,7 +141,7 @@ func TestARepositoryChangesOneModel(t *testing.T) {
 	t.Parallel()
 	repo := demo(t)
 	before := rolesJSON(t, repo)
-	repo.Write("cw-roles.toml", rolesTOML+"\n[claude.developer]\nmodel = \"sonnet\"\n")
+	repo.Write("gatecub-roles.toml", rolesTOML+"\n[claude.developer]\nmodel = \"sonnet\"\n")
 	after := rolesJSON(t, repo)
 
 	if got := after["developer"].Models["claude"]; got != (hostModel{Model: "sonnet", Effort: "high"}) {
@@ -167,16 +167,16 @@ func TestAnUnknownRoleIsRefused(t *testing.T) {
 	t.Parallel()
 	repo := demo(t)
 	// rolesTOML has four lines; [claude.tester] is the fifth.
-	repo.Write("cw-roles.toml", rolesTOML+"[claude.tester]\nmodel = \"opus\"\n")
-	result := repo.CW("roles")
+	repo.Write("gatecub-roles.toml", rolesTOML+"[claude.tester]\nmodel = \"opus\"\n")
+	result := repo.Gatecub("roles")
 	if result.Code != 1 {
-		t.Errorf("cw roles exited %d, want 1", result.Code)
+		t.Errorf("gatecub roles exited %d, want 1", result.Code)
 	}
 	out := result.Output()
-	if !strings.Contains(out, "cw-roles.toml") {
-		t.Errorf("the output does not name cw-roles.toml:\n%s", out)
+	if !strings.Contains(out, "gatecub-roles.toml") {
+		t.Errorf("the output does not name gatecub-roles.toml:\n%s", out)
 	}
-	if !lineWith(out, "cw-roles.toml", "5") || !namesLine(out, 5) {
+	if !lineWith(out, "gatecub-roles.toml", "5") || !namesLine(out, 5) {
 		t.Errorf("the output does not name line 5, the line of [claude.tester]:\n%s", out)
 	}
 	if !lineWith(out, "tester", "unknown") {
@@ -195,10 +195,10 @@ func namesLine(text string, n int) bool {
 func TestAModelNameIsNotJudged(t *testing.T) {
 	t.Parallel()
 	repo := demo(t)
-	repo.Write("cw-roles.toml", rolesTOML+"\n[claude.git]\nmodel = \"no-such-model\"\n")
-	result := repo.CW("roles")
+	repo.Write("gatecub-roles.toml", rolesTOML+"\n[claude.git]\nmodel = \"no-such-model\"\n")
+	result := repo.Gatecub("roles")
 	if result.Code != 0 {
-		t.Errorf("cw roles exited %d, want 0:\n%s", result.Code, result.Output())
+		t.Errorf("gatecub roles exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 	found := false
 	for _, line := range strings.Split(result.Stdout, "\n") {
@@ -208,7 +208,7 @@ func TestAModelNameIsNotJudged(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("cw roles does not print no-such-model for git:\n%s", result.Stdout)
+		t.Errorf("gatecub roles does not print no-such-model for git:\n%s", result.Stdout)
 	}
 }
 
@@ -218,9 +218,9 @@ func TestTheSizesArePrinted(t *testing.T) {
 	repo := demo(t)
 	roles := rolesJSON(t, repo)
 	for _, id := range roleIDs {
-		text := repo.CW("roles", "text", id)
+		text := repo.Gatecub("roles", "text", id)
 		if text.Code != 0 {
-			t.Errorf("cw roles text %s exited %d:\n%s", id, text.Code, text.Output())
+			t.Errorf("gatecub roles text %s exited %d:\n%s", id, text.Code, text.Output())
 			continue
 		}
 		// The design counts each Unicode code point as one character.
@@ -230,7 +230,7 @@ func TestTheSizesArePrinted(t *testing.T) {
 		case got == nil:
 			t.Errorf("the entry of %s holds no text_chars", id)
 		case *got != want:
-			t.Errorf("text_chars of %s is %d, but cw roles text %s prints %d characters", id, *got, id, want)
+			t.Errorf("text_chars of %s is %d, but gatecub roles text %s prints %d characters", id, *got, id, want)
 		}
 	}
 }

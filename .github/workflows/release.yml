@@ -12,16 +12,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # A tag is released only when its commit is on main and a CI run for
-  # exactly that commit passed. internal/repocheck tests the script.
+  # A tag is released only from the configured repository when its commit is
+  # on main and a CI run for exactly that commit passed.
   guard:
-    name: Commit is on main and passed CI
+    name: Repository matches and commit passed CI on main
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read
       actions: read
     steps:
+      - name: Refuse publication outside the Gatecub repository
+        run: |
+          if [ "$GITHUB_REPOSITORY" != "belevtsev/gatecub" ]; then
+            echo "Gatecub releases must run in belevtsev/gatecub."
+            exit 1
+          fi
       - name: Check out the tagged commit with the history of main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -32,12 +38,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: sh .github/scripts/release-guard.sh "$GITHUB_SHA"
-      # The last job follows the install instruction of the README, after the
-      # release is public. A README that names another tag is refused here.
-      - name: Refuse a tag that the README does not install
+      # The last job follows the install instruction of the release-install document, after the
+      # release is public. A release-install document that names another tag is refused here.
+      - name: Refuse a tag that the release-install document does not install
         run: |
-          if ! grep -qxF "tag=$GITHUB_REF_NAME" README.md || ! grep -qxF "\$tag = \"$GITHUB_REF_NAME\"" README.md; then
-            echo "The install instructions of README.md do not install $GITHUB_REF_NAME."
+          if ! grep -qxF "tag=$GITHUB_REF_NAME" docs/release-install.md || ! grep -qxF "\$tag = \"$GITHUB_REF_NAME\"" docs/release-install.md; then
+            echo "The install instructions of docs/release-install.md do not install $GITHUB_REF_NAME."
             exit 1
           fi
 
@@ -91,7 +97,7 @@ jobs:
 
   # Only this job can write: it publishes the release and the attestations.
   release:
-    name: Publish cw for ${{ github.ref_name }}
+    name: Publish Gatecub for ${{ github.ref_name }}
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -144,9 +150,9 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: gh release edit "$GITHUB_REF_NAME" --draft=false
 
-  # Success measure 4: the first install instruction of the README, followed
+  # Success measure 4: the first install instruction of the release-install document, followed
   # exactly as written on each system on a PATH without go. It fails when the
-  # README names another tag than this one.
+  # release-install document names another tag than this one.
   install:
     name: Install ${{ github.ref_name }} without Go / ${{ matrix.os }}
     needs: release

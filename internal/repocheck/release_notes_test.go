@@ -2,6 +2,7 @@ package repocheck
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -95,11 +96,52 @@ func TestReleaseNotes(t *testing.T) {
 	}
 }
 
-// installedTag is the line of the README's first install instruction that
+// installedTag is the line of the release-install document's instruction that
 // names the tag to download.
 var installedTag = regexp.MustCompile(`(?m)^tag=(v\S+)$`)
 
-// The changelog of this repository gives notes for the tag that the README
+// The future download recipes and plugin metadata must describe the same
+// release. In particular, a renamed binary must not reuse an old tag.
+func TestPreparedReleaseVersions(t *testing.T) {
+	t.Parallel()
+	installation, err := os.ReadFile(filepath.Join(repoRoot, "docs", "release-install.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tags := installedTag.FindAllSubmatch(installation, -1)
+	if len(tags) != 1 {
+		t.Fatalf("release-install.md has %d shell install tags, want one", len(tags))
+	}
+	tag := string(tags[0][1])
+	if !bytes.Contains(installation, []byte("$tag = \""+tag+"\"")) {
+		t.Errorf("the Windows recipe does not install %s", tag)
+	}
+	for _, file := range []string{".claude-plugin/plugin.json", ".claude-plugin/marketplace.json", ".codex-plugin/plugin.json"} {
+		data, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(file)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var manifest struct {
+			Name, Version string
+			Metadata      struct{ Version string }
+		}
+		if err := json.Unmarshal(data, &manifest); err != nil {
+			t.Fatalf("%s: %v", file, err)
+		}
+		version := manifest.Version
+		if version == "" {
+			version = manifest.Metadata.Version
+		}
+		if manifest.Name != "gatecub" || "v"+version != tag {
+			t.Errorf("%s names %s %s, want gatecub %s", file, manifest.Name, version, tag)
+		}
+	}
+	if tag == "v3.0.0-beta.1" {
+		t.Error("v3.0.0-beta.1 contains cw archives and cannot be used for Gatecub downloads")
+	}
+}
+
+// The changelog gives notes for the tag that the release-install document
 // installs, and the notes of the first release of this code list the
 // breaking changes.
 func TestReleaseNotesOfThisRepository(t *testing.T) {
@@ -111,13 +153,13 @@ func TestReleaseNotesOfThisRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	readme, err := os.ReadFile(filepath.Join(repoRoot, "README.md"))
+	installation, err := os.ReadFile(filepath.Join(repoRoot, "docs", "release-install.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	found := installedTag.FindSubmatch(readme)
+	found := installedTag.FindSubmatch(installation)
 	if found == nil {
-		t.Fatal("README.md has no line `tag=v...` in its install instruction")
+		t.Fatal("docs/release-install.md has no line `tag=v...` in its install instruction")
 	}
 	notes := func(tag string) string {
 		cmd := exec.Command("sh", script, tag)

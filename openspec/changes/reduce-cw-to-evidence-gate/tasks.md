@@ -1,5 +1,7 @@
 # Tasks: reduce-cw-to-evidence-gate
 
+This is the historical `cw` implementation record. Current interfaces are named Gatecub; see [migration](../../../docs/migration.md).
+
 Requirement and scenario names refer to the six files under `specs/`;
 "scenarios under X" means every scenario of requirement X. Verdicts and rows
 refer to [keep-and-cut.md](keep-and-cut.md). Success measures and Open
@@ -102,9 +104,9 @@ after it. `<base>` is the commit of `main` before that pull request.
 
 ## 8. Plugin
 
-- [x] 8.1 Session start, for Claude Code and for Codex: in a repository whose root holds `cw.toml`, add what `cw context` prints; when `cw` is not on `PATH`, add one line that says so, says where the install instruction is and names no Go command; anywhere else add nothing. The hook files hold no copy of that text and no `cw` version. On Windows the hook commands take the form that Open Question 11 settles; write the answer into `proposal.md`. Size: S. Depends on: 2.3, 7.2. Check: scenarios under "Session context" and "Instruction text comes from `cw`". Source: `agent-integration`: Session context, Instruction text comes from `cw`; `platform-support`: Install without a toolchain; Open Question 11; C1.
+- [x] 8.1 Session start, for Claude Code and for Codex: in a repository whose root holds `cw.toml`, add what `cw context` prints; when `cw` is not on `PATH`, add one line that says so, says where the install instruction is and names no Go command; anywhere else add nothing. The hook files hold no copy of that text and no `cw` version. On Windows the hook commands take the form that Open Question 11 settles; write the answer into `proposal.md`. Size: S. Depends on: 2.3, 7.2. Check: scenarios under "Session context" and "Instruction text comes from `gatecub`". Source: `agent-integration`: Session context, Instruction text comes from `gatecub`; `platform-support`: Install without a toolchain; Open Question 11; C1.
 - [x] 8.2 Ask before skipping: before a shell command whose text holds `--no-verify`, and before a file-editing tool changes `cw.toml`, ask the user in Claude Code. For Codex, read its hook documentation first: ask if the host can, deny with the reason if it cannot. Act on no other tool call. On Windows the hook command takes the form task 8.1 settled. Size: M. Depends on: 2.3, 8.1. Check: scenarios under "Ask before skipping"; what Codex does, and the document that settles it, are written into `proposal.md` under Open Question 6. Source: `agent-integration`: Ask before skipping, The plugin never judges a commit or push; Open Questions 4, 6 and 11; M3.
-- [x] 8.3 Finish the manifests: a description of the core, no skills, no agents, no settings. The `version` in a manifest is the plugin's own, and nothing compares it with `cw`. Size: S. Depends on: 1.1, 8.1, 8.2. Check: `claude plugin validate .` passes; no hook file holds a version number or an install command. Source: keep-and-cut.md, Plugin files; `agent-integration`: Instruction text comes from `cw`; C1.
+- [x] 8.3 Finish the manifests: a description of the core, no skills, no agents, no settings. The `version` in a manifest is the plugin's own, and nothing compares it with `cw`. Size: S. Depends on: 1.1, 8.1, 8.2. Check: `claude plugin validate .` passes; no hook file holds a version number or an install command. Source: keep-and-cut.md, Plugin files; `agent-integration`: Instruction text comes from `gatecub`; C1.
 - [x] 8.4 Tests: every scenario of `agent-integration` (37). Size: M. Depends on: 6.2, 8.3. Check: `go test -race ./...` passes on the three systems. Source: `specs/agent-integration/spec.md`; `_quarantine/cmd/cw/hooks_test.go` (it runs the hook files' own commands today); `_quarantine/internal/cli/testdata/` (samples of each host's hook input).
 - [x] 8.5 Read the command as words: `cw guard` splits a shell command into simple commands and words, and asks before a git call that holds `--no-verify`, `-n` of `git commit` or a setting of `core.hooksPath`, and before an edit of a hook file or of a record of `cw`. The same text inside an argument is no reason to ask; a command that cannot be split is judged by its text. Size: M. Depends on: 8.2. Check: the scenarios "The short form of the option", "A setting that replaces the hooks", "The option as the text of an argument", "A command that cannot be read" and "An edit of a hook or of a record". Source: `agent-integration`: Ask before skipping, The plugin never judges a commit or push; `docs/other-tools.md`, row G-2.
 - [x] 8.6 The usage skill: write `skills/cw/SKILL.md` and its examples, and a test that replays every example against the `cw` under test, checks the head of every skill, and allows only commands that `cw help` lists. Size: M. Depends on: 8.3. Check: the scenarios under "Usage skill"; `claude plugin validate .` passes. Source: `agent-integration`: Usage skill; `docs/other-tools.md`, Skills.
@@ -189,7 +191,7 @@ Every requirement has a task that builds it and a task that tests it.
 | | Exit statuses | 2.2, 7.3 | 7.4 |
 | `agent-integration` | The gate needs no plugin | 6.2 | 8.4 |
 | | Session context | 7.2, 8.1 | 8.4 |
-| | Instruction text comes from `cw` | 8.1, 8.3 | 8.4 |
+| | Instruction text comes from `gatecub` | 8.1, 8.3 | 8.4 |
 | | Ask before skipping | 8.2, 8.5 | 8.4 |
 | | The plugin never judges a commit or push | 2.3, 8.2 | 8.4 |
 | | Usage skill | 8.6 | 8.4 |

@@ -1,11 +1,11 @@
 # A repository that has no checks declared yet
 
 **Situation.** The user asks: "Make sure nothing gets committed here unless the tests pass."
-The repository holds code and a test script and no `cw.toml`.
+The repository holds code and a test script and no `gatecub.toml`.
 
 ```console
-$ cw status
-cw: the tree has no declaration: there is no cw.toml at its root; `cw init` creates one
+$ gatecub status
+gatecub: the tree has no declaration: there is no gatecub.toml at its root; `gatecub init` creates one
 [exit 1]
 ```
 
@@ -29,31 +29,31 @@ has one script, `tests/greet_test.sh`.
 ## 2. Declare it
 
 ```console
-$ cw init
-created cw.toml with no checks
+$ gatecub init
+created gatecub.toml with no checks
 installed the hooks pre-commit, pre-merge-commit, pre-push
 the gate enforces: a commit or a push needs a passing run of every declared check
-next: cw add <id> -- <program> [<argument>...], then cw run
-$ cw add test --paths 'app/**' --paths 'tests/**' -- sh tests/greet_test.sh
-added the check `test` to cw.toml
+next: gatecub add <id> -- <program> [<argument>...], then gatecub run
+$ gatecub add test --paths 'app/**' --paths 'tests/**' -- sh tests/greet_test.sh
+added the check `test` to gatecub.toml
 ```
 
 `--paths` names the files a check reads. A change to any other file does not make the check
 run again. Leave `--paths` out when you are not sure: the check then reads everything, which is
-slower and never wrong. Everything after `--` is the program and its arguments; `cw` starts it
+slower and never wrong. Everything after `--` is the program and its arguments; `gatecub` starts it
 without a shell, so a pipe or `&&` needs `sh -c '...'`.
 
 ## 3. Run, and commit the declaration
 
 ```console
-$ cw run
+$ gatecub run
 == test: sh tests/greet_test.sh
 greet tests passed
 == test: passed in 0s
 every declared check has a passing run on this content
 $ git add -A
 $ git commit -q -m "gate commits on the tests"
-$ cw status
+$ gatecub status
 verified: every declared check has a passing run on this content
   test  satisfied
 index: holds the same content as the working tree
@@ -64,16 +64,16 @@ cache or a report. Have git ignore them: [a check that does not pass](failing-ch
 
 ## What to tell the user
 
-- `cw.toml` is committed, so everyone gets the same checks. The hooks are not: git keeps hooks
-  in each clone, so each person runs `cw init` once after cloning.
-- A team that wants to watch first can start with `cw init --observe`: the hooks then record
-  what they would deny and allow everything. `cw stats` shows the count.
+- `gatecub.toml` is committed, so everyone gets the same checks. The hooks are not: git keeps hooks
+  in each clone, so each person runs `gatecub init` once after cloning.
+- A team that wants to watch first can start with `gatecub init --observe`: the hooks then record
+  what they would deny and allow everything. `gatecub stats` shows the count.
 - A local hook can be skipped by anyone who wants to. To hold the rule for a whole team, run
-  `cw run --base <revision>` in continuous integration and make that job required. The
-  operations guide of cw has the lines for it.
-- The user can see a denial for themselves by changing a file and committing without `cw run`.
+  `gatecub run --base <revision>` in continuous integration and make that job required. The
+  operations guide of gatecub has the lines for it.
+- The user can see a denial for themselves by changing a file and committing without `gatecub run`.
   You do not need to break code to demonstrate it.
-- If another tool already owns the hooks of the repository, `cw init` leaves them alone and
+- If another tool already owns the hooks of the repository, `gatecub init` leaves them alone and
   prints the one line to add to each.
 
 <!-- A test replays this example from the fixture "plain": internal/repocheck/skill_test.go -->

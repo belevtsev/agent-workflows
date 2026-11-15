@@ -7,13 +7,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // Requirement "Snapshot", scenario "An untracked file is part of the snapshot".
 func TestUntrackedFileIsPartOfTheSnapshot(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	before := status(t, repo).Tree
 
 	repo.Write("src/new.txt", "new\n")
@@ -32,7 +32,7 @@ func TestUntrackedFileIsPartOfTheSnapshot(t *testing.T) {
 // Requirement "Snapshot", scenario "An ignored file is not".
 func TestIgnoredFileIsNotPartOfTheSnapshot(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	before := status(t, repo).Tree
 
 	repo.Write("build/out.bin", "binary\n")
@@ -46,15 +46,15 @@ func TestIgnoredFileIsNotPartOfTheSnapshot(t *testing.T) {
 // Requirement "Snapshot", scenario "The index is left alone".
 func TestRunLeavesTheIndexAlone(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	repo.Write("src/app.txt", "edited\n")
 	repo.Write("src/new.txt", "new\n")
 	before := repo.Git("status", "--porcelain")
 
-	result := repo.CW("run")
+	result := repo.Gatecub("run")
 
 	if after := repo.Git("status", "--porcelain"); after != before {
-		t.Fatalf("git status --porcelain before cw run:\n%s\nafter (cw run exit status %d):\n%s", before, result.Code, after)
+		t.Fatalf("git status --porcelain before gatecub run:\n%s\nafter (gatecub run exit status %d):\n%s", before, result.Code, after)
 	}
 }
 
@@ -64,7 +64,7 @@ func TestLargeRepositoryHasASnapshot(t *testing.T) {
 		t.Skip("creates 30,001 files and a 68 MiB file")
 	}
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	many := repo.Path("many")
 	for i := range 30001 {
 		dir := filepath.Join(many, fmt.Sprintf("d%03d", i/1000))
@@ -85,12 +85,12 @@ func TestLargeRepositoryHasASnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := repo.CW("status", "--json")
+	result := repo.Gatecub("status", "--json")
 
 	if strings.Contains(strings.ToLower(result.Output()), "too large") {
-		t.Fatalf("cw status --json reports that the source is too large (exit status %d):\n%s", result.Code, result.Output())
+		t.Fatalf("gatecub status --json reports that the source is too large (exit status %d):\n%s", result.Code, result.Output())
 	}
 	if out := decodeStatus(t, result); out.Tree == "" {
-		t.Fatalf("cw status --json printed no tree:\n%s", result.Output())
+		t.Fatalf("gatecub status --json printed no tree:\n%s", result.Output())
 	}
 }

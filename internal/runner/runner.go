@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/decl"
-	"github.com/belevtsev/agent-workflows/v3/internal/gitx"
-	"github.com/belevtsev/agent-workflows/v3/internal/proc"
-	"github.com/belevtsev/agent-workflows/v3/internal/store"
+	"github.com/belevtsev/gatecub/v3/internal/decl"
+	"github.com/belevtsev/gatecub/v3/internal/gitx"
+	"github.com/belevtsev/gatecub/v3/internal/proc"
+	"github.com/belevtsev/gatecub/v3/internal/store"
 )
 
 // controlCExit is the exit status of a Windows program that the console
@@ -80,14 +80,14 @@ func Execute(ctx context.Context, repo *gitx.Repo, st *store.Store, job Job) (Re
 		Timeout: job.Check.Timeout,
 	})
 	if errors.Is(ended.Err, exec.ErrWaitDelay) {
-		warnings = append(warnings, fmt.Sprintf("`%s`: a process the check started was left behind and held its output open; cw stopped it", job.Check.ID))
+		warnings = append(warnings, fmt.Sprintf("`%s`: a process the check started was left behind and held its output open; gatecub stopped it", job.Check.ID))
 	}
 	if ended.Cleanup != nil {
 		warnings = append(warnings, fmt.Sprintf("`%s`: a process the check started could not be stopped: %v", job.Check.ID, ended.Cleanup))
 	}
 	end := classify(ctx, repo, st, job, ended)
 	if end.detail != "" {
-		_, _ = log.Write([]byte("\ncw: " + end.detail + "\n"))
+		_, _ = log.Write([]byte("\ngatecub: " + end.detail + "\n"))
 	}
 	if err := log.Close(); err != nil {
 		warnings = append(warnings, fmt.Sprintf("`%s`: the log is incomplete: %v", job.Check.ID, err))
@@ -106,7 +106,7 @@ type ending struct {
 }
 
 // classify says how a run ended. A program that ended with a failure while
-// the run was being cancelled was interrupted, whichever of the two cw saw
+// the run was being cancelled was interrupted, whichever of the two gatecub saw
 // first: on Windows the console sends its signal to the program as well.
 func classify(ctx context.Context, repo *gitx.Repo, st *store.Store, job Job, ended proc.Result) ending {
 	switch {
@@ -115,7 +115,7 @@ func classify(ctx context.Context, repo *gitx.Repo, st *store.Store, job Job, en
 	case ended.Stopped:
 		return ending{outcome: store.TimedOut, detail: fmt.Sprintf("the check did not end within its timeout of %s", job.Check.Timeout)}
 	case ended.Code < 0:
-		// The program started and something outside cw ended it, or it
+		// The program started and something outside gatecub ended it, or it
 		// never started.
 		var exited *exec.ExitError
 		detail := fmt.Sprintf("the program `%s` could not be started", job.Check.Run[0])
@@ -235,7 +235,7 @@ func (l *runLog) Close() error {
 	defer l.mu.Unlock()
 	err := l.err
 	if dropped := l.total - headLimit - int64(len(l.tail)); dropped > 0 && err == nil {
-		mark := fmt.Sprintf("\n--- cw: %d bytes of output were dropped here ---\n", dropped)
+		mark := fmt.Sprintf("\n--- gatecub: %d bytes of output were dropped here ---\n", dropped)
 		ordered := append(append([]byte(mark), l.tail[l.next:]...), l.tail[:l.next]...)
 		if err = l.file.Truncate(headLimit); err == nil {
 			_, err = l.file.WriteAt(ordered, headLimit)
@@ -250,7 +250,7 @@ func (l *runLog) Close() error {
 // BatchRefusal says why a check must not be started on Windows, or nothing.
 // cmd.exe reads the command line of a batch file again, so an argument with
 // a character outside a plain set could be read as a second command. Such a
-// check is refused: cw never guesses a quoting. program is the file the
+// check is refused: gatecub never guesses a quoting. program is the file the
 // system found for the check.
 func BatchRefusal(program string, args []string) string {
 	lower := strings.ToLower(program)

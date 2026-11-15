@@ -3,11 +3,11 @@ package pushgate_test
 import (
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // linkedWorktree adds the linked worktree ../wt on a branch of its own.
-func linkedWorktree(repo *cwtest.Repo) *cwtest.Repo {
+func linkedWorktree(repo *gatecubtest.Repo) *gatecubtest.Repo {
 	repo.Git("worktree", "add", "-q", "-b", "wt", "../wt")
 	return repo.In("../wt")
 }
@@ -19,10 +19,10 @@ func TestAFailingMainCheckoutDoesNotBlockAWorktree(t *testing.T) {
 	repo, _ := gated(t)
 	wt := linkedWorktree(repo)
 	repo.Write("src/app.txt", "broken\n")
-	mustCW(t, repo, 5, "run")
+	mustGatecub(t, repo, 5, "run")
 
 	wt.Write("README.md", "# demo\nmore\n")
-	mustCW(t, wt, 0, "run")
+	mustGatecub(t, wt, 0, "run")
 	before := refOn(wt, "HEAD")
 	commit := wt.TryGit("commit", "-a", "-m", "docs")
 	if commit.Code != 0 {

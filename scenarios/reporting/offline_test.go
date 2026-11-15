@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // isolation is the command line that runs a program in a network namespace
@@ -37,21 +37,21 @@ type step struct {
 
 // session runs the commands of the scenario in a new demo, each behind
 // prefix (none for the run with networking), and returns how each ended,
-// the decisions and runs cw stats --json counts, and whether the commit was
+// the decisions and runs gatecub stats --json counts, and whether the commit was
 // recorded.
 func session(t *testing.T, prefix []string) ([]step, stats, bool) {
 	t.Helper()
-	repo := cwtest.Demo(t)
-	run := func(name string, args ...string) cwtest.Result {
+	repo := gatecubtest.Demo(t)
+	run := func(name string, args ...string) gatecubtest.Result {
 		t.Helper()
 		if len(prefix) == 0 {
 			return repo.Run("", name, args...)
 		}
 		return repo.Run("", prefix[0], append(append(append([]string(nil), prefix[1:]...), name), args...)...)
 	}
-	cw := cwProgram(t)
+	gatecub := gatecubProgram(t)
 	var steps []step
-	record := func(label string, result cwtest.Result) {
+	record := func(label string, result gatecubtest.Result) {
 		t.Helper()
 		t.Logf("%s (exit %d):\n%s", label, result.Code, result.Output())
 		steps = append(steps, step{label, result.Code})
@@ -71,19 +71,19 @@ func session(t *testing.T, prefix []string) ([]step, stats, bool) {
 		}
 	}
 
-	record("cw init", run(cw, "init"))
-	record("cw add", run(cw, "add", "extra", "--", "sh", "-c", "exit 0"))
-	record("cw run", run(cw, "run"))
-	record("cw status", run(cw, "status"))
+	record("gatecub init", run(gatecub, "init"))
+	record("gatecub add", run(gatecub, "add", "extra", "--", "sh", "-c", "exit 0"))
+	record("gatecub run", run(gatecub, "run"))
+	record("gatecub status", run(gatecub, "status"))
 	repo.Write("README.md", "# demo, edited\n")
-	record("cw run after an edit", run(cw, "run"))
+	record("gatecub run after an edit", run(gatecub, "run"))
 	before := head(repo)
 	record("git commit", run("git", "commit", "-a", "-q", "-m", "change"))
 	committed := head(repo) != before
-	record("cw stats", run(cw, "stats"))
+	record("gatecub stats", run(gatecub, "stats"))
 
-	result := run(cw, "stats", "--json")
-	record("cw stats --json", result)
+	result := run(gatecub, "stats", "--json")
+	record("gatecub stats --json", result)
 	got := statsJSON(t, repo) // read outside the namespace, to compare
 	return steps, got, committed
 }
@@ -104,6 +104,6 @@ func TestEverythingWorksOffline(t *testing.T) {
 		t.Errorf("the gated commit was recorded offline: %v, with networking: %v", gotCommit, wantCommit)
 	}
 	if !reflect.DeepEqual(gotStats.Runs, wantStats.Runs) || !reflect.DeepEqual(gotStats.Decisions, wantStats.Decisions) {
-		t.Errorf("cw stats counts offline %+v %+v, with networking %+v %+v", gotStats.Runs, gotStats.Decisions, wantStats.Runs, wantStats.Decisions)
+		t.Errorf("gatecub stats counts offline %+v %+v, with networking %+v %+v", gotStats.Runs, gotStats.Decisions, wantStats.Runs, wantStats.Decisions)
 	}
 }

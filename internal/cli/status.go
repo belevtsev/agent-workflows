@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/decl"
-	"github.com/belevtsev/agent-workflows/v3/internal/evidence"
-	"github.com/belevtsev/agent-workflows/v3/internal/gate"
-	"github.com/belevtsev/agent-workflows/v3/internal/store"
+	"github.com/belevtsev/gatecub/v3/internal/decl"
+	"github.com/belevtsev/gatecub/v3/internal/evidence"
+	"github.com/belevtsev/gatecub/v3/internal/gate"
+	"github.com/belevtsev/gatecub/v3/internal/store"
 )
 
-// statusReport is the object `cw status --json` prints. No field is removed
+// statusReport is the object `gatecub status --json` prints. No field is removed
 // or changes its meaning while the declaration version is 1.
 type statusReport struct {
 	Tree          string        `json:"tree"`
@@ -53,7 +53,7 @@ func runStatus(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	if len(p.pos) > 0 || p.dash {
-		return usagef("status takes no arguments; usage: cw status [--json]")
+		return usagef("status takes no arguments; usage: gatecub status [--json]")
 	}
 	s, err := open(ctx, cfg, true)
 	if err != nil {
@@ -134,7 +134,7 @@ func printStatus(cfg Config, st *store.Store, verdict *evidence.Verdict, index *
 	case verdict.Verified:
 		fmt.Fprintln(out, "verified: every declared check has a passing run on this content")
 	case report.Hooks != gate.Installed:
-		fmt.Fprintln(out, "not verified, but no hook of cw judges a commit in this clone yet")
+		fmt.Fprintln(out, "not verified, but no hook of gatecub judges a commit in this clone yet")
 	default:
 		fmt.Fprintln(out, "not verified: a commit of this content would be denied")
 	}
@@ -166,7 +166,7 @@ func printStatus(cfg Config, st *store.Store, verdict *evidence.Verdict, index *
 		}
 	}
 	if !verdict.Verified {
-		fmt.Fprintln(out, "run `cw run` to produce the missing evidence")
+		fmt.Fprintln(out, "run `gatecub run` to produce the missing evidence")
 	}
 }
 

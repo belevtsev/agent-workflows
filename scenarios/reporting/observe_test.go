@@ -4,15 +4,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // observed is demo with the hooks installed in observe mode.
-func observed(t *testing.T) *cwtest.Repo {
+func observed(t *testing.T) *gatecubtest.Repo {
 	t.Helper()
-	repo := cwtest.Demo(t)
-	if result := repo.CW("init", "--observe"); result.Code != 0 {
-		t.Fatalf("cw init --observe exited %d:\n%s", result.Code, result.Output())
+	repo := gatecubtest.Demo(t)
+	if result := repo.Gatecub("init", "--observe"); result.Code != 0 {
+		t.Fatalf("gatecub init --observe exited %d:\n%s", result.Code, result.Output())
 	}
 	return repo
 }
@@ -34,8 +34,8 @@ func TestACommitThatWouldBeDeniedGoesThroughAndIsCounted(t *testing.T) {
 	t.Parallel()
 	repo := observed(t)
 	repo.Write("src/app.txt", "broken\n")
-	if result := repo.CW("run"); result.Code != 5 {
-		t.Fatalf("cw run exited %d, want 5:\n%s", result.Code, result.Output())
+	if result := repo.Gatecub("run"); result.Code != 5 {
+		t.Fatalf("gatecub run exited %d, want 5:\n%s", result.Code, result.Output())
 	}
 	before := head(repo)
 
@@ -51,7 +51,7 @@ func TestACommitThatWouldBeDeniedGoesThroughAndIsCounted(t *testing.T) {
 		t.Errorf("the line does not say that the commit would have been denied because unit failed: %q", lines[0])
 	}
 	if n := statsJSON(t, repo).count("pre-commit", "observe", "denied"); n != 1 {
-		t.Errorf("cw stats counts %d observed denials, want 1", n)
+		t.Errorf("gatecub stats counts %d observed denials, want 1", n)
 	}
 }
 
@@ -60,7 +60,7 @@ func TestACommitThatWouldBeDeniedGoesThroughAndIsCounted(t *testing.T) {
 func TestACauseThatPreventsADecisionIsObservedToo(t *testing.T) {
 	t.Parallel()
 	repo := observed(t)
-	repo.Write("cw.toml", `version = 1
+	repo.Write("gatecub.toml", `version = 1
 
 [[check]]
 id = "unit"
@@ -72,10 +72,10 @@ tiemout = "5m"
 id = "lint"
 run = ["sh", "lint.sh"]
 `)
-	if line := strings.Split(repo.Read("cw.toml"), "\n")[8]; line != `tiemout = "5m"` {
-		t.Fatalf("line 9 of cw.toml is %q", line)
+	if line := strings.Split(repo.Read("gatecub.toml"), "\n")[8]; line != `tiemout = "5m"` {
+		t.Fatalf("line 9 of gatecub.toml is %q", line)
 	}
-	repo.Git("add", "cw.toml")
+	repo.Git("add", "gatecub.toml")
 	before := head(repo)
 
 	result := repo.TryGit("commit", "-m", "change")
@@ -96,13 +96,13 @@ run = ["sh", "lint.sh"]
 func TestEnforcingAgain(t *testing.T) {
 	t.Parallel()
 	repo := observed(t)
-	if result := repo.CW("init"); result.Code != 0 {
-		t.Fatalf("cw init exited %d:\n%s", result.Code, result.Output())
+	if result := repo.Gatecub("init"); result.Code != 0 {
+		t.Fatalf("gatecub init exited %d:\n%s", result.Code, result.Output())
 	}
 	statuses := hookStatuses(t, repo)
 	repo.Write("src/app.txt", "broken\n")
-	if result := repo.CW("run"); result.Code != 5 {
-		t.Fatalf("cw run exited %d, want 5:\n%s", result.Code, result.Output())
+	if result := repo.Gatecub("run"); result.Code != 5 {
+		t.Fatalf("gatecub run exited %d, want 5:\n%s", result.Code, result.Output())
 	}
 	before := head(repo)
 
@@ -113,7 +113,7 @@ func TestEnforcingAgain(t *testing.T) {
 		t.Errorf("the commit was recorded (git exit %d):\n%s", result.Code, result.Output())
 	}
 	if got := statuses(); len(got) != 1 || got[0] != "pre-commit 3" {
-		t.Errorf("cw hook ran with the exit statuses %q, want [pre-commit 3]", got)
+		t.Errorf("gatecub hook ran with the exit statuses %q, want [pre-commit 3]", got)
 	}
 	if _, ok := lineWith(result.Stderr, "unit"); !ok {
 		t.Errorf("standard error does not give the reason:\n%s", result.Stderr)

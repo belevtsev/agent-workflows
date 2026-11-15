@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/decl"
+	"github.com/belevtsev/gatecub/v3/internal/decl"
 )
 
 // The parts of a change folder a problem can belong to.
@@ -75,6 +75,7 @@ func Check(f *Folder) ([]Problem, error) {
 
 func (f *Folder) specRules() ([]Problem, error) {
 	var problems []Problem
+	scenarios := map[string]string{}
 	for _, spec := range f.Specs {
 		current, err := f.current(spec.Capability)
 		if err != nil {
@@ -87,6 +88,17 @@ func (f *Folder) specRules() ([]Problem, error) {
 				problems = append(problems, flaw)
 			}
 			seen[req.Name] = req.Line
+			if req.Section == "REMOVED" {
+				continue
+			}
+			for _, s := range req.Scenarios {
+				if first, found := scenarios[s.Name]; found {
+					text := fmt.Sprintf("the scenario `%s` has the name of the scenario at %s; rename it and update tests.md so scenario names are unique within this change", s.Name, first)
+					problems = append(problems, Problem{File: spec.File, Line: s.Line, Text: text})
+				} else {
+					scenarios[s.Name] = fmt.Sprintf("%s:%d", spec.File, s.Line)
+				}
+			}
 		}
 	}
 	return problems, nil
@@ -236,7 +248,7 @@ func readInside(root, rel string) ([]byte, error) {
 	return os.ReadFile(real)
 }
 
-// declared reads the ids of the checks cw.toml declares. A repository
+// declared reads the ids of the checks gatecub.toml declares. A repository
 // without the file declares none.
 func declared(root string) (map[string]bool, error) {
 	data, err := os.ReadFile(filepath.Join(root, decl.FileName))
@@ -277,7 +289,7 @@ func (f *Folder) designRules() ([]Problem, error) {
 	var checks map[string]bool
 	for _, rule := range f.Design.Rules {
 		if len(rule.CheckedBy) == 0 {
-			at(rule.Line, "the rule does not say how it is checked: by `review`, or by a check of cw.toml")
+			at(rule.Line, "the rule does not say how it is checked: by `review`, or by a check of gatecub.toml")
 		}
 		for _, by := range rule.CheckedBy {
 			if by == "review" {
@@ -290,7 +302,7 @@ func (f *Folder) designRules() ([]Problem, error) {
 				}
 			}
 			if !checks[by] {
-				at(rule.Line, "cw.toml declares no check `%s`", by)
+				at(rule.Line, "gatecub.toml declares no check `%s`", by)
 			}
 		}
 	}

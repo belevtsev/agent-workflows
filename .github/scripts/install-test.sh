@@ -1,8 +1,8 @@
 #!/bin/sh
 # install-test.sh TAG REVISION [ARCHIVES]
 #
-# Follows the first install instruction of README.md for Linux and macOS, on a
-# PATH that holds no go, and exits 0 only when `cw version` then prints TAG
+# Follows the first install instruction of docs/release-install.md for Linux and macOS, on a
+# PATH that holds no go, and exits 0 only when `gatecub version` then prints TAG
 # and REVISION.
 #
 # With ARCHIVES, a directory that holds the archives and SHA256SUMS, the
@@ -11,7 +11,7 @@
 # one byte of the archive changed, and must fail and install nothing. The
 # changed archive still unpacks, so only the checksum step can refuse it.
 #
-# Without ARCHIVES the instruction runs exactly as the README gives it, so it
+# Without ARCHIVES the instruction runs exactly as the release-install document gives it, so it
 # needs the published release.
 #
 # It needs curl, tar and a checksum program as the instruction does, and
@@ -42,11 +42,11 @@ awk '
 	seen && !inside && /^```sh$/ { inside = 1; next }
 	inside && /^```$/ { exit }
 	inside
-' README.md >"$work/instruction.sh"
+' docs/release-install.md >"$work/instruction.sh"
 grep -q "^tag=$tag\$" "$work/instruction.sh" ||
-	fail "The first install instruction of README.md does not install $tag."
+	fail "The first install instruction of docs/release-install.md does not install $tag."
 grep -q '^base=https://' "$work/instruction.sh" ||
-	fail "The first install instruction of README.md has no line that starts with base=https://."
+	fail "The first install instruction of docs/release-install.md has no line that starts with base=https://."
 
 # A PATH without go. A directory that holds go is replaced by a directory of
 # links to everything else in it: on some systems that directory is /usr/bin.
@@ -81,7 +81,7 @@ if [ -z "$archives" ]; then
 else
 	os=$(uname -s | tr '[:upper:]' '[:lower:]')
 	arch=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
-	archive=cw_${tag}_${os}_${arch}.tar.gz
+	archive=gatecub_${tag}_${os}_${arch}.tar.gz
 	mkdir "$work/good" "$work/damaged"
 	cp "$archives/$archive" "$archives/SHA256SUMS" "$work/good/" ||
 		fail "$archives does not hold $archive and SHA256SUMS."
@@ -95,7 +95,7 @@ else
 	printf "\\$(printf '%03o' $(((old + 1) % 256)))" |
 		dd of="$work/damaged/$archive" bs=1 seek="$at" conv=notrunc 2>/dev/null
 	cmp -s "$work/good/$archive" "$work/damaged/$archive" && fail "The damaged copy does not differ."
-	tar -xzf "$work/damaged/$archive" -O cw >/dev/null 2>&1 ||
+	tar -xzf "$work/damaged/$archive" -O gatecub >/dev/null 2>&1 ||
 		fail "The damaged copy does not unpack, so it cannot show that the checksum is checked."
 
 	python3 -m http.server "$port" --bind 127.0.0.1 --directory "$work" >/dev/null 2>&1 &
@@ -112,15 +112,15 @@ else
 fi
 
 follow good || fail "The install instruction failed."
-printed=$("$work/home-good/.local/bin/cw" version)
+printed=$("$work/home-good/.local/bin/gatecub" version)
 echo "$printed"
-echo "$printed" | grep -qx "cw $tag" || fail "cw version does not print the tag $tag."
-echo "$printed" | grep -qx "revision $revision" || fail "cw version does not print the revision $revision."
+echo "$printed" | grep -qx "gatecub $tag" || fail "gatecub version does not print the tag $tag."
+echo "$printed" | grep -qx "revision $revision" || fail "gatecub version does not print the revision $revision."
 
 if [ -n "$archives" ]; then
 	if follow damaged; then
 		fail "The install instruction succeeded with a damaged archive."
 	fi
-	[ ! -e "$work/home-damaged/.local/bin/cw" ] || fail "cw was installed from a damaged archive."
+	[ ! -e "$work/home-damaged/.local/bin/gatecub" ] || fail "gatecub was installed from a damaged archive."
 	echo "A damaged archive was refused and nothing was installed."
 fi

@@ -5,12 +5,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // addWorktree adds a linked worktree next to the repository, on a branch
 // of its own.
-func addWorktree(repo *cwtest.Repo, branch string) *cwtest.Repo {
+func addWorktree(repo *gatecubtest.Repo, branch string) *gatecubtest.Repo {
 	dir := filepath.Join(filepath.Dir(repo.Dir), branch)
 	repo.Git("worktree", "add", "-q", "-b", branch, dir)
 	return repo.In(dir)

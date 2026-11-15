@@ -8,7 +8,7 @@ approving its own work.
 
 Shared fixture for the scenarios below, unless a scenario says otherwise:
 
-- The repository `demo` and the `cw-roles.toml` of the `role-definitions`
+- The repository `demo` and the `gatecub-roles.toml` of the `role-definitions`
   specification, with the plugin installed and the gate enforcing.
 - "The record" of a task is its change folder (`change-record`).
 - "A role is started" means the coordinator starts it as `role-definitions`,
@@ -21,13 +21,13 @@ Shared fixture for the scenarios below, unless a scenario says otherwise:
 
 ### Requirement: Entry
 
-The workflow SHALL start from a request in the developer's words, from documents the developer names, or from an existing change folder. For an existing folder it SHALL continue at the first stage that is not finished, which `cw change status` names, and SHALL NOT repeat a finished stage. When `git status --porcelain` prints anything, the coordinator SHALL ask the developer to commit it or set it aside before any role starts.
+The workflow SHALL start from a request in the developer's words, from documents the developer names, or from an existing change folder. For an existing folder it SHALL continue at the first stage that is not finished, which `gatecub change status` names, and SHALL NOT repeat a finished stage. When `git status --porcelain` prints anything, the coordinator SHALL ask the developer to commit it or set it aside before any role starts.
 
 Source: the owner's statement of 14 November 2026 (implement a task from scratch by creating a specification or working with existing ones); `skills/task-orchestration/references/contracts/README.md` (the spec stage is skipped when a reviewed spec exists); the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
 #### Scenario: A folder with an approved specification (evaluation)
 
-- **WHEN** `cw change status add-greeting` prints `design` and the developer asks to continue `add-greeting`
+- **WHEN** `gatecub change status add-greeting` prints `design` and the developer asks to continue `add-greeting`
 - **THEN** the first role started is `architect`, and `proposal.md` and `specs/` are unchanged at the end
 
 ### Requirement: Two paths
@@ -71,7 +71,7 @@ Source: `skills/task-orchestration/references/contracts/README.md` (the `lite` f
 #### Scenario: A defect is shown by a test first (evaluation)
 
 - **WHEN** the small path runs for the defect that `unit.sh` accepts an empty `src/app.txt`
-- **THEN** `cw run` fails after the tests stage and passes after the code stage, and `openspec/` is unchanged
+- **THEN** `gatecub run` fails after the tests stage and passes after the code stage, and `openspec/` is unchanged
 
 ### Requirement: Existing specifications
 
@@ -134,7 +134,7 @@ Source: `skills/task-orchestration/references/contracts/README.md` (findings go 
 
 ### Requirement: Tests before code
 
-On both paths the tests stage SHALL end before `developer` is started, except for a first group of `tasks.md` that builds only the design's interface with empty bodies. Between the two the coordinator SHALL run `cw run`, and when every check passes it SHALL tell the developer that the new tests did not fail without the code. When `developer` reports a wrong test, the coordinator SHALL start `quality-engineer` with that report before `developer` continues.
+On both paths the tests stage SHALL end before `developer` is started, except for a first group of `tasks.md` that builds only the design's interface with empty bodies. Between the two the coordinator SHALL run `gatecub run`, and when every check passes it SHALL tell the developer that the new tests did not fail without the code. When `developer` reports a wrong test, the coordinator SHALL start `quality-engineer` with that report before `developer` continues.
 
 Source: review finding H6 (the test engineer and the implementer share a checkout); review finding H8 (tests that miss what they claim to cover); the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
@@ -145,7 +145,7 @@ Source: review finding H6 (the test engineer and the implementer share a checkou
 
 ### Requirement: Limits are checked
 
-After each role ends, the coordinator SHALL run `cw roles check` for that role, from the tree before it started, and after `spec-writer` and `architect` also `cw change check`. On exit 5 it SHALL start the role again with what the command named, and SHALL neither accept the work nor repair it; when a role exceeds its limit a second time, it SHALL stop and ask the developer. A file left by a role that writes nothing SHALL be removed only with the developer's yes.
+After each role ends, the coordinator SHALL run `gatecub roles check` for that role, from the tree before it started, and after `spec-writer` and `architect` also `gatecub change check`. On exit 5 it SHALL start the role again with what the command named, and SHALL neither accept the work nor repair it; when a role exceeds its limit a second time, it SHALL stop and ask the developer. A file left by a role that writes nothing SHALL be removed only with the developer's yes.
 
 Source: review finding H6 (nothing checks what a role changed); `role-definitions`: Write limits; the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
@@ -161,7 +161,7 @@ Source: review finding H6 (nothing checks what a role changed); `role-definition
 
 ### Requirement: Done means verified
 
-The coordinator SHALL call a task done only when `cw status` exits 0, the commit of the task exists, and on the full path `cw change check` exits 0. It SHALL report as a claim whatever a role says about a result that no run of `cw` shows.
+The coordinator SHALL call a task done only when `gatecub status` exits 0, the commit of the task exists, and on the full path `gatecub change check` exits 0. It SHALL report as a claim whatever a role says about a result that no run of `gatecub` shows.
 
 Source: the first change's `publish-gate`: Commit rule; review finding H6 (the README states self-declared results as fact).
 
@@ -172,7 +172,7 @@ Source: the first change's `publish-gate`: Commit rule; review finding H6 (the R
 
 ### Requirement: Commits through the gate
 
-`git` SHALL make every commit of a task through the gate, after `cw run`, and SHALL NOT pass an option that skips a hook. On the full path the change folder SHALL be committed with the tests and the code it describes.
+`git` SHALL make every commit of a task through the gate, after `gatecub run`, and SHALL NOT pass an option that skips a hook. On the full path the change folder SHALL be committed with the tests and the code it describes.
 
 Source: the first change's `agent-integration`: Ask before skipping; `publish-gate`: Commit rule.
 
@@ -183,25 +183,25 @@ Source: the first change's `agent-integration`: Ask before skipping; `publish-ga
 
 ### Requirement: A repository without checks
 
-In a repository whose root holds no `cw.toml`, the workflow SHALL first have `lookup` find the commands the repository already uses to test and to lint, propose them as checks, and wait for the developer's approval before `cw init` and `cw add` run. The coordinator SHALL run each proposed command once before it becomes a check. It SHALL call no work verified while no check is declared.
+In a repository whose root holds no `gatecub.toml`, the workflow SHALL first have `lookup` find the commands the repository already uses to test and to lint, propose them as checks, and wait for the developer's approval before `gatecub init` and `gatecub add` run. The coordinator SHALL run each proposed command once before it becomes a check. It SHALL call no work verified while no check is declared.
 
 Source: the owner's statement (any codebase; from scratch); the first change's `check-declaration`: Create a declaration, Add a check from the command line; review finding H4; the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
 #### Scenario: Checks are proposed from what the repository has (evaluation)
 
-- **WHEN** `cw.toml` is removed from `demo`, its hooks are uninstalled, and the developer asks for a greeting
+- **WHEN** `gatecub.toml` is removed from `demo`, its hooks are uninstalled, and the developer asks for a greeting
 - **THEN** the developer is asked to approve checks that run `unit.sh` and `lint.sh` before any role writes
 
 #### Scenario: An empty repository (evaluation)
 
 - **WHEN** the developer asks for a greeting in a new repository with no file
-- **THEN** `design.md` names the checks the code will have, and `cw.toml` declares them before the first commit that holds code
+- **THEN** `design.md` names the checks the code will have, and `gatecub.toml` declares them before the first commit that holds code
 
 ### Requirement: No state outside the record
 
 The workflow SHALL keep no lock and no state of a task outside its change folder and git. Another session SHALL be able to continue a task from these alone, and a finished or abandoned task SHALL deny nothing.
 
-Source: review findings H2 (a killed run blocks the next one) and H9 (a finished task denies the next edit, and only `cw task abandon` closes it).
+Source: review findings H2 (a killed run blocks the next one) and H9 (a finished task denies the next edit, and only `gatecub task abandon` closes it).
 
 #### Scenario: Another session continues (evaluation)
 
@@ -210,7 +210,7 @@ Source: review findings H2 (a killed run blocks the next one) and H9 (a finished
 
 #### Scenario: An abandoned task blocks nothing
 
-- **WHEN** the change folder `add-greeting` is left at the stage `design`, `README.md` is edited, `cw run` exits 0, and `git commit -a -m docs` runs
+- **WHEN** the change folder `add-greeting` is left at the stage `design`, `README.md` is edited, `gatecub run` exits 0, and `git commit -a -m docs` runs
 - **THEN** the commit is recorded
 
 ### Requirement: Role starts
@@ -222,11 +222,13 @@ Source: review finding H7 (4 to 13 role starts for a lite task and 9 to 27 for a
 #### Scenario: The count on the full path (evaluation)
 
 - **WHEN** the full path runs for one task, `tasks.md` has one group, and no role is started a second time for a stage
-- **THEN** `cw tokens --json` reports eight starts of roles other than `lookup`
+- **THEN** `gatecub tokens --json` reports eight starts of roles other than `lookup`
 
 ### Requirement: Current specifications
 
-When the developer says that a finished change has shipped, `spec-writer` SHALL bring `openspec/specs/` in line with it: every `ADDED` requirement present, every `MODIFIED` one replaced, every `REMOVED` one absent. `reviewer` SHALL compare the two, and the folder SHALL then move to `openspec/changes/archive/`. This step is not part of a path.
+When the developer says that a finished change has shipped, the coordinator SHALL confirm `done`, record the snapshot, and start `spec-writer` with an explicit finalization brief. The role SHALL bring only the task's capabilities in `openspec/specs/` in line with it: every `ADDED` requirement present, every `MODIFIED` one replaced, every `REMOVED` one absent. The coordinator SHALL run `gatecub roles check spec-writer --from <snapshot> --task <task> --finalize`; `reviewer` SHALL compare the two and pass its ordinary role check. The folder SHALL then move to `openspec/changes/archive/`, followed by `gatecub change check`. The ordinary change check SHALL NOT run between synchronization and archive, because the newly synchronized `ADDED` requirements overlap the living specifications. This step is not part of a path; normal role limits remain unchanged elsewhere.
+
+The starting tree SHALL be saved as `refs/gatecub/finalize/<task>` before the role starts. While the change folder is active, an interrupted finalization SHALL reuse this baseline for its scope check and review without requiring `done` again; if it is missing the coordinator SHALL ask the developer. After archival, resumption SHALL finish final validation and commit, or verify the archive commit already exists. The saved ref SHALL be deleted only after the archive is committed through the gate.
 
 Source: the owner's statement (working with existing specifications: the next task finds them only if they are kept current); proposal, Non-goals (no merge by program).
 

@@ -23,7 +23,7 @@ htmlcov/
 .bin/
 .bin.lock/
 dist/
-.cw-release-*/
+.gatecub-release-*/
 
 # Claude Code local settings and worktrees
 .claude/

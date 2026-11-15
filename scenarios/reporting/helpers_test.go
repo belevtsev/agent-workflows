@@ -16,30 +16,30 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // gated is the shared fixture of gate-reporting and publish-gate: demo with
 // the hooks installed and the gate enforcing.
-func gated(t *testing.T) *cwtest.Repo {
+func gated(t *testing.T) *gatecubtest.Repo {
 	t.Helper()
-	repo := cwtest.Demo(t)
-	if result := repo.CW("init"); result.Code != 0 {
-		t.Fatalf("cw init exited %d:\n%s", result.Code, result.Output())
+	repo := gatecubtest.Demo(t)
+	if result := repo.Gatecub("init"); result.Code != 0 {
+		t.Fatalf("gatecub init exited %d:\n%s", result.Code, result.Output())
 	}
 	return repo
 }
 
-// checked brings a repository to the checked state: cw run has just ended
+// checked brings a repository to the checked state: gatecub run has just ended
 // with both checks passed.
-func checked(t *testing.T, repo *cwtest.Repo) {
+func checked(t *testing.T, repo *gatecubtest.Repo) {
 	t.Helper()
-	if result := repo.CW("run"); result.Code != 0 {
-		t.Fatalf("cw run exited %d, want 0 for the checked state:\n%s", result.Code, result.Output())
+	if result := repo.Gatecub("run"); result.Code != 0 {
+		t.Fatalf("gatecub run exited %d, want 0 for the checked state:\n%s", result.Code, result.Output())
 	}
 }
 
-// statusCheck is one entry of checks in the output of cw status --json.
+// statusCheck is one entry of checks in the output of gatecub status --json.
 type statusCheck struct {
 	ID         string `json:"id"`
 	State      string `json:"state"`
@@ -51,7 +51,7 @@ type statusCheck struct {
 	Log        string `json:"log"`
 }
 
-// status is the object cw status --json prints.
+// status is the object gatecub status --json prints.
 type status struct {
 	Tree          string        `json:"tree"`
 	Verified      *bool         `json:"verified"`
@@ -62,13 +62,13 @@ type status struct {
 	Checks        []statusCheck `json:"checks"`
 }
 
-// statusJSON runs cw status --json and decodes its object.
-func statusJSON(t *testing.T, repo *cwtest.Repo) (status, cwtest.Result) {
+// statusJSON runs gatecub status --json and decodes its object.
+func statusJSON(t *testing.T, repo *gatecubtest.Repo) (status, gatecubtest.Result) {
 	t.Helper()
-	result := repo.CW("status", "--json")
+	result := repo.Gatecub("status", "--json")
 	var out status
 	if err := json.Unmarshal([]byte(result.Stdout), &out); err != nil {
-		t.Fatalf("cw status --json (exit %d) did not print one JSON object: %v\n%s", result.Code, err, result.Output())
+		t.Fatalf("gatecub status --json (exit %d) did not print one JSON object: %v\n%s", result.Code, err, result.Output())
 	}
 	return out, result
 }
@@ -81,11 +81,11 @@ func (s status) check(t *testing.T, id string) statusCheck {
 			return c
 		}
 	}
-	t.Fatalf("cw status --json reports no check %q: %+v", id, s.Checks)
+	t.Fatalf("gatecub status --json reports no check %q: %+v", id, s.Checks)
 	return statusCheck{}
 }
 
-// decision is one entry of decisions in the output of cw stats --json.
+// decision is one entry of decisions in the output of gatecub stats --json.
 type decision struct {
 	Hook    string                    `json:"hook"`
 	Mode    string                    `json:"mode"`
@@ -95,7 +95,7 @@ type decision struct {
 	Checks  map[string]map[string]int `json:"checks"`
 }
 
-// stats is the object cw stats --json prints.
+// stats is the object gatecub stats --json prints.
 type stats struct {
 	Since            string                    `json:"since"`
 	Until            string                    `json:"until"`
@@ -105,17 +105,17 @@ type stats struct {
 	Unreadable       int                       `json:"unreadable"`
 }
 
-// statsJSON runs cw stats with the given arguments and --json and decodes
+// statsJSON runs gatecub stats with the given arguments and --json and decodes
 // its object.
-func statsJSON(t *testing.T, repo *cwtest.Repo, args ...string) stats {
+func statsJSON(t *testing.T, repo *gatecubtest.Repo, args ...string) stats {
 	t.Helper()
-	result := repo.CW(append(append([]string{"stats"}, args...), "--json")...)
+	result := repo.Gatecub(append(append([]string{"stats"}, args...), "--json")...)
 	if result.Code != 0 {
-		t.Errorf("cw stats --json exited %d, want 0:\n%s", result.Code, result.Output())
+		t.Errorf("gatecub stats --json exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 	var out stats
 	if err := json.Unmarshal([]byte(result.Stdout), &out); err != nil {
-		t.Fatalf("cw stats --json (exit %d) did not print one JSON object: %v\n%s", result.Code, err, result.Output())
+		t.Fatalf("gatecub stats --json (exit %d) did not print one JSON object: %v\n%s", result.Code, err, result.Output())
 	}
 	return out
 }
@@ -164,32 +164,32 @@ func holdsNumber(text string, n int) bool {
 	return regexp.MustCompile(`(^|[^0-9])` + strconv.Itoa(n) + `($|[^0-9])`).MatchString(text)
 }
 
-// cwProgram is the path of the cw under test.
-func cwProgram(t *testing.T) string {
+// gatecubProgram is the path of the gatecub under test.
+func gatecubProgram(t *testing.T) string {
 	t.Helper()
-	name := "cw"
+	name := "gatecub"
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
-	return filepath.Join(cwtest.Binary(t), name)
+	return filepath.Join(gatecubtest.Binary(t), name)
 }
 
 // head is the commit HEAD names.
-func head(repo *cwtest.Repo) string { return repo.Git("rev-parse", "HEAD") }
+func head(repo *gatecubtest.Repo) string { return repo.Git("rev-parse", "HEAD") }
 
-// hookStatuses makes the hooks that git runs in the repository reach cw
-// through a wrapper that writes down the exit status of each `cw hook`, and
+// hookStatuses makes the hooks that git runs in the repository reach gatecub
+// through a wrapper that writes down the exit status of each `gatecub hook`, and
 // returns a function that reads what was written, one "<hook> <status>" per
 // call. The wrapper is a shell script, so it is used where the hooks run
 // with a POSIX shell that finds a program without an extension.
-func hookStatuses(t *testing.T, repo *cwtest.Repo) func() []string {
+func hookStatuses(t *testing.T, repo *gatecubtest.Repo) func() []string {
 	t.Helper()
 	if runtime.GOOS == "windows" {
 		t.Skip("the wrapper that observes the exit status of a hook is a POSIX shell script")
 	}
 	dir := t.TempDir()
 	log := filepath.Join(dir, "statuses")
-	real := cwProgram(t)
+	real := gatecubProgram(t)
 	script := fmt.Sprintf(`#!/bin/sh
 %q "$@"
 status=$?
@@ -200,7 +200,7 @@ exit $status
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	writeProgram(t, filepath.Join(bin, "cw"), script)
+	writeProgram(t, filepath.Join(bin, "gatecub"), script)
 	path := ""
 	for _, kv := range repo.Env() {
 		if value, ok := strings.CutPrefix(kv, "PATH="); ok {

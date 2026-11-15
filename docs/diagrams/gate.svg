@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg viewBox="0 0 804 528" data-reader-fit="width-first" data-layout-contract="readable-v2" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" style="--flow-cycle: 6.584s; width: 804px; height: 528px; min-width: 0px;" width="804" height="528" xmlns="http://www.w3.org/2000/svg"><style>
+<svg viewBox="0 0 804 528" data-reader-fit="width-first" data-layout-contract="readable-v2" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" style="--flow-cycle: 6.864s; width: 804px; height: 528px; min-width: 0px;" width="804" height="528" xmlns="http://www.w3.org/2000/svg"><style>
 /*
 JetBrains Mono variable WOFF2 subsets from Google Fonts service revision v24.
 These fixed bytes are shared by the viewer and its SVG/raster exports.
@@ -399,154 +399,154 @@ svg[data-preset="editorial"] { --flow-halo-peak: 0.07; --flow-glow-peak: 0.28; -
 }
 @keyframes archify-relay-ripple { 
   0% { r: 2px; opacity: var(--flow-peak, 0.6); }
-  11.391%, 100% { r: 20px; opacity: 0; }
+  10.927%, 100% { r: 20px; opacity: 0; }
 }
 @keyframes archify-relay-comet-0 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.823% { opacity: var(--flow-peak, 0.9); }
-  9.166% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  11.596%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.748% { opacity: var(--flow-peak, 0.9); }
+  8.793% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  11.124%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-0 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  9.166% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  22.835%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  8.793% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  21.906%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-1 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.595% { opacity: var(--flow-peak, 0.9); }
-  7.973% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  10.403%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.53% { opacity: var(--flow-peak, 0.9); }
+  7.648% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  9.98%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-1 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  7.973% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  21.642%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  7.648% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  20.761%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-2 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.823% { opacity: var(--flow-peak, 0.9); }
-  10.631% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  13.061%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.748% { opacity: var(--flow-peak, 0.9); }
+  10.199% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  12.53%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-2 { 
-  0%, 3.189% { opacity: 0; }
-  10.631% { opacity: var(--flow-peak, 0.3); }
-  24.3%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 3.06% { opacity: 0; }
+  10.199% { opacity: var(--flow-peak, 0.3); }
+  23.312%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-3 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.823% { opacity: var(--flow-peak, 0.9); }
-  22.782% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  25.212%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.748% { opacity: var(--flow-peak, 0.9); }
+  21.855% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  24.186%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-3 { 
-  0%, 6.834% { opacity: 0; }
-  22.782% { opacity: var(--flow-peak, 0.3); }
-  36.45%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 6.556% { opacity: 0; }
+  21.855% { opacity: var(--flow-peak, 0.3); }
+  34.967%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-4 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.276% { opacity: var(--flow-peak, 0.9); }
-  6.379% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  8.809%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.224% { opacity: var(--flow-peak, 0.9); }
+  6.119% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  8.45%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-4 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  6.379% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  20.048%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  6.119% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  19.232%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-5 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.276% { opacity: var(--flow-peak, 0.9); }
-  6.379% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  8.809%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.224% { opacity: var(--flow-peak, 0.9); }
+  6.119% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  8.45%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-5 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  6.379% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  20.048%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  6.119% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  19.232%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-6 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.714% { opacity: var(--flow-peak, 0.9); }
-  8.57% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  11%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.644% { opacity: var(--flow-peak, 0.9); }
+  8.222% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  10.553%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-6 { 
-  0%, 2.571% { opacity: 0; }
-  8.57% { opacity: var(--flow-peak, 0.3); }
-  22.239%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 2.466% { opacity: 0; }
+  8.222% { opacity: var(--flow-peak, 0.3); }
+  21.334%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-7 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.276% { opacity: var(--flow-peak, 0.9); }
-  6.379% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  8.809%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.224% { opacity: var(--flow-peak, 0.9); }
+  6.119% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  8.45%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-7 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  6.379% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  20.048%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  6.119% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  19.232%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-8 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.823% { opacity: var(--flow-peak, 0.9); }
-  10.631% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  13.061%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.748% { opacity: var(--flow-peak, 0.9); }
+  16.337% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  18.669%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-8 { 
-  0%, 3.189% { opacity: 0; }
-  10.631% { opacity: var(--flow-peak, 0.3); }
-  24.3%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 4.901% { opacity: 0; }
+  16.337% { opacity: var(--flow-peak, 0.3); }
+  29.45%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-node-0 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
   0% { filter: var(--ambient-node-base-filter, none); }
-  1.823%, 6.379% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  18.225% { filter: var(--ambient-node-base-filter, none); }
+  1.748%, 6.119% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  17.484% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-1 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  6.379% { filter: var(--ambient-node-base-filter, none); }
-  8.201%, 12.758% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  24.604% { filter: var(--ambient-node-base-filter, none); }
+  6.119% { filter: var(--ambient-node-base-filter, none); }
+  7.868%, 12.239% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  23.603% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-2 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  10.631% { filter: var(--ambient-node-base-filter, none); }
-  12.454%, 17.01% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  28.857% { filter: var(--ambient-node-base-filter, none); }
+  16.337% { filter: var(--ambient-node-base-filter, none); }
+  18.086%, 22.457% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  33.821% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-3 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  17.064% { filter: var(--ambient-node-base-filter, none); }
-  18.886%, 23.442% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  35.289% { filter: var(--ambient-node-base-filter, none); }
+  16.369% { filter: var(--ambient-node-base-filter, none); }
+  18.118%, 22.489% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  33.853% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-4 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  20.72% { filter: var(--ambient-node-base-filter, none); }
-  22.543%, 27.099% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  38.946% { filter: var(--ambient-node-base-filter, none); }
+  23.946% { filter: var(--ambient-node-base-filter, none); }
+  25.694%, 30.065% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  41.429% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-5 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  28.618% { filter: var(--ambient-node-base-filter, none); }
-  30.44%, 34.997% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  46.843% { filter: var(--ambient-node-base-filter, none); }
+  31.522% { filter: var(--ambient-node-base-filter, none); }
+  33.27%, 37.641% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  49.006% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-6 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  38.109% { filter: var(--ambient-node-base-filter, none); }
-  39.932%, 44.488% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  56.335% { filter: var(--ambient-node-base-filter, none); }
+  40.627% { filter: var(--ambient-node-base-filter, none); }
+  42.376%, 46.747% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  58.111% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-7 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  40.768% { filter: var(--ambient-node-base-filter, none); }
-  42.591%, 47.147% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  58.993% { filter: var(--ambient-node-base-filter, none); }
+  43.178% { filter: var(--ambient-node-base-filter, none); }
+  44.926%, 49.297% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  60.662% { filter: var(--ambient-node-base-filter, none); }
 }
 svg[data-node-ui] [data-node-id] &gt; rect:not(.c-mask) { stroke-width: 1.25px; }
 :is([data-theme="dark"] svg[data-node-ui], svg[data-node-ui][data-theme="dark"]) [data-node-id] &gt; rect:not(.c-mask).c-frontend { fill: color-mix(in srgb, var(--frontend-stroke) 13%, var(--mask)); stroke: color-mix(in srgb, var(--frontend-stroke) 72%, var(--mask)); }
@@ -626,7 +626,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <text x="54" y="198" class="t-muted" font-size="10" font-weight="600">02 / git</text>
 
         <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="748" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="322" class="t-muted" font-size="10" font-weight="600">03 / cw</text>
+        <text x="54" y="322" class="t-muted" font-size="10" font-weight="600">03 / Gatecub</text>
 
         <!-- Phase headers -->
         <path d="M 72 35 H 148" class="a-default phase-rule" stroke-width="1" stroke-linecap="round" fill="none"/>
@@ -648,17 +648,17 @@ rect.c-bg-rect { fill: var(--bg); }
         <path data-edge-from="judge" data-edge-to="decide" data-edge-key="5" data-edge-id="judge-decide" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="426,367;542,367" d="M 426 367 L 542 367" class="a-default" data-animate="edge" style="--step: 3;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <path data-edge-from="runs" data-edge-to="judge" data-edge-label="evidence" data-edge-key="6" data-edge-id="records-judge" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="156,367;314,367" d="M 156 367 L 314 367" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="run" data-edge-to="commit" data-edge-key="7" data-edge-id="run-commit" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="172,119;204,119" d="M 172 119 L 204 119" class="a-default" data-animate="edge" style="--step: 0;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="run" data-edge-to="runs" data-edge-label="records" data-edge-key="8" data-edge-id="run-record" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="110,145;110,341" d="M 110 145 L 110 341" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="run" data-edge-to="runs" data-edge-label="records" data-edge-key="8" data-edge-id="run-record" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="48,119;20,119;20,367;64,367" d="M 48 119 L 28 119 Q 20 119 20 127 L 20 359 Q 20 367 28 367 L 64 367" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
 
         <!-- Nodes -->
-        <g id="node-run" data-node-id="run" data-node-label="cw run" tabindex="0" role="button" aria-label="Focus cw run, runs what has not passed, You › 1. Evidence" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="runs what has not passed" data-node-context="You › 1. Evidence">
-          <title>cw run · runs what has not passed · You › 1. Evidence</title>
+        <g id="node-run" data-node-id="run" data-node-label="gatecub run" tabindex="0" role="button" aria-label="Focus gatecub run, runs what has not passed, You › 1. Evidence" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="runs what has not passed" data-node-context="You › 1. Evidence">
+          <title>gatecub run · runs what has not passed · You › 1. Evidence</title>
           <rect x="48" y="93" width="124" height="52" rx="8" class="c-mask"/>
           <rect x="48" y="93" width="124" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 0; --flow-node-name: archify-relay-node-0;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(54 99) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="110" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">cw run</text>
+          <text data-node-label="" x="110" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">gatecub run</text>
           <text x="110" y="131" class="t-muted" font-size="8" text-anchor="middle">runs what has not passed</text>
         </g>
 
@@ -711,31 +711,31 @@ rect.c-bg-rect { fill: var(--bg); }
           <text x="730" y="255" class="t-muted" font-size="8" text-anchor="middle">git goes on</text>
         </g>
 
-        <g id="node-runs" data-node-id="runs" data-node-label="cw/runs/" tabindex="0" role="button" aria-label="Focus cw/runs/, a record per run, cw › 1. Evidence" aria-pressed="false" data-node-kind="database" data-node-sublabel="a record per run" data-node-context="cw › 1. Evidence">
-          <title>cw/runs/ · a record per run · cw › 1. Evidence</title>
+        <g id="node-runs" data-node-id="runs" data-node-label="gatecub/runs/" tabindex="0" role="button" aria-label="Focus gatecub/runs/, a record per run, Gatecub › 1. Evidence" aria-pressed="false" data-node-kind="database" data-node-sublabel="a record per run" data-node-context="Gatecub › 1. Evidence">
+          <title>gatecub/runs/ · a record per run · Gatecub › 1. Evidence</title>
           <rect x="64" y="341" width="92" height="52" rx="8" class="c-mask"/>
           <rect x="64" y="341" width="92" height="52" rx="8" class="c-database" data-animate="node" style="--step: 11; --flow-node-name: archify-relay-node-2;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(70 347) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" x="110" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">cw/runs/</text>
-          <text x="110" y="379" class="t-muted" font-size="8" text-anchor="middle">a record per run</text>
+          <text data-node-label="" x="110" y="372.9" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">gatecub/runs/</text>
+          <text x="110" y="387.8" class="t-muted" font-size="8" text-anchor="middle">a record per run</text>
         </g>
 
-        <g id="node-judge" data-node-id="judge" data-node-label="cw hook judges" tabindex="0" role="button" aria-label="Focus cw hook judges, commit or pushed tip, cw › 2. The decision, in enforce mode" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="commit or pushed tip" data-node-context="cw › 2. The decision, in enforce mode">
-          <title>cw hook judges · commit or pushed tip · cw › 2. The decision, in enforce mode</title>
+        <g id="node-judge" data-node-id="judge" data-node-label="gatecub hook" tabindex="0" role="button" aria-label="Focus gatecub hook, commit or pushed tip, Gatecub › 2. The decision, in enforce mode" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="commit or pushed tip" data-node-context="Gatecub › 2. The decision, in enforce mode">
+          <title>gatecub hook · commit or pushed tip · Gatecub › 2. The decision, in enforce mode</title>
           <rect x="314" y="341" width="112" height="52" rx="8" class="c-mask"/>
           <rect x="314" y="341" width="112" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 3; --flow-node-name: archify-relay-node-4;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(320 347) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="370" y="373.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">cw hook judges</text>
-          <text x="370" y="388.1" class="t-muted" font-size="8" text-anchor="middle">commit or pushed tip</text>
+          <text data-node-label="" x="372.6" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">gatecub hook</text>
+          <text x="370" y="379" class="t-muted" font-size="8" text-anchor="middle">commit or pushed tip</text>
         </g>
 
-        <g id="node-decide" data-node-id="decide" data-node-label="Every check passed?" tabindex="0" role="button" aria-label="Focus Every check passed?, on exactly this content, cw › 2. The decision, in enforce mode" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="on exactly this content" data-node-context="cw › 2. The decision, in enforce mode">
-          <title>Every check passed? · on exactly this content · cw › 2. The decision, in enforce mode</title>
+        <g id="node-decide" data-node-id="decide" data-node-label="Every check passed?" tabindex="0" role="button" aria-label="Focus Every check passed?, on exactly this content, Gatecub › 2. The decision, in enforce mode" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="on exactly this content" data-node-context="Gatecub › 2. The decision, in enforce mode">
+          <title>Every check passed? · on exactly this content · Gatecub › 2. The decision, in enforce mode</title>
           <rect x="542" y="341" width="136" height="52" rx="8" class="c-mask"/>
           <rect x="542" y="341" width="136" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 4; --flow-node-name: archify-relay-node-5;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="decision" class="semantic-sigil s-frontend" transform="translate(548 347) scale(0.6875)">
@@ -773,36 +773,36 @@ rect.c-bg-rect { fill: var(--bg); }
         </g>
 
         <g data-edge-from="run" data-edge-to="runs" data-edge-label="records" data-edge-key="8" data-edge-id="run-record">
-          <rect x="88.2" y="233" width="43.6" height="14" rx="3" class="c-mask"/>
-          <text x="110" y="243" class="t-edge-dashed" font-size="8" text-anchor="middle">records</text>
+          <rect x="20.2" y="347" width="43.6" height="14" rx="3" class="c-mask"/>
+          <text x="42" y="357" class="t-edge-dashed" font-size="8" text-anchor="middle">records</text>
         </g>
 
         <!-- Legend -->
-        <g data-legend="" style="">
+        <g data-legend="">
           <text x="20" y="428" class="t-primary" font-size="12" font-weight="650">Legend</text>
-          <g data-legend-semantic-kind="frontend" data-legend-x="20" data-legend-baseline="448" data-legend-width="53">
+          <g data-legend-semantic-kind="frontend" data-legend-x="20" data-legend-baseline="448" data-legend-width="76">
             <rect x="20" y="440" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
-            <text x="42" y="448" class="t-muted" font-size="7.5" font-weight="500">cw</text>
+            <text x="42" y="448" class="t-muted" font-size="7.5" font-weight="500">Gatecub</text>
           </g>
-          <g data-legend-semantic-kind="backend" data-legend-x="80" data-legend-baseline="448" data-legend-width="76">
-            <rect x="80" y="440" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
-            <text x="102" y="448" class="t-muted" font-size="7.5" font-weight="500">Allowed</text>
+          <g data-legend-semantic-kind="backend" data-legend-x="103" data-legend-baseline="448" data-legend-width="76">
+            <rect x="103" y="440" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
+            <text x="125" y="448" class="t-muted" font-size="7.5" font-weight="500">Allowed</text>
           </g>
-          <g data-legend-semantic-kind="security" data-legend-x="163" data-legend-baseline="448" data-legend-width="71">
-            <rect x="163" y="440" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
-            <text x="185" y="448" class="t-muted" font-size="7.5" font-weight="500">Denied</text>
+          <g data-legend-semantic-kind="security" data-legend-x="186" data-legend-baseline="448" data-legend-width="71">
+            <rect x="186" y="440" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
+            <text x="208" y="448" class="t-muted" font-size="7.5" font-weight="500">Denied</text>
           </g>
-          <g data-legend-semantic-kind="messagebus" data-legend-x="241" data-legend-baseline="448" data-legend-width="57">
-            <rect x="241" y="440" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
-            <text x="263" y="448" class="t-muted" font-size="7.5" font-weight="500">git</text>
+          <g data-legend-semantic-kind="messagebus" data-legend-x="264" data-legend-baseline="448" data-legend-width="57">
+            <rect x="264" y="440" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
+            <text x="286" y="448" class="t-muted" font-size="7.5" font-weight="500">git</text>
           </g>
-          <g data-legend-semantic-kind="database" data-legend-x="305" data-legend-baseline="448" data-legend-width="76">
-            <rect x="305" y="440" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
-            <text x="327" y="448" class="t-muted" font-size="7.5" font-weight="500">Records</text>
+          <g data-legend-semantic-kind="database" data-legend-x="328" data-legend-baseline="448" data-legend-width="76">
+            <rect x="328" y="440" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
+            <text x="350" y="448" class="t-muted" font-size="7.5" font-weight="500">Records</text>
           </g>
-          <g data-legend-semantic-kind="external" data-legend-x="388" data-legend-baseline="448" data-legend-width="123">
-            <rect x="388" y="440" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
-            <text x="410" y="448" class="t-muted" font-size="7.5" font-weight="500">You or your agent</text>
+          <g data-legend-semantic-kind="external" data-legend-x="411" data-legend-baseline="448" data-legend-width="123">
+            <rect x="411" y="440" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
+            <text x="433" y="448" class="t-muted" font-size="7.5" font-weight="500">You or your agent</text>
           </g>
         </g>
       </svg>

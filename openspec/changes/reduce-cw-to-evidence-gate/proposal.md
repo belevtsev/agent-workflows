@@ -1,5 +1,7 @@
 # Proposal: reduce-cw-to-evidence-gate
 
+Current interface names below use Gatecub. Dated observations and the `v3.0.0-beta.1` release refer to the former `cw` tool; Gatecub's beta.2 is unpublished.
+
 Status: on 14 November 2026 the owner accepted the eight recommended answers
 under Open Questions. Nothing here was implemented then. It is built since,
 and was released as `v3.0.0-beta.1` on 15 November 2026. "Today" in this
@@ -8,7 +10,7 @@ cut is in [keep-and-cut.md](keep-and-cut.md); the order of the work is in
 [tasks.md](tasks.md).
 
 Later the same day the owner changed one answer and added one requirement:
-Windows is in the first version, and installing `cw` must not need Go. Both
+Windows is in the first version, and installing `gatecub` must not need Go. Both
 are in the capability `platform-support`. The owner also decided that a
 release archive is enough for the first version: no package manager. Open
 Questions 9 to 11 are new and open.
@@ -21,6 +23,8 @@ are not an optional layer elsewhere but the second part of this tool, in this
 repository. No requirement and no task of this change depends on that.
 
 ## Why
+
+These are historical results for `cw`, before the Gatecub rename; no new Gatecub host run is claimed.
 
 The strict review of commit `ce9b122` (see Sources) found one idea in this
 project that other people could use, and a product around it that they cannot
@@ -67,14 +71,14 @@ language, with any agent, on Linux, macOS or Windows.
 
 ## Terms
 
-- **Declaration**: the file `cw.toml` at the repository root. It lists the
+- **Declaration**: the file `gatecub.toml` at the repository root. It lists the
   checks.
 - **Check**: a program and its arguments, with an `id`. Optionally `paths`, the
   files the check depends on, and a `timeout`.
 - **Snapshot**: the git tree that `git add -A` followed by `git commit` would
   record from the working tree. It holds every tracked file as it is on disk and
   every untracked file that git does not ignore.
-- **Run**: one execution of one check by `cw run`, recorded with the snapshot it
+- **Run**: one execution of one check by `gatecub run`, recorded with the snapshot it
   ran on.
 - **A path differs** between two trees when it exists in only one of them, or
   its content or its mode is different. Renames and copies are not detected, so
@@ -91,16 +95,16 @@ language, with any agent, on Linux, macOS or Windows.
 
 ## What Changes
 
-- **BREAKING** `cw` becomes a gate with ten commands: `cw init`, `cw add`,
-  `cw run`, `cw status`, `cw stats`, `cw context`, `cw hook`, `cw guard`,
-  `cw uninstall` and `cw version`. (`cw guard` was added during the build: it
-  is the plugin's question before a tool call, kept in `cw` so that the hook
-  files hold no logic.) The commands `cw task` (23 subcommands), `cw publish`,
-  `cw consult`, `cw keys`, `cw metrics`, `cw pack`, `cw doctor`, `cw gate` and
-  `cw install` leave the core.
-- **BREAKING** Checks are declared in a committed file, `cw.toml`, not in a
+- **BREAKING** `gatecub` becomes a gate with ten commands: `gatecub init`, `gatecub add`,
+  `gatecub run`, `gatecub status`, `gatecub stats`, `gatecub context`, `gatecub hook`, `gatecub guard`,
+  `gatecub uninstall` and `gatecub version`. (`gatecub guard` was added during the build: it
+  is the plugin's question before a tool call, kept in `gatecub` so that the hook
+  files hold no logic.) The commands `gatecub task` (23 subcommands), `gatecub publish`,
+  `gatecub consult`, `gatecub keys`, `gatecub metrics`, `gatecub pack`, `gatecub doctor`, `gatecub gate` and
+  `gatecub install` leave the core.
+- **BREAKING** Checks are declared in a committed file, `gatecub.toml`, not in a
   per-task JSON plan. A check is any program: a test command, a linter, a
-  coverage floor, a mutation test, a script that calls a review agent. `cw`
+  coverage floor, a mutation test, a script that calls a review agent. `gatecub`
   knows nothing about any language.
 - **BREAKING** Evidence is bound to a git tree, not to a task. There is no
   task, plan, profile, stage, round, brief, bundle, handoff, acceptance or
@@ -108,19 +112,19 @@ language, with any agent, on Linux, macOS or Windows.
 - **BREAKING** The gate is git hooks only: `pre-commit`, `pre-merge-commit` and
   `pre-push`. They judge the tree the commit records and the refs the push
   sends. Nothing parses shell commands.
-- **BREAKING** The gate fails closed. When it cannot decide, or `cw` is missing,
+- **BREAKING** The gate fails closed. When it cannot decide, or `gatecub` is missing,
   it denies. Today it allows.
 - **BREAKING** Records live inside the repository's git directory, not under
   `~/.local/state`. One small record per run; no revision chain.
-- `cw` opens no network connection and sends nothing anywhere.
+- `gatecub` opens no network connection and sends nothing anywhere.
 - The Claude Code and Codex plugin shrinks to two jobs: tell the agent the
   repository is gated, and ask the user before the agent skips the gate.
-- New: `cw stats` counts, from local records, what the gate allowed, what it
+- New: `gatecub stats` counts, from local records, what the gate allowed, what it
   denied and why. New: an observe mode records what the gate would have denied
   without denying, so each adopter can measure the benefit before enforcing.
-- New: `cw add` writes a check into `cw.toml` from the command line, so the
+- New: `gatecub add` writes a check into `gatecub.toml` from the command line, so the
   first gated commit needs no hand-written file.
-- New: `cw` runs on Windows as well as on Linux and macOS. Today Windows is not
+- New: `gatecub` runs on Windows as well as on Linux and macOS. Today Windows is not
   supported (`docs/operations.md:131`).
 - New: each release has an archive for each of the three systems, and the
   first install instruction needs no Go toolchain. Today the README lists Go as
@@ -133,13 +137,13 @@ No migration is owed. No `v3` tag had been published before this change
 
 ### New Capabilities
 
-- `check-declaration`: the `cw.toml` format, its validation, `cw init` and
-  `cw add`.
+- `check-declaration`: the `gatecub.toml` format, its validation, `gatecub init` and
+  `gatecub add`.
 - `check-evidence`: the snapshot, running checks, what a run records, when a
   check is satisfied, when a tree is verified, and the record store.
 - `publish-gate`: the git hooks, the commit rule, the merge rule, the push rule,
-  failing closed, denial messages, observe mode and `cw uninstall`.
-- `gate-reporting`: `cw status`, `cw stats`, recorded decisions and exit
+  failing closed, denial messages, observe mode and `gatecub uninstall`.
+- `gate-reporting`: `gatecub status`, `gatecub stats`, recorded decisions and exit
   statuses.
 - `agent-integration`: what the Claude Code and Codex plugin does and does not
   do.
@@ -153,6 +157,8 @@ removes has no specification to modify. The removals are listed under What
 Changes and Non-goals.
 
 ## Impact
+
+These are historical results for `cw`, before the Gatecub rename; no new Gatecub host run is claimed.
 
 - **Code.** The core needs a declaration reader, a check runner, a record store,
   three hook decisions and the ten commands above. Of today's packages, the ones
@@ -188,7 +194,7 @@ Changes and Non-goals.
 - Adviser consultation, adviser keys, usage budgets and cost tracking.
 - Language rules: the Go evidence rule, per-test credit, the flag allowlist and
   the C-toolchain trust layer. A check passes when its program exits 0.
-- `cw publish`, pull-request creation, Graphify, packs, the doctor and the
+- `gatecub publish`, pull-request creation, Graphify, packs, the doctor and the
   Codex installer.
 - Defence against a hostile agent or person. Someone who forges a record, edits
   a hook or uses `git commit --no-verify` gets past the gate. The gate is a
@@ -198,14 +204,14 @@ Changes and Non-goals.
   content on this machine. It does not capture the toolchain version, ignored
   files, environment variables or network state.
 - Sharing evidence between clones or with CI. CI runs the same declaration
-  again (`cw run --base`).
+  again (`gatecub run --base`).
 - Running checks in parallel, running checks inside a hook, and checking a
   partial commit (`git add -p`) in a separate copy of the tree.
 - Package managers such as Homebrew, Scoop, winget or npm in the first
-  version. `cw` is installed from a release archive. The owner decided this on
+  version. `gatecub` is installed from a release archive. The owner decided this on
   14 November 2026.
 - Version control systems other than git.
-- Sparse checkouts in the first version. `cw` refuses to run where tracked
+- Sparse checkouts in the first version. `gatecub` refuses to run where tracked
   files are kept off the disk on purpose (`check-evidence`: Working tree that
   cannot be recorded).
 
@@ -213,7 +219,7 @@ Changes and Non-goals.
 
 These follow from the design and are stated so that nobody is surprised.
 
-- Git does not version hooks. Each clone runs `cw init` once. A clone without
+- Git does not version hooks. Each clone runs `gatecub init` once. A clone without
   hooks is not gated; CI is the backstop.
 - `paths` is a promise by the repository that the check reads nothing else. A
   wrong `paths` carries a pass over to content the check never saw.
@@ -231,12 +237,12 @@ These follow from the design and are stated so that nobody is surprised.
 - A run is bound to the tree git records, after git's own conversions: line
   endings, clean filters and `core.fileMode`. It is not bound to the bytes on
   disk.
-- When another tool's `pre-commit` hook changes files after `cw hook
-  pre-commit` has run, git records a tree that `cw` did not judge (observed).
-  `cw hook` must therefore be the last command of a shared hook. If it is not,
+- When another tool's `pre-commit` hook changes files after `gatecub hook
+  pre-commit` has run, git records a tree that `gatecub` did not judge (observed).
+  `gatecub hook` must therefore be the last command of a shared hook. If it is not,
   the push rule still denies the resulting commit.
 - When `core.hooksPath` is set, the hooks belong to the owner or to a hook
-  manager, and `cw init` writes none. A linked worktree is then gated only when
+  manager, and `gatecub init` writes none. A linked worktree is then gated only when
   those hook files exist in it (observed: a relative path with untracked hook
   files leaves a worktree without hooks).
 - Git runs `pre-push` for `git push --dry-run` as well and gives the hook no
@@ -245,11 +251,11 @@ These follow from the design and are stated so that nobody is surprised.
   uncommitted changes inside a submodule is refused, because the snapshot
   could not hold them (`check-evidence`: Working tree that cannot be
   recorded).
-- On Windows `cw` needs Git for Windows; its shell runs the hooks. A Linux
+- On Windows `gatecub` needs Git for Windows; its shell runs the hooks. A Linux
   distribution under the Windows Subsystem for Linux counts as Linux.
-- One `cw.toml` holds the same checks on every system. A check that names a
+- One `gatecub.toml` holds the same checks on every system. A check that names a
   program only some systems have, such as `sh` or `make`, fails on the others.
-  `cw` does not translate commands (`platform-support`: Programs that a system
+  `gatecub` does not translate commands (`platform-support`: Programs that a system
   lacks).
 - Nothing in this specification was observed on Windows. The git behaviour it
   relies on was observed on Linux only, so each requirement may need a
@@ -269,7 +275,7 @@ These follow from the design and are stated so that nobody is surprised.
   it again after it (observed). The push rule judges the tip that is pushed.
 - `git am` runs `pre-applypatch`, not `pre-commit`. A commit made with
   `git commit-tree` and moved with `git update-ref` runs no hook of a commit;
-  `git update-ref` runs `reference-transaction`, which `cw` does not
+  `git update-ref` runs `reference-transaction`, which `gatecub` does not
   install (observed). The push rule judges the tip that is pushed.
 - A forced push that moves a branch back to a commit the remote's branch
   already contains adds nothing and is allowed without a judgement
@@ -277,19 +283,19 @@ These follow from the design and are stated so that nobody is surprised.
 - The push rule does not judge a ref under `refs/notes/`, nor a ref that is no
   branch whose commit a branch of the same push contains; that branch is
   judged.
-- A tree without `cw.toml` cannot be committed or pushed through the hooks. A
-  project that stops using `cw` runs `cw uninstall` in every clone; a branch
-  with other content, such as a documentation site, commits a `cw.toml` that
-  holds only `version = 1` (`docs/operations.md`, "A tree without cw.toml").
+- A tree without `gatecub.toml` cannot be committed or pushed through the hooks. A
+  project that stops using `gatecub` runs `gatecub uninstall` in every clone; a branch
+  with other content, such as a documentation site, commits a `gatecub.toml` that
+  holds only `version = 1` (`docs/operations.md`, "A tree without gatecub.toml").
 
 ## Success measures
 
 The change is done when these hold, each checked by a test or a published
 number:
 
-1. **First gated commit.** On a machine with `cw` installed, a new repository
-   reaches its first gated commit with five commands (`cw init`,
-   `cw add <id> -- <command>`, `cw run`, `git add -A`, `git commit`) and no
+1. **First gated commit.** On a machine with `gatecub` installed, a new repository
+   reaches its first gated commit with five commands (`gatecub init`,
+   `gatecub add <id> -- <command>`, `gatecub run`, `git add -A`, `git commit`) and no
    hand-written file. A test executes exactly this on each of the three
    systems, as the current quick start test does on two.
 2. **Hook cost.** A hook decision takes at most 150 ms on this repository
@@ -299,7 +305,7 @@ number:
    commit's tree and the differing paths of the second (see Sources). The
    limits for Windows are set after the cost is measured there (Open
    Question 10).
-3. **Size.** The core is at most 6,000 lines of production Go. Today's `cw` is
+3. **Size.** The core is at most 6,000 lines of production Go. Today's `gatecub` is
    about 45,000.
 4. **Install.** The first install instruction in the README needs no Go
    toolchain: it downloads the archive of a tagged release for Linux, macOS or
@@ -309,11 +315,13 @@ number:
    `go install` is the second instruction.
 5. **Measured benefit.** Before the README claims a benefit: at least three
    repositories in at least two languages run observe mode for two weeks of
-   agent work, and the README reports, from `cw stats`, the share of commits
+   agent work, and the README reports, from `gatecub stats`, the share of commits
    that would have been denied and why. This is the baseline the review asked
    for in H7.
 
 ## Review findings this change answers
+
+These are historical results for `cw`, before the Gatecub rename; no new Gatecub host run is claimed.
 
 "Removed" means the feature that holds the defect leaves the core. It does not
 mean the defect is fixed in code that stays elsewhere.
@@ -444,7 +452,7 @@ Questions 1 to 8 are decided. On 14 November 2026 the owner accepted the
 recommendation in each of them, and later the same day changed the answer to
 question 7. The specifications are written to those answers. The questions
 stay in this section because the specifications cite them by number. Where a
-question names evidence that would settle it, such as counts from `cw stats`,
+question names evidence that would settle it, such as counts from `gatecub stats`,
 that evidence can reopen it later.
 
 Questions 9 to 11 are open. Each has a recommendation, and the specifications
@@ -453,15 +461,15 @@ recommendations, because the owner asked for the work to go on alone
 ([design](design.md), Decisions taken without the owner).
 
 1. **Where does the multi-agent workflow go?** Recommendation: keep this
-   repository and the name `cw` for the core, and move the roles, the
+   repository and the name `gatecub` for the core, and move the roles, the
    orchestration skill and the task record to an optional layer that uses the
-   core through `cw.toml` checks. Settled by: the owner. The change
+   core through `gatecub.toml` checks. Settled by: the owner. The change
    `add-role-workflow` proposes a new answer (its Open Question 2).
 2. **Is a partial commit denied?** Recommendation: yes in the first version
    (`publish-gate`: Commit rule). Settled by: the count of such denials in
-   `cw stats` from the first adopters; if it is high, add a way to check the
+   `gatecub stats` from the first adopters; if it is high, add a way to check the
    staged tree alone.
-3. **Is a tree without `cw.toml` denied once hooks are installed?**
+3. **Is a tree without `gatecub.toml` denied once hooks are installed?**
    Recommendation: yes (`publish-gate`: Fail closed). A gate that allows when
    its declaration is missing repeats C2. The cost is that an old branch
    without the file needs one. Settled by: the owner.
@@ -481,9 +489,9 @@ recommendations, because the owner asked for the work to go on alone
    (https://developers.openai.com/codex/hooks) says that
    `permissionDecision: "ask"` is "parsed but not supported yet"; Codex then
    marks the hook as failed and runs the tool call. `deny` with
-   `permissionDecisionReason` is supported. So `cw guard --host codex` denies
+   `permissionDecisionReason` is supported. So `gatecub guard --host codex` denies
    with the reason and tells the agent to ask the user, and
-   `cw guard --host claude` asks. The page was read through a summarising
+   `gatecub guard --host claude` asks. The page was read through a summarising
    fetch, so the quotation is close to the page and may not be exact. Nothing
    was run on Codex.
 7. **Is Windows out of the first version?** The recommendation was yes. The
@@ -491,25 +499,25 @@ recommendations, because the owner asked for the work to go on alone
 8. **Does a push judge only the tip commit?** Recommendation: yes
    (`publish-gate`: Push rule). The content that reaches the remote ref is
    checked, and a rebase stays cheap. The stricter option is to require every
-   commit the push adds to be verified, which `git rebase --exec "cw run"`
+   commit the push adds to be verified, which `git rebase --exec "gatecub run"`
    can produce but which makes every rebase cost one full run per commit.
    Settled by: the owner; whether the project needs every commit to pass, for
    example for `git bisect`.
-9. **How does `cw` pass arguments to a batch file on Windows?** `npm`, `yarn`,
+9. **How does `gatecub` pass arguments to a batch file on Windows?** `npm`, `yarn`,
    `gradlew` and `mvn` are batch files there, and `cmd.exe` reads their
    command line by its own rules. Recommendation: pass each argument so that
    it arrives unchanged, and refuse a check with an argument that cannot be
    passed so (`platform-support`: Programs on Windows). Settled by: tests on
    Windows (task 4.7) and Go's documentation of `os/exec.Command`.
    Answer, 14 November 2026, from the tests on Windows in CI (run 19,
-   commit `3eaa40e`). `cw` starts a batch file by the full path of the file. An
+   commit `3eaa40e`). `gatecub` starts a batch file by the full path of the file. An
    argument made only of the letters a to z and A to Z, digits and
    `_ . / : = + , @ \ -` reaches it unchanged. A check with any other
    argument for a batch file, also an empty one, is refused before anything
-   starts, and the refusal names the argument: `cw` guesses no quoting. A
+   starts, and the refusal names the argument: `gatecub` guesses no quoting. A
    program that is not a batch file gets every argument unchanged. A name
    without a folder is found in the folders of `PATH` only, and a path is
-   read from the repository root, also when `cw run` starts in a subfolder.
+   read from the repository root, also when `gatecub run` starts in a subfolder.
 10. **What may a hook decision cost on Windows?** Starting a program and
     running git are slower there, and no number exists. Recommendation:
     measure in CI first, then set the limits in Success measure 2. Settled
@@ -536,7 +544,7 @@ recommendations, because the owner asked for the work to go on alone
 
     Linux and macOS are inside the limits of Success measure 2 in every run.
     Windows is not inside 150 ms for this repository in any, and its cost
-    hardly depends on the size: it is the cost of starting `cw` and the git
+    hardly depends on the size: it is the cost of starting `gatecub` and the git
     calls. Each number is one run on a machine CI provides, and the runs
     differ: by about 30 ms on Windows, and by half on macOS. The limits for
     Windows are the owner's to set; the test fails there for no number.
@@ -549,17 +557,17 @@ recommendations, because the owner asked for the work to go on alone
     Answer, 14 November 2026, from the documentation only; nothing was run
     on Windows. Claude Code (https://code.claude.com/docs/en/hooks) runs a
     hook command with `sh -c` on macOS and Linux and in Git Bash on Windows,
-    and a hook can name `"shell": "bash"`. `cw` needs Git for Windows anyway,
+    and a hook can name `"shell": "bash"`. `gatecub` needs Git for Windows anyway,
     so the two hook commands stay POSIX shell text and name that shell. The
     Codex page does not say which shell runs a hook on Windows; it offers
     `commandWindows` as a Windows-only command. There the two commands are
-    `cw context` and `cw guard --host codex`, which every shell can run. One
-    job is therefore missing under Codex on Windows: the line that says `cw`
+    `gatecub context` and `gatecub guard --host codex`, which every shell can run. One
+    job is therefore missing under Codex on Windows: the line that says `gatecub`
     is not installed. The README says so.
     Changed on 14 November 2026: the Windows command for the start of a
     session now prints that line, so no job is missing there. It prints it
-    when the session's directory itself holds `cw.toml`, not from a
-    subfolder: without `cw` the command runs no program, so that a relative
+    when the session's directory itself holds `gatecub.toml`, not from a
+    subfolder: without `gatecub` the command runs no program, so that a relative
     entry of `PATH` cannot lead it to a file of the repository. A test runs
     each Windows command with `cmd.exe /C` on Windows
     (`scenarios/platform/plugin_windows_test.go`); Codex itself was not run.

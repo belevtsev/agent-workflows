@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/fslock"
+	"github.com/belevtsev/gatecub/v3/internal/fslock"
 )
 
 // The causes that prevent a hook from deciding.
@@ -106,7 +106,7 @@ func (s *Store) Decisions(since time.Time) (decisions []Decision, unreadable int
 
 // Sweep removes what is too old to matter: logs of runs that ended more
 // than 30 days ago, records and decisions older than 365 days, and index
-// copies a dead cw left behind. A sweep that is already running is left to
+// copies a dead gatecub left behind. A sweep that is already running is left to
 // finish; nothing waits for it.
 func (s *Store) Sweep(ctx context.Context, now time.Time) {
 	if _, err := os.Stat(s.Dir); err != nil {

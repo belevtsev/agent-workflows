@@ -1,5 +1,7 @@
 # Tasks: add-role-workflow
 
+This is the historical `cw` implementation record. Current interfaces are named Gatecub; see [migration](../../../docs/migration.md).
+
 Requirement and scenario names refer to the four files under `specs/`.
 Decisions, formats and building blocks refer to [design.md](design.md).
 Success measures and Open Questions refer to [proposal.md](proposal.md).

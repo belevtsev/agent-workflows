@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/decl"
-	"github.com/belevtsev/agent-workflows/v3/internal/gitx"
+	"github.com/belevtsev/gatecub/v3/internal/decl"
+	"github.com/belevtsev/gatecub/v3/internal/gitx"
 )
 
 // Hosts are the agent hosts a role has a model on.
@@ -65,7 +65,7 @@ var defaults = []Role{
 	},
 	{
 		ID: "developer", Job: "Writes the code that makes the tests pass, within the design.",
-		Writes: "any other path except cw.toml, cw-roles.toml and openspec/; may add a test, may not change or remove one",
+		Writes: "outside gatecub.toml, gatecub-roles.toml and openspec/; may add tests, not change or remove them",
 		Models: substantive, Tools: building,
 	},
 	{
@@ -142,19 +142,47 @@ type Violation struct {
 func ChangeFolder(task string) string { return "openspec/changes/" + task + "/" }
 
 // Check compares what changed with what the role may change. tests are the
-// test path patterns of cw-roles.toml; task may be empty.
+// test path patterns of gatecub-roles.toml; task may be empty.
 func Check(role string, changes []gitx.Change, tests []string, task string) ([]Violation, error) {
 	allowed, err := limit(role, tests, task)
 	if err != nil {
 		return nil, err
 	}
+	return check(changes, allowed), nil
+}
+
+func check(changes []gitx.Change, allowed func(gitx.Change) string) []Violation {
 	var out []Violation
 	for _, change := range changes {
 		if why := allowed(change); why != "" {
 			out = append(out, Violation{Path: change.Path, Kind: change.Kind, Why: why})
 		}
 	}
-	return out, nil
+	return out
+}
+
+// CheckFinalization checks only writes to the current specifications of
+// capabilities present in the task's starting tree. Entries must come from
+// that tree, so a role cannot expand its scope by adding a capability.
+func CheckFinalization(changes []gitx.Change, task string, entries []string) ([]Violation, error) {
+	allowed := map[string]bool{}
+	prefix := ChangeFolder(task) + "specs/"
+	for _, entry := range entries {
+		rest, found := strings.CutPrefix(entry, prefix)
+		capability, file, _ := strings.Cut(rest, "/")
+		if found && capability != "" && file == "spec.md" {
+			allowed["openspec/specs/"+capability+"/spec.md"] = true
+		}
+	}
+	if len(allowed) == 0 {
+		return nil, fmt.Errorf("%s has no capability specification in the starting tree", prefix)
+	}
+	return check(changes, func(c gitx.Change) string {
+		if allowed[c.Path] {
+			return ""
+		}
+		return "`spec-writer` finalization may change only openspec/specs/<capability>/spec.md for capabilities of the task in the starting tree"
+	}), nil
 }
 
 // limit gives the rule of one role: a function that returns why a change is
@@ -204,7 +232,7 @@ func limit(role string, tests []string, task string) (func(gitx.Change) string, 
 func developerLimit(c gitx.Change, tests []string) string {
 	switch {
 	case c.Path == decl.FileName, c.Path == FileName, strings.HasPrefix(c.Path, "openspec/"):
-		return "`developer` may not change cw.toml, cw-roles.toml or anything under openspec/"
+		return "`developer` may not change gatecub.toml, gatecub-roles.toml or anything under openspec/"
 	case decl.MatchAny(tests, c.Path) && c.Kind != "added":
 		return "`developer` may add a test and may not change or remove one"
 	}

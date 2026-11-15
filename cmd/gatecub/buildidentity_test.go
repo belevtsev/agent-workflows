@@ -37,8 +37,8 @@ func TestBuildIdentityFromBuildInfoTC1(t *testing.T) {
 	info := func(version string, settings []debug.BuildSetting) *debug.BuildInfo {
 		return &debug.BuildInfo{
 			GoVersion: "go1.27",
-			Path:      "github.com/belevtsev/agent-workflows/v3/cmd/cw",
-			Main:      debug.Module{Path: "github.com/belevtsev/agent-workflows/v3", Version: version},
+			Path:      "github.com/belevtsev/gatecub/v3/cmd/gatecub",
+			Main:      debug.Module{Path: "github.com/belevtsev/gatecub/v3", Version: version},
 			Settings:  settings,
 		}
 	}

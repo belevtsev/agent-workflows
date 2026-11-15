@@ -25,7 +25,7 @@ func TestIsHook(t *testing.T) {
 }
 
 func TestLine(t *testing.T) {
-	if got := Line("pre-commit"); got != `cw hook pre-commit "$@"` {
+	if got := Line("pre-commit"); got != `gatecub hook pre-commit "$@"` {
 		t.Errorf("Line = %q", got)
 	}
 }
@@ -36,16 +36,16 @@ func TestScript(t *testing.T) {
 		if !strings.HasPrefix(script, "#!/bin/sh\n") {
 			t.Errorf("%s does not begin with #!/bin/sh", name)
 		}
-		for _, want := range []string{marker, "exit 3", InstallURL, "command -v cw", "absolute path"} {
+		for _, want := range []string{marker, "exit 3", InstallURL, "command -v gatecub", "absolute path"} {
 			if !strings.Contains(script, want) {
 				t.Errorf("the %s script lacks %q:\n%s", name, want, script)
 			}
 		}
-		if !strings.Contains(script, `case "$cw" in /*) exec "$cw" hook `+name+` "$@" ;; esac`+"\n") || callLine(script, name) == "" {
-			t.Errorf("the %s script does not run cw hook by an absolute path:\n%s", name, script)
+		if !strings.Contains(script, `case "$gatecub" in /*) exec "$gatecub" hook `+name+` "$@" ;; esac`+"\n") || callLine(script, name) == "" {
+			t.Errorf("the %s script does not run gatecub hook by an absolute path:\n%s", name, script)
 		}
-		if strings.Contains(script, "exec cw ") {
-			t.Errorf("the %s script runs cw by its bare name:\n%s", name, script)
+		if strings.Contains(script, "exec gatecub ") {
+			t.Errorf("the %s script runs gatecub by its bare name:\n%s", name, script)
 		}
 		for _, banned := range []string{"go install", "go get", "--no-verify"} {
 			if strings.Contains(script, banned) {
@@ -151,7 +151,7 @@ func TestInstallLeavesForeignFile(t *testing.T) {
 		}
 	}
 	if State(t.Context(), e.repo) != Missing {
-		t.Error("State with a foreign pre-commit that does not call cw is not missing")
+		t.Error("State with a foreign pre-commit that does not call gatecub is not missing")
 	}
 }
 
@@ -211,11 +211,11 @@ func TestState(t *testing.T) {
 	if _, err := Install(t.Context(), e.repo); err != nil {
 		t.Fatal(err)
 	}
-	// A hook of another tool that calls cw counts.
+	// A hook of another tool that calls gatecub counts.
 	path := filepath.Join(e.repo.CommonDir, "hooks", "pre-commit")
 	writeProgram(t, path, "#!/bin/sh\nformat\n"+Line("pre-commit")+"\n")
 	if State(t.Context(), e.repo) != Installed {
-		t.Error("State with a shared hook that calls cw hook is not installed")
+		t.Error("State with a shared hook that calls gatecub hook is not installed")
 	}
 	if err := os.Remove(filepath.Join(e.repo.CommonDir, "hooks", "pre-push")); err != nil {
 		t.Fatal(err)
@@ -237,7 +237,7 @@ func TestState(t *testing.T) {
 		writeProgram(t, filepath.Join(e.dir, ".githooks", name), Script(name))
 	}
 	if State(t.Context(), e.repo) != Installed {
-		t.Error("State with cw hooks in core.hooksPath is not installed")
+		t.Error("State with gatecub hooks in core.hooksPath is not installed")
 	}
 }
 
@@ -257,19 +257,19 @@ func TestUninstall(t *testing.T) {
 		t.Fatal(err)
 	}
 	if removed != 2 {
-		t.Errorf("Uninstall removed %d hooks, want the 2 that cw wrote", removed)
+		t.Errorf("Uninstall removed %d hooks, want the 2 that gatecub wrote", removed)
 	}
 	if want := []Foreign{{Name: "pre-commit", Path: sharedPath, Line: Line("pre-commit")}}; !slices.Equal(foreign, want) {
 		t.Errorf("foreign = %v, want %v", foreign, want)
 	}
 	if own := Own(t.Context(), e.repo); len(own) != 0 {
-		t.Errorf("after Uninstall cw still owns %v", own)
+		t.Errorf("after Uninstall gatecub still owns %v", own)
 	}
 	if readFile(t, sharedPath) != shared {
 		t.Error("Uninstall changed a hook it did not write")
 	}
 	if !exists(unrelated) {
-		t.Error("Uninstall removed a hook that is not cw's")
+		t.Error("Uninstall removed a hook that is not gatecub's")
 	}
 	for _, name := range []string{"pre-merge-commit", "pre-push"} {
 		if exists(filepath.Join(dir, name)) {
@@ -297,7 +297,7 @@ func TestUninstallWithHooksPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	if exists(own) {
-		t.Error("Uninstall left cw's own file in core.hooksPath")
+		t.Error("Uninstall left gatecub's own file in core.hooksPath")
 	}
 	for _, path := range hookPaths(filepath.Join(e.repo.CommonDir, "hooks")) {
 		if exists(path) {
@@ -307,7 +307,7 @@ func TestUninstallWithHooksPath(t *testing.T) {
 }
 
 // A directory that core.hooksPath names belongs to its owner: a file there
-// that holds more than the script of cw is not removed, also when it holds
+// that holds more than the script of gatecub is not removed, also when it holds
 // the marker line. It is named for the user to edit.
 func TestUninstallLeavesAnotherToolsFileInHooksPath(t *testing.T) {
 	e := newEnv(t, map[string]string{"a.txt": "a\n"})
@@ -327,13 +327,13 @@ func TestUninstallLeavesAnotherToolsFileInHooksPath(t *testing.T) {
 	}
 }
 
-// A hook that only mentions cw in a comment does not call it.
-func TestACommentDoesNotCallCW(t *testing.T) {
+// A hook that only mentions gatecub in a comment does not call it.
+func TestACommentDoesNotCallGatecub(t *testing.T) {
 	for script, want := range map[string]bool{
-		"#!/bin/sh\n# TODO: enable: cw hook pre-commit \"$@\"\nexit 0\n": false,
-		"#!/bin/sh\n  # cw hook pre-commit\n":                            false,
-		"#!/bin/sh\nlint || exit 1\ncw hook pre-commit \"$@\"\n":         true,
-		"#!/bin/sh\nexec cw hook pre-push \"$@\"\n":                      false,
+		"#!/bin/sh\n# TODO: enable: gatecub hook pre-commit \"$@\"\nexit 0\n": false,
+		"#!/bin/sh\n  # gatecub hook pre-commit\n":                            false,
+		"#!/bin/sh\nlint || exit 1\ngatecub hook pre-commit \"$@\"\n":         true,
+		"#!/bin/sh\nexec gatecub hook pre-push \"$@\"\n":                      false,
 		Script("pre-commit"): true,
 	} {
 		if got := callLine(script, "pre-commit"); (got != "") != want {
@@ -342,8 +342,8 @@ func TestACommentDoesNotCallCW(t *testing.T) {
 	}
 }
 
-// The line Uninstall names is the one the file holds: a copy of cw's own
-// script that was changed since calls cw in another form than Line gives.
+// The line Uninstall names is the one the file holds: a copy of gatecub's own
+// script that was changed since calls gatecub in another form than Line gives.
 func TestUninstallNamesTheLineTheFileHolds(t *testing.T) {
 	e := newEnv(t, map[string]string{"a.txt": "a\n"})
 	e.git("config", "core.hooksPath", ".githooks")
@@ -356,15 +356,15 @@ func TestUninstallNamesTheLineTheFileHolds(t *testing.T) {
 	if err != nil || len(foreign) != 1 {
 		t.Fatalf("Uninstall = %v, %v; want the changed file named", foreign, err)
 	}
-	if want := `case "$cw" in /*) exec "$cw" hook pre-push "$@" ;; esac`; foreign[0].Line != want || !strings.Contains(readFile(t, edited), want) {
+	if want := `case "$gatecub" in /*) exec "$gatecub" hook pre-push "$@" ;; esac`; foreign[0].Line != want || !strings.Contains(readFile(t, edited), want) {
 		t.Errorf("Uninstall names the line %q, want %q, which the file holds", foreign[0].Line, want)
 	}
 }
 
-// The hook file runs cw only from an entry of PATH that is an absolute path,
+// The hook file runs gatecub only from an entry of PATH that is an absolute path,
 // in every shell: bash started as sh, which is the sh of macOS, gives an
 // absolute path also for a file it found through an empty or relative entry.
-func TestScriptRunsNoCWOfAnEmptyOrRelativeEntryOfPATH(t *testing.T) {
+func TestScriptRunsNoGatecubOfAnEmptyOrRelativeEntryOfPATH(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("runs the hook file with a POSIX shell and plants an executable script")
 	}
@@ -385,11 +385,11 @@ func TestScriptRunsNoCWOfAnEmptyOrRelativeEntryOfPATH(t *testing.T) {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		writeProgram(t, filepath.Join(dir, "cw"), "#!/bin/sh\necho ran > '"+planted+"'\n")
+		writeProgram(t, filepath.Join(dir, "gatecub"), "#!/bin/sh\necho ran > '"+planted+"'\n")
 	}
 	installed := t.TempDir()
 	ran := filepath.Join(installed, "installed-ran")
-	writeProgram(t, filepath.Join(installed, "cw"), "#!/bin/sh\necho \"$@\" > '"+ran+"'\n")
+	writeProgram(t, filepath.Join(installed, "gatecub"), "#!/bin/sh\necho \"$@\" > '"+ran+"'\n")
 	hook := filepath.Join(t.TempDir(), "pre-commit")
 	writeProgram(t, hook, Script("pre-commit"))
 	run := func(shell, path string) (int, string) {
@@ -409,7 +409,7 @@ func TestScriptRunsNoCWOfAnEmptyOrRelativeEntryOfPATH(t *testing.T) {
 				t.Errorf("%s, PATH=%q: exit status %d, want 3 and the reason:\n%s", label, path, code, output)
 			}
 			if exists(planted) {
-				t.Fatalf("%s, PATH=%q: the hook ran a cw that no absolute entry of PATH holds", label, path)
+				t.Fatalf("%s, PATH=%q: the hook ran a gatecub that no absolute entry of PATH holds", label, path)
 			}
 		}
 		for _, path := range []string{installed, ":" + installed, ".:rel:" + installed} {
@@ -418,7 +418,7 @@ func TestScriptRunsNoCWOfAnEmptyOrRelativeEntryOfPATH(t *testing.T) {
 			}
 			code, output := run(shell, path)
 			if code != 0 || strings.TrimSpace(readFile(t, ran)) != "hook pre-commit an argument" || exists(planted) {
-				t.Errorf("%s, PATH=%q: exit status %d; want the installed cw run with `hook pre-commit an argument` and no other:\n%s", label, path, code, output)
+				t.Errorf("%s, PATH=%q: exit status %d; want the installed gatecub run with `hook pre-commit an argument` and no other:\n%s", label, path, code, output)
 			}
 		}
 	}

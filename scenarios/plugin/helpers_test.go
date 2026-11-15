@@ -17,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // The hook files of the plugin, relative to the module root.
@@ -126,20 +126,20 @@ func hookCommands(t *testing.T, file, event, selector string) []string {
 // runHooks runs every command with sh -c in dir, with env and the notice on
 // standard input, and returns their standard output joined and the first
 // exit status that is not 0.
-func runHooks(t *testing.T, dir string, env []string, commands []string, notice any) cwtest.Result {
+func runHooks(t *testing.T, dir string, env []string, commands []string, notice any) gatecubtest.Result {
 	t.Helper()
 	return runHooksIn(t, "sh", dir, env, commands, notice)
 }
 
 // runHooksIn is runHooks with another shell, such as bash, which Claude Code
 // names in its hook file.
-func runHooksIn(t *testing.T, shell, dir string, env []string, commands []string, notice any) cwtest.Result {
+func runHooksIn(t *testing.T, shell, dir string, env []string, commands []string, notice any) gatecubtest.Result {
 	t.Helper()
 	input, err := json.Marshal(notice)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var all cwtest.Result
+	var all gatecubtest.Result
 	for _, command := range commands {
 		cmd := exec.Command(shell, "-c", command)
 		cmd.Dir = dir
@@ -166,7 +166,7 @@ func runHooksIn(t *testing.T, shell, dir string, env []string, commands []string
 
 // sessionStart runs the SessionStart commands of a hook file in the
 // repository's directory, as a host does when a session starts there.
-func sessionStart(t *testing.T, repo *cwtest.Repo, env []string, file string) cwtest.Result {
+func sessionStart(t *testing.T, repo *gatecubtest.Repo, env []string, file string) gatecubtest.Result {
 	t.Helper()
 	notice := map[string]any{
 		"session_id":      "test-session",
@@ -180,7 +180,7 @@ func sessionStart(t *testing.T, repo *cwtest.Repo, env []string, file string) cw
 
 // preToolUse runs the PreToolUse commands of a hook file for one tool call
 // in the repository's directory.
-func preToolUse(t *testing.T, repo *cwtest.Repo, file, tool string, input map[string]any) cwtest.Result {
+func preToolUse(t *testing.T, repo *gatecubtest.Repo, file, tool string, input map[string]any) gatecubtest.Result {
 	t.Helper()
 	notice := map[string]any{
 		"session_id":      "test-session",
@@ -206,7 +206,7 @@ type decision struct {
 // decisionOf reads the one JSON object a PreToolUse command prints when it
 // asks or denies. A test fails when the command did not exit 0 or printed
 // anything else.
-func decisionOf(t *testing.T, result cwtest.Result) decision {
+func decisionOf(t *testing.T, result gatecubtest.Result) decision {
 	t.Helper()
 	if result.Code != 0 {
 		t.Fatalf("the hook command exited %d, want 0:\n%s", result.Code, result.Output())
@@ -233,7 +233,7 @@ func decisionOf(t *testing.T, result cwtest.Result) decision {
 
 // assertNoDecision fails the test unless the hook command exited 0 and
 // printed nothing on standard output, so the host neither asks nor denies.
-func assertNoDecision(t *testing.T, result cwtest.Result, what string) {
+func assertNoDecision(t *testing.T, result gatecubtest.Result, what string) {
 	t.Helper()
 	if result.Code != 0 || strings.TrimSpace(result.Stdout) != "" {
 		t.Errorf("for %s the hook command exited %d and printed, want exit 0 and nothing:\n%s", what, result.Code, result.Output())
@@ -241,11 +241,11 @@ func assertNoDecision(t *testing.T, result cwtest.Result, what string) {
 }
 
 // gatedDemo is the shared fixture: demo with the git hooks installed.
-func gatedDemo(t *testing.T) *cwtest.Repo {
+func gatedDemo(t *testing.T) *gatecubtest.Repo {
 	t.Helper()
-	repo := cwtest.Demo(t)
-	if result := repo.CW("init"); result.Code != 0 {
-		t.Fatalf("cw init exited %d:\n%s", result.Code, result.Output())
+	repo := gatecubtest.Demo(t)
+	if result := repo.Gatecub("init"); result.Code != 0 {
+		t.Fatalf("gatecub init exited %d:\n%s", result.Code, result.Output())
 	}
 	return repo
 }
@@ -274,4 +274,4 @@ func pathOf(env []string) string {
 }
 
 // head is the commit HEAD names.
-func head(repo *cwtest.Repo) string { return repo.Git("rev-parse", "HEAD") }
+func head(repo *gatecubtest.Repo) string { return repo.Git("rev-parse", "HEAD") }

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/gate"
-	"github.com/belevtsev/agent-workflows/v3/internal/store"
+	"github.com/belevtsev/gatecub/v3/internal/gate"
+	"github.com/belevtsev/gatecub/v3/internal/store"
 )
 
 // runHook decides for git whether a commit, a merge commit or a push goes
@@ -20,13 +20,13 @@ func runHook(ctx context.Context, cfg Config, args []string) error {
 	}
 	name := args[0]
 	if !gate.IsHook(name) {
-		return usagef("unknown hook %q; cw decides for %s", name, known)
+		return usagef("unknown hook %q; gatecub decides for %s", name, known)
 	}
 	s, err := open(ctx, cfg, false)
 	if err != nil {
 		// Without a repository nothing can be judged, and a hook that
 		// cannot judge denies.
-		fmt.Fprintf(cfg.Err, "cw: this %s is denied: %v\n", name, err)
+		fmt.Fprintf(cfg.Err, "gatecub: this %s is denied: %v\n", name, err)
 		return exit(ExitDenied)
 	}
 	judge := &gate.Gate{Repo: s.repo, Store: s.store, Now: time.Now()}
@@ -48,15 +48,15 @@ func runHook(ctx context.Context, cfg Config, args []string) error {
 	denied := false
 	for _, ruling := range rulings {
 		for _, note := range ruling.Notes {
-			fmt.Fprintln(cfg.Err, "cw:", note)
+			fmt.Fprintln(cfg.Err, "gatecub:", note)
 		}
 		if ruling.Verdict != nil {
 			s.warn(ruling.Verdict.Warnings)
 		}
-		// The decision is kept for `cw stats`. A record that cannot be
+		// The decision is kept for `gatecub stats`. A record that cannot be
 		// written changes no decision.
 		if err := s.store.Record(context.WithoutCancel(ctx), ruling.Decision(mode, judge.Now)); err != nil && modeErr == nil {
-			fmt.Fprintf(cfg.Err, "cw: warning: this decision could not be recorded: %v\n", err)
+			fmt.Fprintf(cfg.Err, "gatecub: warning: this decision could not be recorded: %v\n", err)
 		}
 		switch {
 		case ruling.Allowed:

@@ -1,20 +1,20 @@
 # Roles
 
-`cw` defines seven roles for a coding agent's task workflow, plus the coordinator that starts
+`gatecub` defines seven roles for a coding agent's task workflow, plus the coordinator that starts
 them. Each role has one job, a default model and effort on Claude Code and on Codex, and a limit
-on the paths it may change. `cw` holds these definitions, prints them, and checks afterwards
-which paths a role changed. `cw` starts no model: the roles run inside the developer's coding
-agent, and what a role does there is an instruction to a model, not something `cw` enforces.
+on the paths it may change. `gatecub` holds these definitions, prints them, and checks afterwards
+which paths a role changed. `gatecub` starts no model: the roles run inside the developer's coding
+agent, and what a role does there is an instruction to a model, not something `gatecub` enforces.
 
 The roles have run with a model in two scratch repositories only, on one small task each. See
 [What is not known](#what-is-not-known).
 
-The order of the work, the record of a task and `cw change` are in
+The order of the work, the record of a task and `gatecub change` are in
 [the task workflow](workflow.md). The token count is in [tokens](tokens.md).
 
 ## The roles at a glance
 
-These are the defaults that `cw roles` prints in a repository without `cw-roles.toml`. "Tools"
+These are the defaults that `gatecub roles` prints in a repository without `gatecub-roles.toml`. "Tools"
 are the tools the generated Claude Code role file allows.
 
 | Role | Job | May change | Claude Code | Codex | Tools on Claude Code |
@@ -23,11 +23,11 @@ are the tools the generated Claude Code role file allows.
 | `spec-writer` | Writes the requirements and their scenarios from the request and its sources. | `proposal.md` and `specs/` of the task's change folder | `opus`, `high` | `gpt-6.1-sol`, `high` | Read, Grep, Glob, Edit, Write |
 | `architect` | Designs the building blocks, their dependencies and the tasks. | `design.md` and `tasks.md` of the task's change folder | `opus`, `xhigh` | `gpt-6.1-sol`, `max` | Read, Grep, Glob, Edit, Write |
 | `quality-engineer` | Writes the tests of the scenarios before the code exists. | the test paths, and `tests.md` of the task's change folder | `opus`, `high` | `gpt-6.1-sol`, `high` | Read, Grep, Glob, Edit, Write, Bash |
-| `developer` | Writes the code that makes the tests pass, within the design. | any other path except `cw.toml`, `cw-roles.toml` and `openspec/`; may add a test, may not change or remove one | `opus`, `high` | `gpt-6.1-sol`, `high` | Read, Grep, Glob, Edit, Write, Bash |
+| `developer` | Writes the code that makes the tests pass, within the design. | any other path except `gatecub.toml`, `gatecub-roles.toml` and `openspec/`; may add a test, may not change or remove one | `opus`, `high` | `gpt-6.1-sol`, `high` | Read, Grep, Glob, Edit, Write, Bash |
 | `reviewer` | Reviews a specification, a design or code that another role wrote, and reports findings. | nothing | `opus`, `xhigh` | `gpt-6.1-sol`, `max` | Read, Grep, Glob, Bash |
 | `git` | Runs the checks and makes the commit through the gate. | nothing | `sonnet`, `medium` | `gpt-6-luna`, `high` | Read, Grep, Glob, Bash |
 
-The model is given as `<model>, <effort>`. "The test paths" are the patterns that `cw-roles.toml`
+The model is given as `<model>, <effort>`. "The test paths" are the patterns that `gatecub-roles.toml`
 names under `[paths]`. No role file gives a role the tool that starts another role; only the
 coordinator starts roles. `reviewer` runs at the effort of `architect`, because a review does not
 run at a lower effort than the work it reviews.
@@ -37,7 +37,7 @@ run at a lower effort than the work it reviews.
 Each role starts with none of the coordinator's conversation. Its brief is all it knows. The first
 line of every brief is a label for the token report (see [tokens](tokens.md#the-label)); each role
 text tells the role to ignore it. Every role hands back the paths it wrote, the commands it ran
-with their results, and its open questions. The full texts are what `cw roles text <role>` prints.
+with their results, and its open questions. The full texts are what `gatecub roles text <role>` prints.
 
 ### lookup
 
@@ -53,23 +53,23 @@ Turns the request and its sources into requirements a test can check, in `propos
 `Source:` line and at least one scenario with one `WHEN` and one `THEN`. A value the sources do not
 give becomes an open question in `proposal.md`, not a guess. When `openspec/specs/` already holds a
 requirement for the behaviour, it changes that requirement under `## MODIFIED Requirements`. The
-coordinator runs `cw change check` after it.
+coordinator runs `gatecub change check` after it.
 
 ### architect
 
 Writes `design.md` (a table of building blocks and a table of rules) and `tasks.md` (small,
 ordered tasks with `Size:`, `Depends on:`, `Check:` and `Source:`). For every new block it names
-the existing code it considered. A rule that a program can check names a check that `cw.toml`
+the existing code it considered. A rule that a program can check names a check that `gatecub.toml`
 declares, or `review`. It does not change the approved specification. `developer` builds one
 group of tasks per start. When the tests must be seen failing on behaviour, the first group may
 build only the interface, with empty bodies, before the tests. The coordinator runs
-`cw change check` after it.
+`gatecub change check` after it.
 
 ### quality-engineer
 
 Writes the tests of the scenarios, only under the test paths, before the code exists, and on the
 full path writes `tests.md`: one row per scenario with the test file and a text that occurs in it.
-It follows the repository's own way of testing. After its work, `cw run` is expected to fail,
+It follows the repository's own way of testing. After its work, `gatecub run` is expected to fail,
 because the behaviour is not there yet; in a language that compiles, because the names of the
 design's interface are missing. It changes no production code. It is the only role that changes
 or removes an existing test: the tests of behaviour that a `MODIFIED` or `REMOVED` requirement
@@ -79,15 +79,15 @@ requirement or the reason, on the full path under `## Changed tests` in `tests.m
 ### developer
 
 Writes the code that makes the tests pass, inside the design. It may add a test, and may not
-change or remove one. It does not touch `cw.toml`, `cw-roles.toml` or anything under `openspec/`,
+change or remove one. It does not touch `gatecub.toml`, `gatecub-roles.toml` or anything under `openspec/`,
 does not tick tasks, and does not commit. It builds one group of `tasks.md` per start. It runs
-`cw run` and reports the result as it is. A test that is wrong or must change is reported, and the
+`gatecub run` and reports the result as it is. A test that is wrong or must change is reported, and the
 coordinator sends that report to `quality-engineer`.
 
 ### reviewer
 
 Examines a specification, a design or code that another role wrote and reports findings with a
-severity (`blocker`, `major`, `minor`), a place and the evidence. It runs `cw run` and `cw status`
+severity (`blocker`, `major`, `minor`), a place and the evidence. It runs `gatecub run` and `gatecub status`
 when it reviews code, checks each test against the WHEN and THEN of its scenario, and reports an
 existing test changed or removed without a requirement or a reason from `quality-engineer`. It
 changes nothing. Its Claude Code file gives it no tool that edits or writes a file; it has a shell,
@@ -95,7 +95,7 @@ which a host cannot limit to reading.
 
 ### git
 
-Runs `git status`, `cw run` and `cw status`, stages everything with `git add -A`, and commits
+Runs `git status`, `gatecub run` and `gatecub status`, stages everything with `git add -A`, and commits
 through the hooks. It never passes `--no-verify`, does not push, tag or open a pull request unless
 the brief says the developer asked for it, and does not rewrite history. It changes no file of the
 working tree.
@@ -103,20 +103,20 @@ working tree.
 ### The coordinator
 
 The coordinator is the developer's own session, not a role. Its instructions are
-`cw roles text coordinator`, shipped on Claude Code as the skill `/agent-workflows:task`. It
-chooses the path, writes each brief, starts each role on the model and effort `cw roles` prints,
-runs `cw roles check` after each role, keeps `reviews.md`, ticks the tasks in `tasks.md` after the
+`gatecub roles text coordinator`, shipped on Claude Code as the skill `/gatecub:task`. It
+chooses the path, writes each brief, starts each role on the model and effort `gatecub roles` prints,
+runs `gatecub roles check` after each role, keeps `reviews.md`, ticks the tasks in `tasks.md` after the
 review of the code, and asks the developer for the approvals. It writes no specification, design, test or code itself. When a
 host cannot run a role on its model, the instructions tell it to stop and tell the developer, not
 to use another model. The developer's own instruction about models comes first: when it names a
 model for agents, the coordinator uses it and says once which roles it changes. The steps are in
 [the task workflow](workflow.md#the-flow).
 
-## cw-roles.toml
+## gatecub-roles.toml
 
-`cw-roles.toml` is an optional file at the root of a repository. It sets the test paths and,
+`gatecub-roles.toml` is an optional file at the root of a repository. It sets the test paths and,
 for any role on either host, another model or effort. Without the file every role has its
-default, and `cw roles check developer` and `cw roles check quality-engineer` exit 1, because their
+default, and `gatecub roles check developer` and `gatecub roles check quality-engineer` exit 1, because their
 limits depend on the test paths.
 
 ### Format
@@ -146,19 +146,19 @@ model = "<another model name>"
 ### Changing a model
 
 Add a table for the host and the role. With the lines `[claude.developer]` and
-`model = "sonnet"`, `cw roles` prints `sonnet, high` for `developer` on Claude Code, and every
+`model = "sonnet"`, `gatecub roles` prints `sonnet, high` for `developer` on Claude Code, and every
 other role keeps its default:
 
 ```text
 developer         sonnet, high    gpt-6.1-sol, high  2841
 ```
 
-`cw` does not judge a model name. `model = "no-such-model"` is accepted and printed; a wrong name
+`gatecub` does not judge a model name. `model = "no-such-model"` is accepted and printed; a wrong name
 fails only when the host tries to start the role.
 
 The role files of the Claude Code plugin are generated with the default models. A setting in
-`cw-roles.toml` does not change them. It reaches a role only because the coordinator's
-instructions say to give the model and effort that `cw roles` prints on the call that starts the
+`gatecub-roles.toml` does not change them. It reaches a role only because the coordinator's
+instructions say to give the model and effort that `gatecub roles` prints on the call that starts the
 role. In the two sessions of Claude Code named under [What is not known](#what-is-not-known),
 every role was answered by the model it was started with; both sessions used the default models.
 The proposal also notes that on Claude Code the developer's own settings can override the model
@@ -166,13 +166,13 @@ of every role.
 
 ### What is refused
 
-Every broken rule is printed as `cw-roles.toml:<line>: <rule>` on standard error, and the command
+Every broken rule is printed as `gatecub-roles.toml:<line>: <rule>` on standard error, and the command
 exits 1. All the problems of the file are listed at once. For example, a file with a table
 `[gemini.git]` at line 6 and a key `temperature` under `[claude.git]` at line 9:
 
 ```text
-cw: cw-roles.toml:9: unknown key `temperature` under [claude.git]; it holds `model` and `effort`
-cw-roles.toml:6: unknown key `gemini`; the file holds `version`, `[paths]`, and `[claude.<role>]` and `[codex.<role>]`
+gatecub: gatecub-roles.toml:9: unknown key `temperature` under [claude.git]; it holds `model` and `effort`
+gatecub-roles.toml:6: unknown key `gemini`; the file holds `version`, `[paths]`, and `[claude.<role>]` and `[codex.<role>]`
 ```
 
 Refused are: a file that is not valid TOML; a `version` other than `1`; any top-level key other
@@ -181,15 +181,15 @@ that is not an array of texts, or holds a pattern with an empty segment; a role 
 of the seven (`unknown role `tester`; the roles are lookup, spec-writer, ...`); a key under a role
 other than `model` and `effort`; an empty or non-text `model` or `effort`.
 
-`cw roles` and `cw roles check` read the file and refuse it. `cw roles text` does not read it, so
+`gatecub roles` and `gatecub roles check` read the file and refuse it. `gatecub roles text` does not read it, so
 it works even when the file is invalid.
 
 ## Commands
 
-### cw roles
+### gatecub roles
 
 ```text
-cw roles [--json]
+gatecub roles [--json]
 ```
 
 Prints one row for each role: its id, its model and effort on Claude Code and on Codex, and the
@@ -229,24 +229,24 @@ of the seven entries of `roles`:
 }
 ```
 
-The sizes are those of this version of the texts. It reads `cw-roles.toml` of the repository it runs
+The sizes are those of this version of the texts. It reads `gatecub-roles.toml` of the repository it runs
 in. Outside a git repository it prints the defaults.
 
 | Exit | When |
 | --- | --- |
 | 0 | The roles are printed. |
-| 1 | `cw-roles.toml` is invalid. |
+| 1 | `gatecub-roles.toml` is invalid. |
 | 2 | The command line is wrong, for example an extra argument. |
 
-### cw roles text
+### gatecub roles text
 
 ```text
-cw roles text <role>
-cw roles text coordinator
+gatecub roles text <role>
+gatecub roles text coordinator
 ```
 
 Prints the one text of a role, or the coordinator's instructions, exactly as it is embedded in
-`cw`. A host without role files of its own gives this text to a new worker. The size `cw roles`
+`gatecub`. A host without role files of its own gives this text to a new worker. The size `gatecub roles`
 prints is the number of characters of this text, each Unicode code point counted once.
 
 | Exit | When |
@@ -254,18 +254,25 @@ prints is the number of characters of this text, each Unicode code point counted
 | 0 | The text is printed. |
 | 2 | The name is not one of the seven roles or `coordinator`, or the command line is wrong. |
 
-### cw roles check
+### gatecub roles check
 
 ```text
-cw roles check <role> --from <tree> [--task <task>]
+gatecub roles check <role> --from <tree> [--task <task>] [--finalize]
 ```
 
 Compares the working tree now with a tree from before the role started, and says which changed
-paths are outside the role's limit. The coordinator notes the `tree` that `cw status --json`
+paths are outside the role's limit. The coordinator notes the `tree` that `gatecub status --json`
 prints before it starts a role, and passes it as `--from` when the role has ended. `--from` takes
 any name git resolves to a tree, such as that id or `HEAD`. `--task` names the change folder
 `openspec/changes/<task>/`; `spec-writer` and `architect` need it, and `quality-engineer` needs it
 to be allowed `tests.md`.
+
+For [a shipped change](workflow.md#the-archive), use `--finalize` with `spec-writer` and
+`--task`. This replaces its ordinary limit with only `openspec/specs/<capability>/spec.md`
+for each `openspec/changes/<task>/specs/<capability>/spec.md` in the `--from` tree. The role
+may add, change or remove those exact current-specification files. It may change no other
+capability, no source file and no change record. A capability added after that snapshot gives
+no new permission. The baseline must contain at least one capability specification.
 
 Within the limit:
 
@@ -281,23 +288,23 @@ Outside the limit, each path with its kind (`added`, `changed` or `removed`) and
 start `developer` again with these paths; do not accept the work and do not repair it yourself
 ```
 
-When git does not run the hooks of `cw` in this clone, it also prints on standard error the
-warning `cw status` prints:
+When git does not run the hooks of `gatecub` in this clone, it also prints on standard error the
+warning `gatecub status` prints:
 
 ```text
-cw: warning: the hooks of cw are not installed in this clone, so git gates nothing here; run `cw init`
+gatecub: warning: the hooks of gatecub are not installed in this clone, so git gates nothing here; run `gatecub init`
 ```
 
 | Exit | When |
 | --- | --- |
 | 0 | Every path that differs is within the limit. |
 | 5 | At least one path is outside the limit. |
-| 1 | `cw-roles.toml` is invalid; `developer` or `quality-engineer` is checked and `cw-roles.toml` names no test paths; `--from` names no tree of this repository; or the directory is not in a git repository. The test paths are looked up before any path is judged, so this exit 1 comes before an exit 5. |
-| 2 | The role is unknown; `--from` is missing; `--task` is not lower-case words joined by hyphens; or `spec-writer` or `architect` is checked without `--task`. |
+| 1 | `gatecub-roles.toml` is invalid; `developer` or `quality-engineer` is checked and `gatecub-roles.toml` names no test paths; `--from` names no tree of this repository; finalization finds no capability specification for the task in that tree; or the directory is not in a git repository. The test paths are looked up before any path is judged, so this exit 1 comes before an exit 5. |
+| 2 | The role is unknown; `--from` is missing; `--task` is not lower-case words joined by hyphens; `spec-writer` or `architect` is checked without `--task`; or `--finalize` is used without `spec-writer` and `--task`. |
 
 #### What it can tell and what it cannot
 
-`cw roles check` compares two snapshots of the working tree: the tree given by `--from` and a
+`gatecub roles check` compares two snapshots of the working tree: the tree given by `--from` and a
 snapshot of the files now, tracked and untracked, without the files git ignores. It lists every
 path whose content differs and compares each with the role's limit. That is all it knows.
 
@@ -319,7 +326,7 @@ the role again with the paths it named.
 
 Each role, and the coordinator, has one text under `internal/roles/text/`: `lookup.md`,
 `spec-writer.md`, `architect.md`, `quality-engineer.md`, `developer.md`, `reviewer.md`, `git.md`
-and `coordinator.md`. These texts are embedded in `cw`, so `cw roles text` prints them.
+and `coordinator.md`. These texts are embedded in `gatecub`, so `gatecub roles text` prints them.
 
 The files a host reads are generated from them:
 
@@ -342,8 +349,8 @@ The plugin of this repository ships, for Claude Code, the seven role files under
 skill under `skills/task/`, and the hooks in `hooks/hooks.json`. `.claude-plugin/plugin.json`
 names none of these paths; they are in the folders a Claude Code plugin uses for agents, skills
 and hooks. The coordinator's instructions start the roles as the agents
-`agent-workflows:<role>`, and the developer starts the workflow with the skill
-`/agent-workflows:task`. The `tools` list of a role file is for Claude Code to apply; `cw` does
+`gatecub:<role>`, and the developer starts the workflow with the skill
+`/gatecub:task`. The `tools` list of a role file is for Claude Code to apply; `gatecub` does
 not apply it.
 
 ### Codex
@@ -353,7 +360,7 @@ What is stated, and nothing more:
 - `.codex-plugin/plugin.json` names `"skills": "./skills/"` and `"hooks":
   "./hooks/codex-hooks.json"`. It names no role files; `agents/*.md` are files for Claude Code.
 - The coordinator's instructions say: on a host other than Claude Code, give a new worker the
-  text that `cw roles text <role>` prints, on the model and effort `cw roles` prints for Codex.
+  text that `gatecub roles text <role>` prints, on the model and effort `gatecub roles` prints for Codex.
 - The design states that a host without role files of its own gives this text to a new worker.
 - The proposal records that the Codex documentation does not say how a role is started on a given
   model; that question is open and is the owner's to settle.
@@ -361,6 +368,8 @@ What is stated, and nothing more:
 Nothing was run on Codex: not the skill, not a role, not the hooks.
 
 ## What is not known
+
+These are historical results for `cw`, before the Gatecub rename; no new Gatecub host run is claimed.
 
 - **The roles ran with a model in two sessions only.** On 14 November 2026 a script gave the
   skill `task` a small task in three sessions of Claude Code 2.1.311, on two tasks in scratch

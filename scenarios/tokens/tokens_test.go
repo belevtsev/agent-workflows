@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // Scenario: A recorded session
@@ -25,7 +25,7 @@ func TestARecordedSession(t *testing.T) {
 // Scenario: A directory that is not gated
 func TestADirectoryThatIsNotGated(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.NewRepo(t)
+	repo := gatecubtest.NewRepo(t)
 	s := buildS1(t, variant{})
 	for i, n := range s.Notices {
 		if r := recordNotice(t, repo, s.Host, n); r.Code != 0 {
@@ -58,7 +58,7 @@ func TestANoticeIsGivenTwice(t *testing.T) {
 	record(t, repo, s)
 	developer := -1
 	for i, st := range s1Starts() {
-		if st.Label == "cw-task: add-greeting code 1" {
+		if st.Label == "gatecub-task: add-greeting code 1" {
 			developer = i
 		}
 	}
@@ -120,7 +120,7 @@ func TestNoMoney(t *testing.T) {
 	repo := recorded(t, variant{})
 	out := tokensText(t, repo, "--task", "add-greeting")
 	if strings.TrimSpace(out) == "" {
-		t.Fatal("cw tokens --task add-greeting printed nothing")
+		t.Fatal("gatecub tokens --task add-greeting printed nothing")
 	}
 	if i := strings.IndexAny(out, "$€£¥₴₹₽¢₩₺₪฿"); i >= 0 {
 		t.Errorf("the output holds a currency sign at %d:\n%s", i, out)

@@ -47,5 +47,5 @@ runs:
       shell: bash
       env:
         CGO_ENABLED: '1'
-        CW_SLOW_TESTS: '1'
+        GATECUB_SLOW_TESTS: '1'
       run: go test -race -count=1 -timeout=30m ./...

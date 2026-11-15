@@ -14,19 +14,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
-// hookNames are the hooks that cw init installs.
+// hookNames are the hooks that gatecub init installs.
 var hookNames = []string{"pre-commit", "pre-merge-commit", "pre-push"}
 
 // gate is the shared fixture of publish-gate: the repository demo with the
 // hooks installed and a remote origin whose main is at the first commit.
-// The cw that the hooks find on PATH is a wrapper that runs the cw under
-// test unchanged and notes the exit status of each `cw hook` call, so that
+// The gatecub that the hooks find on PATH is a wrapper that runs the gatecub under
+// test unchanged and notes the exit status of each `gatecub hook` call, so that
 // a test can see the hook's own status behind git's.
 type gate struct {
-	*cwtest.Repo
+	*gatecubtest.Repo
 	t      *testing.T
 	remote string
 	exits  string // the file the wrapper appends "<hook name> <status>" to
@@ -35,33 +35,33 @@ type gate struct {
 // newGate builds the shared fixture.
 func newGate(t *testing.T) *gate {
 	t.Helper()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	g := &gate{Repo: repo, t: t, remote: filepath.Join(t.TempDir(), "origin.git")}
 	repo.Git("init", "-q", "--bare", "-b", "main", g.remote)
 	repo.Git("remote", "add", "origin", g.remote)
 	repo.Git("push", "-q", "origin", "main")
-	g.wrapCW()
-	if result := repo.CW("init"); result.Code != 0 {
-		t.Fatalf("cw init exited %d:\n%s", result.Code, result.Output())
+	g.wrapGatecub()
+	if result := repo.Gatecub("init"); result.Code != 0 {
+		t.Fatalf("gatecub init exited %d:\n%s", result.Code, result.Output())
 	}
 	return g
 }
 
-// wrapCW puts the noting wrapper first on PATH.
-func (g *gate) wrapCW() {
+// wrapGatecub puts the noting wrapper first on PATH.
+func (g *gate) wrapGatecub() {
 	g.t.Helper()
 	if runtime.GOOS == "windows" {
 		return
 	}
 	dir := g.t.TempDir()
 	g.exits = filepath.Join(dir, "exits.log")
-	real := filepath.Join(cwtest.Binary(g.t), "cw")
+	real := filepath.Join(gatecubtest.Binary(g.t), "gatecub")
 	script := "#!/bin/sh\n" +
 		"'" + real + "' \"$@\"\n" +
 		"status=$?\n" +
 		"if [ \"$1\" = hook ]; then printf '%s %s\\n' \"$2\" \"$status\" >> '" + g.exits + "'; fi\n" +
 		"exit $status\n"
-	writeProgram(g.t, filepath.Join(dir, "cw"), script)
+	writeProgram(g.t, filepath.Join(dir, "gatecub"), script)
 	g.Setenv("PATH", dir+string(os.PathListSeparator)+envValue(g.Env(), "PATH"))
 }
 
@@ -87,7 +87,7 @@ func (g *gate) resetExits() {
 	}
 }
 
-// hookExits are the exit statuses of `cw hook <name>` since the last reset.
+// hookExits are the exit statuses of `gatecub hook <name>` since the last reset.
 func (g *gate) hookExits(name string) []int {
 	g.t.Helper()
 	data, err := os.ReadFile(g.exits)
@@ -109,7 +109,7 @@ func (g *gate) hookExits(name string) []int {
 	return out
 }
 
-// assertHookExit checks that `cw hook <name>` ran and its last call exited
+// assertHookExit checks that `gatecub hook <name>` ran and its last call exited
 // with the given status. It checks nothing where the wrapper cannot be used.
 func (g *gate) assertHookExit(name string, want int) {
 	g.t.Helper()
@@ -118,11 +118,11 @@ func (g *gate) assertHookExit(name string, want int) {
 	}
 	exits := g.hookExits(name)
 	if len(exits) == 0 {
-		g.t.Errorf("the %s hook did not call cw hook %s", name, name)
+		g.t.Errorf("the %s hook did not call gatecub hook %s", name, name)
 		return
 	}
 	if got := exits[len(exits)-1]; got != want {
-		g.t.Errorf("cw hook %s exited %d, want %d", name, got, want)
+		g.t.Errorf("gatecub hook %s exited %d, want %d", name, got, want)
 	}
 }
 
@@ -132,12 +132,12 @@ func (g *gate) head() string {
 	return g.Git("rev-parse", "HEAD")
 }
 
-// mustRun runs cw run and requires the given exit status.
-func (g *gate) mustRun(want int, args ...string) cwtest.Result {
+// mustRun runs gatecub run and requires the given exit status.
+func (g *gate) mustRun(want int, args ...string) gatecubtest.Result {
 	g.t.Helper()
-	result := g.CW(append([]string{"run"}, args...)...)
+	result := g.Gatecub(append([]string{"run"}, args...)...)
 	if result.Code != want {
-		g.t.Fatalf("cw run %s exited %d, want %d:\n%s", strings.Join(args, " "), result.Code, want, result.Output())
+		g.t.Fatalf("gatecub run %s exited %d, want %d:\n%s", strings.Join(args, " "), result.Code, want, result.Output())
 	}
 	return result
 }
@@ -151,7 +151,7 @@ func (g *gate) checked() {
 // commitDenied runs a git command that would record a commit and requires
 // a denial by the named hook: git fails, HEAD is unchanged, the hook exited
 // 3 and a reason is printed on standard error. It returns how git ended.
-func (g *gate) commitDenied(hook string, args ...string) cwtest.Result {
+func (g *gate) commitDenied(hook string, args ...string) gatecubtest.Result {
 	g.t.Helper()
 	before := g.head()
 	g.resetExits()
@@ -171,7 +171,7 @@ func (g *gate) commitDenied(hook string, args ...string) cwtest.Result {
 
 // commitRecorded runs a git command that records a commit and requires that
 // it did.
-func (g *gate) commitRecorded(args ...string) cwtest.Result {
+func (g *gate) commitRecorded(args ...string) gatecubtest.Result {
 	g.t.Helper()
 	before := g.head()
 	result := g.TryGit(args...)

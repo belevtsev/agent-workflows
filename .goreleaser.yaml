@@ -1,12 +1,12 @@
-# Release archives for cw, built by .github/workflows/release.yml on v* tags.
+# Release archives for gatecub, built by .github/workflows/release.yml on v* tags.
 version: 2
 
-project_name: cw
+project_name: gatecub
 
 builds:
-  - id: cw
-    main: ./cmd/cw
-    binary: cw
+  - id: gatecub
+    main: ./cmd/gatecub
+    binary: gatecub
     env:
       - CGO_ENABLED=0
       - GOWORK=off
@@ -18,7 +18,7 @@ builds:
     mod_timestamp: '{{ .CommitTimestamp }}'
 
 archives:
-  - id: cw
+  - id: gatecub
     formats: [tar.gz]
     format_overrides:
       - goos: windows
@@ -54,6 +54,9 @@ changelog:
 
 # A draft: release.yml makes it public after it has attested the archives.
 release:
+  github:
+    owner: belevtsev
+    name: gatecub
   draft: true
   # A second run for the same tag replaces the draft of the first.
   replace_existing_draft: true

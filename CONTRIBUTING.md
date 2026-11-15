@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve `cw`. This file explains how to build, test and propose changes.
+Thanks for helping improve `gatecub`. This file explains how to build, test and propose changes.
 
 Everyone who takes part follows the [code of conduct](CODE_OF_CONDUCT.md).
 
@@ -23,13 +23,13 @@ GOWORK=off govulncheck ./... && GOWORK=off GOOS=darwin govulncheck ./... && GOWO
 
 ## Go-only automation
 
-First-party automation is written in Go. If you need a helper, add it to the `cw` command or to a test.
+First-party automation is written in Go. If you need a helper, add it to the `gatecub` command or to a test.
 
 ## Diagrams
 
 archify is the only diagram tool; do not add diagram sources in any other format, and no Mermaid. It is not part of this repository: get it from the branch `workflow-v3` (`third_party/archify`). Each diagram is a JSON spec under `docs/diagrams/` with a static SVG export next to it, and a document shows the SVG as an image. To change a diagram:
 
-1. Edit the JSON spec, never the SVG. Keep the picture narrow and its texts short: GitHub shows a README about 830 pixels wide and scales a wider picture down. The diagrams here are at most 804 pixels wide. A box of the default width holds 17 characters of small text; archify shrinks a longer one, and the `width` of a node gives it room. Give every type of box that the spec uses a label under `meta.legend.entries`: the legend then says what a colour means in this picture, and the test below can compare it.
+1. Edit the JSON spec, never the SVG. Keep the picture narrow and its texts short: GitHub shows a README about 830 pixels wide and scales a wider picture down. The diagrams here are at most 832 pixels wide. A box of the default width holds 17 characters of small text; archify shrinks a longer one, and the `width` of a node gives it room. Give every type of box that the spec uses a label under `meta.legend.entries`: the legend then says what a colour means in this picture, and the test below can compare it.
 2. Render the viewer page with archify `finalize`, passing the spec's own `diagram_type` and `meta.quality_profile`. The diagrams here use `showcase`, the stricter profile, which also refuses arrows that cross. `finalize` validates the spec and checks the page in a headless browser, so it needs Chrome, and Node 18 or newer; the diagrams here were rendered with Bun 1.3 in place of Node. git ignores `.archify/`.
 
    ```sh
@@ -56,7 +56,7 @@ Releases are published when a `v*` tag is pushed. Maintainers create tags; contr
 
 ## Built with itself
 
-`cw.toml` declares this repository's checks: build, vet, test, lint, and `cw change check` on the task records under `openspec/changes/`. Run `cw init` in your clone to install the hooks; then a commit needs a passing `cw run`. Every commit written with an agent names its model in a `Co-Authored-By` trailer. Whether the gate or the roles improve results has not been measured yet.
+`gatecub.toml` declares this repository's checks: build, vet, test, lint, and `gatecub change check` on the task records under `openspec/changes/`. Run `gatecub init` in your clone to install the hooks; then a commit needs a passing `gatecub run`. Every commit written with an agent names its model in a `Co-Authored-By` trailer. Whether the gate or the roles improve results has not been measured yet.
 
 ## License
 

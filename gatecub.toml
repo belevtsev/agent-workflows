@@ -1,5 +1,5 @@
 # The checks this repository requires before a commit or a push.
-# `cw run` executes them; the git hooks that `cw init` installs enforce them.
+# `gatecub run` executes them; the git hooks that `gatecub init` installs enforce them.
 version = 1
 
 [[check]]
@@ -23,4 +23,4 @@ timeout = "10m"
 # The two change folders under openspec/changes/ obey the rules of a record.
 [[check]]
 id = "record"
-run = ["cw", "change", "check"]
+run = ["gatecub", "change", "check"]

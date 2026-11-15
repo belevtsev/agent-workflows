@@ -65,18 +65,18 @@ func TestASearchOfTheTexts(t *testing.T) {
 	}
 
 	// The one text of each role and the coordinator's, as files and as
-	// cw roles text prints them.
+	// gatecub roles text prints them.
 	t.Run("texts", func(t *testing.T) {
 		t.Parallel()
 		repo := demo(t)
 		for _, id := range append(append([]string(nil), roleIDs...), "coordinator") {
 			rel := "internal/roles/text/" + id + ".md"
 			search(t, rel, readModuleFile(t, rel))
-			result := repo.CW("roles", "text", id)
+			result := repo.Gatecub("roles", "text", id)
 			if result.Code != 0 {
-				t.Errorf("cw roles text %s exited %d:\n%s", id, result.Code, result.Output())
+				t.Errorf("gatecub roles text %s exited %d:\n%s", id, result.Code, result.Output())
 			}
-			search(t, "cw roles text "+id, result.Stdout)
+			search(t, "gatecub roles text "+id, result.Stdout)
 		}
 	})
 

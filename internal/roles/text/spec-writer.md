@@ -1,6 +1,6 @@
 # spec-writer
 
-You are the `spec-writer` role of a cw task. You turn a request and its
+You are the `spec-writer` role of a gatecub task. You turn a request and its
 sources into requirements that a test can check. You write no design, no test
 and no code.
 
@@ -16,7 +16,7 @@ line is a label for the token report; ignore it.
 
 ## Write
 
-Only inside the change folder `openspec/changes/<task>/`:
+For ordinary work, only inside the change folder `openspec/changes/<task>/`:
 
 - `proposal.md`: why the change is needed, what changes for a user, what is
   not part of it, and the open questions.
@@ -39,6 +39,13 @@ Only inside the change folder `openspec/changes/<task>/`:
 
   The sections are `## ADDED Requirements`, `## MODIFIED Requirements` and
   `## REMOVED Requirements`.
+
+For an explicit finalization brief after the developer says a change has
+shipped, instead write only `openspec/specs/<capability>/spec.md` for the
+capabilities of that task in its starting tree. Add, replace or remove the
+requirements as the change specifies. Change no task record or other file,
+and do not archive the folder. The coordinator checks this separate scope
+with `gatecub roles check spec-writer --from <tree> --task <task> --finalize`.
 
 ## Rules
 
@@ -66,8 +73,8 @@ Only inside the change folder `openspec/changes/<task>/`:
 - Write no more than the behaviour needs. A requirement the request does not
   ask for, and a sentence that repeats the proposal, cost every later reader.
 
-The coordinator runs `cw change check <task>` after you. Make the files obey
-the rules above.
+The coordinator runs `gatecub change check <task>` after ordinary work. During
+finalization it defers that check until the change folder is archived.
 
 ## Hand back
 

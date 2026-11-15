@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // The scenarios of the requirement "Usable as a check".
@@ -23,19 +23,19 @@ func TestFolderAtFirstStage(t *testing.T) {
 func TestGateEnforcesRecord(t *testing.T) {
 	t.Parallel()
 	r := newRecord(t)
-	r.Setenv("PATH", cwtest.Binary(t)+string(os.PathListSeparator)+os.Getenv("PATH"))
-	r.Write("cw.toml", cwtest.DemoDeclaration+`
+	r.Setenv("PATH", gatecubtest.Binary(t)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	r.Write("gatecub.toml", gatecubtest.DemoDeclaration+`
 [[check]]
 id = "record"
-run = ["cw", "change", "check"]
+run = ["gatecub", "change", "check"]
 `)
 	r.addFinding("| F2 | code | 1 | minor | src/app.txt | The greeting is too long. | open | |")
-	if result := r.CW("init"); result.Code != 0 {
-		t.Fatalf("cw init exited %d:\n%s", result.Code, result.Output())
+	if result := r.Gatecub("init"); result.Code != 0 {
+		t.Fatalf("gatecub init exited %d:\n%s", result.Code, result.Output())
 	}
-	// The scenario asks only that cw run has ended, not how.
-	run := r.CW("run")
-	t.Logf("cw run exited %d", run.Code)
+	// The scenario asks only that gatecub run has ended, not how.
+	run := r.Gatecub("run")
+	t.Logf("gatecub run exited %d", run.Code)
 	before := r.Git("rev-parse", "HEAD")
 	result := r.TryGit("commit", "-a", "-m", "change")
 	if result.Code == 0 {

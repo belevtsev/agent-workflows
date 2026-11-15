@@ -7,25 +7,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // Requirement "Check definition", scenario "Arguments are not interpreted by
 // a shell".
 func TestRunArgumentsReachTheProgramWithoutAShell(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
-	repo.Write("cw.toml", cwtest.DemoDeclaration+`
+	repo := gatecubtest.Demo(t)
+	repo.Write("gatecub.toml", gatecubtest.DemoDeclaration+`
 [[check]]
 id = "shell"
 run = ["echo", "$HOME", "&&", "false"]
 `)
 	commitAll(repo, "add shell")
 
-	result := repo.CW("run")
+	result := repo.Gatecub("run")
 	recs := records(t, repo, "shell")
 	if len(recs) != 1 {
-		t.Fatalf("cw run (exit %d) left %d records of shell, want 1:\n%s", result.Code, len(recs), result.Output())
+		t.Fatalf("gatecub run (exit %d) left %d records of shell, want 1:\n%s", result.Code, len(recs), result.Output())
 	}
 	if recs[0].Outcome != "passed" {
 		t.Errorf("the outcome of shell is %q, want passed:\n%s", recs[0].Outcome, result.Output())
@@ -48,22 +48,22 @@ run = ["echo", "$HOME", "&&", "false"]
 // Requirement "Check definition", scenario "The timeout defaults to ten
 // minutes".
 func TestTheTimeoutDefaultsToTenMinutes(t *testing.T) {
-	if os.Getenv("CW_SLOW_TESTS") != "1" {
-		t.Skip("waits ten minutes for the default timeout; set CW_SLOW_TESTS=1 and go test -timeout 15m to run it")
+	if os.Getenv("GATECUB_SLOW_TESTS") != "1" {
+		t.Skip("waits ten minutes for the default timeout; set GATECUB_SLOW_TESTS=1 and go test -timeout 15m to run it")
 	}
 	if deadline, ok := t.Deadline(); ok && time.Until(deadline) < 11*time.Minute {
 		t.Fatal("the test needs more than ten minutes; run go test with -timeout 15m or more")
 	}
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	// lint has no timeout; its program now does not end.
 	repo.Write("lint.sh", "while :; do sleep 1; done\n")
 	commitAll(repo, "lint never ends")
 
-	result := repo.CW("run", "lint")
+	result := repo.Gatecub("run", "lint")
 	recs := records(t, repo, "lint")
 	if len(recs) != 1 {
-		t.Fatalf("cw run lint (exit %d) left %d records of lint, want 1:\n%s", result.Code, len(recs), result.Output())
+		t.Fatalf("gatecub run lint (exit %d) left %d records of lint, want 1:\n%s", result.Code, len(recs), result.Output())
 	}
 	if recs[0].Outcome != "timed_out" {
 		t.Errorf("the outcome of lint is %q, want timed_out", recs[0].Outcome)

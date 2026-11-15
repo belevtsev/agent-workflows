@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/decl"
-	"github.com/belevtsev/agent-workflows/v3/internal/proc"
-	"github.com/belevtsev/agent-workflows/v3/internal/store"
+	"github.com/belevtsev/gatecub/v3/internal/decl"
+	"github.com/belevtsev/gatecub/v3/internal/proc"
+	"github.com/belevtsev/gatecub/v3/internal/store"
 )
 
 // How a run's end is classified, for every end that is decided before the
@@ -65,12 +65,12 @@ func TestClassifyEndsDecidedWithoutASnapshot(t *testing.T) {
 			outcome: store.Failed, detail: "the program `unit-program` could not be started",
 		},
 		{
-			name:    "ended by something outside cw",
+			name:    "ended by something outside gatecub",
 			ended:   proc.Result{Code: -1, Err: &exec.ExitError{}},
 			outcome: store.Failed, detail: "the program `unit-program` did not exit on its own",
 		},
 		{
-			name:    "ended by something outside cw, wrapped",
+			name:    "ended by something outside gatecub, wrapped",
 			ended:   proc.Result{Code: -1, Err: wrapped{&exec.ExitError{}}},
 			outcome: store.Failed, detail: "did not exit on its own",
 		},
@@ -105,8 +105,8 @@ func TestClassifyEndsDecidedWithoutASnapshot(t *testing.T) {
 	}
 }
 
-// On Windows Ctrl+C reaches the check's program as well as cw, and the
-// program may end before cw sees the signal. An end with the exit status the
+// On Windows Ctrl+C reaches the check's program as well as gatecub, and the
+// program may end before gatecub sees the signal. An end with the exit status the
 // console gives, and a failure while the run is being cancelled, are
 // therefore interrupted; a failure while the run goes on is failed (second
 // challenge, finding P1).
