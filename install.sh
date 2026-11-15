@@ -349,6 +349,8 @@ configure_path() {
 				update_profile "$_kitsu_login_profile"
 			elif [ "$_kitsu_os" = darwin ]; then
 				update_profile "$HOME/.bash_profile"
+			else
+				update_profile "$HOME/.profile"
 			fi
 			;;
 		sh|dash|ash|ksh)

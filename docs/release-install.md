@@ -99,8 +99,8 @@ Open a new terminal after installation so Git and the agent host inherit the dir
 The hooks search only absolute `PATH` entries; see [hooks](hooks.md#when-kitsu-is-not-on-path).
 
 For zsh it updates `${ZDOTDIR:-$HOME}/.zshrc`. For bash it updates `.bashrc` and the first existing
-login profile among `.bash_profile`, `.bash_login`, and `.profile`; macOS bash creates
-`.bash_profile` if none exists. Other supported POSIX shells use `.profile`. Custom installation
+login profile among `.bash_profile`, `.bash_login`, and `.profile`. If none exists, bash creates
+`.bash_profile` on macOS or `.profile` on Linux. Other supported POSIX shells use `.profile`. Custom installation
 directories are resolved to absolute paths before adding them to `PATH`. Windows updates user
 `PATH` and the installer process's current `PATH`.
 

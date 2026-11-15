@@ -156,6 +156,54 @@ func TestShellPathSetupIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestBashPathSetupCoversLoginAndInteractiveShells(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("bash startup files are a POSIX installation concern")
+	}
+	bash, err := exec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash is not installed")
+	}
+	base := serveAssets(t, fixtureAssets(t, preparedVersion))
+	cases := []struct {
+		name     string
+		profiles []string
+	}{
+		{"no login profile", nil},
+		{"bash profile", []string{".bash_profile", ".bash_login", ".profile"}},
+		{"bash login", []string{".bash_login", ".profile"}},
+		{"profile", []string{".profile"}},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			run := newInstallRun(t, nativeInstallers(t)[0], base)
+			run.env["SHELL"] = bash
+			run.env["KITSU_NO_MODIFY_PATH"] = "0"
+			for _, profile := range test.profiles {
+				writeFile(t, filepath.Join(run.home, profile), []byte("# existing shell configuration\n"))
+			}
+			if output, err := run.run(true); err != nil {
+				t.Fatalf("install with bash PATH setup: %v\n%s", err, output)
+			}
+			for _, shell := range []struct {
+				name string
+				args []string
+			}{
+				{"login", []string{"--login", "-c", "command -v kitsu"}},
+				{"interactive", []string{"--noprofile", "--rcfile", filepath.Join(run.home, ".bashrc"), "-i", "-c", "command -v kitsu"}},
+			} {
+				t.Run(shell.name, func(t *testing.T) {
+					command := exec.CommandContext(t.Context(), bash, shell.args...)
+					command.Dir, command.Env = run.dir, run.environment()
+					if output, err := command.Output(); err != nil || strings.TrimSpace(string(output)) != run.target {
+						t.Fatalf("new bash shell does not find the installed binary: %v\n%s", err, output)
+					}
+				})
+			}
+		})
+	}
+}
+
 // CI supplies real GoReleaser assets; ordinary tests use native executable fixtures.
 func TestReleaseArtifactsInstallWithoutBuildTools(t *testing.T) {
 	directory := os.Getenv("KITSU_INSTALL_ARCHIVES")
