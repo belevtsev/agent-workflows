@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Shell and PowerShell [installers](docs/release-install.md) select your platform, verify checksums, and set up user `PATH`.
+  Install from release or CI artifacts without a clone or Go; rerun to update, or choose a version and directory.
 - A Pomeranian mascot and matching README banner introduce Kitsu's [visual identity](docs/brand/README.md).
 - Three diagrams: the three parts of `kitsu`, how the gate decides about a commit or a push, and the seven roles on the two paths
   of a task. The README, [hooks](docs/hooks.md) and [the task workflow](docs/workflow.md) show them.
@@ -20,8 +22,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Lead with [coding-agent coordination](README.md#the-roles) in the documentation, plugin descriptions and CLI help; the Git gate supports that workflow.
-- The README introduces Kitsu and installs from source until its beta is published. The prepared archive recipes
-  and installation checks live in [release installation](docs/release-install.md).
 
 ### Fixed
 
