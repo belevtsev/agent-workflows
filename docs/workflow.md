@@ -11,14 +11,22 @@ The task workflow takes one task from the developer's words to a gated commit th
   limit, and the gate decides about commits. [What cw checks](#what-cw-checks) lists exactly what
   is enforced.
 
-No part of this workflow has been run with a model. Whether it gives better results than one agent
-working alone is not measured; see [the evaluation](evaluation.md).
+A model has run the skill `task` in three sessions only, on two small tasks in scratch
+repositories, and it started roles in two of them; see
+[what is not known](roles.md#what-is-not-known). Whether the workflow gives better results than
+one agent working alone is not measured; see [the evaluation](evaluation.md).
 
 ## The flow
 
 This section restates the coordinator's instructions and the task-flow specification. Every step
 here is an instruction to the coordinator or to a role. `cw` enforces only what the next section,
 [What cw checks](#what-cw-checks), lists.
+
+<img src="diagrams/task-workflow.svg" alt="The seven roles of a task. On the full path only: spec-writer writes the specification and architect the design and the tasks; the reviewer reviews each, then you approve. On both paths, and the small path starts here: quality-engineer writes the tests first, then cw run runs your checks; developer writes the code, the reviewer reviews it and findings go back; git makes the commit, and the gate allows or denies it. At any stage: lookup finds files and facts, and cw roles check runs after every role." width="100%">
+
+The picture holds the order of the roles and, under each role, the main step that follows its work.
+It leaves out `cw change check` after `spec-writer` and `architect`, and `cw run` after each start
+of `developer`. The text below holds every step.
 
 ### Before the first role
 

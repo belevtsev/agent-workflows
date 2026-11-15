@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "How the gate decides about a commit or a push",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": ".archify/gate.html",
+    "legend": {
+      "entries": {
+        "external": {"label": "You or your agent"},
+        "frontend": {"label": "cw"},
+        "messagebus": {"label": "git"},
+        "database": {"label": "Records"},
+        "backend": {"label": "Allowed"},
+        "security": {"label": "Denied"}
+      }
+    }
+  },
+  "lanes": [
+    {"id": "you", "label": "You"},
+    {"id": "git", "label": "git"},
+    {"id": "cw", "label": "cw"}
+  ],
+  "phases": [
+    {"id": "prove", "label": "1. Evidence", "fromCol": 0, "toCol": 0},
+    {"id": "decide", "label": "2. The decision, in enforce mode", "fromCol": 1, "toCol": 5, "variant": "emphasis"}
+  ],
+  "mainPath": ["run", "commit", "hook", "judge", "decide", "allowed"],
+  "nodes": [
+    {"id": "run", "lane": "you", "col": 0, "type": "frontend", "icon": "backend", "label": "cw run", "sublabel": "runs what has not passed", "width": 124},
+    {"id": "commit", "lane": "you", "col": 1, "type": "external", "icon": "person", "label": "git commit", "sublabel": "or git push"},
+    {"id": "denied", "lane": "you", "col": 4, "type": "security", "icon": "failure", "label": "Denied", "sublabel": "says why"},
+    {"id": "hook", "lane": "git", "col": 2, "type": "messagebus", "label": "git hook", "sublabel": "one of three"},
+    {"id": "allowed", "lane": "git", "col": 5, "type": "backend", "icon": "success", "label": "Allowed", "sublabel": "git goes on"},
+    {"id": "runs", "lane": "cw", "col": 0, "type": "database", "label": "cw/runs/", "sublabel": "a record per run"},
+    {"id": "judge", "lane": "cw", "col": 2, "type": "frontend", "icon": "backend", "label": "cw hook judges", "sublabel": "commit or pushed tip", "width": 112},
+    {"id": "decide", "lane": "cw", "col": 4, "type": "frontend", "icon": "decision", "label": "Every check passed?", "sublabel": "on exactly this content", "width": 136}
+  ],
+  "edges": [
+    {"id": "run-record", "from": "run", "to": "runs", "label": "records", "variant": "dashed"},
+    {"id": "run-commit", "from": "run", "to": "commit"},
+    {"id": "commit-hook", "from": "commit", "to": "hook", "label": "starts"},
+    {"id": "hook-judge", "from": "hook", "to": "judge", "label": "asks"},
+    {"id": "records-judge", "from": "runs", "to": "judge", "label": "evidence", "variant": "dashed"},
+    {"id": "judge-decide", "from": "judge", "to": "decide"},
+    {"id": "decide-allowed", "from": "decide", "to": "allowed", "label": "yes", "variant": "emphasis"},
+    {"id": "decide-denied", "from": "decide", "to": "denied", "label": "no, or cannot tell", "variant": "security", "role": "error"},
+    {"id": "denied-run", "from": "denied", "to": "run", "label": "fix, then run again", "variant": "dashed", "role": "return", "fromSide": "top", "toSide": "top"}
+  ]
+}

@@ -12,6 +12,8 @@ three things:
 - **A token count.** `cw tokens` says what a task cost, role by role, and how
   much of it the workflow itself used.
 
+<img src="docs/diagrams/overview.svg" alt="The three parts of cw. The gate: cw.toml declares your checks, cw run runs what has not passed and records each run, and cw hook, asked by the git hooks, decides from that evidence. The roles: cw roles gives the role texts to your coding agent, which writes the record of a task under openspec/changes, and cw change check checks the rules of its files. The token count: cw tokens record reads the session record that the agent host keeps and stores the counts, and cw tokens sums them role by role." width="100%">
+
 The gate is a guardrail, not a sandbox: it stops a mistake, and it does not
 stop a person who decides to go around it.
 

@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Three diagrams: the three parts of `cw`, how the gate decides about a commit or a push, and the seven roles on the two paths
+  of a task. The README, [hooks](docs/hooks.md) and [the task workflow](docs/workflow.md) show them.
+
+### Fixed
+
+- [The task workflow](docs/workflow.md) said that no part of the workflow had run with a model. A model ran the skill `task` in
+  three sessions and started roles in two of them, as [roles](docs/roles.md#what-is-not-known) already said.
+
 ### Removed
 
 - The folder `_quarantine/`, which held the files of the previous workflow as reading material. Each file is kept

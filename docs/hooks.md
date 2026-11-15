@@ -5,6 +5,12 @@ record or send the content, and `cw hook` answers from the records of earlier
 runs. A hook executes no check and waits for none: `cw run` produces the
 records before the commit. [Evidence](evidence.md) says what a record proves.
 
+<img src="diagrams/gate.svg" alt="How the gate decides. First the evidence: cw run runs what has not passed and records each run. Then the decision, in enforce mode: git commit or git push starts one of three git hooks, the hook asks cw hook, and cw hook judges the commit or the pushed tip against the records. When every check passed on exactly this content, git goes on. When not, or when cw hook cannot tell, the commit or push is denied and says why: fix, then run again." width="100%">
+
+The picture shows the gate in enforce mode, as `cw init` sets it. [Observe mode](#observe-mode)
+allows every operation, and [pre-push](#pre-push) lists the pushes that are allowed without a
+judgement.
+
 The examples on this page were produced on Linux with git 2.53. Temporary
 paths are shortened to `<repository>`.
 

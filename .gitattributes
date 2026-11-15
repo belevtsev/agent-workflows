@@ -1,3 +1,6 @@
 # Every text file is checked out with LF on every system: the git hooks are
 # shell scripts, and gofmt and the tests compare bytes.
 * text=auto eol=lf
+
+# The SVG of a diagram is an export of the spec beside it, not written by hand.
+docs/diagrams/*.svg linguist-generated
