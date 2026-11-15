@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/belevtsev/gatecub/v3/internal/decl"
-	"github.com/belevtsev/gatecub/v3/internal/gitx"
+	"github.com/belevtsev/kitsu/v3/internal/decl"
+	"github.com/belevtsev/kitsu/v3/internal/gitx"
 )
 
 // Hosts are the agent hosts a role has a model on.
@@ -65,7 +65,7 @@ var defaults = []Role{
 	},
 	{
 		ID: "developer", Job: "Writes the code that makes the tests pass, within the design.",
-		Writes: "outside gatecub.toml, gatecub-roles.toml and openspec/; may add tests, not change or remove them",
+		Writes: "outside kitsu.toml, kitsu-roles.toml and openspec/; may add tests, not change or remove them",
 		Models: substantive, Tools: building,
 	},
 	{
@@ -142,7 +142,7 @@ type Violation struct {
 func ChangeFolder(task string) string { return "openspec/changes/" + task + "/" }
 
 // Check compares what changed with what the role may change. tests are the
-// test path patterns of gatecub-roles.toml; task may be empty.
+// test path patterns of kitsu-roles.toml; task may be empty.
 func Check(role string, changes []gitx.Change, tests []string, task string) ([]Violation, error) {
 	allowed, err := limit(role, tests, task)
 	if err != nil {
@@ -232,7 +232,7 @@ func limit(role string, tests []string, task string) (func(gitx.Change) string, 
 func developerLimit(c gitx.Change, tests []string) string {
 	switch {
 	case c.Path == decl.FileName, c.Path == FileName, strings.HasPrefix(c.Path, "openspec/"):
-		return "`developer` may not change gatecub.toml, gatecub-roles.toml or anything under openspec/"
+		return "`developer` may not change kitsu.toml, kitsu-roles.toml or anything under openspec/"
 	case decl.MatchAny(tests, c.Path) && c.Kind != "added":
 		return "`developer` may add a test and may not change or remove one"
 	}

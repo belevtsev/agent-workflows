@@ -11,16 +11,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
-// usageSkill is the skill that teaches an agent to work with gatecub.
-const usageSkill = "skills/gatecub"
+// usageSkill is the skill that teaches an agent to work with kitsu.
+const usageSkill = "skills/kitsu"
 
 // A skillFixture is the small repository an example of the skill starts
-// from. Its files are committed first. hooks says that `gatecub init` ran after
-// that commit, verified that `gatecub run` ran too, and clone that the example
-// works in a new clone of the repository, where nothing of gatecub is installed.
+// from. Its files are committed first. hooks says that `kitsu init` ran after
+// that commit, verified that `kitsu run` ran too, and clone that the example
+// works in a new clone of the repository, where nothing of kitsu is installed.
 type skillFixture struct {
 	files                  map[string]string
 	hooks, verified, clone bool
@@ -86,16 +86,16 @@ A buyer of ten items pays the full price of each.
 `
 )
 
-var shopFiles = map[string]string{"src/total.sh": shopTotal, "tests/run.sh": shopTests, "gatecub.toml": shopChecks}
+var shopFiles = map[string]string{"src/total.sh": shopTotal, "tests/run.sh": shopTests, "kitsu.toml": shopChecks}
 
 var skillFixtures = map[string]skillFixture{
 	"shop":  {files: shopFiles, hooks: true, verified: true},
 	"clone": {files: shopFiles, clone: true},
 	"task": {files: map[string]string{
-		"src/total.sh": shopTotal, "tests/run.sh": shopTests, "gatecub.toml": shopChecks,
+		"src/total.sh": shopTotal, "tests/run.sh": shopTests, "kitsu.toml": shopChecks,
 		"openspec/changes/add-discount/proposal.md": discountProposal,
 	}, hooks: true, verified: true},
-	"service": {files: map[string]string{"app/greet.sh": serviceGreet, "check.sh": serviceCheck, "gatecub.toml": serviceChecks}, hooks: true},
+	"service": {files: map[string]string{"app/greet.sh": serviceGreet, "check.sh": serviceCheck, "kitsu.toml": serviceChecks}, hooks: true},
 	"plain":   {files: map[string]string{"app/greet.sh": serviceGreet, "tests/greet_test.sh": plainTests}},
 }
 
@@ -149,8 +149,8 @@ func fencedBlocks(text string) []skillBlock {
 var (
 	skillName   = regexp.MustCompile(`^[a-z0-9-]{1,64}$`)
 	headKey     = regexp.MustCompile(`^([A-Za-z_-]+):`)
-	namedInCode = regexp.MustCompile("`gatecub ([a-z]+)")
-	helpCommand = regexp.MustCompile(`(?m)^  gatecub ([a-z]+)`)
+	namedInCode = regexp.MustCompile("`kitsu ([a-z]+)")
+	helpCommand = regexp.MustCompile(`(?m)^  kitsu ([a-z]+)`)
 	fixtureNote = regexp.MustCompile(`fixture "([a-z]+)"`)
 	exitNote    = regexp.MustCompile(`^\[exit (\d+)\]$`)
 	runID       = regexp.MustCompile(`\d{8}T\d{6}Z-[0-9a-f]{8}`)
@@ -166,7 +166,7 @@ var (
 func TestSkillHeads(t *testing.T) {
 	paths, err := filepath.Glob(filepath.Join(repoRoot, "skills", "*", "SKILL.md"))
 	if err != nil || len(paths) < 2 {
-		t.Fatalf("want the skills task and gatecub under skills/, got %v (%v)", paths, err)
+		t.Fatalf("want the skills task and kitsu under skills/, got %v (%v)", paths, err)
 	}
 	for _, path := range paths {
 		data, err := os.ReadFile(path)
@@ -211,7 +211,7 @@ func TestSkillHeads(t *testing.T) {
 
 // The skill is read whole each time it loads, and an example when its case
 // comes up, so both stay short. Every example is named in SKILL.md with the
-// case it is for. The skill names no version of gatecub: the replay below, not a
+// case it is for. The skill names no version of kitsu: the replay below, not a
 // number, keeps it in step with the program.
 func TestSkillSizeAndExamples(t *testing.T) {
 	documents := skillDocuments(t)
@@ -237,12 +237,12 @@ func TestSkillSizeAndExamples(t *testing.T) {
 	}
 	for path, text := range documents {
 		if number := versionNumber.FindString(text); number != "" {
-			t.Errorf("%s holds the version number %s; the skill names no version of gatecub", path, number)
+			t.Errorf("%s holds the version number %s; the skill names no version of kitsu", path, number)
 		}
 	}
 }
 
-// skillEnvironment is a new home with the gatecub under test first on the PATH.
+// skillEnvironment is a new home with the kitsu under test first on the PATH.
 func skillEnvironment(t *testing.T) []string {
 	t.Helper()
 	home := t.TempDir()
@@ -251,7 +251,7 @@ func skillEnvironment(t *testing.T) []string {
 		"GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+filepath.Join(home, ".gitconfig"),
 		"GIT_AUTHOR_NAME=Example", "GIT_AUTHOR_EMAIL=example@example.com",
 		"GIT_COMMITTER_NAME=Example", "GIT_COMMITTER_EMAIL=example@example.com",
-		"PATH="+gatecubtest.Binary(t)+string(os.PathListSeparator)+os.Getenv("PATH"))
+		"PATH="+kitsutest.Binary(t)+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
 // shell runs one command line in dir and returns what it printed and its
@@ -282,10 +282,10 @@ func (f skillFixture) prepare(t *testing.T, env []string) string {
 	}
 	steps := []string{"git init -q -b main", "git add -A", "git commit -q -m start"}
 	if f.hooks {
-		steps = append(steps, "gatecub init")
+		steps = append(steps, "kitsu init")
 	}
 	if f.verified {
-		steps = append(steps, "gatecub run")
+		steps = append(steps, "kitsu run")
 	}
 	for _, step := range steps {
 		if output, status := shell(t, dir, env, step, ""); status != 0 {
@@ -357,7 +357,7 @@ func replay(t *testing.T, text string, env []string) {
 	}
 }
 
-// Each example of the skill is replayed as it is written, against the gatecub
+// Each example of the skill is replayed as it is written, against the kitsu
 // under test, so an example cannot show output the program does not print.
 func TestSkillExamplesAreReplayed(t *testing.T) {
 	if runtime.GOOS == "windows" {
@@ -374,15 +374,15 @@ func TestSkillExamplesAreReplayed(t *testing.T) {
 	}
 }
 
-// The skill names only commands that `gatecub help` lists, and each piece of
+// The skill names only commands that `kitsu help` lists, and each piece of
 // output it explains is printed in an example that the test replays.
 func TestSkillNamesRealCommandsAndOutput(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("the gatecub under test is asked for its help through sh")
+		t.Skip("the kitsu under test is asked for its help through sh")
 	}
-	help, status := shell(t, t.TempDir(), skillEnvironment(t), "gatecub help", "")
+	help, status := shell(t, t.TempDir(), skillEnvironment(t), "kitsu help", "")
 	if status != 0 {
-		t.Fatalf("`gatecub help` exited %d:\n%s", status, help)
+		t.Fatalf("`kitsu help` exited %d:\n%s", status, help)
 	}
 	commands := map[string]bool{"help": true}
 	for _, match := range helpCommand.FindAllStringSubmatch(help, -1) {
@@ -393,7 +393,7 @@ func TestSkillNamesRealCommandsAndOutput(t *testing.T) {
 	for path, text := range documents {
 		for _, match := range namedInCode.FindAllStringSubmatch(text, -1) {
 			if !commands[match[1]] {
-				t.Errorf("%s names `gatecub %s`, which `gatecub help` does not list", path, match[1])
+				t.Errorf("%s names `kitsu %s`, which `kitsu help` does not list", path, match[1])
 			}
 		}
 		for _, block := range fencedBlocks(text) {
@@ -401,8 +401,8 @@ func TestSkillNamesRealCommandsAndOutput(t *testing.T) {
 				continue
 			}
 			for _, line := range block.lines {
-				if command, found := strings.CutPrefix(line, "$ gatecub "); found && !commands[strings.Fields(command)[0]] {
-					t.Errorf("%s runs `gatecub %s`, which `gatecub help` does not list", path, command)
+				if command, found := strings.CutPrefix(line, "$ kitsu "); found && !commands[strings.Fields(command)[0]] {
+					t.Errorf("%s runs `kitsu %s`, which `kitsu help` does not list", path, command)
 				}
 				replayed.WriteString(line + "\n")
 			}

@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/evidence"
-	"github.com/belevtsev/gatecub/v3/internal/store"
+	"github.com/belevtsev/kitsu/v3/internal/evidence"
+	"github.com/belevtsev/kitsu/v3/internal/store"
 )
 
-// A list is printed as gatecub.toml holds it, and an absent list as "not set"
+// A list is printed as kitsu.toml holds it, and an absent list as "not set"
 // (second challenge, finding U13).
 func TestListText(t *testing.T) {
 	cases := map[string][]string{
@@ -51,7 +51,7 @@ func TestDescribeNamesTheLastRunThatDecidedNothing(t *testing.T) {
 // (second challenge, finding U3), and names how to set changes aside when
 // the commit leaves files out (finding U4).
 func TestDenialInstruction(t *testing.T) {
-	const fixFirst = "gatecub: a check failed or timed out; first fix what its log shows.\n"
+	const fixFirst = "kitsu: a check failed or timed out; first fix what its log shows.\n"
 	st := store.Open(t.TempDir())
 	code := 3
 	failed := verdict(check("unit", evidence.Failed, &store.Record{Outcome: store.Failed, ExitStatus: &code, Log: "logs/r1.log"}), check("lint", evidence.NotRun, nil))
@@ -63,7 +63,7 @@ func TestDenialInstruction(t *testing.T) {
 		"timed out": {Hook: "pre-commit", Verdict: timedOut},
 	} {
 		text := r.Denial(st)
-		fix, run := strings.Index(text, fixFirst), strings.LastIndex(text, "  gatecub run\n")
+		fix, run := strings.Index(text, fixFirst), strings.LastIndex(text, "  kitsu run\n")
 		if fix < 0 || run < fix {
 			t.Errorf("%s: the denial does not hold %q before the command:\n%s", name, fixFirst, text)
 		}
@@ -73,12 +73,12 @@ func TestDenialInstruction(t *testing.T) {
 	}
 
 	text := Ruling{Hook: "pre-commit", Verdict: notRun, Elsewhere: true, Differs: "The working tree holds other content than this commit."}.Denial(st)
-	for _, want := range []string{"git add -A", "git stash push --keep-index --include-untracked", "  gatecub run\n"} {
+	for _, want := range []string{"git add -A", "git stash push --keep-index --include-untracked", "  kitsu run\n"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the denial of a commit that leaves files out does not hold %q:\n%s", want, text)
 		}
 	}
-	if text := (Ruling{Hook: "pre-commit", Verdict: notRun}).Denial(st); !strings.HasSuffix(text, "gatecub: to produce the missing evidence, run:\n  gatecub run\n") || strings.Contains(text, "git stash") {
+	if text := (Ruling{Hook: "pre-commit", Verdict: notRun}).Denial(st); !strings.HasSuffix(text, "kitsu: to produce the missing evidence, run:\n  kitsu run\n") || strings.Contains(text, "git stash") {
 		t.Errorf("a denial whose content is the working tree's does not end with the plain instruction:\n%s", text)
 	}
 }

@@ -19,7 +19,7 @@ import (
 // processes it then starts join the job too, and ending the job ends them all.
 //
 // Differences from Linux and macOS:
-//   - The job is created with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, so if gatecub
+//   - The job is created with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, so if kitsu
 //     itself dies, Windows ends the run's processes when the handle closes.
 //   - A stop (timeout or cancelled ctx) terminates the job.
 //   - A terminated program reports the exit code TerminateJobObject gave it
@@ -43,7 +43,7 @@ var jobs sync.Map // *exec.Cmd -> windows.Handle
 var ntResumeProcess, kernel32 = windows.NewLazySystemDLL("ntdll.dll").NewProc("NtResumeProcess"), windows.NewLazySystemDLL("kernel32.dll")
 
 // ownGroup makes the program start suspended; joinGroup lets it run once it is in its job object.
-// It also starts it in a console process group of its own, so that Ctrl+C in gatecub's console reaches gatecub alone.
+// It also starts it in a console process group of its own, so that Ctrl+C in kitsu's console reaches kitsu alone.
 func ownGroup(command *exec.Cmd) {
 	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_SUSPENDED | windows.CREATE_NEW_PROCESS_GROUP}
 }

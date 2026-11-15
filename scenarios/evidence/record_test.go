@@ -5,20 +5,20 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // Requirement "What a run records", scenario "The record of a failed run".
 func TestRecordOfAFailedRun(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	repo.Write("src/app.txt", "broken\n")
 	script := repo.Run("", "sh", "unit.sh").Stdout
 	if strings.TrimSpace(script) == "" {
 		t.Fatal("unit.sh prints nothing, so its output cannot be found in the log")
 	}
 
-	run := repo.Gatecub("run", "unit")
+	run := repo.Kitsu("run", "unit")
 	out := status(t, repo)
 
 	unit := out.check(t, "unit")
@@ -39,6 +39,6 @@ func TestRecordOfAFailedRun(t *testing.T) {
 		t.Errorf("the log does not hold the output of unit.sh %q:\n%s", script, data)
 	}
 	if t.Failed() {
-		t.Logf("entry: %+v\noutput of gatecub run unit (exit status %d):\n%s", unit, run.Code, run.Output())
+		t.Logf("entry: %+v\noutput of kitsu run unit (exit status %d):\n%s", unit, run.Code, run.Output())
 	}
 }

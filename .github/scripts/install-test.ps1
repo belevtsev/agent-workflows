@@ -2,7 +2,7 @@
 #
 # Follows the first install instruction of docs/release-install.md for Windows, on a PATH
 # that holds no go, in the PowerShell that runs this script, and exits 0 only
-# when `gatecub version` then prints TAG and REVISION.
+# when `kitsu version` then prints TAG and REVISION.
 #
 # With -Archives, a directory that holds the archives and SHA256SUMS, the
 # instruction downloads from this machine in place of the release; nothing
@@ -21,7 +21,7 @@ param(
 )
 $ErrorActionPreference = "Stop"
 $port = 18719
-$work = Join-Path ([IO.Path]::GetTempPath()) ("gatecub-install-" + [guid]::NewGuid())
+$work = Join-Path ([IO.Path]::GetTempPath()) ("kitsu-install-" + [guid]::NewGuid())
 New-Item -ItemType Directory $work | Out-Null
 
 # The instruction is the first powershell block after the line that starts it.
@@ -71,7 +71,7 @@ try {
     }
     else {
         $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
-        $zip = "gatecub_${Tag}_windows_${arch}.zip"
+        $zip = "kitsu_${Tag}_windows_${arch}.zip"
         foreach ($name in "good", "damaged") {
             New-Item -ItemType Directory (Join-Path $work $name) | Out-Null
             Copy-Item (Join-Path $Archives $zip), (Join-Path $Archives "SHA256SUMS") (Join-Path $work $name)
@@ -84,7 +84,7 @@ try {
         $bytes[10] = ($bytes[10] + 1) % 256
         [IO.File]::WriteAllBytes($damaged, $bytes)
         Expand-Archive $damaged -DestinationPath (Join-Path $work "unpacked")
-        if (-not (Test-Path (Join-Path $work "unpacked\gatecub.exe"))) {
+        if (-not (Test-Path (Join-Path $work "unpacked\kitsu.exe"))) {
             throw "The damaged copy does not unpack, so it cannot show that the checksum is checked."
         }
 
@@ -109,14 +109,14 @@ try {
     }
 
     if ((Follow "good") -ne 0) { throw "The install instruction failed." }
-    $printed = & (Join-Path $work "local-good\gatecub\gatecub.exe") version
+    $printed = & (Join-Path $work "local-good\kitsu\kitsu.exe") version
     $printed | Out-Host
-    if (-not ($printed -contains "gatecub $Tag")) { throw "gatecub version does not print the tag $Tag." }
-    if (-not ($printed -contains "revision $Revision")) { throw "gatecub version does not print the revision $Revision." }
+    if (-not ($printed -contains "kitsu $Tag")) { throw "kitsu version does not print the tag $Tag." }
+    if (-not ($printed -contains "revision $Revision")) { throw "kitsu version does not print the revision $Revision." }
 
     if ($Archives -ne "") {
         if ((Follow "damaged") -eq 0) { throw "The install instruction succeeded with a damaged archive." }
-        if (Test-Path (Join-Path $work "local-damaged\gatecub")) { throw "gatecub was installed from a damaged archive." }
+        if (Test-Path (Join-Path $work "local-damaged\kitsu")) { throw "kitsu was installed from a damaged archive." }
         "A damaged archive was refused and nothing was installed." | Out-Host
     }
 }

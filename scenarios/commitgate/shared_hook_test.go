@@ -5,38 +5,38 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // Requirement "Hooks of other tools", scenario "A shared hook that already
-// calls `gatecub`".
-func TestSharedHookThatAlreadyCallsGatecub(t *testing.T) {
+// calls `kitsu`".
+func TestSharedHookThatAlreadyCallsKitsu(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	shared := filepath.Join(hooksDir(t, repo), "pre-commit")
 	hook := "#!/bin/sh\n" +
 		"# written by another tool\n" +
 		"echo another tool runs\n" +
-		"gatecub hook pre-commit \"$@\"\n"
+		"kitsu hook pre-commit \"$@\"\n"
 	writeProgram(t, shared, hook)
 	before := fileSum(t, shared)
 
-	result := repo.Gatecub("init")
+	result := repo.Kitsu("init")
 	if result.Code != 0 {
-		t.Errorf("gatecub init exited %d, want 0:\n%s", result.Code, result.Output())
+		t.Errorf("kitsu init exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 	if got := fileSum(t, shared); got != before {
 		t.Errorf("the SHA-256 of pre-commit changed from %s to %s", before, got)
 	}
 
-	status := repo.Gatecub("status", "--json")
+	status := repo.Kitsu("status", "--json")
 	var object struct {
 		Hooks string `json:"hooks"`
 	}
 	if err := json.Unmarshal([]byte(status.Stdout), &object); err != nil {
-		t.Fatalf("gatecub status --json (exit %d) did not print one JSON object: %v\n%s", status.Code, err, status.Output())
+		t.Fatalf("kitsu status --json (exit %d) did not print one JSON object: %v\n%s", status.Code, err, status.Output())
 	}
 	if object.Hooks != "installed" {
-		t.Errorf("gatecub status --json holds hooks %q, want installed:\n%s", object.Hooks, status.Stdout)
+		t.Errorf("kitsu status --json holds hooks %q, want installed:\n%s", object.Hooks, status.Stdout)
 	}
 }

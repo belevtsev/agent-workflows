@@ -4,19 +4,19 @@ import (
 	"os"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // Requirement "Log limit", scenario "A very long log".
 func TestVeryLongLogIsCutAndStillSatisfies(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	// 50 MiB of output, and exit status 0.
 	declare(t, repo, "[[check]]\nid = \"loud\"\nrun = [\"sh\", \"-c\", \"yes 0123456789abcdef | head -c 52428800\"]\n")
 	const limit = 10 << 20
 	const markerAllowance = 4 << 10 // the marker's size is not specified; a few lines
 
-	first := repo.Gatecub("run")
+	first := repo.Kitsu("run")
 
 	record := lastRecord(t, repo, "loud")
 	if record["outcome"] != "passed" {
@@ -33,14 +33,14 @@ func TestVeryLongLogIsCutAndStillSatisfies(t *testing.T) {
 		before[id] = len(repo.RecordFiles(id))
 	}
 
-	second := repo.Gatecub("run")
+	second := repo.Kitsu("run")
 
 	for _, id := range []string{"unit", "lint", "loud"} {
 		if after := len(repo.RecordFiles(id)); after != before[id] {
-			t.Errorf("the second gatecub run executed %s (%d records, %d before)", id, after, before[id])
+			t.Errorf("the second kitsu run executed %s (%d records, %d before)", id, after, before[id])
 		}
 	}
 	if t.Failed() {
-		t.Logf("first gatecub run exit status %d; second gatecub run (exit status %d):\n%s", first.Code, second.Code, second.Output())
+		t.Logf("first kitsu run exit status %d; second kitsu run (exit status %d):\n%s", first.Code, second.Code, second.Output())
 	}
 }

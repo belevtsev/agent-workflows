@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/proc"
+	"github.com/belevtsev/kitsu/v3/internal/proc"
 )
 
 // Oracle: stdout keeps its first StdoutLimit bytes and records the overflow,
@@ -35,7 +35,7 @@ func TestRunKeepsOutputHeadErrorTailAndExitStatus(t *testing.T) {
 // Oracle: a nil Env starts the program with no environment at all, so env
 // prints nothing although the test's own environment is not empty.
 func TestRunGivesNilEnvAnEmptyEnvironment(t *testing.T) {
-	t.Setenv("GATECUB_PROC_INHERITED", "1")
+	t.Setenv("KITSU_PROC_INHERITED", "1")
 	got := proc.Run(t.Context(), proc.Spec{Path: "env", StdoutLimit: 1024})
 	if got.Err != nil || got.Code != 0 || len(got.Stdout) != 0 {
 		t.Fatalf("env with a nil Env printed %q (Code=%d Err=%v), want no variables", got.Stdout, got.Code, got.Err)
@@ -82,7 +82,7 @@ func TestRunStopsAtItsTimeoutOrCancellation(t *testing.T) {
 
 // sessionHelperEnv names the FIFO through which the test binary, started as
 // TestRunSessionHelper, reports that it has left the run's process group.
-const sessionHelperEnv = "GATECUB_PROC_SESSION_HELPER_READY"
+const sessionHelperEnv = "KITSU_PROC_SESSION_HELPER_READY"
 
 // TestRunSessionHelper does nothing in a normal test run. Started by
 // TestRunStopsAtItsTimeoutWhileAnotherSessionHoldsItsOutput, it moves into a

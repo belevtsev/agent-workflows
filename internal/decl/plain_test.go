@@ -11,7 +11,7 @@ import (
 
 // A name a repository holds is printed as it is when it holds no control
 // character, and quoted otherwise, so that it adds neither a line nor a
-// terminal command to what gatecub prints.
+// terminal command to what kitsu prints.
 func TestPlain(t *testing.T) {
 	t.Parallel()
 	unchanged := []string{

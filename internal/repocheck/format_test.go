@@ -11,7 +11,7 @@ import (
 
 // CI refuses a Go file that gofmt would change. This test holds the same
 // rule inside `go test`, with the formatter of the Go that runs the test, so
-// that the checks of gatecub.toml find such a file before a push does: a gofmt of
+// that the checks of kitsu.toml find such a file before a push does: a gofmt of
 // another Go release, first on PATH, can format differently.
 func TestGoFilesAreFormatted(t *testing.T) {
 	for _, file := range repoFiles(t) {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // Observation: "git runs `pre-commit` without holding the index lock and
@@ -181,7 +181,7 @@ func contacted(trace string) bool {
 }
 
 // gitAtLeast says whether git is at least major.minor.
-func gitAtLeast(t *testing.T, repo *gatecubtest.Repo, major, minor int) bool {
+func gitAtLeast(t *testing.T, repo *kitsutest.Repo, major, minor int) bool {
 	t.Helper()
 	version := repo.Git("version")
 	match := regexp.MustCompile(`(\d+)\.(\d+)`).FindStringSubmatch(version)
@@ -224,7 +224,7 @@ func TestAPartialCloneFetchesAMissingBlobUnlessLazyFetchIsOff(t *testing.T) {
 	}
 	// traced runs git in the clone with GIT_TRACE written to a file, and
 	// returns how it ended and the trace.
-	traced := func(extra []string, args ...string) (gatecubtest.Result, string) {
+	traced := func(extra []string, args ...string) (kitsutest.Result, string) {
 		t.Helper()
 		trace := filepath.Join(t.TempDir(), "trace")
 		result := runEnv(t, clone, append([]string{"GIT_TRACE=" + trace}, extra...), args...)

@@ -11,12 +11,12 @@ func TestGatedCommitOnEachSystem(t *testing.T) {
 	before := head(repo)
 	repo.Write("README.md", editedReadme)
 
-	run := repo.Gatecub("run")
+	run := repo.Kitsu("run")
 	repo.Git("add", "-A")
 	commit := repo.TryGit("commit", "-m", "docs")
 
 	if run.Code != 0 {
-		t.Errorf("gatecub run exit status %d, want 0\n%s", run.Code, run.Output())
+		t.Errorf("kitsu run exit status %d, want 0\n%s", run.Code, run.Output())
 	}
 	if commit.Code != 0 {
 		t.Errorf("git commit exit status %d, want 0\n%s", commit.Code, commit.Output())

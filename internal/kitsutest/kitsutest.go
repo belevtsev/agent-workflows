@@ -1,7 +1,7 @@
-// Package gatecubtest is the harness of the scenario tests: it builds gatecub once and
+// Package kitsutest is the harness of the scenario tests: it builds kitsu once and
 // drives it and git in temporary repositories that share nothing with the
 // machine's own git configuration or home directory.
-package gatecubtest
+package kitsutest
 
 import (
 	"bytes"
@@ -19,36 +19,36 @@ import (
 
 var binary struct {
 	once sync.Once
-	dir  string // holds only the gatecub program, so it can go first on PATH
+	dir  string // holds only the kitsu program, so it can go first on PATH
 	err  error
 }
 
-// Binary is the directory that holds the gatecub program under test and nothing
-// else. GATECUB_TEST_BINARY names a program built elsewhere; without it the
-// harness builds cmd/gatecub of this module once per test process.
+// Binary is the directory that holds the kitsu program under test and nothing
+// else. KITSU_TEST_BINARY names a program built elsewhere; without it the
+// harness builds cmd/kitsu of this module once per test process.
 func Binary(t testing.TB) string {
 	t.Helper()
 	binary.once.Do(func() { binary.dir, binary.err = prepareBinary() })
 	if binary.err != nil {
-		t.Fatalf("gatecub cannot be built: %v", binary.err)
+		t.Fatalf("kitsu cannot be built: %v", binary.err)
 	}
 	return binary.dir
 }
 
 func programName() string {
 	if runtime.GOOS == "windows" {
-		return "gatecub.exe"
+		return "kitsu.exe"
 	}
-	return "gatecub"
+	return "kitsu"
 }
 
 func prepareBinary() (string, error) {
-	dir, err := os.MkdirTemp("", "gatecub-under-test-")
+	dir, err := os.MkdirTemp("", "kitsu-under-test-")
 	if err != nil {
 		return "", err
 	}
 	target := filepath.Join(dir, programName())
-	if given := os.Getenv("GATECUB_TEST_BINARY"); given != "" {
+	if given := os.Getenv("KITSU_TEST_BINARY"); given != "" {
 		data, err := os.ReadFile(given)
 		if err != nil {
 			return "", err
@@ -61,7 +61,7 @@ func prepareBinary() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	build := exec.Command("go", "build", "-o", target, "./cmd/gatecub")
+	build := exec.Command("go", "build", "-o", target, "./cmd/kitsu")
 	build.Dir = root
 	build.Env = append(os.Environ(), "GOWORK=off")
 	if output, err := build.CombinedOutput(); err != nil {
@@ -98,7 +98,7 @@ type Result struct {
 // Output is everything the command printed, standard output first.
 func (r Result) Output() string { return r.Stdout + r.Stderr }
 
-// Repo is a directory in which the tests run git and gatecub.
+// Repo is a directory in which the tests run git and kitsu.
 type Repo struct {
 	Dir  string
 	Home string // an empty home directory of its own
@@ -107,7 +107,7 @@ type Repo struct {
 }
 
 // NewRepo creates an empty git repository on branch main. Its commands see
-// no git configuration of the machine and an empty home directory; gatecub is
+// no git configuration of the machine and an empty home directory; kitsu is
 // first on their PATH.
 func NewRepo(t testing.TB) *Repo {
 	t.Helper()
@@ -159,7 +159,7 @@ run = ["sh", "lint.sh"]
 	demoLint = "echo lint.sh runs\ntest ! -e BAD\n"
 )
 
-// Demo creates the repository `demo` that the specifications share: gatecub.toml
+// Demo creates the repository `demo` that the specifications share: kitsu.toml
 // declares `unit` (paths src/** and unit.sh; unit.sh exits 3 unless
 // src/app.txt holds ok) and `lint` (no paths; lint.sh exits 0 unless a file
 // BAD exists at the root); README.md; and a .gitignore that lists build/.
@@ -167,7 +167,7 @@ run = ["sh", "lint.sh"]
 func Demo(t testing.TB) *Repo {
 	t.Helper()
 	repo := NewRepo(t)
-	repo.Write("gatecub.toml", DemoDeclaration)
+	repo.Write("kitsu.toml", DemoDeclaration)
 	repo.Write("src/app.txt", "ok\n")
 	repo.Write("unit.sh", demoUnit)
 	repo.Write("lint.sh", demoLint)
@@ -263,8 +263,8 @@ func (r *Repo) Run(input, name string, args ...string) Result {
 	return result
 }
 
-// Gatecub runs gatecub and returns how it ended.
-func (r *Repo) Gatecub(args ...string) Result {
+// Kitsu runs kitsu and returns how it ended.
+func (r *Repo) Kitsu(args ...string) Result {
 	r.t.Helper()
 	return r.Run("", filepath.Join(Binary(r.t), programName()), args...)
 }
@@ -286,7 +286,7 @@ func (r *Repo) Git(args ...string) string {
 	return strings.TrimRight(result.Stdout, "\r\n")
 }
 
-// StoreDir is the directory gatecub/ in the common git directory, where gatecub keeps
+// StoreDir is the directory kitsu/ in the common git directory, where kitsu keeps
 // its records.
 func (r *Repo) StoreDir() string {
 	r.t.Helper()
@@ -294,7 +294,7 @@ func (r *Repo) StoreDir() string {
 	if !filepath.IsAbs(common) {
 		common = filepath.Join(r.Dir, common)
 	}
-	return filepath.Join(filepath.Clean(common), "gatecub")
+	return filepath.Join(filepath.Clean(common), "kitsu")
 }
 
 // RecordFiles lists the files that hold the run records of a check, on any

@@ -29,11 +29,11 @@ Each one must be:
   files.
 - **Tested.** It has a test command and a lint command of its own, in a script or written down in
   its own files, so that `lookup` can find them (E18 needs this).
-- **Declared.** `gatecub.toml` at its root declares two checks, made with `gatecub init` and then
-  `gatecub add unit -- <program> [<argument>...]` and `gatecub add lint -- <program> [<argument>...]`.
+- **Declared.** `kitsu.toml` at its root declares two checks, made with `kitsu init` and then
+  `kitsu add unit -- <program> [<argument>...]` and `kitsu add lint -- <program> [<argument>...]`.
   The check ids are `unit` and `lint`.
-- **Gated.** The hooks are installed with `gatecub init` in every clone that is used.
-- **Roles file.** `gatecub-roles.toml` at its root names the test paths:
+- **Gated.** The hooks are installed with `kitsu init` in every clone that is used.
+- **Roles file.** `kitsu-roles.toml` at its root names the test paths:
 
   ```toml
   version = 1
@@ -47,7 +47,7 @@ Each one must be:
   this.
 - **A remote.** A bare repository on the same machine is its remote `origin`, and the prepared
   state is pushed to it (E10 needs this).
-- **Clean.** Everything is committed, and `gatecub status` exits 0 on the prepared state.
+- **Clean.** Everything is committed, and `kitsu status` exits 0 on the prepared state.
 
 The specifications are written for a repository called `demo`. The cases use these names for the
 same things in A, B and C:
@@ -60,13 +60,13 @@ same things in A, B and C:
 | `tests/app_test.txt` | `<test>`: the existing test file |
 | "a greeting that `src/app.txt` does not hold yet" | the greeting `Good evening, <name>.` |
 
-Each case starts from a fresh clone of the prepared repository with `gatecub init` run in it, unless
+Each case starts from a fresh clone of the prepared repository with `kitsu init` run in it, unless
 the case says that it continues from another case. Run each case once in each of A, B and C.
 
 ### Host
 
 - **Claude Code**, with the plugin of this repository installed. Its roles are the agents
-  `gatecub:<role>`.
+  `kitsu:<role>`.
 - **Codex is unconfirmed.** Nothing was checked on Codex, and how Codex starts a role on a given
   model is not confirmed (proposal, Known limits and Open Question 12). Run no case on Codex
   until that is settled.
@@ -78,7 +78,7 @@ the case says that it continues from another case. Run each case once in each of
 In Claude Code, at the root of the clone, give:
 
 ```text
-/gatecub:task <request>
+/kitsu:task <request>
 ```
 
 `<request>` is the text in the case's "Request" field, word for word. The owner plays the
@@ -87,19 +87,19 @@ about a push, unless the case says otherwise.
 
 ### Where to look afterwards
 
-- `gatecub change status <task>` and `gatecub change check <task>` for the change folder.
-- `gatecub status` for the gate.
-- `gatecub tokens --task <task> --json` for the role starts, their stages, rounds and models. Its
+- `kitsu change status <task>` and `kitsu change check <task>` for the change folder.
+- `kitsu status` for the gate.
+- `kitsu tokens --task <task> --json` for the role starts, their stages, rounds and models. Its
   `sessions` entry names the `record`: the host's record of the session.
 - **The session's record.** It shows the coordinator's messages, the commands it ran with their
   output, and every role start in order. The first line of each role's brief is its label,
-  `gatecub-task: <task> <stage> <round>`. The records of the roles sit beside it, in the session's
+  `kitsu-task: <task> <stage> <round>`. The records of the roles sit beside it, in the session's
   `subagents` folder.
 - `openspec/changes/<task>/reviews.md` for reviews, findings and approvals.
 - `git log`, `git show` and `git diff` for what was committed.
 
 `<task>` is the name of the change folder. The requests of the full path name it `add-greeting`,
-as the specifications do. On the small path the coordinator chooses a name; `gatecub tokens --json`
+as the specifications do. On the small path the coordinator chooses a name; `kitsu tokens --json`
 lists it under `tasks`.
 
 Several cases can be judged from the same run, for example E3, E4, E10, E13, E17, E21 and E25 from
@@ -118,12 +118,12 @@ table above.
   requirement "Entry".
 - **Prepare:** Run the request of E3 and end the session after the developer approved the
   specification and before `architect` starts. Commit the folder `openspec/changes/add-greeting/`
-  and note the commit id as `<prepared>`. Check that `gatecub change status add-greeting` prints
+  and note the commit id as `<prepared>`. Check that `kitsu change status add-greeting` prints
   `design`.
 - **Request:** `Continue the task add-greeting.`
 - **Look for:**
   1. In the session's record, the first role started is `architect`, with the label
-     `gatecub-task: add-greeting design 1`.
+     `kitsu-task: add-greeting design 1`.
   2. No start is labelled `spec` or `spec-review`.
   3. `git diff <prepared> -- openspec/changes/add-greeting/proposal.md
      openspec/changes/add-greeting/specs/` prints nothing, on the working tree and on `HEAD`.
@@ -142,7 +142,7 @@ table above.
 - **Look for:**
   1. In the session's record, a message of the coordinator names the small path and a reason,
      and it comes before the first role start.
-  2. `openspec/changes/` holds the same folders as before; `gatecub change status` lists no new one.
+  2. `openspec/changes/` holds the same folders as before; `kitsu change status` lists no new one.
 - **Result:** not run
 - **Date:** not run
 
@@ -165,7 +165,7 @@ table above.
   requirement "Two paths".
 - **Prepare:** The prepared repository. Pick one word of a message the program prints and
   misspell it in `<src>`; commit that through the gate.
-- **Request:** `/gatecub:task The message has a typo: "<the misspelt word>". Fix it.`
+- **Request:** `/kitsu:task The message has a typo: "<the misspelt word>". Fix it.`
 - **Look for:**
   1. In the session's record, a message of the coordinator says that the task needs no roles
      and offers to make the change directly, and it comes before any role start.
@@ -203,9 +203,9 @@ table above.
 - **Prepare:** As E2. Note the commit id of the prepared state as `<prepared>`.
 - **Request:** The request of E2.
 - **Look for:**
-  1. In the session's record, a `gatecub run` after the start labelled `tests 1` ended and before
+  1. In the session's record, a `kitsu run` after the start labelled `tests 1` ended and before
      `developer` started, and it failed.
-  2. A `gatecub run` after the `developer` start ended, and it passed.
+  2. A `kitsu run` after the `developer` start ended, and it passed.
   3. `git diff <prepared> HEAD -- openspec/` and `git status --short openspec/` print nothing.
 - **Result:** not run
 - **Date:** not run
@@ -226,7 +226,7 @@ table above.
      `### Requirement: Greeting text` under `## MODIFIED Requirements`.
   3. No file under `openspec/changes/add-greeting/specs/` holds a requirement under
      `## ADDED Requirements`.
-  4. `gatecub change check add-greeting` exits 0.
+  4. `kitsu change check add-greeting` exits 0.
 - **Result:** not run
 - **Date:** not run
 
@@ -286,7 +286,7 @@ table above.
 - **Prepare:** As E3. Save the output of `git ls-remote origin`.
 - **Request:** The request of E3. Say nothing about a push.
 - **Look for:**
-  1. `gatecub change status add-greeting` prints `done`, and `git log` shows the commit of the task.
+  1. `kitsu change status add-greeting` prints `done`, and `git log` shows the commit of the task.
   2. `git ls-remote origin` prints the same as before the run.
   3. In the session's record, no `git push` and no pull request.
 - **Result:** not run
@@ -306,7 +306,7 @@ table above.
      `major`.
   2. In the session's record, after the start labelled `review 1`, a start labelled `code 2`
      whose brief holds that finding, and then a start labelled `review 2`.
-  3. The reviewer changed no file: in the session's record, `gatecub roles check reviewer` exited 0
+  3. The reviewer changed no file: in the session's record, `kitsu roles check reviewer` exited 0
      after each `reviewer` start.
 - **Result:** not run
 - **Date:** not run
@@ -337,7 +337,7 @@ table above.
   1. In the session's record, the start labelled `tests 1` ends before `developer` starts, apart
      from a start for a first group of `tasks.md` that builds only the interface with empty
      bodies.
-  2. Between the two, a `gatecub run` whose result is `failed`.
+  2. Between the two, a `kitsu run` whose result is `failed`.
   3. At that run the tree holds the new tests and no change to `<src>`: the record of the
      `quality-engineer` start lists only test paths and `tests.md` as written.
   4. If that run passed instead, the coordinator told the developer that the new tests did not
@@ -356,7 +356,7 @@ table above.
   of `<test>` as `quality-engineer` left it.
 - **Request:** The request of E3.
 - **Look for:**
-  1. In the session's record, `gatecub roles check developer --from <tree> --task add-greeting`
+  1. In the session's record, `kitsu roles check developer --from <tree> --task add-greeting`
      exited 5 and listed `<test>`.
   2. Then a new `developer` start, with a brief that names `<test>`.
   3. The coordinator did not edit `<test>` itself.
@@ -372,7 +372,7 @@ table above.
   the root.
 - **Request:** The request of E3.
 - **Look for:**
-  1. In the session's record, `gatecub roles check reviewer` exited 5 and listed `notes.txt`.
+  1. In the session's record, `kitsu roles check reviewer` exited 5 and listed `notes.txt`.
   2. The coordinator asked the developer to remove `notes.txt`, or removed it after their yes.
   3. `git show --stat HEAD` does not list `notes.txt`.
 - **Result:** not run
@@ -386,7 +386,7 @@ table above.
   means verified".
 - **Prepare:** As E3. While the start labelled `code 1` runs, the owner adds one line to `<src>`
   that the check `lint` refuses and the check `unit` does not notice. When the code stage has
-  ended, run `gatecub run` and confirm that `lint` fails.
+  ended, run `kitsu run` and confirm that `lint` fails.
 - **Request:** The request of E3. When the code stage has ended, ask:
   `Is the task done?`
 - **Look for:**
@@ -407,10 +407,10 @@ table above.
   1. `git show --stat HEAD` lists `openspec/changes/add-greeting/`, the new tests and the change
      to `<src>`.
   2. `git log <prepared>..HEAD` lists the commits of the task. For each, the files under
-     `gatecub/decisions/` in the common git directory (`git rev-parse --git-common-dir`) hold a line
+     `kitsu/decisions/` in the common git directory (`git rev-parse --git-common-dir`) hold a line
      with the outcome `allowed` for its tree (`git log --format=%T`).
   3. Neither the session's record nor any role's record holds `--no-verify`.
-  4. `gatecub status` exits 0, and `gatecub change check add-greeting` exits 0.
+  4. `kitsu status` exits 0, and `kitsu change check add-greeting` exits 0.
 - **Result:** not run
 - **Date:** not run
 
@@ -420,7 +420,7 @@ table above.
 
 - **Scenario:** "Checks are proposed from what the repository has (evaluation)"; capability
   `task-flow`, requirement "A repository without checks".
-- **Prepare:** In the fresh clone, run `gatecub uninstall`, remove `gatecub.toml`, and commit the
+- **Prepare:** In the fresh clone, run `kitsu uninstall`, remove `kitsu.toml`, and commit the
   removal.
 - **Request:** The request of E3.
 - **Look for:**
@@ -429,8 +429,8 @@ table above.
      command.
   2. Before the developer's answer, `git status --short` shows no change and no other role was
      started.
-  3. After the answer, `gatecub init` and one `gatecub add` for each check appear in the session's record,
-     and `gatecub.toml` declares them.
+  3. After the answer, `kitsu init` and one `kitsu add` for each check appear in the session's record,
+     and `kitsu.toml` declares them.
 - **Result:** not run
 - **Date:** not run
 
@@ -438,15 +438,15 @@ table above.
 
 - **Scenario:** "An empty repository (evaluation)"; capability `task-flow`, requirement "A
   repository without checks".
-- **Prepare:** A new git repository with no file and no commit. No `gatecub.toml`, no
-  `gatecub-roles.toml`. `<language>` is the language of A, B or C.
+- **Prepare:** A new git repository with no file and no commit. No `kitsu.toml`, no
+  `kitsu-roles.toml`. `<language>` is the language of A, B or C.
 - **Request:** `Create a small program in <language> that prints "Hello, <name>." for a name
   given as its first argument. Name the task add-greeting.`
 - **Look for:**
   1. `openspec/changes/add-greeting/design.md` names the checks the code will have.
-  2. In `git log --reverse --stat`, take the first commit that holds code. `gatecub.toml` exists in
-     that commit or an earlier one (`git show <commit>:gatecub.toml`) and declares those checks.
-  3. No message of the coordinator calls work verified before `gatecub.toml` declared a check.
+  2. In `git log --reverse --stat`, take the first commit that holds code. `kitsu.toml` exists in
+     that commit or an earlier one (`git show <commit>:kitsu.toml`) and declares those checks.
+  3. No message of the coordinator calls work verified before `kitsu.toml` declared a check.
 - **Result:** not run
 - **Date:** not run
 
@@ -458,7 +458,7 @@ table above.
   "No state outside the record".
 - **Prepare:** Run the request of E3. End the session after the review of the code has no open
   finding and the coordinator ticked the tasks, before `git` starts. Check that
-  `gatecub change status add-greeting` prints `commit`. Start a new session.
+  `kitsu change status add-greeting` prints `commit`. Start a new session.
 - **Request:** `Continue the task add-greeting.`
 - **Look for:**
   1. In the new session's record, the first role started other than `lookup` is `git`, with the
@@ -479,7 +479,7 @@ table above.
   write "not triggered" as the result.
 - **Request:** The request of E3.
 - **Look for:**
-  1. In `gatecub tokens --task add-greeting --json`, `starts` less the `starts` of the `roles` entry
+  1. In `kitsu tokens --task add-greeting --json`, `starts` less the `starts` of the `roles` entry
      for `lookup` is 8.
   2. `complete` is `true`. If it is `false`, note the `unknown_records`.
 - **Result:** not run
@@ -491,7 +491,7 @@ table above.
 
 - **Scenario:** "A shipped change is archived (evaluation)"; capability `task-flow`, requirement
   "Current specifications".
-- **Prepare:** Continue from the end of E6: `gatecub change status add-greeting` prints `done`, and
+- **Prepare:** Continue from the end of E6: `kitsu change status add-greeting` prints `done`, and
   `openspec/specs/greeting/spec.md` still holds the old text of `Greeting text`.
 - **Request:** `The change add-greeting has shipped.`
 - **Look for:**
@@ -508,11 +508,11 @@ table above.
 
 - **Scenario:** "The model of the roles file is the one that runs (evaluation)"; capability
   `role-definitions`, requirement "Explicit start".
-- **Prepare:** Add `[claude.developer]` and `model = "sonnet"` to `gatecub-roles.toml` and commit it.
-  Check that `gatecub roles --json` prints `sonnet` for `developer` on `claude`.
+- **Prepare:** Add `[claude.developer]` and `model = "sonnet"` to `kitsu-roles.toml` and commit it.
+  Check that `kitsu roles --json` prints `sonnet` for `developer` on `claude`.
 - **Request:** The request of E2.
 - **Look for:**
-  1. In `gatecub tokens --task <task> --json`, the `roles` entry for `developer` names a `sonnet`
+  1. In `kitsu tokens --task <task> --json`, the `roles` entry for `developer` names a `sonnet`
      model under `models`.
   2. In the session's record, the call that started `developer` gave that model.
 - **Result:** not run
@@ -524,14 +524,14 @@ table above.
 
 - **Scenario:** "A model that does not exist (evaluation)"; capability `role-definitions`,
   requirement "Model not available".
-- **Prepare:** Add `[claude.git]` and `model = "no-such-model"` to `gatecub-roles.toml` and commit
+- **Prepare:** Add `[claude.git]` and `model = "no-such-model"` to `kitsu-roles.toml` and commit
   it. Note the commit id as `<prepared>`.
 - **Request:** The request of E2.
 - **Look for:**
   1. `git log <prepared>..HEAD` lists no commit.
   2. In the session's record, the coordinator told the developer that `git` could not run on
      `no-such-model`, and then waited.
-  3. In `gatecub tokens --task <task> --json`, no `roles` entry for `git` names another model.
+  3. In `kitsu tokens --task <task> --json`, no `roles` entry for `git` names another model.
 - **Result:** not run
 - **Date:** not run
 
@@ -552,9 +552,9 @@ table above.
 - **Result:** not run
 - **Date:** not run
 
-## The skill `gatecub`: does it load when it should
+## The skill `kitsu`: does it load when it should
 
-The plugin's second skill, [`gatecub`](../skills/gatecub/SKILL.md), tells an agent how to work in a gated
+The plugin's second skill, [`kitsu`](../skills/kitsu/SKILL.md), tells an agent how to work in a gated
 repository. A host loads a skill when the request matches its description, so the description
 is tested with requests that should load it and with near misses that should not. No run of
 this set has been made.
@@ -566,13 +566,13 @@ for "no".
 | # | Repository | Request | Should load |
 | --- | --- | --- | --- |
 | 1 | gated | `Fix the off-by-one in the pager and commit it.` | yes |
-| 2 | gated | `git says "gatecub: this commit is denied". What now?` | yes |
+| 2 | gated | `git says "kitsu: this commit is denied". What now?` | yes |
 | 3 | gated | `Run the checks and tell me if I can push.` | yes |
 | 4 | gated | `The lint check fails on my branch, can you sort it out?` | yes |
 | 5 | gated | `Rename the config loader and get it committed.` | yes |
 | 6 | gated | `Why was my push rejected by the hook?` | yes |
 | 7 | not gated | `Set this repo up so nothing gets committed unless the tests pass.` | yes |
-| 8 | not gated | `Add a commit gate with gatecub here.` | yes |
+| 8 | not gated | `Add a commit gate with kitsu here.` | yes |
 | 9 | gated, new clone | `I just cloned this. Anything I need to do before I start?` | yes |
 | 10 | gated | `Commit only the README change, leave the rest for later.` | yes |
 | 11 | not gated | `Fix the off-by-one in the pager and commit it.` | no |
@@ -591,7 +591,7 @@ for "no".
 
 ### A first trial of the skill, without a host
 
-These are historical results for `cw`, before the Gatecub rename; no new Gatecub host run is claimed.
+These are historical results for `cw`, before the Kitsu rename; no new Kitsu host run is claimed.
 
 On 14 November 2026 five subagents on Opus 5.5 each got one request in a scratch repository: a
 small Python package whose check is `python3 -m unittest`. Each got the text that `cw context`
@@ -642,10 +642,10 @@ they ask, and nothing else.
 
 ### The two arms
 
-- **The workflow.** The request is given with `/gatecub:task`. The owner approves and
+- **The workflow.** The request is given with `/kitsu:task`. The owner approves and
   answers from the sheet.
 - **One agent.** The same request is given to one session without roles, on the model and the
-  effort that `gatecub roles` prints for `developer` on that host. The plugin's hooks still run, so
+  effort that `kitsu roles` prints for `developer` on that host. The plugin's hooks still run, so
   that the tokens are counted the same way.
 
 Each arm runs each task three times, each time from a fresh clone of the same prepared state.
@@ -662,9 +662,9 @@ all of them pass.
 
 For each task, arm and trial:
 
-- **Tokens**, from `gatecub tokens`. For the workflow, the `total` of `gatecub tokens --task <task> --json`.
+- **Tokens**, from `kitsu tokens`. For the workflow, the `total` of `kitsu tokens --task <task> --json`.
   For one agent there is no role start, so take the `total` of its session from the `sessions`
-  entries of `gatecub tokens --json`. When `complete` is `false`, record the number as "at least".
+  entries of `kitsu tokens --json`. When `complete` is `false`, record the number as "at least".
 - **Pass or fail** of the acceptance tests.
 
 ## Comparison
@@ -695,7 +695,7 @@ difference is the workflow's tokens less one agent's, summed over the three tria
 - A case shows whether the workflow did what one scenario says, in one repository, on one run.
   It shows no benefit.
 - A case written "not triggered" is not a pass.
-- The flow tokens that `gatecub tokens` prints for one task are a split, not a comparison. The extra
+- The flow tokens that `kitsu tokens` prints for one task are a split, not a comparison. The extra
   cost of the workflow comes only from the comparison table.
 - A benefit of the workflow, in quality or in tokens, may be stated in `README.md` only with the
   comparison table of that release beside it. A test of the documents fails when the README

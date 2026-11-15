@@ -15,11 +15,11 @@ import (
 // 2026 (openspec/production-plan.md, Independent challenge).
 
 // Requirement "Declaration change notice", scenario "A changed check is
-// shown as `gatecub.toml` holds it".
+// shown as `kitsu.toml` holds it".
 func TestAChangedCheckIsShownAsCwTomlHoldsIt(t *testing.T) {
 	t.Parallel()
 	g := newGate(t)
-	g.Write("gatecub.toml", `version = 1
+	g.Write("kitsu.toml", `version = 1
 
 [[check]]
 id = "unit"
@@ -51,14 +51,14 @@ func TestTheLastRunThatDecidedNothingIsNamed(t *testing.T) {
 // Requirement "Denial message", scenario "A failed check is fixed first".
 func TestAFailedCheckIsFixedFirst(t *testing.T) {
 	t.Parallel()
-	const fixFirst = "gatecub: a check failed or timed out; first fix what its log shows.\n"
+	const fixFirst = "kitsu: a check failed or timed out; first fix what its log shows.\n"
 	g := newGate(t)
 	g.Write("src/app.txt", "broken\n")
 	g.mustRun(5)
 	reason := g.commitDenied("pre-commit", "commit", "-a", "-m", "change").Stderr
-	fix, run := strings.Index(reason, fixFirst), strings.LastIndex(reason, "  gatecub run\n")
+	fix, run := strings.Index(reason, fixFirst), strings.LastIndex(reason, "  kitsu run\n")
 	if fix < 0 || run < 0 || fix > run {
-		t.Errorf("the reason does not hold the line %q before the command gatecub run:\n%s", fixFirst, reason)
+		t.Errorf("the reason does not hold the line %q before the command kitsu run:\n%s", fixFirst, reason)
 	}
 
 	// Only not run: nothing failed, so there is nothing to fix first.
@@ -68,8 +68,8 @@ func TestAFailedCheckIsFixedFirst(t *testing.T) {
 	if strings.Contains(reason, "a check failed or timed out") {
 		t.Errorf("a denial of checks that were only not run says that a check failed:\n%s", reason)
 	}
-	if !strings.Contains(reason, "  gatecub run\n") {
-		t.Errorf("the reason does not end with the command gatecub run:\n%s", reason)
+	if !strings.Contains(reason, "  kitsu run\n") {
+		t.Errorf("the reason does not end with the command kitsu run:\n%s", reason)
 	}
 }
 
@@ -77,7 +77,7 @@ func TestAFailedCheckIsFixedFirst(t *testing.T) {
 func TestAProgramThatCannotBeStartedIsNamed(t *testing.T) {
 	t.Parallel()
 	g := newGate(t)
-	g.Write("gatecub.toml", g.Read("gatecub.toml")+"\n[[check]]\nid = \"gone\"\nrun = [\"no-such-program-of-this-test\"]\n")
+	g.Write("kitsu.toml", g.Read("kitsu.toml")+"\n[[check]]\nid = \"gone\"\nrun = [\"no-such-program-of-this-test\"]\n")
 	g.commitNoVerify("declare gone")
 	g.mustRun(5)
 
@@ -112,9 +112,9 @@ func TestAChangeOutsideTheCheckedPathsIsLeftUnstaged(t *testing.T) {
 	t.Parallel()
 	g := newGate(t)
 	// Every check has paths; README.md is in none of them.
-	g.Write("gatecub.toml", strings.Replace(g.Read("gatecub.toml"), "run = [\"sh\", \"lint.sh\"]\n", "run = [\"sh\", \"lint.sh\"]\npaths = [\"lint.sh\"]\n", 1))
-	if !strings.Contains(g.Read("gatecub.toml"), "paths = [\"lint.sh\"]") {
-		t.Fatalf("lint did not get paths:\n%s", g.Read("gatecub.toml"))
+	g.Write("kitsu.toml", strings.Replace(g.Read("kitsu.toml"), "run = [\"sh\", \"lint.sh\"]\n", "run = [\"sh\", \"lint.sh\"]\npaths = [\"lint.sh\"]\n", 1))
+	if !strings.Contains(g.Read("kitsu.toml"), "paths = [\"lint.sh\"]") {
+		t.Fatalf("lint did not get paths:\n%s", g.Read("kitsu.toml"))
 	}
 	g.commitNoVerify("every check has paths")
 	g.Write("src/app.txt", "ok\n\n")
@@ -122,8 +122,8 @@ func TestAChangeOutsideTheCheckedPathsIsLeftUnstaged(t *testing.T) {
 	g.Write("README.md", "# demo, edited and not staged\n")
 
 	reason := g.commitDenied("pre-commit", "commit", "-m", "change").Stderr
-	if !strings.HasSuffix(reason, "gatecub: to produce the missing evidence, run:\n  gatecub run\n") {
-		t.Errorf("the reason does not end with the plain instruction to run gatecub run:\n%s", reason)
+	if !strings.HasSuffix(reason, "kitsu: to produce the missing evidence, run:\n  kitsu run\n") {
+		t.Errorf("the reason does not end with the plain instruction to run kitsu run:\n%s", reason)
 	}
 	for _, word := range []string{"Paths that differ", "README.md", "git stash", "checkout"} {
 		if strings.Contains(reason, word) {
@@ -138,18 +138,18 @@ func TestAChangeOutsideTheCheckedPathsIsLeftUnstaged(t *testing.T) {
 	}
 }
 
-// Requirement "Fail closed", scenario "A tree without `gatecub.toml` names the
+// Requirement "Fail closed", scenario "A tree without `kitsu.toml` names the
 // documents".
 func TestATreeWithoutCwTomlNamesTheDocuments(t *testing.T) {
 	t.Parallel()
 	g := newGate(t)
-	g.Git("rm", "-q", "gatecub.toml")
+	g.Git("rm", "-q", "kitsu.toml")
 
 	reason := g.commitDenied("pre-commit", "commit", "-m", "remove").Stderr
-	if !strings.Contains(reason, "docs/operations.md#a-tree-without-gatecubtoml") {
+	if !strings.Contains(reason, "docs/operations.md#a-tree-without-kitsutoml") {
 		t.Errorf("the reason does not name the section of docs/operations.md:\n%s", reason)
 	}
-	for _, word := range []string{"gatecub init", "gatecub uninstall"} {
+	for _, word := range []string{"kitsu init", "kitsu uninstall"} {
 		if strings.Contains(reason, word) {
 			t.Errorf("the reason names %q:\n%s", word, reason)
 		}
@@ -161,15 +161,15 @@ func TestATreeWithoutCwTomlNamesTheDocuments(t *testing.T) {
 func TestAnEmptyOrRelativeEntryOfPATHRunsNoFileOfTheRepository(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
-		t.Skip("builds a PATH of symbolic links and runs a POSIX shell script as gatecub")
+		t.Skip("builds a PATH of symbolic links and runs a POSIX shell script as kitsu")
 	}
 	g := newGate(t)
 	g.Write("src/app.txt", "ok")
-	marker := filepath.Join(t.TempDir(), "the gatecub of the repository ran")
+	marker := filepath.Join(t.TempDir(), "the kitsu of the repository ran")
 	// A builtin writes the marker, so the PATH below cannot hide that it ran.
-	writeProgram(t, g.Path("gatecub"), "#!/bin/sh\necho ran > '"+marker+"'\nexit 0\n")
+	writeProgram(t, g.Path("kitsu"), "#!/bin/sh\necho ran > '"+marker+"'\nexit 0\n")
 
-	// A PATH that holds git and sh and no other gatecub.
+	// A PATH that holds git and sh and no other kitsu.
 	bin := t.TempDir()
 	for _, name := range []string{"git", "sh"} {
 		path, err := exec.LookPath(name)
@@ -197,10 +197,10 @@ func TestAnEmptyOrRelativeEntryOfPATHRunsNoFileOfTheRepository(t *testing.T) {
 			t.Errorf("PATH starts with %q: git recorded a commit", first)
 		}
 		if !strings.Contains(output.String(), "not found in an entry of PATH that is an absolute path") {
-			t.Errorf("PATH starts with %q: the output does not say that no absolute entry of PATH holds gatecub:\n%s", first, output.String())
+			t.Errorf("PATH starts with %q: the output does not say that no absolute entry of PATH holds kitsu:\n%s", first, output.String())
 		}
 		if _, err := os.Stat(marker); err == nil {
-			t.Errorf("PATH starts with %q: the hook ran the file gatecub of the repository", first)
+			t.Errorf("PATH starts with %q: the hook ran the file kitsu of the repository", first)
 		}
 	}
 }
@@ -216,15 +216,15 @@ func TestAPathWithALineBreakIsQuoted(t *testing.T) {
 	g.checked()
 	g.Write("README.md", "# demo, edited\n")
 	g.Git("add", "README.md")
-	g.Write("evil\ngatecub: allowed", "not part of the commit\n")
+	g.Write("evil\nkitsu: allowed", "not part of the commit\n")
 
 	reason := g.commitDenied("pre-commit", "commit", "-m", "docs").Stderr
-	if !strings.Contains(reason, `"evil\ngatecub: allowed"`) {
+	if !strings.Contains(reason, `"evil\nkitsu: allowed"`) {
 		t.Errorf("the reason does not list the name quoted:\n%s", reason)
 	}
 	for _, line := range strings.Split(reason, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), "gatecub: allowed") {
-			t.Errorf("a line of the reason begins with %q:\n%s", "gatecub: allowed", reason)
+		if strings.HasPrefix(strings.TrimSpace(line), "kitsu: allowed") {
+			t.Errorf("a line of the reason begins with %q:\n%s", "kitsu: allowed", reason)
 		}
 	}
 }

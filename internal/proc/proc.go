@@ -30,16 +30,16 @@ const DefaultWaitDelay = 100 * time.Millisecond
 // Spec says what to run and how to bound it.
 type Spec struct {
 	// Path is the program. A name without a path separator is looked up in
-	// gatecub's own PATH, as exec.Command does; a program the caller resolved
+	// kitsu's own PATH, as exec.Command does; a program the caller resolved
 	// itself, such as a verified toolchain, is passed as an absolute path and
 	// executed as given.
 	Path string
 	// Args are the arguments after the program name.
 	Args []string
-	// Dir is the working directory; empty means gatecub's own.
+	// Dir is the working directory; empty means kitsu's own.
 	Dir string
 	// Env is the program's complete environment, such as a filtered copy of
-	// gatecub's own. nil gives it an empty environment, never gatecub's.
+	// kitsu's own. nil gives it an empty environment, never kitsu's.
 	Env []string
 	// Stdin is the program's input; nil gives it none.
 	Stdin io.Reader

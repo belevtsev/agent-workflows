@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/decl"
+	"github.com/belevtsev/kitsu/v3/internal/decl"
 )
 
 // A pattern that names a folder of the tree matches no entry, so a check

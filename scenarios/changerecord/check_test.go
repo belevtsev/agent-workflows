@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // The scenarios of the requirement "Usable as a check".
@@ -23,19 +23,19 @@ func TestFolderAtFirstStage(t *testing.T) {
 func TestGateEnforcesRecord(t *testing.T) {
 	t.Parallel()
 	r := newRecord(t)
-	r.Setenv("PATH", gatecubtest.Binary(t)+string(os.PathListSeparator)+os.Getenv("PATH"))
-	r.Write("gatecub.toml", gatecubtest.DemoDeclaration+`
+	r.Setenv("PATH", kitsutest.Binary(t)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	r.Write("kitsu.toml", kitsutest.DemoDeclaration+`
 [[check]]
 id = "record"
-run = ["gatecub", "change", "check"]
+run = ["kitsu", "change", "check"]
 `)
 	r.addFinding("| F2 | code | 1 | minor | src/app.txt | The greeting is too long. | open | |")
-	if result := r.Gatecub("init"); result.Code != 0 {
-		t.Fatalf("gatecub init exited %d:\n%s", result.Code, result.Output())
+	if result := r.Kitsu("init"); result.Code != 0 {
+		t.Fatalf("kitsu init exited %d:\n%s", result.Code, result.Output())
 	}
-	// The scenario asks only that gatecub run has ended, not how.
-	run := r.Gatecub("run")
-	t.Logf("gatecub run exited %d", run.Code)
+	// The scenario asks only that kitsu run has ended, not how.
+	run := r.Kitsu("run")
+	t.Logf("kitsu run exited %d", run.Code)
 	before := r.Git("rev-parse", "HEAD")
 	result := r.TryGit("commit", "-a", "-m", "change")
 	if result.Code == 0 {

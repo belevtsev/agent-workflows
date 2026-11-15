@@ -626,7 +626,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <text x="54" y="198" class="t-muted" font-size="10" font-weight="600">02 / git</text>
 
         <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="748" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="322" class="t-muted" font-size="10" font-weight="600">03 / Gatecub</text>
+        <text x="54" y="322" class="t-muted" font-size="10" font-weight="600">03 / Kitsu</text>
 
         <!-- Phase headers -->
         <path d="M 72 35 H 148" class="a-default phase-rule" stroke-width="1" stroke-linecap="round" fill="none"/>
@@ -651,14 +651,14 @@ rect.c-bg-rect { fill: var(--bg); }
         <path data-edge-from="run" data-edge-to="runs" data-edge-label="records" data-edge-key="8" data-edge-id="run-record" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="48,119;20,119;20,367;64,367" d="M 48 119 L 28 119 Q 20 119 20 127 L 20 359 Q 20 367 28 367 L 64 367" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
 
         <!-- Nodes -->
-        <g id="node-run" data-node-id="run" data-node-label="gatecub run" tabindex="0" role="button" aria-label="Focus gatecub run, runs what has not passed, You › 1. Evidence" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="runs what has not passed" data-node-context="You › 1. Evidence">
-          <title>gatecub run · runs what has not passed · You › 1. Evidence</title>
+        <g id="node-run" data-node-id="run" data-node-label="kitsu run" tabindex="0" role="button" aria-label="Focus kitsu run, runs what has not passed, You › 1. Evidence" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="runs what has not passed" data-node-context="You › 1. Evidence">
+          <title>kitsu run · runs what has not passed · You › 1. Evidence</title>
           <rect x="48" y="93" width="124" height="52" rx="8" class="c-mask"/>
           <rect x="48" y="93" width="124" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 0; --flow-node-name: archify-relay-node-0;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(54 99) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="110" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">gatecub run</text>
+          <text data-node-label="" x="110" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu run</text>
           <text x="110" y="131" class="t-muted" font-size="8" text-anchor="middle">runs what has not passed</text>
         </g>
 
@@ -711,31 +711,31 @@ rect.c-bg-rect { fill: var(--bg); }
           <text x="730" y="255" class="t-muted" font-size="8" text-anchor="middle">git goes on</text>
         </g>
 
-        <g id="node-runs" data-node-id="runs" data-node-label="gatecub/runs/" tabindex="0" role="button" aria-label="Focus gatecub/runs/, a record per run, Gatecub › 1. Evidence" aria-pressed="false" data-node-kind="database" data-node-sublabel="a record per run" data-node-context="Gatecub › 1. Evidence">
-          <title>gatecub/runs/ · a record per run · Gatecub › 1. Evidence</title>
+        <g id="node-runs" data-node-id="runs" data-node-label="kitsu/runs/" tabindex="0" role="button" aria-label="Focus kitsu/runs/, a record per run, Kitsu › 1. Evidence" aria-pressed="false" data-node-kind="database" data-node-sublabel="a record per run" data-node-context="Kitsu › 1. Evidence">
+          <title>kitsu/runs/ · a record per run · Kitsu › 1. Evidence</title>
           <rect x="64" y="341" width="92" height="52" rx="8" class="c-mask"/>
           <rect x="64" y="341" width="92" height="52" rx="8" class="c-database" data-animate="node" style="--step: 11; --flow-node-name: archify-relay-node-2;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(70 347) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" x="110" y="372.9" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">gatecub/runs/</text>
-          <text x="110" y="387.8" class="t-muted" font-size="8" text-anchor="middle">a record per run</text>
+          <text data-node-label="" x="110" y="373.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu/runs/</text>
+          <text x="110" y="388.1" class="t-muted" font-size="8" text-anchor="middle">a record per run</text>
         </g>
 
-        <g id="node-judge" data-node-id="judge" data-node-label="gatecub hook" tabindex="0" role="button" aria-label="Focus gatecub hook, commit or pushed tip, Gatecub › 2. The decision, in enforce mode" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="commit or pushed tip" data-node-context="Gatecub › 2. The decision, in enforce mode">
-          <title>gatecub hook · commit or pushed tip · Gatecub › 2. The decision, in enforce mode</title>
+        <g id="node-judge" data-node-id="judge" data-node-label="kitsu hook" tabindex="0" role="button" aria-label="Focus kitsu hook, commit or pushed tip, Kitsu › 2. The decision, in enforce mode" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="commit or pushed tip" data-node-context="Kitsu › 2. The decision, in enforce mode">
+          <title>kitsu hook · commit or pushed tip · Kitsu › 2. The decision, in enforce mode</title>
           <rect x="314" y="341" width="112" height="52" rx="8" class="c-mask"/>
           <rect x="314" y="341" width="112" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 3; --flow-node-name: archify-relay-node-4;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(320 347) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="372.6" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">gatecub hook</text>
+          <text data-node-label="" x="370" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu hook</text>
           <text x="370" y="379" class="t-muted" font-size="8" text-anchor="middle">commit or pushed tip</text>
         </g>
 
-        <g id="node-decide" data-node-id="decide" data-node-label="Every check passed?" tabindex="0" role="button" aria-label="Focus Every check passed?, on exactly this content, Gatecub › 2. The decision, in enforce mode" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="on exactly this content" data-node-context="Gatecub › 2. The decision, in enforce mode">
-          <title>Every check passed? · on exactly this content · Gatecub › 2. The decision, in enforce mode</title>
+        <g id="node-decide" data-node-id="decide" data-node-label="Every check passed?" tabindex="0" role="button" aria-label="Focus Every check passed?, on exactly this content, Kitsu › 2. The decision, in enforce mode" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="on exactly this content" data-node-context="Kitsu › 2. The decision, in enforce mode">
+          <title>Every check passed? · on exactly this content · Kitsu › 2. The decision, in enforce mode</title>
           <rect x="542" y="341" width="136" height="52" rx="8" class="c-mask"/>
           <rect x="542" y="341" width="136" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 4; --flow-node-name: archify-relay-node-5;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="decision" class="semantic-sigil s-frontend" transform="translate(548 347) scale(0.6875)">
@@ -780,29 +780,29 @@ rect.c-bg-rect { fill: var(--bg); }
         <!-- Legend -->
         <g data-legend="">
           <text x="20" y="428" class="t-primary" font-size="12" font-weight="650">Legend</text>
-          <g data-legend-semantic-kind="frontend" data-legend-x="20" data-legend-baseline="448" data-legend-width="76">
+          <g data-legend-semantic-kind="frontend" data-legend-x="20" data-legend-baseline="448" data-legend-width="67">
             <rect x="20" y="440" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
-            <text x="42" y="448" class="t-muted" font-size="7.5" font-weight="500">Gatecub</text>
+            <text x="42" y="448" class="t-muted" font-size="7.5" font-weight="500">Kitsu</text>
           </g>
-          <g data-legend-semantic-kind="backend" data-legend-x="103" data-legend-baseline="448" data-legend-width="76">
-            <rect x="103" y="440" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
-            <text x="125" y="448" class="t-muted" font-size="7.5" font-weight="500">Allowed</text>
+          <g data-legend-semantic-kind="backend" data-legend-x="94" data-legend-baseline="448" data-legend-width="76">
+            <rect x="94" y="440" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
+            <text x="116" y="448" class="t-muted" font-size="7.5" font-weight="500">Allowed</text>
           </g>
-          <g data-legend-semantic-kind="security" data-legend-x="186" data-legend-baseline="448" data-legend-width="71">
-            <rect x="186" y="440" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
-            <text x="208" y="448" class="t-muted" font-size="7.5" font-weight="500">Denied</text>
+          <g data-legend-semantic-kind="security" data-legend-x="177" data-legend-baseline="448" data-legend-width="71">
+            <rect x="177" y="440" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
+            <text x="199" y="448" class="t-muted" font-size="7.5" font-weight="500">Denied</text>
           </g>
-          <g data-legend-semantic-kind="messagebus" data-legend-x="264" data-legend-baseline="448" data-legend-width="57">
-            <rect x="264" y="440" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
-            <text x="286" y="448" class="t-muted" font-size="7.5" font-weight="500">git</text>
+          <g data-legend-semantic-kind="messagebus" data-legend-x="255" data-legend-baseline="448" data-legend-width="57">
+            <rect x="255" y="440" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
+            <text x="277" y="448" class="t-muted" font-size="7.5" font-weight="500">git</text>
           </g>
-          <g data-legend-semantic-kind="database" data-legend-x="328" data-legend-baseline="448" data-legend-width="76">
-            <rect x="328" y="440" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
-            <text x="350" y="448" class="t-muted" font-size="7.5" font-weight="500">Records</text>
+          <g data-legend-semantic-kind="database" data-legend-x="319" data-legend-baseline="448" data-legend-width="76">
+            <rect x="319" y="440" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
+            <text x="341" y="448" class="t-muted" font-size="7.5" font-weight="500">Records</text>
           </g>
-          <g data-legend-semantic-kind="external" data-legend-x="411" data-legend-baseline="448" data-legend-width="123">
-            <rect x="411" y="440" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
-            <text x="433" y="448" class="t-muted" font-size="7.5" font-weight="500">You or your agent</text>
+          <g data-legend-semantic-kind="external" data-legend-x="402" data-legend-baseline="448" data-legend-width="123">
+            <rect x="402" y="440" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
+            <text x="424" y="448" class="t-muted" font-size="7.5" font-weight="500">You or your agent</text>
           </g>
         </g>
       </svg>

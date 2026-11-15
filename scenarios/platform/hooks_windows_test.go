@@ -54,7 +54,7 @@ func TestCheckedCommitFromPowerShell(t *testing.T) {
 	before := head(repo)
 	repo.Write("README.md", editedReadme)
 
-	ps := fromPowerShell("gatecub run; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git commit -a -m docs")
+	ps := fromPowerShell("kitsu run; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git commit -a -m docs")
 	result := repo.Run("", ps[0], ps[1:]...)
 
 	if after := head(repo); after == before {

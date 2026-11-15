@@ -84,7 +84,7 @@ func TestDecisionsCountsAReadError(t *testing.T) {
 // whole, and leaves no temporary file behind when it fails.
 func TestWriteFile(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "gatecub.toml")
+	path := filepath.Join(dir, "kitsu.toml")
 	for _, mode := range []fs.FileMode{0o600, 0o644, 0o755} {
 		data := []byte("mode " + mode.String() + "\n")
 		if err := WriteFile(path, data, mode); err != nil {

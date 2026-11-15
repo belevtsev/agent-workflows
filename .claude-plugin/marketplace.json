@@ -1,16 +1,16 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
-  "name": "gatecub",
+  "name": "kitsu",
   "owner": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
   "metadata": {
-    "description": "Gatecub: a gate on commits and pushes, roles for a task, and a token count.",
+    "description": "Kitsu: coding-agent coordination with role instructions, shared task records and token reports, plus a Git check-evidence gate.",
     "version": "3.0.0-beta.2"
   },
   "plugins": [
     {
-      "name": "gatecub",
+      "name": "kitsu",
       "source": "./",
-      "description": "Session context for the gatecub gate, a question before a command that would skip it, a skill on how to work with the gate, seven roles and a skill for a task workflow, and a record of the tokens a task used.",
+      "description": "Coordinate specification, implementation, testing and review with seven role instructions, shared task records and token reports. The task workflow runs in Claude Code and remains experimental. The Git gate adds a safeguard for commits and pushes backed by recorded checks.",
       "category": "development"
     }
   ]

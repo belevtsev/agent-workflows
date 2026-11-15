@@ -10,13 +10,13 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/belevtsev/gatecub/v3/internal/decl"
-	"github.com/belevtsev/gatecub/v3/internal/gate"
-	"github.com/belevtsev/gatecub/v3/internal/store"
+	"github.com/belevtsev/kitsu/v3/internal/decl"
+	"github.com/belevtsev/kitsu/v3/internal/gate"
+	"github.com/belevtsev/kitsu/v3/internal/store"
 )
 
 const newDeclaration = `# The checks this repository requires before a commit or a push.
-# Add one with:  gatecub add <id> -- <program> [<argument>...]
+# Add one with:  kitsu add <id> -- <program> [<argument>...]
 version = 1
 `
 
@@ -28,7 +28,7 @@ func runInit(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	if len(p.pos) > 0 || p.dash {
-		return usagef("init takes no arguments; usage: gatecub init [--observe]")
+		return usagef("init takes no arguments; usage: kitsu init [--observe]")
 	}
 	s, err := open(ctx, cfg, true)
 	if err != nil {
@@ -60,17 +60,17 @@ func runInit(ctx context.Context, cfg Config, args []string) error {
 		fmt.Fprintf(cfg.Out, "installed the hooks %s\n", strings.Join(own, ", "))
 	}
 	if shared := sharedHooks(own, foreign); len(shared) > 0 {
-		fmt.Fprintf(cfg.Out, "left as they are, because another tool wrote them and they call gatecub already: %s\n", strings.Join(shared, ", "))
+		fmt.Fprintf(cfg.Out, "left as they are, because another tool wrote them and they call kitsu already: %s\n", strings.Join(shared, ", "))
 	}
 	if mode == store.Observe {
 		fmt.Fprintln(cfg.Out, "the gate observes: each hook records what it would have decided and allows the operation")
 	} else {
 		fmt.Fprintln(cfg.Out, "the gate enforces: a commit or a push needs a passing run of every declared check")
 	}
-	next := "next: gatecub add <id> -- <program> [<argument>...], then gatecub run"
+	next := "next: kitsu add <id> -- <program> [<argument>...], then kitsu run"
 	if data, err := os.ReadFile(path); err == nil && !created {
 		if file, err := decl.Parse(data); err == nil && len(file.Checks) > 0 {
-			next = "next: gatecub run"
+			next = "next: kitsu run"
 		}
 	}
 	fmt.Fprintln(cfg.Out, next)
@@ -81,7 +81,7 @@ func runInit(ctx context.Context, cfg Config, args []string) error {
 	return exit(ExitForeignHook)
 }
 
-// createDeclaration writes a new gatecub.toml and leaves an existing one alone.
+// createDeclaration writes a new kitsu.toml and leaves an existing one alone.
 func createDeclaration(path string) (created bool, err error) {
 	if _, err := os.Lstat(path); err == nil {
 		return false, nil
@@ -91,8 +91,8 @@ func createDeclaration(path string) (created bool, err error) {
 	return true, os.WriteFile(path, []byte(newDeclaration), 0o644)
 }
 
-// sharedHooks lists the hooks that gatecub neither wrote nor asks the user to
-// edit: another tool wrote them, and they call gatecub already.
+// sharedHooks lists the hooks that kitsu neither wrote nor asks the user to
+// edit: another tool wrote them, and they call kitsu already.
 func sharedHooks(own []string, foreign []gate.Foreign) []string {
 	var shared []string
 	for _, name := range gate.Hooks {
@@ -104,15 +104,15 @@ func sharedHooks(own []string, foreign []gate.Foreign) []string {
 	return shared
 }
 
-// printForeign tells the user which hooks gatecub left alone and the line to add
+// printForeign tells the user which hooks kitsu left alone and the line to add
 // to each.
 func printForeign(cfg Config, s *session, foreign []gate.Foreign) {
 	if _, configured, _ := s.repo.HooksDir(context.Background()); configured {
-		fmt.Fprintln(cfg.Err, "gatecub: core.hooksPath is set, so gatecub wrote no hook. That directory belongs to its owner.")
+		fmt.Fprintln(cfg.Err, "kitsu: core.hooksPath is set, so kitsu wrote no hook. That directory belongs to its owner.")
 	} else {
-		fmt.Fprintln(cfg.Err, "gatecub: these hooks were written by another tool, and gatecub did not change them.")
+		fmt.Fprintln(cfg.Err, "kitsu: these hooks were written by another tool, and kitsu did not change them.")
 	}
-	fmt.Fprintln(cfg.Err, "gatecub: add the line shown to each hook. It must be the last command of that hook:")
+	fmt.Fprintln(cfg.Err, "kitsu: add the line shown to each hook. It must be the last command of that hook:")
 	for _, f := range foreign {
 		fmt.Fprintf(cfg.Err, "  %s\n      %s\n", f.Path, gate.Line(f.Name))
 	}

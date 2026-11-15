@@ -12,13 +12,13 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/belevtsev/gatecub/v3/internal/roles"
+	"github.com/belevtsev/kitsu/v3/internal/roles"
 )
 
 // SessionAgent is the agent of the start that is the session itself.
 const SessionAgent = "session"
 
-// Start is what gatecub keeps of one start: a role that ran, or the session
+// Start is what kitsu keeps of one start: a role that ran, or the session
 // itself. It holds counts and names, and no text of a brief or an answer.
 type Start struct {
 	Version int    `json:"version"`
@@ -65,7 +65,7 @@ func (n Notice) Dir() (string, error) {
 }
 
 // noticeRole is the role a notice names, or empty when it names none of the
-// roles of gatecub.
+// roles of kitsu.
 func noticeRole(agentType string) string {
 	name := agentType[strings.LastIndexByte(agentType, ':')+1:]
 	if roles.Known(name) {

@@ -1,7 +1,7 @@
 // Package changerecord_test holds the scenarios of the specification
 // change-record
 // (openspec/changes/add-role-workflow/specs/change-record/spec.md): the
-// change folder, its stage, the rules of its files and `gatecub change check` as
+// change folder, its stage, the rules of its files and `kitsu change check` as
 // a check of the gate.
 package changerecord_test
 
@@ -12,13 +12,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // folder is the change folder of the shared fixture.
 const folder = "openspec/changes/add-greeting/"
 
-// The files of the shared fixture. The gatecub-roles.toml is the one of the
+// The files of the shared fixture. The kitsu-roles.toml is the one of the
 // role-definitions specification.
 const (
 	rolesFile = `version = 1
@@ -126,7 +126,7 @@ const (
 	rowNo  = "| No name is given | tests/app_test.txt | greets_without_name |"
 )
 
-// changeStatus is the JSON of `gatecub change status <task> --json`.
+// changeStatus is the JSON of `kitsu change status <task> --json`.
 type changeStatus struct {
 	Task         string            `json:"task"`
 	Stage        string            `json:"stage"`
@@ -152,17 +152,17 @@ func (s changeStatus) missingText() string {
 
 // record is the shared fixture of change-record.
 type record struct {
-	*gatecubtest.Repo
+	*kitsutest.Repo
 	t *testing.T
 }
 
-// newRecord builds the shared fixture: demo with gatecub-roles.toml,
+// newRecord builds the shared fixture: demo with kitsu-roles.toml,
 // tests/app_test.txt and the folder add-greeting, committed, with the
-// content ids of `gatecub change status` in reviews.md.
+// content ids of `kitsu change status` in reviews.md.
 func newRecord(t *testing.T) *record {
 	t.Helper()
-	r := &record{Repo: gatecubtest.Demo(t), t: t}
-	r.Write("gatecub-roles.toml", rolesFile)
+	r := &record{Repo: kitsutest.Demo(t), t: t}
+	r.Write("kitsu-roles.toml", rolesFile)
 	r.Write("tests/app_test.txt", appTestFile)
 	r.Write(folder+"proposal.md", proposalFile)
 	r.Write(folder+"specs/greeting/spec.md", specFile)
@@ -172,43 +172,43 @@ func newRecord(t *testing.T) *record {
 	ids := r.status().Content
 	for _, name := range []string{"spec", "design", "code"} {
 		if ids[name] == "" {
-			t.Fatalf("fixture: gatecub change status add-greeting --json gave no content id %q: %v", name, ids)
+			t.Fatalf("fixture: kitsu change status add-greeting --json gave no content id %q: %v", name, ids)
 		}
 	}
 	r.Write(folder+"reviews.md", fmt.Sprintf(reviewsTemplate, ids["spec"], ids["design"], ids["code"], findingRow))
 	r.Git("add", "-A")
 	r.Git("commit", "-q", "-m", "add-greeting")
-	if result := r.Gatecub("change", "check"); result.Code != 0 {
-		t.Fatalf("fixture: gatecub change check exited %d, want 0:\n%s", result.Code, result.Output())
+	if result := r.Kitsu("change", "check"); result.Code != 0 {
+		t.Fatalf("fixture: kitsu change check exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 	if stage := r.status().Stage; stage != "done" {
-		t.Fatalf("fixture: gatecub change status add-greeting gave the stage %q, want done:\n%s", stage, r.Gatecub("change", "status", "add-greeting").Output())
+		t.Fatalf("fixture: kitsu change status add-greeting gave the stage %q, want done:\n%s", stage, r.Kitsu("change", "status", "add-greeting").Output())
 	}
 	return r
 }
 
-// status runs `gatecub change status add-greeting --json`, requires exit 0 and
+// status runs `kitsu change status add-greeting --json`, requires exit 0 and
 // returns its JSON.
 func (r *record) status() changeStatus {
 	r.t.Helper()
-	result := r.Gatecub("change", "status", "add-greeting", "--json")
+	result := r.Kitsu("change", "status", "add-greeting", "--json")
 	if result.Code != 0 {
-		r.t.Fatalf("gatecub change status add-greeting --json exited %d, want 0:\n%s", result.Code, result.Output())
+		r.t.Fatalf("kitsu change status add-greeting --json exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 	var out changeStatus
 	if err := json.Unmarshal([]byte(result.Stdout), &out); err != nil {
-		r.t.Fatalf("gatecub change status add-greeting --json printed no JSON: %v\n%s", err, result.Output())
+		r.t.Fatalf("kitsu change status add-greeting --json printed no JSON: %v\n%s", err, result.Output())
 	}
 	return out
 }
 
-// statusText runs `gatecub change status add-greeting`, requires exit 0 and
+// statusText runs `kitsu change status add-greeting`, requires exit 0 and
 // returns what it printed.
 func (r *record) statusText() string {
 	r.t.Helper()
-	result := r.Gatecub("change", "status", "add-greeting")
+	result := r.Kitsu("change", "status", "add-greeting")
 	if result.Code != 0 {
-		r.t.Fatalf("gatecub change status add-greeting exited %d, want 0:\n%s", result.Code, result.Output())
+		r.t.Fatalf("kitsu change status add-greeting exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 	r.t.Logf("%s", result.Output())
 	return result.Output()
@@ -223,18 +223,18 @@ func (r *record) assertStage(want string) (changeStatus, string) {
 	}
 	text := r.statusText()
 	if !namesWord(text, want) {
-		r.t.Errorf("gatecub change status add-greeting does not print %q:\n%s", want, text)
+		r.t.Errorf("kitsu change status add-greeting does not print %q:\n%s", want, text)
 	}
 	return status, text
 }
 
-// check runs `gatecub change check`, requires the exit status and returns what it
+// check runs `kitsu change check`, requires the exit status and returns what it
 // printed.
 func (r *record) check(want int) string {
 	r.t.Helper()
-	result := r.Gatecub("change", "check")
+	result := r.Kitsu("change", "check")
 	if result.Code != want {
-		r.t.Errorf("gatecub change check exited %d, want %d:\n%s", result.Code, want, result.Output())
+		r.t.Errorf("kitsu change check exited %d, want %d:\n%s", result.Code, want, result.Output())
 	}
 	r.t.Logf("%s", result.Output())
 	return result.Output()

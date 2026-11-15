@@ -43,12 +43,12 @@ jobs:
         with:
           thorough: ${{ inputs.thorough }}
       # Success measure 2: the time of one hook decision. The plain test run
-      # above skips it. The harness builds gatecub with go build and no -race, and
+      # above skips it. The harness builds kitsu with go build and no -race, and
       # this step runs without -race. On Windows it reports only.
       - name: Measure the hook cost
         shell: bash
         env:
-          GATECUB_COST: '1'
+          KITSU_COST: '1'
         run: go test -count=1 -v ./scenarios/cost/
 
   lint:
@@ -98,10 +98,10 @@ jobs:
           GOOS: windows
         run: govulncheck ./...
 
-  # This repository uses its own gate. `gatecub run --base` counts a check as
+  # This repository uses its own gate. `kitsu run --base` counts a check as
   # passed on the base revision, so only the checks whose content changed run.
   gate:
-    name: Gate / gatecub run
+    name: Gate / kitsu run
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -117,29 +117,29 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      # The check `lint` of gatecub.toml needs the linter on PATH.
+      # The check `lint` of kitsu.toml needs the linter on PATH.
       - name: Install the pinned linter
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.15.0
           install-mode: goinstall
-      # The check `record` of gatecub.toml needs gatecub itself on PATH.
-      - name: Build gatecub
+      # The check `record` of kitsu.toml needs kitsu itself on PATH.
+      - name: Build kitsu
         run: |
-          go build -o "$RUNNER_TEMP/gatecub-bin/gatecub" ./cmd/gatecub
-          echo "$RUNNER_TEMP/gatecub-bin" >> "$GITHUB_PATH"
+          go build -o "$RUNNER_TEMP/kitsu-bin/kitsu" ./cmd/kitsu
+          echo "$RUNNER_TEMP/kitsu-bin" >> "$GITHUB_PATH"
       - name: Run the declared checks
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
           if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
-            gatecub run --base "$BASE"
+            kitsu run --base "$BASE"
           else
-            gatecub run
+            kitsu run
           fi
 
   # The archives of a release, built from this commit as release.yml builds
-  # them from a tag, and published nowhere: the artifact `gatecub-archives` of the
+  # them from a tag, and published nowhere: the artifact `kitsu-archives` of the
   # run holds them. They carry the tag that the release-install document installs.
   archives:
     name: Release archives
@@ -199,7 +199,7 @@ jobs:
       - name: Keep the archives with the run
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: gatecub-archives
+          name: kitsu-archives
           path: |
             dist/*.tar.gz
             dist/*.zip
@@ -232,7 +232,7 @@ jobs:
       - name: Fetch the archives
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: gatecub-archives
+          name: kitsu-archives
           path: ${{ runner.temp }}/archives
       - name: Follow the install instruction for Linux and macOS
         if: runner.os != 'Windows'

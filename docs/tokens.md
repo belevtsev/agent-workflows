@@ -1,9 +1,9 @@
 # Tokens
 
-`gatecub tokens` reports how many tokens a task used, role by role and stage by stage, and how many of
+`kitsu tokens` reports how many tokens a task used, role by role and stage by stage, and how many of
 them went to the workflow rather than to the first writing of the specification, the design, the
 tests and the code. The counts come from the record the host keeps of a session, read when the
-plugin's hooks say that a role or the session has ended. `gatecub` never takes a count from a model.
+plugin's hooks say that a role or the session has ended. `kitsu` never takes a count from a model.
 It reports no price and no amount of money.
 
 The report is a split of one task's tokens. It is not a comparison with one agent working alone,
@@ -11,7 +11,7 @@ and it shows no saving and no benefit; see [What is not measured](#what-is-not-m
 
 ## What is counted
 
-For every start of a role, and for the developer's own session, `gatecub` reads four kinds of tokens:
+For every start of a role, and for the developer's own session, `kitsu` reads four kinds of tokens:
 
 | Kind | JSON field | Meaning |
 | --- | --- | --- |
@@ -20,27 +20,27 @@ For every start of a role, and for the developer's own session, `gatecub` reads 
 | Cache read | `cache_read` | Input read from the cache. |
 | Output | `output` | Output of the model. |
 
-The total of a start is the sum of the four. `gatecub` also keeps the model names the record gives.
+The total of a start is the sum of the four. `kitsu` also keeps the model names the record gives.
 
 ### Where the counts come from
 
-The plugin of this repository runs `gatecub tokens record` from two hooks of the host:
+The plugin of this repository runs `kitsu tokens record` from two hooks of the host:
 
 | Host | Hook | Command | Timeout |
 | --- | --- | --- | --- |
-| Claude Code (`hooks/hooks.json`) | `SubagentStop`, when a role ends | `gatecub tokens record --host claude` | 30 s |
-| Claude Code (`hooks/hooks.json`) | `SessionEnd`, when the session ends | `gatecub tokens record --host claude` | 30 s in the file; Claude Code allows 1.5 s (see [Limits](#limits)) |
-| Codex (`hooks/codex-hooks.json`) | `SubagentStop` | `gatecub tokens record --host codex` | 30 s |
-| Codex (`hooks/codex-hooks.json`) | `SessionEnd` | `gatecub tokens record --host codex` | 3 s |
+| Claude Code (`hooks/hooks.json`) | `SubagentStop`, when a role ends | `kitsu tokens record --host claude` | 30 s |
+| Claude Code (`hooks/hooks.json`) | `SessionEnd`, when the session ends | `kitsu tokens record --host claude` | 30 s in the file; Claude Code allows 1.5 s (see [Limits](#limits)) |
+| Codex (`hooks/codex-hooks.json`) | `SubagentStop` | `kitsu tokens record --host codex` | 30 s |
+| Codex (`hooks/codex-hooks.json`) | `SessionEnd` | `kitsu tokens record --host codex` | 3 s |
 
-Each command looks for `gatecub` only in the entries of `PATH` that are absolute paths, and ends with exit
-status 0 whatever `gatecub` returns, so a failure of `gatecub` never stops a role or a turn. On Windows the
+Each command looks for `kitsu` only in the entries of `PATH` that are absolute paths, and ends with exit
+status 0 whatever `kitsu` returns, so a failure of `kitsu` never stops a role or a turn. On Windows the
 Codex command tells `cmd.exe` not to look in the working directory, goes to the root of the drive
 and then to the Windows folder, so that a relative entry of `PATH` leads there, runs
-`gatecub tokens record --host codex`, and ends with `exit /b 0`. `gatecub` finds the repository from the
+`kitsu tokens record --host codex`, and ends with `exit /b 0`. `kitsu` finds the repository from the
 `cwd` of the notice.
 
-The host gives the hook a notice: one JSON object on standard input. `gatecub` reads six of its
+The host gives the hook a notice: one JSON object on standard input. `kitsu` reads six of its
 fields and ignores the rest:
 
 | Field | Meaning |
@@ -49,10 +49,10 @@ fields and ignores the rest:
 | `transcript_path` | The record the host keeps of the session. |
 | `agent_id` | The role start that ended. When it is absent, the name of the file of `agent_transcript_path` is used. Absent at the end of the session. |
 | `agent_transcript_path` | The record the host keeps of that role start. Absent at the end of the session. |
-| `agent_type` | The name of the role as the host knows it, such as `architect` or `gatecub:architect`. `gatecub` takes the text after the last colon and keeps it only when it is one of the seven roles. Claude Code ends its own agents, such as a prompt suggestion, with an empty `agent_type`: such a notice of Claude Code stores no start. |
-| `cwd` | The directory the host works in. `gatecub` finds the repository from it, and from its own working directory when it is empty. |
+| `agent_type` | The name of the role as the host knows it, such as `architect` or `kitsu:architect`. `kitsu` takes the text after the last colon and keeps it only when it is one of the seven roles. Claude Code ends its own agents, such as a prompt suggestion, with an empty `agent_type`: such a notice of Claude Code stores no start. |
+| `cwd` | The directory the host works in. `kitsu` finds the repository from it, and from its own working directory when it is empty. |
 
-For each notice, `gatecub` reads the record of the role when the notice names one, and the record of
+For each notice, `kitsu` reads the record of the role when the notice names one, and the record of
 the session, and stores the counts of each. So the session's own count is current after every
 role, not only at the end. The same notice given twice stores the same files, and the totals do
 not change.
@@ -60,7 +60,7 @@ not change.
 A host may still be writing a record when it gives the notice. Claude Code writes its transcript
 asynchronously, so at `SubagentStop` or `SessionEnd` the record may not yet hold the last
 messages. Codex runs `SubagentStop` at the end of every turn of a sub-agent, before it writes the
-record out. So at every notice `gatecub` also reads again the record of each start it already stored
+record out. So at every notice `kitsu` also reads again the record of each start it already stored
 for that session, when the record still exists and its size has changed. The new counts replace
 the stored ones when they are known. The last notice of a session has no later one, so its last
 turn can still be missing from the count.
@@ -97,7 +97,7 @@ turn can still be missing from the count.
   model of the `turn_context` before it. A total written twice adds nothing. A `token_count` with
   `info` `null` holds only rate limits and is skipped.
 - A running total that falls is a reset. After a context window overflows, Codex sets the
-  running total to a value with no input and no output. `gatecub` carries the total before the fall
+  running total to a value with no input and no output. `kitsu` carries the total before the fall
   and goes on, so the count of the thread is the carried totals and the last total.
 - A first running total larger than its own request is not understood: the tokens of the record
   are unknown. A record with no `token_count` that holds `info` holds no count, so its tokens are
@@ -109,12 +109,12 @@ turn can still be missing from the count.
 The first line of every brief the coordinator writes is a label:
 
 ```text
-gatecub-task: <task> <stage> <round>
+kitsu-task: <task> <stage> <round>
 ```
 
 `<task>` is lower-case letters and digits in words joined by hyphens, `<stage>` is one of the nine
 below, and `<round>` is a number from 1 that grows each time the same stage starts again. Blank
-lines before the label are skipped. A first line in any other form is no label. `gatecub` gives the
+lines before the label are skipped. A first line in any other form is no label. `kitsu` gives the
 tokens of the start to that task, stage and round, and to the role of the stage:
 
 | Stage | Role | Round 1 counts as | A later round counts as |
@@ -130,11 +130,11 @@ tokens of the start to that task, stage and round, and to the role of the stage:
 | `commit` | `git` | git | git |
 
 The role comes from the stage of the label, not from the role the host started. A label is an
-instruction to the coordinator; `gatecub` cannot tell whether the coordinator wrote the right one.
+instruction to the coordinator; `kitsu` cannot tell whether the coordinator wrote the right one.
 
 ## Writing tokens and workflow tokens
 
-`gatecub tokens` splits the tokens of a task in two:
+`kitsu tokens` splits the tokens of a task in two:
 
 - **Writing**: the starts of `spec`, `design`, `tests` and `code` in round 1. That is the first
   writing of the specification, the design, the tests and the code.
@@ -162,17 +162,17 @@ its starts:
 | Start | First line of the brief | Tokens | Part |
 | --- | --- | ---: | --- |
 | the session itself | none | 40,000 | coordination |
-| `lookup`, twice | `gatecub-task: add-greeting lookup 1` | 10,000 | lookup |
-| `spec-writer` | `gatecub-task: add-greeting spec 1` | 60,000 | writing |
-| `reviewer` | `gatecub-task: add-greeting spec-review 1` | 30,000 | review |
-| `architect` | `gatecub-task: add-greeting design 1` | 80,000 | writing |
-| `reviewer` | `gatecub-task: add-greeting design-review 1` | 30,000 | review |
-| `quality-engineer` | `gatecub-task: add-greeting tests 1` | 90,000 | writing |
-| `developer` | `gatecub-task: add-greeting code 1` | 200,000 | writing |
-| `reviewer` | `gatecub-task: add-greeting review 1` | 50,000 | review |
-| `developer` | `gatecub-task: add-greeting code 2` | 40,000 | rework |
-| `reviewer` | `gatecub-task: add-greeting review 2` | 20,000 | review |
-| `git` | `gatecub-task: add-greeting commit 1` | 5,000 | git |
+| `lookup`, twice | `kitsu-task: add-greeting lookup 1` | 10,000 | lookup |
+| `spec-writer` | `kitsu-task: add-greeting spec 1` | 60,000 | writing |
+| `reviewer` | `kitsu-task: add-greeting spec-review 1` | 30,000 | review |
+| `architect` | `kitsu-task: add-greeting design 1` | 80,000 | writing |
+| `reviewer` | `kitsu-task: add-greeting design-review 1` | 30,000 | review |
+| `quality-engineer` | `kitsu-task: add-greeting tests 1` | 90,000 | writing |
+| `developer` | `kitsu-task: add-greeting code 1` | 200,000 | writing |
+| `reviewer` | `kitsu-task: add-greeting review 1` | 50,000 | review |
+| `developer` | `kitsu-task: add-greeting code 2` | 40,000 | rework |
+| `reviewer` | `kitsu-task: add-greeting review 2` | 20,000 | review |
+| `git` | `kitsu-task: add-greeting commit 1` | 5,000 | git |
 
 The sums:
 
@@ -182,8 +182,8 @@ The sums:
 - Total: 430,000 + 225,000 = 655,000.
 - `flow_share`: 225,000 / 655,000 = 34.4%, rounded to 34.
 
-With every notice of that record given to `gatecub tokens record` in a trial repository,
-`gatecub tokens --task add-greeting` printed:
+With every notice of that record given to `kitsu tokens record` in a trial repository,
+`kitsu tokens --task add-greeting` printed:
 
 ```text
 add-greeting: 655,000 tokens in 12 starts of roles
@@ -228,10 +228,10 @@ host wrote; they show how the sums are made, not what a real task costs.
 
 ## Commands
 
-### gatecub tokens
+### kitsu tokens
 
 ```text
-gatecub tokens [--task <task>] [--json]
+kitsu tokens [--task <task>] [--json]
 ```
 
 Reads the stored counts of this clone and prints them. Without `--task` it prints one line per
@@ -241,7 +241,7 @@ task, then the sessions and the starts that belong to no task. The same record g
 TASK          TOTAL    WRITING  WORKFLOW  SHARE  STARTS  COMPLETE
 add-greeting  655,000  430,000  225,000   34%    12      yes
 session s1: 40,000 tokens of its own, counted as the coordination of add-greeting
-`gatecub tokens --task <task>` prints the roles and the stages of one task
+`kitsu tokens --task <task>` prints the roles and the stages of one task
 ```
 
 With `--task <task>` it prints the report of one task, as in
@@ -251,13 +251,13 @@ With `--task <task>` it prints the report of one task, as in
 | Exit | When |
 | --- | --- |
 | 0 | The report is printed. |
-| 1 | `--task` names a task no stored start names (`gatecub: no start is recorded for the task `<task>``), or the directory is not in a git repository. |
+| 1 | `--task` names a task no stored start names (`kitsu: no start is recorded for the task `<task>``), or the directory is not in a git repository. |
 | 2 | The command line is wrong. |
 
 A stored file that cannot be read is named in a warning on standard error, and its tokens are in
 no sum.
 
-### gatecub tokens --json
+### kitsu tokens --json
 
 Without `--task` the output is `{"tasks": [...], "unlabelled": [...], "sessions": [...]}`. With
 `--task` it is the object of that task, with `unlabelled` and `sessions` narrowed to the sessions
@@ -314,10 +314,10 @@ An entry of `roles` or `stages`, of `unlabelled` and of `sessions` holds:
 `session`, `host`, `record`, `tasks` (the tasks the session ran) and `shared` (`true` with more
 than one task).
 
-### gatecub tokens record
+### kitsu tokens record
 
 ```text
-gatecub tokens record [--host claude|codex]
+kitsu tokens record [--host claude|codex]
 ```
 
 Reads one notice from standard input, reads the records it names, and stores their counts. The
@@ -326,7 +326,7 @@ hooks run it; a person runs it only to test.
 
 | Exit | When |
 | --- | --- |
-| 0 | The counts are stored; or the directory of the notice's `cwd` is not in a git repository, or the repository root holds no `gatecub.toml`: then nothing is stored. |
+| 0 | The counts are stored; or the directory of the notice's `cwd` is not in a git repository, or the repository root holds no `kitsu.toml`: then nothing is stored. |
 | 1 | The input is not a JSON object; the notice names no session or no record; or a file cannot be written. |
 | 2 | `--host` is neither `claude` nor `codex`, or the command line is wrong. |
 
@@ -334,7 +334,7 @@ An unreadable record is not a failure: its tokens are stored as unknown.
 
 ## Unknown is not zero
 
-When `gatecub` cannot read a count it expects, the tokens of that start are unknown. They are never
+When `kitsu` cannot read a count it expects, the tokens of that start are unknown. They are never
 taken as zero.
 
 The tokens of a start are unknown when its record:
@@ -362,13 +362,13 @@ What the report then says:
   is the session's own, the sentence names `the session itself`, not a start.
 - The first sentence of the report then counts `known tokens`: the share is a share of what is
   known.
-- A stored file of `gatecub` that cannot be read is named under `damaged` and in a warning. Every task
+- A stored file of `kitsu` that cannot be read is named under `damaged` and in a warning. Every task
   of its session is incomplete and names the file under `unknown_records`.
 - An entry with some starts unknown prints its total as `at least <n>`; an entry with all its starts
   unknown prints `unknown`.
 
 For example, with the record of the `architect` start replaced by an empty file and a notice that
-named `gatecub:architect`, the report of the worked example began:
+named `kitsu:architect`, the report of the worked example began:
 
 ```text
 add-greeting: 575,000 tokens in 12 starts of roles
@@ -391,14 +391,14 @@ out. A share made from incomplete sums can be wrong in either direction.
 
 When the record of a start is read and its brief has no label, its tokens are known but belong to
 no task. They are listed under `unlabelled` and are not dropped. With the label of the `git` brief
-removed from the worked example, `gatecub tokens` printed:
+removed from the worked example, `kitsu tokens` printed:
 
 ```text
 TASK          TOTAL    WRITING  WORKFLOW  SHARE  STARTS  COMPLETE
 add-greeting  650,000  430,000  220,000   34%    11      yes
 session s1: 40,000 tokens of its own, counted as the coordination of add-greeting
 a start without a label in session s1: 5,000 tokens, in no task (<record>/subagents/agent-a12.jsonl)
-`gatecub tokens --task <task>` prints the roles and the stages of one task
+`kitsu tokens --task <task>` prints the roles and the stages of one task
 ```
 
 ### A start whose record gives no label and no count
@@ -413,7 +413,7 @@ any task of its session:
 - In both cases every task of that session has `complete` `false` and lists the record under
   `unknown_records`.
 
-With the `architect` record empty and a notice whose `agent_type` named no role, `gatecub tokens`
+With the `architect` record empty and a notice whose `agent_type` named no role, `kitsu tokens`
 printed:
 
 ```text
@@ -421,7 +421,7 @@ TASK          TOTAL    WRITING  WORKFLOW  SHARE  STARTS  COMPLETE
 add-greeting  575,000  350,000  225,000   39%    11      no: every sum is at least the number shown
 session s1: 40,000 tokens of its own, counted as the coordination of add-greeting
 a start in session s1 whose record gives no label and no count: it may belong to any task of that session (<record>/subagents/agent-a5.jsonl)
-`gatecub tokens --task <task>` prints the roles and the stages of one task
+`kitsu tokens --task <task>` prints the roles and the stages of one task
 ```
 
 ### Two tasks in one session
@@ -430,24 +430,24 @@ The session's own tokens are counted once, as `coordination`. When the session r
 are part of that task's total. When it ran more than one, they go to no task's total: the session
 is listed under `sessions` with the names of the tasks and `"shared": true`, and each task lists it
 under `shared_sessions`. With a second task, `fix-typo`, of one `developer` start of 15,000 tokens
-in the same session, `gatecub tokens` printed:
+in the same session, `kitsu tokens` printed:
 
 ```text
 TASK          TOTAL    WRITING  WORKFLOW  SHARE  STARTS  COMPLETE
 add-greeting  615,000  430,000  185,000   30%    12      yes
 fix-typo      15,000   15,000   0         0%     1       yes
 session s1: 40,000 tokens of its own, shared by the tasks add-greeting, fix-typo and counted in the total of none
-`gatecub tokens --task <task>` prints the roles and the stages of one task
+`kitsu tokens --task <task>` prints the roles and the stages of one task
 ```
 
 ## What is stored
 
-`gatecub tokens record` writes one JSON file for each start and one for the session, in the common git
+`kitsu tokens record` writes one JSON file for each start and one for the session, in the common git
 directory of the clone (`git rev-parse --git-common-dir`, usually `.git`):
 
 ```text
-gatecub/tokens/<session>/agent-<agent id>.json
-gatecub/tokens/<session>/session.json
+kitsu/tokens/<session>/agent-<agent id>.json
+kitsu/tokens/<session>/session.json
 ```
 
 A name that is not safe as a file name is replaced by a digest of it. A file is written whole or
@@ -481,9 +481,9 @@ host's record and its size before it was read, and, when the counts are unknown,
 record gave no label it holds the `role` the notice named. It holds no text of a brief, a prompt
 or an answer: a search of the stored files for a sentence of a brief finds nothing.
 
-Nothing leaves the machine. No package of `gatecub` imports a network package, and a test of this
+Nothing leaves the machine. No package of `kitsu` imports a network package, and a test of this
 repository fails when one does. On Linux and macOS the program links none at all. On Windows the
-package `net` is linked through `golang.org/x/sys/windows`, which `gatecub` calls for job objects and
+package `net` is linked through `golang.org/x/sys/windows`, which `kitsu` calls for job objects and
 file locks. The stored files are not committed: they are inside the git directory, not the
 working tree.
 
@@ -496,11 +496,11 @@ working tree.
 - **The end of a session on Claude Code has 1.5 seconds.** Claude Code gives the `SessionEnd`
   hooks of a plugin 1.5 seconds in all, and ignores the plugin's own timeout for that event. The
   user can raise it with the environment variable `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS`.
-  `gatecub tokens record` took 0.12 s for a built session record of 50 MB and 1.15 s for one of
+  `kitsu tokens record` took 0.12 s for a built session record of 50 MB and 1.15 s for one of
   500 MB, with the file in memory. A larger record, a slow disk or other hooks of the same event
   can pass the limit; the session's count then stays as the last role's notice left it.
 - **The last turn of a session can be missing.** The host may still be writing a record when it
-  gives a notice. `gatecub` reads every stored record again at the next notice of the session, but the
+  gives a notice. `kitsu` reads every stored record again at the next notice of the session, but the
   last notice has no next one.
 - **The readers were checked against real records of one machine only**; see
   [Checked against real records](#checked-against-real-records).
@@ -510,14 +510,14 @@ working tree.
 - **A notice without a role's record gives a start with unknown tokens.** The Codex documentation
   says `agent_transcript_path` may be null. The label is in that record, so the task of such a
   start is known only when its session ran one task and the notice named the role.
-- **`gatecub` trusts the notice.** It reads the files the notice names and stores the counts in the
+- **`kitsu` trusts the notice.** It reads the files the notice names and stores the counts in the
   repository of its `cwd`; it cannot tell whether the notice came from the host.
 - **The label is the coordinator's.** A wrong label gives the tokens to the wrong task, stage or
   round.
 
 ## Checked against real records
 
-These are historical results for `cw`, before the Gatecub rename; no new Gatecub host run is claimed.
+These are historical results for `cw`, before the Kitsu rename; no new Kitsu host run is claimed.
 
 On 2026-11-14 the readers were run on records that the hosts wrote on one developer machine. Only
 the structure and the numbers of the records were read. A separate script counted each record

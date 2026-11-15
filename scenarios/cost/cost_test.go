@@ -3,28 +3,28 @@
 // proposal.md; task 10.1).
 //
 // How it measures:
-//   - A decision is the pre-commit hook file that `gatecub init` writes, started
+//   - A decision is the pre-commit hook file that `kitsu init` writes, started
 //     with sh as git starts it, in the root of a repository whose content is
 //     verified, so the hook allows. The time runs from the start of sh to
-//     its exit, so it holds the start of sh, the start of gatecub and the whole
+//     its exit, so it holds the start of sh, the start of kitsu and the whole
 //     decision. git's own work before and after the hook is not in it.
 //   - The environment is the one the hook would get from git: the test
-//     harness's clean environment, gatecub first on PATH, and GIT_INDEX_FILE
+//     harness's clean environment, kitsu first on PATH, and GIT_INDEX_FILE
 //     naming the index. Its output is discarded.
 //   - Each repository gets one warm-up decision and then 15 measured ones,
 //     one after the other. The median of the 15 is compared with the limit.
 //     Every value is printed, on every system.
 //   - The repositories are a copy of this repository's tracked files and a
 //     generated repository of 30,000 files and 68 MiB. Each declares one
-//     trivial check, `git --version`, and `gatecub run` records it once before
+//     trivial check, `git --version`, and `kitsu run` records it once before
 //     the measurement: the cost of a decision depends on the tree, not on
 //     what the checks do.
 //   - The limits are 150 ms and 500 ms, on Linux and macOS. On Windows the
 //     test measures and reports only.
 //   - After the decisions it reports two floors, measured the same way: a
-//     hook file that only exits, and `gatecub version` started without sh.
+//     hook file that only exits, and `kitsu version` started without sh.
 //
-// The test runs only when GATECUB_COST=1, so that a plain `go test ./...` stays
+// The test runs only when KITSU_COST=1, so that a plain `go test ./...` stays
 // fast and is not judged by the speed of the machine it runs on.
 package cost_test
 
@@ -39,7 +39,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 const (
@@ -53,7 +53,7 @@ const (
 	generatedBytes = 68 << 20
 )
 
-// declaration is the gatecub.toml of both measured repositories.
+// declaration is the kitsu.toml of both measured repositories.
 const declaration = `version = 1
 
 [[check]]
@@ -63,7 +63,7 @@ run = ["git", "--version"]
 
 func TestHookCostOnThisRepository(t *testing.T) {
 	needCost(t)
-	repo := gatecubtest.NewRepo(t)
+	repo := kitsutest.NewRepo(t)
 	count, size := copyTracked(t, repo.Dir)
 	t.Logf("a copy of this repository: %d files, %.1f MiB", count, float64(size)/(1<<20))
 	measure(t, repo, ownLimit)
@@ -71,30 +71,30 @@ func TestHookCostOnThisRepository(t *testing.T) {
 
 func TestHookCostOnAGeneratedRepository(t *testing.T) {
 	needCost(t)
-	repo := gatecubtest.NewRepo(t)
+	repo := kitsutest.NewRepo(t)
 	generate(t, repo.Dir)
 	t.Logf("a generated repository: %d files, %d MiB", generatedFiles, generatedBytes>>20)
 	measure(t, repo, generatedLimit)
 }
 
-// needCost skips the test unless GATECUB_COST=1.
+// needCost skips the test unless KITSU_COST=1.
 func needCost(t *testing.T) {
 	t.Helper()
-	if os.Getenv("GATECUB_COST") != "1" {
-		t.Skip("the hook cost is measured only with GATECUB_COST=1")
+	if os.Getenv("KITSU_COST") != "1" {
+		t.Skip("the hook cost is measured only with KITSU_COST=1")
 	}
 }
 
 // measure commits the files, installs the hooks, records the trivial check
 // and then times the pre-commit hook.
-func measure(t *testing.T, repo *gatecubtest.Repo, limit time.Duration) {
+func measure(t *testing.T, repo *kitsutest.Repo, limit time.Duration) {
 	t.Helper()
-	repo.Write("gatecub.toml", declaration)
+	repo.Write("kitsu.toml", declaration)
 	repo.Git("add", "-A")
 	repo.Git("commit", "-q", "--no-verify", "-m", "measured content")
 	for _, args := range [][]string{{"init"}, {"run"}} {
-		if result := repo.Gatecub(args...); result.Code != 0 {
-			t.Fatalf("gatecub %s exited %d:\n%s", strings.Join(args, " "), result.Code, result.Output())
+		if result := repo.Kitsu(args...); result.Code != 0 {
+			t.Fatalf("kitsu %s exited %d:\n%s", strings.Join(args, " "), result.Code, result.Output())
 		}
 	}
 
@@ -139,9 +139,9 @@ func measure(t *testing.T, repo *gatecubtest.Repo, limit time.Duration) {
 }
 
 // floors reports what a decision cannot go below on this machine, so that a
-// reader can tell the cost of gatecub from the cost of starting a hook at all: a
-// hook file that only exits, started the same way, and gatecub started without sh.
-func floors(t *testing.T, repo *gatecubtest.Repo, hook *exec.Cmd) {
+// reader can tell the cost of kitsu from the cost of starting a hook at all: a
+// hook file that only exits, started the same way, and kitsu started without sh.
+func floors(t *testing.T, repo *kitsutest.Repo, hook *exec.Cmd) {
 	t.Helper()
 	if len(hook.Args) == 2 { // sh and the hook file
 		empty := filepath.Join(t.TempDir(), "pre-commit")
@@ -150,8 +150,8 @@ func floors(t *testing.T, repo *gatecubtest.Repo, hook *exec.Cmd) {
 		}
 		t.Logf("a hook file that only exits, started the same way: median %s", ms(medianOf(t, repo.Command(hook.Path, empty))))
 	}
-	direct := repo.Command(filepath.Join(gatecubtest.Binary(t), gatecubName()), "version")
-	t.Logf("gatecub version, started without sh: median %s", ms(medianOf(t, direct)))
+	direct := repo.Command(filepath.Join(kitsutest.Binary(t), kitsuName()), "version")
+	t.Logf("kitsu version, started without sh: median %s", ms(medianOf(t, direct)))
 }
 
 // medianOf runs a command as often as a decision is measured, after the same
@@ -175,29 +175,29 @@ func medianOf(t *testing.T, command *exec.Cmd) time.Duration {
 // hookCommand is the installed pre-commit hook as git starts it. Where no sh
 // is found, which git on Windows brings along, it falls back to the line
 // the hook file runs.
-func hookCommand(t *testing.T, repo *gatecubtest.Repo) *exec.Cmd {
+func hookCommand(t *testing.T, repo *kitsutest.Repo) *exec.Cmd {
 	t.Helper()
 	gitDir := repo.Git("rev-parse", "--absolute-git-dir")
 	file := filepath.Join(gitDir, "hooks", "pre-commit")
 	if _, err := os.Stat(file); err != nil {
-		t.Fatalf("gatecub init wrote no pre-commit hook: %v", err)
+		t.Fatalf("kitsu init wrote no pre-commit hook: %v", err)
 	}
 	var command *exec.Cmd
 	if sh, err := exec.LookPath("sh"); err == nil {
 		command = repo.Command(sh, file)
 	} else {
-		t.Logf("no sh on PATH; the decision is gatecub hook pre-commit started directly")
-		command = repo.Command(filepath.Join(gatecubtest.Binary(t), gatecubName()), "hook", "pre-commit")
+		t.Logf("no sh on PATH; the decision is kitsu hook pre-commit started directly")
+		command = repo.Command(filepath.Join(kitsutest.Binary(t), kitsuName()), "hook", "pre-commit")
 	}
 	command.Env = append(command.Env, "GIT_INDEX_FILE="+filepath.Join(gitDir, "index"))
 	return command
 }
 
-func gatecubName() string {
+func kitsuName() string {
 	if runtime.GOOS == "windows" {
-		return "gatecub.exe"
+		return "kitsu.exe"
 	}
-	return "gatecub"
+	return "kitsu"
 }
 
 // decide runs the hook once and returns how long it took from start to exit.

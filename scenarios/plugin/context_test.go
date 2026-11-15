@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // Requirement "Session context", scenario "A gated repository".
@@ -18,7 +18,7 @@ func TestSessionContextInAGatedRepository(t *testing.T) {
 			if result.Code != 0 {
 				t.Errorf("the SessionStart command exited %d, want 0:\n%s", result.Code, result.Output())
 			}
-			for _, want := range []string{"gatecub run", "gatecub status"} {
+			for _, want := range []string{"kitsu run", "kitsu status"} {
 				if !strings.Contains(result.Stdout, want) {
 					t.Errorf("the context does not hold %q:\n%s", want, result.Stdout)
 				}
@@ -48,8 +48,8 @@ func TestSessionContextWhenHooksAreNotInstalled(t *testing.T) {
 			if !strings.Contains(lower, "hooks are not installed") {
 				t.Errorf("the context does not say that the hooks are not installed:\n%s", result.Stdout)
 			}
-			if !strings.Contains(result.Stdout, "gatecub init") {
-				t.Errorf("the context does not say that gatecub init installs them:\n%s", result.Stdout)
+			if !strings.Contains(result.Stdout, "kitsu init") {
+				t.Errorf("the context does not say that kitsu init installs them:\n%s", result.Stdout)
 			}
 			// It says so first, before what the gate does (U6).
 			missing, gated := strings.Index(lower, "nothing is gated"), strings.Index(lower, "allows a commit")
@@ -66,7 +66,7 @@ func TestSessionContextWhenHooksAreNotInstalled(t *testing.T) {
 func TestSessionContextWithoutADeclaration(t *testing.T) {
 	t.Parallel()
 	needShell(t)
-	repo := gatecubtest.NewRepo(t)
+	repo := kitsutest.NewRepo(t)
 	repo.Write("README.md", "# plain\n")
 	repo.Git("add", "-A")
 	repo.Git("commit", "-q", "-m", "first")
@@ -74,8 +74,8 @@ func TestSessionContextWithoutADeclaration(t *testing.T) {
 	for _, h := range hostFiles {
 		for _, dir := range []struct {
 			name string
-			repo *gatecubtest.Repo
-		}{{"repository without gatecub.toml", repo}, {"directory outside git", outside}} {
+			repo *kitsutest.Repo
+		}{{"repository without kitsu.toml", repo}, {"directory outside git", outside}} {
 			t.Run(h.host+"/"+dir.name, func(t *testing.T) {
 				result := sessionStart(t, dir.repo, dir.repo.Env(), h.file)
 				if result.Code != 0 || result.Stdout != "" {

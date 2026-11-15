@@ -1,6 +1,6 @@
 # git
 
-You are the `git` role of a gatecub task. You run the checks and make the commit
+You are the `git` role of a kitsu task. You run the checks and make the commit
 through the gate. You change no file of the working tree.
 
 You start with no history. The brief is all you know about the task. Its first
@@ -16,10 +16,10 @@ line is a label for the token report; ignore it.
 
 1. `git status`. When the branch or the changes are not what the brief
    describes, stop and report.
-2. `gatecub run`. It executes the declared checks that have no passing run on this
+2. `kitsu run`. It executes the declared checks that have no passing run on this
    content. When a check fails, stop: report the check and the part of its
    log that shows why. Do not fix anything.
-3. `gatecub status`. It must exit 0.
+3. `kitsu status`. It must exit 0.
 4. Stage everything the working tree holds, with `git add -A`. The gate
    judges the content that is committed, and the checks ran on the whole
    working tree; a commit that leaves part of it out is denied. When the
@@ -27,7 +27,7 @@ line is a label for the token report; ignore it.
 5. Commit, with a message in the repository's own form. On the full path one
    commit holds the change folder, the tests and the code together.
 6. `git log -1 --stat`, to confirm what was recorded. On the full path also
-   `gatecub change status <task>`.
+   `kitsu change status <task>`.
 
 ## Rules
 

@@ -1,4 +1,4 @@
-// Package gate holds the git hooks of gatecub: the files it installs and the
+// Package gate holds the git hooks of kitsu: the files it installs and the
 // decisions they make.
 package gate
 
@@ -13,22 +13,22 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/belevtsev/gatecub/v3/internal/gitx"
+	"github.com/belevtsev/kitsu/v3/internal/gitx"
 )
 
-// Hooks are the three hooks gatecub installs.
+// Hooks are the three hooks kitsu installs.
 var Hooks = []string{"pre-commit", "pre-merge-commit", "pre-push"}
 
 // InstallURL is where the install instruction is. A message that tells a
-// user to install gatecub names this place and no command of any toolchain.
-const InstallURL = "https://github.com/belevtsev/gatecub#install"
+// user to install kitsu names this place and no command of any toolchain.
+const InstallURL = "https://github.com/belevtsev/kitsu#install"
 
 // NoDeclarationURL is where the documents say what to do about a tree that
-// holds no gatecub.toml on purpose. A denial names this place and no command.
-const NoDeclarationURL = "https://github.com/belevtsev/gatecub/blob/main/docs/operations.md#a-tree-without-gatecubtoml"
+// holds no kitsu.toml on purpose. A denial names this place and no command.
+const NoDeclarationURL = "https://github.com/belevtsev/kitsu/blob/main/docs/operations.md#a-tree-without-kitsutoml"
 
-// marker is the line that shows gatecub wrote a hook file.
-const marker = "# gatecub-hook: written by `gatecub init`. `gatecub uninstall` removes this file."
+// marker is the line that shows kitsu wrote a hook file.
+const marker = "# kitsu-hook: written by `kitsu init`. `kitsu uninstall` removes this file."
 
 // The states of the hooks in one clone.
 const (
@@ -36,46 +36,46 @@ const (
 	Missing   = "missing"
 )
 
-// IsHook says whether name is one of the hooks gatecub knows.
+// IsHook says whether name is one of the hooks kitsu knows.
 func IsHook(name string) bool { return slices.Contains(Hooks, name) }
 
-// Line is the line that calls gatecub from a hook another tool owns. It must be
+// Line is the line that calls kitsu from a hook another tool owns. It must be
 // the last command of that hook.
 func Line(name string) string {
-	return fmt.Sprintf(`gatecub hook %s "$@"`, name)
+	return fmt.Sprintf(`kitsu hook %s "$@"`, name)
 }
 
-// Script is the hook file gatecub writes. It is a POSIX shell script, which is
-// also what Git for Windows runs. It looks for gatecub only in the entries of PATH
+// Script is the hook file kitsu writes. It is a POSIX shell script, which is
+// also what Git for Windows runs. It looks for kitsu only in the entries of PATH
 // that are absolute paths, so an empty or relative entry cannot make it run a
 // file of the repository, whatever form the shell gives to what it finds;
-// without such a gatecub it denies.
+// without such a kitsu it denies.
 func Script(name string) string {
 	return strings.Join([]string{
 		"#!/bin/sh",
 		marker,
 		"dirs=; IFS=:; set -f",
 		`for dir in $PATH; do case "$dir" in /*) dirs="${dirs:+$dirs:}$dir" ;; esac; done; unset IFS; set +f`,
-		`gatecub=$([ -n "$dirs" ] && PATH=$dirs && command -v gatecub 2>/dev/null)`,
-		`case "$gatecub" in /*) exec ` + ownLine + name + ` "$@" ;; esac`,
-		`echo "gatecub: the gatecub program was not found in an entry of PATH that is an absolute path, so this ` + name + ` cannot be judged and is denied. An empty or relative entry is not searched." >&2`,
-		`echo "gatecub: the install instruction is at ` + InstallURL + `" >&2`,
+		`kitsu=$([ -n "$dirs" ] && PATH=$dirs && command -v kitsu 2>/dev/null)`,
+		`case "$kitsu" in /*) exec ` + ownLine + name + ` "$@" ;; esac`,
+		`echo "kitsu: the kitsu program was not found in an entry of PATH that is an absolute path, so this ` + name + ` cannot be judged and is denied. An empty or relative entry is not searched." >&2`,
+		`echo "kitsu: the install instruction is at ` + InstallURL + `" >&2`,
 		"exit 3",
 		"",
 	}, "\n")
 }
 
-// ownLine is how the file gatecub writes calls gatecub, up to the name of the hook.
-const ownLine = `"$gatecub" hook `
+// ownLine is how the file kitsu writes calls kitsu, up to the name of the hook.
+const ownLine = `"$kitsu" hook `
 
-// Foreign is a hook file gatecub did not write, or one it wrote that was changed
-// since. Line is its line that calls gatecub, when Uninstall left the file.
+// Foreign is a hook file kitsu did not write, or one it wrote that was changed
+// since. Line is its line that calls kitsu, when Uninstall left the file.
 type Foreign struct{ Name, Path, Line string }
 
 // Install writes the three hooks into the hooks directory of the common git
 // directory. It never changes a file it did not write, and writes nothing
 // when core.hooksPath is set. A hook it left alone is returned for the user
-// to edit, unless that hook already calls gatecub.
+// to edit, unless that hook already calls kitsu.
 func Install(ctx context.Context, repo *gitx.Repo) (foreign []Foreign, err error) {
 	dir, configured, err := repo.HooksDir(ctx)
 	if err != nil {
@@ -118,9 +118,9 @@ func Install(ctx context.Context, repo *gitx.Repo) (foreign []Foreign, err error
 	return foreign, nil
 }
 
-// Own lists the hooks git runs in this clone whose file gatecub wrote, in the
+// Own lists the hooks git runs in this clone whose file kitsu wrote, in the
 // order of Hooks. A hook of another tool is not among them, whether or not
-// it calls gatecub.
+// it calls kitsu.
 func Own(ctx context.Context, repo *gitx.Repo) []string {
 	dir, _, err := repo.HooksDir(ctx)
 	if err != nil {
@@ -144,25 +144,25 @@ func executable(path string) bool {
 	return runtime.GOOS == "windows" || info.Mode()&0o111 != 0
 }
 
-// calls says whether the file is a hook git would run and that calls gatecub.
+// calls says whether the file is a hook git would run and that calls kitsu.
 func calls(path, name string) bool {
 	data, err := os.ReadFile(path)
 	return err == nil && executable(path) && callLine(string(data), name) != ""
 }
 
-// callLine is the first line of a hook file that is no comment and calls gatecub,
+// callLine is the first line of a hook file that is no comment and calls kitsu,
 // or nothing.
 func callLine(script, name string) string {
 	for _, line := range strings.Split(script, "\n") {
-		if line = strings.TrimSpace(line); !strings.HasPrefix(line, "#") && (strings.Contains(line, "gatecub hook "+name) || strings.Contains(line, ownLine+name)) {
+		if line = strings.TrimSpace(line); !strings.HasPrefix(line, "#") && (strings.Contains(line, "kitsu hook "+name) || strings.Contains(line, ownLine+name)) {
 			return line
 		}
 	}
 	return ""
 }
 
-// State says whether git runs the hooks of gatecub in this clone: each of the
-// three files git would run exists, can be executed and calls `gatecub hook`.
+// State says whether git runs the hooks of kitsu in this clone: each of the
+// three files git would run exists, can be executed and calls `kitsu hook`.
 func State(ctx context.Context, repo *gitx.Repo) string {
 	dir, _, err := repo.HooksDir(ctx)
 	if err != nil {
@@ -176,11 +176,11 @@ func State(ctx context.Context, repo *gitx.Repo) string {
 	return Installed
 }
 
-// Uninstall removes the hook files gatecub wrote and says how many there were: in
+// Uninstall removes the hook files kitsu wrote and says how many there were: in
 // the hooks directory of the common git directory, where Install writes, a
 // file with the marker; in a directory that core.hooksPath names, which
-// belongs to its owner, only a file that is exactly the script of gatecub. A file
-// it leaves that still calls `gatecub hook` is returned.
+// belongs to its owner, only a file that is exactly the script of kitsu. A file
+// it leaves that still calls `kitsu hook` is returned.
 func Uninstall(ctx context.Context, repo *gitx.Repo) (removed int, foreign []Foreign, err error) {
 	dir, _, err := repo.HooksDir(ctx)
 	if err != nil {

@@ -132,12 +132,12 @@ func TestPreparedReleaseVersions(t *testing.T) {
 		if version == "" {
 			version = manifest.Metadata.Version
 		}
-		if manifest.Name != "gatecub" || "v"+version != tag {
-			t.Errorf("%s names %s %s, want gatecub %s", file, manifest.Name, version, tag)
+		if manifest.Name != "kitsu" || "v"+version != tag {
+			t.Errorf("%s names %s %s, want kitsu %s", file, manifest.Name, version, tag)
 		}
 	}
 	if tag == "v3.0.0-beta.1" {
-		t.Error("v3.0.0-beta.1 contains cw archives and cannot be used for Gatecub downloads")
+		t.Error("v3.0.0-beta.1 contains cw archives and cannot be used for Kitsu downloads")
 	}
 }
 

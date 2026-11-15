@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // Requirement "Recorded decisions", scenario "A denial is recorded with its
@@ -15,8 +15,8 @@ func TestADenialIsRecordedWithItsReasons(t *testing.T) {
 	t.Parallel()
 	repo := gated(t)
 	repo.Write("src/app.txt", "broken\n")
-	if result := repo.Gatecub("run", "unit"); result.Code == 0 {
-		t.Fatalf("gatecub run unit exited 0 on broken content:\n%s", result.Output())
+	if result := repo.Kitsu("run", "unit"); result.Code == 0 {
+		t.Fatalf("kitsu run unit exited 0 on broken content:\n%s", result.Output())
 	}
 	before := head(repo)
 	if result := repo.TryGit("commit", "-a", "-m", "change"); result.Code == 0 || head(repo) != before {
@@ -26,7 +26,7 @@ func TestADenialIsRecordedWithItsReasons(t *testing.T) {
 	got := statsJSON(t, repo)
 	denied := got.decisions("pre-commit", "enforce", "denied")
 	if len(denied) != 1 || denied[0].Count != 1 {
-		t.Fatalf("gatecub stats --json does not count one denied pre-commit decision: %+v", got.Decisions)
+		t.Fatalf("kitsu stats --json does not count one denied pre-commit decision: %+v", got.Decisions)
 	}
 	if n := denied[0].Checks["failed"]["unit"]; n != 1 {
 		t.Errorf("unit is counted %d times under failed, want 1: %+v", n, denied[0].Checks)
@@ -38,7 +38,7 @@ func TestADenialIsRecordedWithItsReasons(t *testing.T) {
 
 // commitAllowed edits README.md, runs the checks and commits, and fails the
 // test when the commit is not recorded.
-func commitAllowed(t *testing.T, repo *gatecubtest.Repo, n int) {
+func commitAllowed(t *testing.T, repo *kitsutest.Repo, n int) {
 	t.Helper()
 	repo.Write("README.md", fmt.Sprintf("# demo %d\n", n))
 	checked(t, repo)
@@ -50,7 +50,7 @@ func commitAllowed(t *testing.T, repo *gatecubtest.Repo, n int) {
 
 // commitDenied tries to commit everything and fails the test when the commit
 // is recorded.
-func commitDenied(t *testing.T, repo *gatecubtest.Repo, what string) {
+func commitDenied(t *testing.T, repo *kitsutest.Repo, what string) {
 	t.Helper()
 	before := head(repo)
 	if result := repo.TryGit("commit", "-a", "-q", "-m", what); result.Code == 0 || head(repo) != before {
@@ -61,23 +61,23 @@ func commitDenied(t *testing.T, repo *gatecubtest.Repo, what string) {
 // Requirement "Statistics", scenario "A week of work".
 func TestAWeekOfWork(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	// unit fails when UNIT_FAIL is set, which changes nothing it reads: a
 	// rerun without it passes on the same checked content. The change is
 	// committed before the hooks are installed, so it is no decision.
 	repo.Write("unit.sh", "echo unit.sh runs\ntest -z \"$UNIT_FAIL\" || exit 3\ntest \"$(cat src/app.txt)\" = ok || exit 3\n")
 	repo.Git("commit", "-q", "-a", "-m", "unit can be made to fail")
-	if result := repo.Gatecub("init"); result.Code != 0 {
-		t.Fatalf("gatecub init exited %d:\n%s", result.Code, result.Output())
+	if result := repo.Kitsu("init"); result.Code != 0 {
+		t.Fatalf("kitsu init exited %d:\n%s", result.Code, result.Output())
 	}
 
 	// Five allowed commits; before the first, unit fails once and then
 	// passes on the same content.
 	repo.Write("README.md", "# demo 0\n")
-	flaky := repo.Command(gatecubProgram(t), "run")
+	flaky := repo.Command(kitsuProgram(t), "run")
 	flaky.Env = append(flaky.Env, "UNIT_FAIL=1")
 	if output, err := flaky.CombinedOutput(); err == nil {
-		t.Fatalf("gatecub run with UNIT_FAIL=1 exited 0:\n%s", output)
+		t.Fatalf("kitsu run with UNIT_FAIL=1 exited 0:\n%s", output)
 	}
 	for n := range 5 {
 		commitAllowed(t, repo, n)
@@ -86,8 +86,8 @@ func TestAWeekOfWork(t *testing.T) {
 	// Two denials because unit failed.
 	for _, content := range []string{"broken\n", "broken again\n"} {
 		repo.Write("src/app.txt", content)
-		if result := repo.Gatecub("run"); result.Code == 0 {
-			t.Fatalf("gatecub run exited 0 with src/app.txt %q:\n%s", content, result.Output())
+		if result := repo.Kitsu("run"); result.Code == 0 {
+			t.Fatalf("kitsu run exited 0 with src/app.txt %q:\n%s", content, result.Output())
 		}
 		commitDenied(t, repo, "unit failed")
 	}
@@ -96,9 +96,9 @@ func TestAWeekOfWork(t *testing.T) {
 	repo.Write("src/app.txt", "ok\n\n\n")
 	commitDenied(t, repo, "nothing run")
 
-	result := repo.Gatecub("stats", "--since", "7d")
+	result := repo.Kitsu("stats", "--since", "7d")
 	if result.Code != 0 {
-		t.Errorf("gatecub stats --since 7d exited %d, want 0", result.Code)
+		t.Errorf("kitsu stats --since 7d exited %d, want 0", result.Code)
 	}
 	// The spec gives no wording for the text: each number must stand on a
 	// line with the word it counts.
@@ -117,7 +117,7 @@ func TestAWeekOfWork(t *testing.T) {
 			}
 			return holdsNumber(line, want.n)
 		}) {
-			t.Errorf("gatecub stats --since 7d prints no line with %q and %d:\n%s", want.words, want.n, result.Output())
+			t.Errorf("kitsu stats --since 7d prints no line with %q and %d:\n%s", want.words, want.n, result.Output())
 		}
 	}
 
@@ -133,7 +133,7 @@ func TestAWeekOfWork(t *testing.T) {
 		}
 	}
 	if !after {
-		t.Errorf("gatecub stats --since 7d does not report 1 pass after failure for unit:\n%s", result.Output())
+		t.Errorf("kitsu stats --since 7d does not report 1 pass after failure for unit:\n%s", result.Output())
 	}
 
 	got := statsJSON(t, repo, "--since", "7d")
@@ -160,20 +160,20 @@ func TestAWeekOfWork(t *testing.T) {
 // Requirement "Statistics", scenario "Observed denials are counted apart".
 func TestObservedDenialsAreCountedApart(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
-	if result := repo.Gatecub("init", "--observe"); result.Code != 0 {
-		t.Fatalf("gatecub init --observe exited %d:\n%s", result.Code, result.Output())
+	repo := kitsutest.Demo(t)
+	if result := repo.Kitsu("init", "--observe"); result.Code != 0 {
+		t.Fatalf("kitsu init --observe exited %d:\n%s", result.Code, result.Output())
 	}
 	repo.Write("src/app.txt", "broken\n")
-	if result := repo.Gatecub("run"); result.Code == 0 {
-		t.Fatalf("gatecub run exited 0 on broken content:\n%s", result.Output())
+	if result := repo.Kitsu("run"); result.Code == 0 {
+		t.Fatalf("kitsu run exited 0 on broken content:\n%s", result.Output())
 	}
 	if result := repo.TryGit("commit", "-a", "-m", "change"); result.Code != 0 {
 		t.Fatalf("the observed commit exited %d:\n%s", result.Code, result.Output())
 	}
 
-	if result := repo.Gatecub("stats"); result.Code != 0 || !strings.Contains(result.Stdout, "observe") {
-		t.Errorf("gatecub stats (exit %d) does not show the observe mode:\n%s", result.Code, result.Output())
+	if result := repo.Kitsu("stats"); result.Code != 0 || !strings.Contains(result.Stdout, "observe") {
+		t.Errorf("kitsu stats (exit %d) does not show the observe mode:\n%s", result.Code, result.Output())
 	}
 	got := statsJSON(t, repo)
 	if n := got.count("pre-commit", "observe", "denied"); n != 1 {
@@ -192,10 +192,10 @@ func TestTheStatusesInOneSession(t *testing.T) {
 	checked(t, repo)
 
 	var got []int
-	got = append(got, repo.Gatecub("status").Code)
-	got = append(got, repo.Gatecub("run", "--nosuchflag").Code)
+	got = append(got, repo.Kitsu("status").Code)
+	got = append(got, repo.Kitsu("run", "--nosuchflag").Code)
 	repo.Write("src/app.txt", "edited\n")
-	got = append(got, repo.Gatecub("status").Code)
+	got = append(got, repo.Kitsu("status").Code)
 	if want := []int{0, 2, 5}; !slices.Equal(got, want) {
 		t.Errorf("the exit statuses are %v, want %v", got, want)
 	}
@@ -206,6 +206,6 @@ func TestTheStatusesInOneSession(t *testing.T) {
 		t.Errorf("git commit -a was not denied (exit %d):\n%s", result.Code, result.Output())
 	}
 	if hooks := statuses(); !slices.Equal(hooks, []string{"pre-commit 3"}) {
-		t.Errorf("gatecub hook ran with the exit statuses %q, want [pre-commit 3]:\n%s", hooks, result.Output())
+		t.Errorf("kitsu hook ran with the exit statuses %q, want [pre-commit 3]:\n%s", hooks, result.Output())
 	}
 }

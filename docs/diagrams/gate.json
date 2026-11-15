@@ -9,7 +9,7 @@
     "legend": {
       "entries": {
         "external": {"label": "You or your agent"},
-        "frontend": {"label": "Gatecub"},
+        "frontend": {"label": "Kitsu"},
         "messagebus": {"label": "git"},
         "database": {"label": "Records"},
         "backend": {"label": "Allowed"},
@@ -20,7 +20,7 @@
   "lanes": [
     {"id": "you", "label": "You"},
     {"id": "git", "label": "git"},
-    {"id": "gatecub", "label": "Gatecub"}
+    {"id": "kitsu", "label": "Kitsu"}
   ],
   "phases": [
     {"id": "prove", "label": "1. Evidence", "fromCol": 0, "toCol": 0},
@@ -28,14 +28,14 @@
   ],
   "mainPath": ["run", "commit", "hook", "judge", "decide", "allowed"],
   "nodes": [
-    {"id": "run", "lane": "you", "col": 0, "type": "frontend", "icon": "backend", "label": "gatecub run", "sublabel": "runs what has not passed", "width": 124},
+    {"id": "run", "lane": "you", "col": 0, "type": "frontend", "icon": "backend", "label": "kitsu run", "sublabel": "runs what has not passed", "width": 124},
     {"id": "commit", "lane": "you", "col": 1, "type": "external", "icon": "person", "label": "git commit", "sublabel": "or git push"},
     {"id": "denied", "lane": "you", "col": 4, "type": "security", "icon": "failure", "label": "Denied", "sublabel": "says why"},
     {"id": "hook", "lane": "git", "col": 2, "type": "messagebus", "label": "git hook", "sublabel": "one of three"},
     {"id": "allowed", "lane": "git", "col": 5, "type": "backend", "icon": "success", "label": "Allowed", "sublabel": "git goes on"},
-    {"id": "runs", "lane": "gatecub", "col": 0, "type": "database", "label": "gatecub/runs/", "sublabel": "a record per run"},
-    {"id": "judge", "lane": "gatecub", "col": 2, "type": "frontend", "icon": "backend", "label": "gatecub hook", "sublabel": "commit or pushed tip", "width": 112},
-    {"id": "decide", "lane": "gatecub", "col": 4, "type": "frontend", "icon": "decision", "label": "Every check passed?", "sublabel": "on exactly this content", "width": 136}
+    {"id": "runs", "lane": "kitsu", "col": 0, "type": "database", "label": "kitsu/runs/", "sublabel": "a record per run"},
+    {"id": "judge", "lane": "kitsu", "col": 2, "type": "frontend", "icon": "backend", "label": "kitsu hook", "sublabel": "commit or pushed tip", "width": 112},
+    {"id": "decide", "lane": "kitsu", "col": 4, "type": "frontend", "icon": "decision", "label": "Every check passed?", "sublabel": "on exactly this content", "width": 136}
   ],
   "edges": [
     {"id": "run-record", "from": "run", "to": "runs", "label": "records", "variant": "dashed"},

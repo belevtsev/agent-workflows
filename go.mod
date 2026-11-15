@@ -1,4 +1,4 @@
-module github.com/belevtsev/gatecub/v3
+module github.com/belevtsev/kitsu/v3
 
 go 1.27.1
 

@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/stats"
-	"github.com/belevtsev/gatecub/v3/internal/store"
+	"github.com/belevtsev/kitsu/v3/internal/stats"
+	"github.com/belevtsev/kitsu/v3/internal/store"
 )
 
-// defaultPeriod is the period `gatecub stats` counts without --since.
+// defaultPeriod is the period `kitsu stats` counts without --since.
 const defaultPeriod = 30 * 24 * time.Hour
 
 // parsePeriod reads a period such as 7d, 2w, 36h or 90m.
@@ -41,7 +41,7 @@ func runStats(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	if len(p.pos) > 0 || p.dash {
-		return usagef("stats takes no arguments; usage: gatecub stats [--since <period>] [--json]")
+		return usagef("stats takes no arguments; usage: kitsu stats [--since <period>] [--json]")
 	}
 	period := defaultPeriod
 	if *since != "" {

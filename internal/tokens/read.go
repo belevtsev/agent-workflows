@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-// The hosts whose records gatecub reads.
+// The hosts whose records kitsu reads.
 const (
 	Claude = "claude"
 	Codex  = "codex"
@@ -77,7 +77,7 @@ func RoleOf(stage string) string {
 	return ""
 }
 
-var labelLine = regexp.MustCompile(`^gatecub-task: ([a-z0-9]+(?:-[a-z0-9]+)*) ([a-z-]+) ([1-9][0-9]{0,5})$`)
+var labelLine = regexp.MustCompile(`^kitsu-task: ([a-z0-9]+(?:-[a-z0-9]+)*) ([a-z-]+) ([1-9][0-9]{0,5})$`)
 
 // ParseLabel reads the label from the text of a brief. ok is false when the
 // first line is not a label.
@@ -178,7 +178,7 @@ func (c *collect) result(r reading, err error) reading {
 	case errors.Is(err, os.ErrNotExist):
 		r.why = "the record does not exist"
 	case errors.Is(err, bufio.ErrTooLong):
-		r.why = "a line of the record is longer than gatecub reads"
+		r.why = "a line of the record is longer than kitsu reads"
 	case err != nil:
 		r.why = "the record cannot be read: " + err.Error()
 	case c.broken != "":

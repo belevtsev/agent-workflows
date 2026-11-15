@@ -22,10 +22,10 @@ jobs:
       contents: read
       actions: read
     steps:
-      - name: Refuse publication outside the Gatecub repository
+      - name: Refuse publication outside the Kitsu repository
         run: |
-          if [ "$GITHUB_REPOSITORY" != "belevtsev/gatecub" ]; then
-            echo "Gatecub releases must run in belevtsev/gatecub."
+          if [ "$GITHUB_REPOSITORY" != "belevtsev/kitsu" ]; then
+            echo "Kitsu releases must run in belevtsev/kitsu."
             exit 1
           fi
       - name: Check out the tagged commit with the history of main
@@ -97,7 +97,7 @@ jobs:
 
   # Only this job can write: it publishes the release and the attestations.
   release:
-    name: Publish Gatecub for ${{ github.ref_name }}
+    name: Publish Kitsu for ${{ github.ref_name }}
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 20

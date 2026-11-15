@@ -10,10 +10,10 @@ import (
 	"testing"
 )
 
-// Every git call of gatecub takes no optional lock and fetches no object that a
-// partial clone lacks, so that gatecub rewrites no index and starts no connection
+// Every git call of kitsu takes no optional lock and fetches no object that a
+// partial clone lacks, so that kitsu rewrites no index and starts no connection
 // (second challenge, finding S6). The variables are checked in the
-// environment gatecub builds and in the one git hands to a command it starts.
+// environment kitsu builds and in the one git hands to a command it starts.
 func TestEveryGitCallTakesNoLockAndFetchesNothing(t *testing.T) {
 	dir, _ := committed(t, map[string]string{"a.txt": "a\n"})
 	for _, foreign := range []bool{false, true} {
@@ -25,9 +25,9 @@ func TestEveryGitCallTakesNoLockAndFetchesNothing(t *testing.T) {
 		}
 
 		// An alias that starts a program shows the environment git runs in.
-		out, err := run(t.Context(), call{dir: dir, foreign: foreign}, "-c", "alias.gatecubenv=!env", "gatecubenv")
+		out, err := run(t.Context(), call{dir: dir, foreign: foreign}, "-c", "alias.kitsuenv=!env", "kitsuenv")
 		if err != nil {
-			t.Fatalf("git gatecubenv (foreign=%v): %v", foreign, err)
+			t.Fatalf("git kitsuenv (foreign=%v): %v", foreign, err)
 		}
 		lines := strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n")
 		for _, want := range []string{"GIT_OPTIONAL_LOCKS=0", "GIT_NO_LAZY_FETCH=1"} {
@@ -39,7 +39,7 @@ func TestEveryGitCallTakesNoLockAndFetchesNothing(t *testing.T) {
 		// git's file system monitor is off for every call.
 		out, err = run(t.Context(), call{dir: dir, foreign: foreign}, "config", "core.fsmonitor")
 		if err != nil || strings.TrimSpace(string(out)) != "false" {
-			t.Errorf("core.fsmonitor in a call of gatecub (foreign=%v) = %q, %v; want false", foreign, out, err)
+			t.Errorf("core.fsmonitor in a call of kitsu (foreign=%v) = %q, %v; want false", foreign, out, err)
 		}
 	}
 }

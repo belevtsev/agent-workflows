@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gitx"
+	"github.com/belevtsev/kitsu/v3/internal/gitx"
 )
 
 // guardRepo is a new repository with a declaration, opened as the guard
@@ -32,12 +32,12 @@ func guardRepo(t *testing.T, hooksPath string) (*gitx.Repo, string) {
 			t.Fatalf("git %v: %v\n%s", args, err, out)
 		}
 	}
-	for _, dir := range []string{".git/hooks", ".git/gatecub/runs", "sub", ".githooks"} {
+	for _, dir := range []string{".git/hooks", ".git/kitsu/runs", "sub", ".githooks"} {
 		if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(dir)), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(root, "gatecub.toml"), []byte("version = 1\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "kitsu.toml"), []byte("version = 1\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	repo, err := gitx.Open(context.Background(), root)
@@ -59,28 +59,28 @@ func checkEdits(t *testing.T, repo *gitx.Repo, cases []editCase) {
 	}
 }
 
-// An edit of gatecub.toml, of a git hook, of the git configuration or of a record
-// of gatecub needs the user; an edit of another file, also one whose name starts
+// An edit of kitsu.toml, of a git hook, of the git configuration or of a record
+// of kitsu needs the user; an edit of another file, also one whose name starts
 // like those, does not.
 func TestEditReason(t *testing.T) {
 	t.Parallel()
 	repo, root := guardRepo(t, "")
 	common := filepath.Join(root, ".git")
 	cases := []editCase{
-		{"gatecub.toml", root, "gatecub.toml"},
-		{"../gatecub.toml", filepath.Join(root, "sub"), "gatecub.toml"},
-		{"sub/../gatecub.toml", root, "gatecub.toml"},
+		{"kitsu.toml", root, "kitsu.toml"},
+		{"../kitsu.toml", filepath.Join(root, "sub"), "kitsu.toml"},
+		{"sub/../kitsu.toml", root, "kitsu.toml"},
 		{filepath.Join(common, "hooks", "pre-commit"), root, "git hook"},
 		{".git/hooks/pre-push", root, "git hook"},
 		{".git/hooks/new/dir/x", root, "git hook"},
 		{".git/hooks", root, "git hook"},
-		{".git/gatecub/runs/x.json", root, "records of gatecub"},
-		{".git/gatecub/new/dir/x", root, "records of gatecub"},
+		{".git/kitsu/runs/x.json", root, "records of kitsu"},
+		{".git/kitsu/new/dir/x", root, "records of kitsu"},
 		{".git/config", root, "git configuration"},
 		{".git/hooks-old/x", root, ""},
 		{".git/config.lock.old", root, ""},
 		{".githooks/pre-commit", root, ""}, // core.hooksPath is not set here
-		{"sub/gatecub.toml", root, ""},
+		{"sub/kitsu.toml", root, ""},
 		{"README.md", root, ""},
 		{"", root, ""},
 	}
@@ -89,16 +89,16 @@ func TestEditReason(t *testing.T) {
 	link := filepath.Join(t.TempDir(), "link")
 	if err := os.Symlink(root, link); err == nil {
 		alias := filepath.Join(root, "alias.toml")
-		if err := os.Symlink("gatecub.toml", alias); err != nil {
+		if err := os.Symlink("kitsu.toml", alias); err != nil {
 			t.Fatal(err)
 		}
 		cases = append(cases, []editCase{
-			{".git/gatecub/new/dir/x", link, "records of gatecub"},
+			{".git/kitsu/new/dir/x", link, "records of kitsu"},
 			{".git/hooks/new/dir/x", link, "git hook"},
-			{filepath.Join(link, ".git", "gatecub", "new", "x"), root, "records of gatecub"},
-			{"new/dir/gatecub.toml", link, ""},
-			{"gatecub.toml", link, "gatecub.toml"},
-			{"alias.toml", root, "gatecub.toml"},
+			{filepath.Join(link, ".git", "kitsu", "new", "x"), root, "records of kitsu"},
+			{"new/dir/kitsu.toml", link, ""},
+			{"kitsu.toml", link, "kitsu.toml"},
+			{"alias.toml", root, "kitsu.toml"},
 		}...)
 	} else {
 		t.Logf("no symbolic link could be made, so those cases are left out: %v", err)
@@ -125,16 +125,16 @@ func TestEditReasonFollowsHooksPath(t *testing.T) {
 func TestEditReasonSeesAnotherSpellingOfAName(t *testing.T) {
 	t.Parallel()
 	repo, root := guardRepo(t, "")
-	if _, err := os.Stat(filepath.Join(root, "Gatecub.TOML")); err != nil {
+	if _, err := os.Stat(filepath.Join(root, "Kitsu.TOML")); err != nil {
 		if runtime.GOOS == "windows" {
-			t.Fatalf("Windows does not find gatecub.toml as Gatecub.TOML: %v", err)
+			t.Fatalf("Windows does not find kitsu.toml as Kitsu.TOML: %v", err)
 		}
 		t.Skip("this file system respects the case of a name")
 	}
 	checkEdits(t, repo, []editCase{
-		{"Gatecub.TOML", root, "gatecub.toml"},
-		{"Gatecub.Toml", root, "gatecub.toml"},
+		{"Kitsu.TOML", root, "kitsu.toml"},
+		{"Kitsu.Toml", root, "kitsu.toml"},
 		{".GIT/HOOKS/pre-commit", root, "git hook"},
-		{".git/Gatecub/runs/x.json", root, "records of gatecub"},
+		{".git/Kitsu/runs/x.json", root, "records of kitsu"},
 	})
 }

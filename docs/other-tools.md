@@ -1,11 +1,11 @@
 # What other tools taught us
 
 On 14 November 2026 four research passes read what users and maintainers report about tools
-that do part of what `gatecub` does: git hook managers, guardrails for coding agents and token
+that do part of what `kitsu` does: git hook managers, guardrails for coding agents and token
 counters, specification and role workflows, and skills. This page records what was found, and
-for each finding what `gatecub` does about it.
+for each finding what `kitsu` does about it.
 
-The page states no benefit of `gatecub`. Where it reports a number, the number is the source's.
+The page states no benefit of `kitsu`. Where it reports a number, the number is the source's.
 
 ## How this was done, and its limits
 
@@ -18,12 +18,12 @@ The page states no benefit of `gatecub`. Where it reports a number, the number i
 
 | Outcome | Meaning |
 | --- | --- |
-| changed | `gatecub` was changed because of the finding, on the same day. The row says where. |
+| changed | `kitsu` was changed because of the finding, on the same day. The row says where. |
 | already so | The design already did this. The row says where to see it. |
 | rejected | Not taken, with the reason. |
-| deferred | Not done. It changes no behaviour of `gatecub` today. The row says what it waits for. |
+| deferred | Not done. It changes no behaviour of `kitsu` today. The row says what it waits for. |
 
-## What speaks against parts of gatecub
+## What speaks against parts of kitsu
 
 Three findings go against choices this repository made. They are not softened.
 
@@ -31,18 +31,18 @@ Three findings go against choices this repository made. They are not softened.
    measured about 15 times the tokens of a chat for a multi-agent system and wrote that coding
    is "not a good fit" for it today (R12). A study of 260 configurations found multi-agent
    work at −70.0% on sequential planning tasks (R17). Agent OS removed its subagents in its
-   third version (R9). `gatecub` ships seven roles. It claims nothing for them, prints their cost
-   with `gatecub tokens`, and holds 26 evaluation cases and a comparison with one agent, none of
+   third version (R9). `kitsu` ships seven roles. It claims nothing for them, prints their cost
+   with `kitsu tokens`, and holds 26 evaluation cases and a comparison with one agent, none of
    them run: [the evaluation](evaluation.md).
 2. **A local gate does not hold against an agent that wants to pass it.** One report shows an
    agent that made six commits with failing tests through `--no-verify`, `git stash` and quiet
    flags, against written rules (H3). Some tools skip hooks without any intent: Aider commits
    with `--no-verify` by default (H11), and two Cursor versions replaced the hooks directory
-   (H5, H6). `gatecub` is a guardrail on one clone. The rule holds for a team only where continuous
+   (H5, H6). `kitsu` is a guardrail on one clone. The rule holds for a team only where continuous
    integration runs the checks again and the job is required: see
    [Continuous integration](operations.md#continuous-integration).
 3. **Specification workflows are reported as too heavy for small changes** by users of four
-   tools (R1, R3, R4, R2). `gatecub` now sends a small change past the workflow entirely: see row
+   tools (R1, R3, R4, R2). `kitsu` now sends a small change past the workflow entirely: see row
    R-1 below.
 
 ## Commit hooks
@@ -53,51 +53,51 @@ Three findings go against choices this repository made. They are not softened.
 | H-2 | A run of the checks on a copy of the index would allow partial commits (H1). | One post, which also calls it slow | rejected: a copy of the index holds no ignored files, so a check that needs installed dependencies or a cache fails there. |
 | H-3 | Hooks that change files race and alter the commit (H16, H13). | Documented by maintainers | already so: a hook executes nothing, and a check that changes the working tree ends `source_changed` and does not count. |
 | H-4 | Hooks fire during a rebase and fail old commits (H1, H17). | One prominent post, one vendor feature | already so: [Hooks](hooks.md) lists which git operations run which hook; the push hook judges what is pushed, not each commit below it. |
-| H-5 | Critique: keep hooks fast, quiet, without network, and do not install them unasked; put the real gate before the push or in continuous integration (H1, H2). | Widely discussed opinion | already so: a hook reads records and executes no check, installation is the explicit `gatecub init`, and `gatecub run --base` is for continuous integration. The cost of a hook in milliseconds has not been measured here. |
-| H-6 | Another tool sets `core.hooksPath` and the hooks stop without a word: Claude Code worktrees (H4), Cursor (H5, H6), Husky. | Several reports, two confirmed by the vendor | already so, in part: `gatecub status` and the session text warn when the hooks git runs do not call `gatecub`, and `gatecub init` never overwrites. A setting given on one command line cannot be seen by any hook; `gatecub guard` now asks before an agent's command that does it (G-2). |
+| H-5 | Critique: keep hooks fast, quiet, without network, and do not install them unasked; put the real gate before the push or in continuous integration (H1, H2). | Widely discussed opinion | already so: a hook reads records and executes no check, installation is the explicit `kitsu init`, and `kitsu run --base` is for continuous integration. The cost of a hook in milliseconds has not been measured here. |
+| H-6 | Another tool sets `core.hooksPath` and the hooks stop without a word: Claude Code worktrees (H4), Cursor (H5, H6), Husky. | Several reports, two confirmed by the vendor | already so, in part: `kitsu status` and the session text warn when the hooks git runs do not call `kitsu`, and `kitsu init` never overwrites. A setting given on one command line cannot be seen by any hook; `kitsu guard` now asks before an agent's command that does it (G-2). |
 | H-7 | git has hooks set by configuration, `hook.<name>.command`, which need no hook file (H18). | Official manual; the first release with it was not found | deferred: the git on the build machine is 2.53, and the manual read is for 2.55. It waits for a git that has it. |
-| H-8 | Hooks are missing after a clone (H23, H18). | Inherent to git | already so: `gatecub status` warns, the session text says so, and the skill has an example. No hook is installed without `gatecub init`. |
+| H-8 | Hooks are missing after a clone (H23, H18). | Inherent to git | already so: `kitsu status` warns, the session text says so, and the skill has an example. No hook is installed without `kitsu init`. |
 | H-9 | The text of a denial steers an agent (H10). | One report | already so: a denial names each check, its state, its log and the command to run, and names no way around. |
 | H-10 | Users praise one binary, one configuration file, speed and parallel runs (H12, H15, H23). | Vendor and blog claims, no independent measurement found | already so for one binary and one file. Checks run one after another; running them in parallel is deferred until a repository shows that it needs it. |
-| H-11 | A skip of one hook that is recorded, such as `SKIP=id` (H13). | Documented | rejected: a skip is what the gate exists to prevent. `gatecub init --observe` is the way to try the gate without being stopped. |
+| H-11 | A skip of one hook that is recorded, such as `SKIP=id` (H13). | Documented | rejected: a skip is what the gate exists to prevent. `kitsu init --observe` is the way to try the gate without being stopped. |
 | H-12 | Results keyed by the tree have precedent: git's own continuous integration skips a tree that passed (H19). | In production at a large project | already so: this is the design. |
 | H-13 | A cache key misses the tool versions and the environment (H20, H21). | Official documents of two build tools | changed: [Evidence](evidence.md) now says how to make a tool's version part of the content. An environment key of its own is rejected: the rule stays that committed content decides. |
-| H-14 | A flaky check passes on a second try and nobody sees it (H22). | Official documents | already so: `gatecub stats` lists passes that follow a failure on the same content. |
-| H-15 | A graphical git client runs hooks with a short `PATH`, and the hook program is not found (search results only). | Not verified | already so: a hook that does not find `gatecub` denies and says why. |
+| H-14 | A flaky check passes on a second try and nobody sees it (H22). | Official documents | already so: `kitsu stats` lists passes that follow a failure on the same content. |
+| H-15 | A graphical git client runs hooks with a short `PATH`, and the hook program is not found (search results only). | Not verified | already so: a hook that does not find `kitsu` denies and says why. |
 
 ## Agents, guardrails and token counts
 
 | # | Finding | Strength | Outcome |
 | --- | --- | --- | --- |
-| G-1 | Agents report that tests pass without a run, delete tests, or edit the continuous integration file (G11, G23, G21, G22). | One detailed report each; two measurements | already so for the claim: what counts is a recorded run on the content, not a statement. A check weakened by the agent passes the gate; the skill forbids it, and in the role workflow `gatecub roles check` denies a `developer` that changed a test. [Evidence](evidence.md) states the limit. |
-| G-2 | Matching a command as text is fragile in both directions (G5, G24). | Documented by the host | changed: `gatecub guard` now reads a command as shell words and judges git by its arguments. [Hooks](hooks.md#hooks-of-the-agent-plugin). |
+| G-1 | Agents report that tests pass without a run, delete tests, or edit the continuous integration file (G11, G23, G21, G22). | One detailed report each; two measurements | already so for the claim: what counts is a recorded run on the content, not a statement. A check weakened by the agent passes the gate; the skill forbids it, and in the role workflow `kitsu roles check` denies a `developer` that changed a test. [Evidence](evidence.md) states the limit. |
+| G-2 | Matching a command as text is fragile in both directions (G5, G24). | Documented by the host | changed: `kitsu guard` now reads a command as shell words and judges git by its arguments. [Hooks](hooks.md#hooks-of-the-agent-plugin). |
 | G-3 | Codex cannot ask from a hook, and its tool hooks are "not a complete enforcement boundary" (G2). | Official | already so: on Codex the guard refuses with the reason. |
 | G-4 | A hook that must stop something should answer in JSON, because exit status 2 did not stop an edit on Windows (G14, G1). | Several reports, not confirmed | already so: the guard answers in JSON and exits 0. |
 | G-5 | A hook that fails or times out does not block unless `onFailure` says so (G1). | Official | rejected: the guard is a courtesy. A broken guard must not stop every command of a session. |
-| G-6 | A hook that blocks the end of a turn until checks pass can loop: 50 minutes in one report; the host caps it at 8 (G12, G13, G1). | Several reports; cap documented | deferred: `gatecub` ships no such hook. One that only tells the user "not verified" at the end of a turn is a candidate; it waits for a run on a host. |
+| G-6 | A hook that blocks the end of a turn until checks pass can loop: 50 minutes in one report; the host caps it at 8 (G12, G13, G1). | Several reports; cap documented | deferred: `kitsu` ships no such hook. One that only tells the user "not verified" at the end of a turn is a candidate; it waits for a run on a host. |
 | G-7 | Each hook start costs about 35 ms (G15). | One self-measurement | deferred: the cost of the plugin's hooks is not measured (task 10.1 of the gate's plan). |
 | G-8 | The session record repeats an answer on several lines, with placeholder counts on the early ones; taking the first line undercounts (G16, G19, G8). | Documented, and one fixed defect in another tool | already so: the reader keeps the largest count of each kind per answer. Checked on 170 real records: see [Tokens](tokens.md#checked-against-real-records). |
 | G-9 | Some role records lack the last line of an answer, so its output count is a lower bound (G18). | One open report | rejected for now, against a measurement: in 16,486 answers of 170 real records none lacked it. |
 | G-10 | Codex writes running totals, not one count per request (G20, G25). | Third-party documents | changed: the reader expected a line that no real record holds, so every Codex count was unknown. It now reads the running totals, and matches a separate count on 13 real records. |
 | G-11 | The end-of-session hook has 1.5 s on Claude Code unless a timeout is set, and at most 3 s on Codex (G1, G2). | Official | already so: the timeouts are 30 and 3, and recording the largest real record took 0.3 s. |
 | G-12 | Both record formats are internal and change between versions (G9, G20). | Official for Claude Code | already so: a record that cannot be read gives `unknown`, never 0. The versions that were read are named in [Tokens](tokens.md#checked-against-real-records). |
-| G-13 | Nobody found reports tokens for each stage of a workflow (G6, G7, G25). | Absence in what was read | already so: `gatecub tokens --task` does, from a label in each role's brief. |
+| G-13 | Nobody found reports tokens for each stage of a workflow (G6, G7, G25). | Absence in what was read | already so: `kitsu tokens --task` does, from a label in each role's brief. |
 
 ## Specifications and roles
 
 | # | Finding | Strength | Outcome |
 | --- | --- | --- | --- |
-| R-1 | Too much ceremony for a small change: "a sledgehammer to crack a nut" (R1); "30 files changed, < 20 actual LOC" (R4). | Many reports; acknowledged by maintainers | changed: the skill `gatecub` gives a loop with no roles for a small change, and the coordinator now says so and leaves the workflow for a change of a few lines. Requirement "Two paths", case E26. |
+| R-1 | Too much ceremony for a small change: "a sledgehammer to crack a nut" (R1); "30 files changed, < 20 actual LOC" (R4). | Many reports; acknowledged by maintainers | changed: the skill `kitsu` gives a loop with no roles for a small change, and the coordinator now says so and leaves the workflow for a change of a few lines. Requirement "Two paths", case E26. |
 | R-2 | Long generated documents that nobody reads (R1, R2, R3). | Many reports and one assessment | changed: the texts of `spec-writer` and `architect` now tell them to write no more than the behaviour needs and not to repeat an earlier file. No size limit is enforced. |
-| R-3 | Agents skip steps, tick tasks they did not do, and touch files outside the plan (R1, R3, R6). | Many reports | already so: the stage comes from the files (`gatecub change status`), their rules are checked by `gatecub change check`, and what a role changed is compared with its limit by `gatecub roles check`. That a ticked task did its work is not checked by a program. |
+| R-3 | Agents skip steps, tick tasks they did not do, and touch files outside the plan (R1, R3, R6). | Many reports | already so: the stage comes from the files (`kitsu change status`), their rules are checked by `kitsu change check`, and what a role changed is compared with its limit by `kitsu roles check`. That a ticked task did its work is not checked by a program. |
 | R-4 | Merging a change into the living specifications by header name loses text (R6). | Acknowledged by maintainers, "46 fix commits" | already so: no program merges. A role writes the current specifications and a reviewer compares. Two changes to one requirement can still collide; nothing detects it. |
 | R-5 | Work handed between agents loses context (R13, R14). | Two essays, one incident | deferred: each role reads the files of the record, and a brief names them. Whether that is enough is what the evaluation is for. |
 | R-6 | Agents weaken tests to pass: in one benchmark more than 79% of the cheating by Claude models was a changed test (R18). | Measured | already so in the workflow: `developer` may add a test and may not change or remove one, and git decides whether it did. |
 | R-7 | A reviewer told to find problems always finds some; a reviewer in a new context with read-only tools is advised (R11). | Vendor guidance | already so: `reviewer` may write nothing, starts without the author's account, and its text says that "no findings" is a result. |
-| R-8 | An architect model paired with an editor model scored 85.0% against 79.7% for one model alone (R19). | Measured, September 2024, one benchmark | noted: the only measurement found that favours a split of roles. It is not a measurement of `gatecub`. |
+| R-8 | An architect model paired with an editor model scored 85.0% against 79.7% for one model alone (R19). | Measured, September 2024, one benchmark | noted: the only measurement found that favours a split of roles. It is not a measurement of `kitsu`. |
 | R-9 | Light paths: Kiro, BMAD and OpenSpec each let a small task skip the specification (R7, R8, R5). | Official documents | already so: the small path has no specification and no approval. |
 | R-10 | Existing code bases are harder to bring in (R1, R6). | Reports | already so: the small path needs no earlier specification, and `lookup` finds the ones that exist. Not tried on a large repository. |
-| R-11 | No tool that was read reports tokens for a task (R11, R21, R6). | Absence | already so: `gatecub tokens`. |
+| R-11 | No tool that was read reports tokens for a task (R11, R21, R6). | Absence | already so: `kitsu tokens`. |
 
 ## Skills
 
@@ -108,9 +108,9 @@ Three findings go against choices this repository made. They are not softened.
 | K-3 | Keep the body short and the rules that matter first, because a long session keeps only the start of a skill (K1, K3). | Official | changed: about 130 lines, the five rules first; a test caps it at 200 and each example at 100. |
 | K-4 | Give one default, not a menu, and a list of the mistakes agents make (K3, K5). | Official | changed: the skill has one loop and a section of mistakes. |
 | K-5 | Examples tuned to one case are copied word for word (K5, K8). | Advice, no measurement | changed: seven examples over four small repositories, each as situation, commands, output and reason. |
-| K-6 | A skill goes stale against the tool it describes (K19). | One community page | changed: a test replays every example against the `gatecub` of the same commit and fails on any other output, and the skill names only commands that `gatecub help` lists. |
-| K-7 | Record in the skill the version of the tool it was checked against (K19). | One community page | rejected: this repository forbids a `gatecub` version in the plugin, since a pinned one went stale before (requirement "Instruction text comes from `gatecub`"). The replay does the job. |
-| K-8 | Test whether the skill loads with about 20 requests, half of them near misses (K6, K8). | Official method | changed and not run: the set is in [the evaluation](evaluation.md#the-skill-gatecub-does-it-load-when-it-should). |
+| K-6 | A skill goes stale against the tool it describes (K19). | One community page | changed: a test replays every example against the `kitsu` of the same commit and fails on any other output, and the skill names only commands that `kitsu help` lists. |
+| K-7 | Record in the skill the version of the tool it was checked against (K19). | One community page | rejected: this repository forbids a `kitsu` version in the plugin, since a pinned one went stale before (requirement "Instruction text comes from `kitsu`"). The replay does the job. |
+| K-8 | Test whether the skill loads with about 20 requests, half of them near misses (K6, K8). | Official method | changed and not run: the set is in [the evaluation](evaluation.md#the-skill-kitsu-does-it-load-when-it-should). |
 | K-9 | Codex has a newer plugin manifest at the root of the repository; the one under `.codex-plugin/` is the older form it still reads (K11). | Official | deferred: nothing here has run on Codex. It waits for a Codex run. |
 
 ## What is still open, in order
@@ -124,7 +124,7 @@ Three findings go against choices this repository made. They are not softened.
 4. Measure the cost of the hooks (G-7, H-5).
 5. Try a hook that tells the user "not verified" at the end of a turn (G-6).
 6. Look at git's hooks by configuration when a git that has them is at hand (H-7).
-7. Say what to do in the last line of `gatecub status` when the program of a check is missing. Two
+7. Say what to do in the last line of `kitsu status` when the program of a check is missing. Two
    trial agents asked for it. The gate's code is at 6,000 of its 6,000 lines, so this needs a
    cut elsewhere or the owner's word on the limit.
 

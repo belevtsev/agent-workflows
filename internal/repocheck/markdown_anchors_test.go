@@ -171,7 +171,7 @@ func TestMarkdownAnchorsResolve(t *testing.T) {
 func TestGitHubHeadingSlugs(t *testing.T) {
 	for heading, want := range map[string]string{
 		"Exit statuses":                      "exit-statuses",
-		"`gatecub task verify`":              "gatecub-task-verify",
+		"`kitsu task verify`":                "kitsu-task-verify",
 		"What's new? (2026)":                 "whats-new-2026",
 		"Install & update — Codex":           "install--update--codex",
 		"[3.0.0-rc.2] - 2026-11-12":          "300-rc2---2026-11-12",
@@ -180,7 +180,7 @@ func TestGitHubHeadingSlugs(t *testing.T) {
 		"[Link text](docs/hooks.md#install)": "link-text",
 		"Ünïcode Straße":                     "ünïcode-straße",
 		"Two  spaces":                        "two--spaces",
-		"<code>gatecub</code> tags":          "gatecub-tags",
+		"<code>kitsu</code> tags":            "kitsu-tags",
 	} {
 		if got := githubSlug(headingText(heading)); got != want {
 			t.Errorf("slug of %q = %q; want %q", heading, got, want)

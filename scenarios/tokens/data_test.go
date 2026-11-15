@@ -82,7 +82,7 @@ func firstLine(t *testing.T, content json.RawMessage) string {
 }
 
 // TestTestDataOfS1AddsUpToTheTable checks the generated S1 against the table
-// of the specification's fixture, so that a failing scenario points at gatecub and
+// of the specification's fixture, so that a failing scenario points at kitsu and
 // not at the data.
 func TestTestDataOfS1AddsUpToTheTable(t *testing.T) {
 	t.Parallel()
@@ -100,17 +100,17 @@ func TestTestDataOfS1AddsUpToTheTable(t *testing.T) {
 		}
 		byLabel[l] += c.total()
 		total += c.total()
-		if st.Label == "gatecub-task: add-greeting code 1" && c != (counts{20000, 30000, 140000, 10000}) {
+		if st.Label == "kitsu-task: add-greeting code 1" && c != (counts{20000, 30000, 140000, 10000}) {
 			t.Errorf("code 1: %+v", c)
 		}
 	}
 	want := map[string]int{
-		"gatecub-task: add-greeting lookup 1": 10000, "gatecub-task: add-greeting spec 1": 60000,
-		"gatecub-task: add-greeting spec-review 1": 30000, "gatecub-task: add-greeting design 1": 80000,
-		"gatecub-task: add-greeting design-review 1": 30000, "gatecub-task: add-greeting tests 1": 90000,
-		"gatecub-task: add-greeting code 1": 200000, "gatecub-task: add-greeting review 1": 50000,
-		"gatecub-task: add-greeting code 2": 40000, "gatecub-task: add-greeting review 2": 20000,
-		"gatecub-task: add-greeting commit 1": 5000,
+		"kitsu-task: add-greeting lookup 1": 10000, "kitsu-task: add-greeting spec 1": 60000,
+		"kitsu-task: add-greeting spec-review 1": 30000, "kitsu-task: add-greeting design 1": 80000,
+		"kitsu-task: add-greeting design-review 1": 30000, "kitsu-task: add-greeting tests 1": 90000,
+		"kitsu-task: add-greeting code 1": 200000, "kitsu-task: add-greeting review 1": 50000,
+		"kitsu-task: add-greeting code 2": 40000, "kitsu-task: add-greeting review 2": 20000,
+		"kitsu-task: add-greeting commit 1": 5000,
 	}
 	for l, n := range want {
 		if byLabel[l] != n {
@@ -137,11 +137,11 @@ func TestTestDataVariants(t *testing.T) {
 				t.Errorf("the architect record is not an empty file: %v", err)
 			}
 		case "git":
-			if _, l := claudeCount(t, s.Paths[st.ID]); strings.HasPrefix(l, "gatecub-task:") {
+			if _, l := claudeCount(t, s.Paths[st.ID]); strings.HasPrefix(l, "kitsu-task:") {
 				t.Errorf("the git brief still has its label: %q", l)
 			}
 		}
-		if st.Label == "gatecub-task: fix-typo code 1" {
+		if st.Label == "kitsu-task: fix-typo code 1" {
 			if c, _ := claudeCount(t, s.Paths[st.ID]); c.total() != 15000 {
 				t.Errorf("fix-typo: %d tokens", c.total())
 			}

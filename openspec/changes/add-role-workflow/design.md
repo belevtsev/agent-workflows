@@ -13,17 +13,17 @@ answers; the owner can change any of them afterwards.
 - **Outcome.** Three small commands and eight texts on top of the gate.
 - **Base.** The branch and the commit of the first change's design. This
   change starts when the gate's commands exist, because it uses the snapshot,
-  the differing paths, `gatecub.toml` and the record store.
+  the differing paths, `kitsu.toml` and the record store.
 - **What cannot be done alone.** Nothing here was run with a model, and
   nothing was checked on Codex. The evaluation (Success measures 1 and 7)
   needs model runs the owner pays for.
 
 ## Decision
 
-The workflow is text for the developer's coding agent, and `gatecub` checks
+The workflow is text for the developer's coding agent, and `kitsu` checks
 afterwards what a program can check. Three alternatives were rejected:
 
-- **A `gatecub` that calls models itself.** It would need keys, a network
+- **A `kitsu` that calls models itself.** It would need keys, a network
   connection and an agent loop, and the gate promises to use no network.
 - **Today's task store.** State outside the folder is what blocked finished
   work (H2, H9).
@@ -35,30 +35,30 @@ afterwards what a program can check. Three alternatives were rejected:
 
 | Block | Responsibility | Depends on | New | Reuse considered |
 | --- | --- | --- | --- | --- |
-| `internal/roles` | The seven roles, their models, their write limits, `gatecub-roles.toml`, and the texts | `internal/decl`, `internal/gitx` | yes | `internal/modelpolicy` on `workflow-v3`: it validates profiles and scopes this design does not have; the path patterns of `internal/decl` are reused |
+| `internal/roles` | The seven roles, their models, their write limits, `kitsu-roles.toml`, and the texts | `internal/decl`, `internal/gitx` | yes | `internal/modelpolicy` on `workflow-v3`: it validates profiles and scopes this design does not have; the path patterns of `internal/decl` are reused |
 | `internal/change` | Reads a change folder; decides its stage; checks its rules; makes the content ids | `internal/decl` | yes | `internal/skillcheck` on `workflow-v3`: it checks skill files, not change folders |
 | `internal/tokens` | Reads the host's record of a session; stores counts; reports them | `internal/roles`, for the names of the roles | yes | `internal/usagelog` on `workflow-v3`: its two readers are the starting point; prices, budgets and history are not carried |
-| `internal/cli` | The commands `gatecub roles`, `gatecub change` and `gatecub tokens`; gathers from git what a stage needs | `internal/roles`, `internal/change`, `internal/tokens`, `internal/gitx`, `internal/store` | no | |
+| `internal/cli` | The commands `kitsu roles`, `kitsu change` and `kitsu tokens`; gathers from git what a stage needs | `internal/roles`, `internal/change`, `internal/tokens`, `internal/gitx`, `internal/store` | no | |
 | `internal/decl` | Path patterns and strict TOML decoding | none | no | |
 | `internal/gitx` | Snapshot and differing paths | none | no | |
-| `internal/store` | The directory `gatecub/` in the common git directory | none | no | |
+| `internal/store` | The directory `kitsu/` in the common git directory | none | no | |
 
 ## Interfaces
 
-### `gatecub roles [--json]`
+### `kitsu roles [--json]`
 
 Prints the seven roles: job, what each may write, model and effort on each
 host, and the size of its text. JSON: `{"roles": [{"id", "job", "writes",
 "text_chars", "models": {"claude": {"model", "effort"}, "codex": {...}}}],
 "coordinator_text_chars"}`.
 
-### `gatecub roles text <role>`
+### `kitsu roles text <role>`
 
 Prints the one text of a role, or of `coordinator`. A host without role files
 of its own gives this text to a new worker. An unknown name exits 2. The size
 of a text is counted in characters, each Unicode code point as one.
 
-### `gatecub-roles.toml`
+### `kitsu-roles.toml`
 
 ```toml
 version = 1
@@ -74,15 +74,15 @@ effort = "high"
 Hosts are `claude` and `codex`; roles are the seven ids; keys are `model` and
 `effort`. Anything else is refused with the file, the line and the rule.
 
-### `gatecub roles check <role> --from <tree> [--task <task>]`
+### `kitsu roles check <role> --from <tree> [--task <task>]`
 
 Takes the snapshot, lists the paths that differ from `<tree>` with their kind
 (added, changed, removed), and compares each with the role's limit. Exit 0, or
 5 with the paths outside the limit, or 1 when the role needs the test paths
-and `gatecub-roles.toml` does not name them. The test paths are looked up
+and `kitsu-roles.toml` does not name them. The test paths are looked up
 before any path is judged, so exit 1 comes before exit 5. An unknown role, a
 missing `--from`, or a role that needs `--task` without it, exits 2. In a clone whose hooks
-git does not run, it prints the warning `gatecub status` prints.
+git does not run, it prints the warning `kitsu status` prints.
 
 ### The change folder
 
@@ -92,7 +92,7 @@ git does not run, it prints the warning `gatecub status` prints.
 | `specs/<capability>/spec.md` | `spec-writer` | `## ADDED`, `## MODIFIED` or `## REMOVED Requirements`; `### Requirement: <name>`; a `Source:` line; `#### Scenario: <name>` with one `- **WHEN**` and one `- **THEN**` line. |
 | `design.md` | `architect` | Free text, plus a table under `## Building blocks` with the columns Block, Responsibility, Depends on, New, Reuse considered, and a table under `## Rules` with the columns Rule and Checked by. |
 | `tasks.md` | `architect`; the coordinator ticks the boxes after the review of the code has no open finding | `- [ ] N.M <text>. Size: S\|M\|L. Depends on: <ids or none>. Check: <...>. Source: <...>.` under `## N. <group>`. |
-| `tests.md` | `quality-engineer` | A table with the columns Scenario, Test file, Text. A row that is not automated holds `not automated` as its file and a reason as its text. Under `## Changed tests`, one line for each existing test it changed or removed, with the requirement or the reason; `gatecub` does not read it. |
+| `tests.md` | `quality-engineer` | A table with the columns Scenario, Test file, Text. A row that is not automated holds `not automated` as its file and a reason as its text. Under `## Changed tests`, one line for each existing test it changed or removed, with the requirement or the reason; `kitsu` does not read it. |
 | `reviews.md` | the coordinator | Three tables: under `## Reviews` the columns Stage, Round, Date, Content; under `## Findings` the columns Id, Stage, Round, Severity, Where, Finding, Disposition, Reason; under `## Approvals` the columns What, Date, Content. Stage is `spec`, `design` or `code`; What is `spec` or `design`; Round is a number from 1. |
 
 How the files are read:
@@ -113,13 +113,13 @@ How the files are read:
   that is absolute or leaves the root, also through a symbolic link, breaks
   the rule of the table and is not read. A row
   that is `not automated` without a reason breaks the rule of the table.
-- A file that is missing breaks no rule. `gatecub change status` names it as
+- A file that is missing breaks no rule. `kitsu change status` names it as
   missing at its stage.
 
-### `gatecub change status [<task>] [--json]`
+### `kitsu change status [<task>] [--json]`
 
 With a task: the stage, what is missing, the number of scenarios that are not
-automated, the three content ids, and the number of rules `gatecub change check`
+automated, the three content ids, and the number of rules `kitsu change check`
 finds broken, because a stage says how far the record is and not that its
 files are valid. JSON: `{"task", "stage", "missing": [...], "not_automated",
 "content": {"spec", "design", "code"}, "broken_rules"}`. Without a
@@ -143,18 +143,18 @@ changed the folder: the task was committed with the code that was reviewed,
 and what came later is later work. An empty id, of files that are missing,
 matches nothing.
 
-### `gatecub change check [<task>]`
+### `kitsu change check [<task>]`
 
 Exits 0, or 5 with one line for each broken rule: the file, the line where
 there is one, and the rule. It reads the files alone and takes no snapshot, so
 a repository can declare it as a check. It does not judge whether a review is
-of the current content; `gatecub change status` does.
+of the current content; `kitsu change status` does.
 
 ### Tokens
 
 **Notices.** On both hosts the plugin's hooks for the end of a role
 (`SubagentStop`) and the end of the session (`SessionEnd`) run
-`gatecub tokens record --host claude` or `--host codex`; without `--host` the host
+`kitsu tokens record --host claude` or `--host codex`; without `--host` the host
 is `claude`. The command reads the host's notice from standard input: one JSON
 object. It uses six fields and ignores the rest:
 
@@ -164,20 +164,20 @@ object. It uses six fields and ignores the rest:
 | `transcript_path` | The record the host keeps of the session. |
 | `agent_id` | The role that ended; absent at the end of the session. |
 | `agent_transcript_path` | The record the host keeps of that role; absent at the end of the session. |
-| `agent_type` | The name of the role as the host knows it: `architect`, or `gatecub:architect` for the role of a plugin. `gatecub` takes the text after the last colon, and uses it only when it is one of the seven roles (`roles.Known`). Claude Code ends its own agents, such as a prompt suggestion, with an empty `agent_type`; such a notice of Claude Code stores no start. |
-| `cwd` | The directory the host works in. `gatecub` finds the repository from it, and from its own working directory when it is empty. |
+| `agent_type` | The name of the role as the host knows it: `architect`, or `kitsu:architect` for the role of a plugin. `kitsu` takes the text after the last colon, and uses it only when it is one of the seven roles (`roles.Known`). Claude Code ends its own agents, such as a prompt suggestion, with an empty `agent_type`; such a notice of Claude Code stores no start. |
+| `cwd` | The directory the host works in. `kitsu` finds the repository from it, and from its own working directory when it is empty. |
 
-For each notice `gatecub` reads the record of the role, when the notice names one,
+For each notice `kitsu` reads the record of the role, when the notice names one,
 and the record of the session, and writes one file for each:
-`gatecub/tokens/<session>/agent-<agent id>.json` and
-`gatecub/tokens/<session>/session.json`, in the common git directory. So the
+`kitsu/tokens/<session>/agent-<agent id>.json` and
+`kitsu/tokens/<session>/session.json`, in the common git directory. So the
 session's own tokens are current after every role, not only at the end. The
 same notice given again writes the same files. The command prints nothing on
-standard output, stores nothing where the root holds no `gatecub.toml` or outside a
+standard output, stores nothing where the root holds no `kitsu.toml` or outside a
 repository, and exits 0 in both cases; a notice that is not JSON is then not
 reported.
 
-At each notice `gatecub` also reads again the record of every start already stored
+At each notice `kitsu` also reads again the record of every start already stored
 for that session whose record still exists and whose size has changed, and
 replaces its counts when the new reading is known. Claude Code writes its
 transcript asynchronously, so at `SubagentStop` or `SessionEnd` it may not
@@ -189,7 +189,7 @@ Codex gives a hook at the end of a session between 1 and 3 seconds, so that
 hook has a timeout of 3 in `hooks/codex-hooks.json`. The hook for the end of a
 role has 30 on both hosts. Claude Code gives the `SessionEnd` hooks of a
 plugin 1.5 seconds in all and ignores their own timeout, unless the user sets
-`CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS`. `gatecub tokens record` took 0.12 s for a
+`CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS`. `kitsu tokens record` took 0.12 s for a
 built session record of 50 MB and 1.15 s for one of 500 MB, read from memory.
 
 **A stored file** holds `version`, `host`, `session`, `agent`, `record` (the
@@ -245,13 +245,13 @@ exist or cannot be read, holds no count, holds a whole line that is not a
 JSON object, or holds an answer without its input or output count. A last
 line that does not end with a line end is skipped: the host may still be
 writing it. A notice that names a role (`agent_id`) and no record of it
-stores that start with unknown tokens. A stored file of `gatecub` that cannot be
-read is named under `damaged` in the JSON of `gatecub tokens`, and every task of
+stores that start with unknown tokens. A stored file of `kitsu` that cannot be
+read is named under `damaged` in the JSON of `kitsu tokens`, and every task of
 its session is incomplete and names the file. In words the report tells the
 unknown starts of roles from the unknown record of the session itself.
 
 **The label** is the first line of the brief:
-`gatecub-task: <task> <stage> <round>`. The stage gives the role: `lookup` is
+`kitsu-task: <task> <stage> <round>`. The stage gives the role: `lookup` is
 `lookup`; `spec` is `spec-writer`; `design` is `architect`; `tests` is
 `quality-engineer`; `code` is `developer`; `spec-review`, `design-review` and
 `review` are `reviewer`; `commit` is `git`.
@@ -269,7 +269,7 @@ so the start may belong to any task of its session:
 - In both cases every task of that session has `complete` `false` and names
   the record under `unknown_records`.
 
-**`gatecub tokens [--task <task>] [--json]`** reads the stored files. Without a
+**`kitsu tokens [--task <task>] [--json]`** reads the stored files. Without a
 task it prints, as JSON, `{"tasks": [...], "unlabelled": [...], "sessions":
 [...]}`. With a task it prints the object of that task, with `unlabelled` and
 `sessions` narrowed to the sessions that ran it, and exits 1 when no start
@@ -291,7 +291,7 @@ names the task.
 | `unlabelled` | One entry for each start without a label that was given to no task: `session`, `agent`, `record`, and the fields of a role entry; `role` only when the notice named one. |
 | `sessions` | One entry for each session: `session`, `host`, `record`, `tasks` (the tasks it ran), `shared` (`true` with more than one task), and the counts and `total` of the session itself. |
 
-In words, `gatecub tokens --task <task>` prints the total, the sentence "N of M
+In words, `kitsu tokens --task <task>` prints the total, the sentence "N of M
 tokens, P%, went to the workflow and not to the first writing of the
 specification, the design, the tests and the code", the split, one line for
 each role and for each stage and round, and, when a start is unknown, how many
@@ -303,32 +303,32 @@ between their thousands. It prints no price.
 
 | Rule | Checked by |
 | --- | --- |
-| No package imports `internal/cli` except `cmd/gatecub` | test |
-| `gatecub` links no network package (on Windows: none but through `golang.org/x/sys/windows`) | test |
+| No package imports `internal/cli` except `cmd/kitsu` | test |
+| `kitsu` links no network package (on Windows: none but through `golang.org/x/sys/windows`) | test |
 | A role text names no language, build tool, test framework or package manager | review, test |
 | A host's role file is generated from the role text and never edited by hand | test |
-| The files of a change folder obey the rules of `gatecub change check` | record |
+| The files of a change folder obey the rules of `kitsu change check` | record |
 
-`test` and `record` are checks of this repository's `gatecub.toml`: `test` runs
-every Go test, and `record` runs `gatecub change check`. The test of the third rule
+`test` and `record` are checks of this repository's `kitsu.toml`: `test` runs
+every Go test, and `record` runs `kitsu change check`. The test of the third rule
 searches for a list of names, so a reviewer still reads the texts.
 
 ## Validation
 
 | What | How | Where it runs | What it shows, and what it does not |
 | --- | --- | --- | --- |
-| The scenarios without "(evaluation)" | Tests that drive `gatecub` in temporary repositories, and tests of the plugin's files | Linux, locally | The commands and the files. |
+| The scenarios without "(evaluation)" | Tests that drive `kitsu` in temporary repositories, and tests of the plugin's files | Linux, locally | The commands and the files. |
 | The token report | Recorded sessions kept as test data, built to the shape today's reader expects | Linux | That the sums are right for that shape. Not that a current host still writes it. |
 | The scenarios with "(evaluation)" | Model runs of the two paths in three repositories | Not run | Nothing yet. This is the owner's step. |
 | Codex | Nothing | Not run | Nothing. |
 
 ## Failure behaviour
 
-| Condition | What `gatecub` does |
+| Condition | What `kitsu` does |
 | --- | --- |
-| `gatecub-roles.toml` is invalid | `gatecub roles` and `gatecub roles check` exit 1 with the file, the line and the rule. `gatecub roles text` does not read the file. |
+| `kitsu-roles.toml` is invalid | `kitsu roles` and `kitsu roles check` exit 1 with the file, the line and the rule. `kitsu roles text` does not read the file. |
 | A role's record cannot be read | Its tokens are `unknown`, and every sum says that it is incomplete. |
-| `gatecub tokens record` fails | It exits 1 with the reason on standard error. The hook command ends with exit 0 all the same, so that it never stops a role or a turn. |
+| `kitsu tokens record` fails | It exits 1 with the reason on standard error. The hook command ends with exit 0 all the same, so that it never stops a role or a turn. |
 | A brief has no label | Its tokens are listed as `unlabelled`. |
-| A change folder is half written | `gatecub change check` passes when the files it has obey their rules; `gatecub change status` names the stage. |
-| The repository has no `gatecub.toml` | `gatecub tokens record` stores nothing; the other commands work. |
+| A change folder is half written | `kitsu change check` passes when the files it has obey their rules; `kitsu change status` names the stage. |
+| The repository has no `kitsu.toml` | `kitsu tokens record` stores nothing; the other commands work. |

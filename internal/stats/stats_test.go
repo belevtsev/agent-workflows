@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/store"
+	"github.com/belevtsev/kitsu/v3/internal/store"
 )
 
 var now = time.Date(2026, 11, 14, 10, 0, 0, 0, time.UTC)

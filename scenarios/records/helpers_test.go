@@ -15,24 +15,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
-// checkedState is the demo repository after `gatecub run` has ended with both
+// checkedState is the demo repository after `kitsu run` has ended with both
 // checks passed.
-func checkedState(t *testing.T) *gatecubtest.Repo {
+func checkedState(t *testing.T) *kitsutest.Repo {
 	t.Helper()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	mustRun(t, repo, 0, "run")
 	return repo
 }
 
-// mustRun runs gatecub and fails the test when it does not exit with code.
-func mustRun(t *testing.T, repo *gatecubtest.Repo, code int, args ...string) gatecubtest.Result {
+// mustRun runs kitsu and fails the test when it does not exit with code.
+func mustRun(t *testing.T, repo *kitsutest.Repo, code int, args ...string) kitsutest.Result {
 	t.Helper()
-	result := repo.Gatecub(args...)
+	result := repo.Kitsu(args...)
 	if result.Code != code {
-		t.Fatalf("gatecub %s: exit status %d, want %d\n%s", strings.Join(args, " "), result.Code, code, result.Output())
+		t.Fatalf("kitsu %s: exit status %d, want %d\n%s", strings.Join(args, " "), result.Code, code, result.Output())
 	}
 	return result
 }
@@ -59,7 +59,7 @@ var statePattern = map[string]*regexp.Regexp{
 }
 
 // assertState checks that the line of the output that names id holds state.
-func assertState(t *testing.T, result gatecubtest.Result, id, state string) {
+func assertState(t *testing.T, result kitsutest.Result, id, state string) {
 	t.Helper()
 	line, ok := lineNaming(result.Stdout, id)
 	if !ok {
@@ -75,25 +75,25 @@ func assertState(t *testing.T, result gatecubtest.Result, id, state string) {
 	}
 }
 
-// statusJSON runs `gatecub status --json` and decodes its object.
-func statusJSON(t *testing.T, repo *gatecubtest.Repo) map[string]any {
+// statusJSON runs `kitsu status --json` and decodes its object.
+func statusJSON(t *testing.T, repo *kitsutest.Repo) map[string]any {
 	t.Helper()
-	result := repo.Gatecub("status", "--json")
+	result := repo.Kitsu("status", "--json")
 	object := map[string]any{}
 	if err := json.Unmarshal([]byte(result.Stdout), &object); err != nil {
-		t.Fatalf("gatecub status --json: exit status %d, output is not one JSON object: %v\n%s", result.Code, err, result.Output())
+		t.Fatalf("kitsu status --json: exit status %d, output is not one JSON object: %v\n%s", result.Code, err, result.Output())
 	}
 	return object
 }
 
 // addEnvCheck declares the check `env` of the scenarios, whose program is
 // run, and returns nothing; the declaration is not committed.
-func addEnvCheck(repo *gatecubtest.Repo, run ...string) {
+func addEnvCheck(repo *kitsutest.Repo, run ...string) {
 	quoted := make([]string, len(run))
 	for i, arg := range run {
 		quoted[i] = fmt.Sprintf("%q", arg)
 	}
-	repo.Write("gatecub.toml", gatecubtest.DemoDeclaration+"\n[[check]]\nid = \"env\"\nrun = ["+strings.Join(quoted, ", ")+"]\n")
+	repo.Write("kitsu.toml", kitsutest.DemoDeclaration+"\n[[check]]\nid = \"env\"\nrun = ["+strings.Join(quoted, ", ")+"]\n")
 }
 
 // envFlag is the file whose existence decides the check `env`; it plays the
@@ -118,7 +118,7 @@ func removeFile(t *testing.T, path string) {
 }
 
 // records reads every run record of a check.
-func records(t *testing.T, repo *gatecubtest.Repo, id string) map[string]map[string]any {
+func records(t *testing.T, repo *kitsutest.Repo, id string) map[string]map[string]any {
 	t.Helper()
 	found := map[string]map[string]any{}
 	for _, path := range repo.RecordFiles(id) {
@@ -136,7 +136,7 @@ func records(t *testing.T, repo *gatecubtest.Repo, id string) map[string]map[str
 }
 
 // recordWithOutcome is the only record of a check that ended with outcome.
-func recordWithOutcome(t *testing.T, repo *gatecubtest.Repo, id, outcome string) string {
+func recordWithOutcome(t *testing.T, repo *kitsutest.Repo, id, outcome string) string {
 	t.Helper()
 	var paths []string
 	for path, fields := range records(t, repo, id) {
@@ -153,18 +153,18 @@ func recordWithOutcome(t *testing.T, repo *gatecubtest.Repo, id, outcome string)
 // limit is how long a test waits for a command it started itself.
 const limit = 2 * time.Minute
 
-// background is a gatecub command that runs while the test goes on.
+// background is a kitsu command that runs while the test goes on.
 type background struct {
 	command *exec.Cmd
 	output  *bytes.Buffer
 	done    chan struct{}
 }
 
-// startGatecub starts gatecub in a repository and returns at once.
-func startGatecub(t *testing.T, repo *gatecubtest.Repo, args ...string) *background {
+// startKitsu starts kitsu in a repository and returns at once.
+func startKitsu(t *testing.T, repo *kitsutest.Repo, args ...string) *background {
 	t.Helper()
 	run := &background{
-		command: repo.Command(filepath.Join(gatecubtest.Binary(t), "gatecub"), args...),
+		command: repo.Command(filepath.Join(kitsutest.Binary(t), "kitsu"), args...),
 		output:  &bytes.Buffer{},
 		done:    make(chan struct{}),
 	}
@@ -196,7 +196,7 @@ func (b *background) wait(t *testing.T) (int, string) {
 	case <-time.After(limit):
 		_ = b.command.Process.Kill()
 		<-b.done
-		t.Fatalf("gatecub %s did not end within %s:\n%s", strings.Join(b.command.Args[1:], " "), limit, b.output.String())
+		t.Fatalf("kitsu %s did not end within %s:\n%s", strings.Join(b.command.Args[1:], " "), limit, b.output.String())
 		return 0, ""
 	}
 }

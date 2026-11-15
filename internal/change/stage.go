@@ -44,7 +44,7 @@ type Report struct {
 	// NotAutomated counts the scenarios whose row names no test.
 	NotAutomated int     `json:"not_automated"`
 	Content      Content `json:"content"`
-	// BrokenRules counts the rules `gatecub change check` finds broken. A stage
+	// BrokenRules counts the rules `kitsu change check` finds broken. A stage
 	// says how far the record is; only that count says whether it is valid.
 	BrokenRules int `json:"broken_rules"`
 }

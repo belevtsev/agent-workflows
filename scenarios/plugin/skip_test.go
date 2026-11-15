@@ -40,7 +40,7 @@ func TestAskBeforeACallThatTurnsTheGateOff(t *testing.T) {
 	t.Parallel()
 	needShell(t)
 	repo := gatedDemo(t)
-	for _, command := range []string{"gatecub uninstall", "gatecub init --observe"} {
+	for _, command := range []string{"kitsu uninstall", "kitsu init --observe"} {
 		for _, h := range hostDecisions {
 			t.Run(h.host+"/"+command, func(t *testing.T) {
 				got := decisionOf(t, preToolUse(t, repo, h.file, "Bash", shellInput(command)))
@@ -92,17 +92,17 @@ func TestAskBeforeAnEditThroughALink(t *testing.T) {
 	t.Parallel()
 	needShell(t)
 	repo := gatedDemo(t)
-	if err := os.Symlink("gatecub.toml", repo.Path("alias.toml")); err != nil {
+	if err := os.Symlink("kitsu.toml", repo.Path("alias.toml")); err != nil {
 		t.Skipf("no symbolic link can be made here: %v", err)
 	}
 	t.Run("Claude Code/Write", func(t *testing.T) {
 		got := decisionOf(t, preToolUse(t, repo, claudeHooks, "Write", map[string]any{"file_path": repo.Path("alias.toml"), "content": "version = 1\n"}))
-		assertDecision(t, got, "ask", "gatecub.toml")
+		assertDecision(t, got, "ask", "kitsu.toml")
 	})
 	t.Run("Codex/apply_patch", func(t *testing.T) {
 		patch := "*** Begin Patch\n*** Update File: alias.toml\n@@\n-version = 1\n+version = 1\n*** End Patch"
 		got := decisionOf(t, preToolUse(t, repo, codexHooks, "apply_patch", shellInput(patch)))
-		assertDecision(t, got, "deny", "gatecub.toml")
+		assertDecision(t, got, "deny", "kitsu.toml")
 	})
 }
 
@@ -134,8 +134,8 @@ func TestAskBeforeAWriteWithALargeNotice(t *testing.T) {
 	needShell(t)
 	repo := gatedDemo(t)
 	content := "version = 1\n" + strings.Repeat("# filler\n", (17<<20)/9)
-	got := decisionOf(t, preToolUse(t, repo, claudeHooks, "Write", map[string]any{"file_path": repo.Path("gatecub.toml"), "content": content}))
-	assertDecision(t, got, "ask", "gatecub.toml")
+	got := decisionOf(t, preToolUse(t, repo, claudeHooks, "Write", map[string]any{"file_path": repo.Path("kitsu.toml"), "content": content}))
+	assertDecision(t, got, "ask", "kitsu.toml")
 }
 
 // Requirement "Ask before skipping", scenario "A patch given to the shell".
@@ -143,15 +143,15 @@ func TestAskBeforeAPatchGivenToTheShell(t *testing.T) {
 	t.Parallel()
 	needShell(t)
 	repo := gatedDemo(t)
-	command := "apply_patch <<'EOF'\n*** Begin Patch\n*** Update File: gatecub.toml\n@@\n-version = 1\n+version = 2\n*** End Patch\nEOF\n"
+	command := "apply_patch <<'EOF'\n*** Begin Patch\n*** Update File: kitsu.toml\n@@\n-version = 1\n+version = 2\n*** End Patch\nEOF\n"
 	for _, h := range hostDecisions {
 		t.Run(h.host, func(t *testing.T) {
 			got := decisionOf(t, preToolUse(t, repo, h.file, "Bash", shellInput(command)))
-			assertDecision(t, got, h.want, "gatecub.toml")
+			assertDecision(t, got, h.want, "kitsu.toml")
 		})
 	}
 	t.Run("a patch of README.md", func(t *testing.T) {
-		readme := strings.ReplaceAll(command, "gatecub.toml", "README.md")
+		readme := strings.ReplaceAll(command, "kitsu.toml", "README.md")
 		assertNoDecision(t, preToolUse(t, repo, codexHooks, "Bash", shellInput(readme)), "a patch of README.md given to the shell")
 	})
 }

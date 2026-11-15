@@ -1,12 +1,12 @@
-# Release archives for gatecub, built by .github/workflows/release.yml on v* tags.
+# Release archives for kitsu, built by .github/workflows/release.yml on v* tags.
 version: 2
 
-project_name: gatecub
+project_name: kitsu
 
 builds:
-  - id: gatecub
-    main: ./cmd/gatecub
-    binary: gatecub
+  - id: kitsu
+    main: ./cmd/kitsu
+    binary: kitsu
     env:
       - CGO_ENABLED=0
       - GOWORK=off
@@ -18,7 +18,7 @@ builds:
     mod_timestamp: '{{ .CommitTimestamp }}'
 
 archives:
-  - id: gatecub
+  - id: kitsu
     formats: [tar.gz]
     format_overrides:
       - goos: windows
@@ -56,7 +56,7 @@ changelog:
 release:
   github:
     owner: belevtsev
-    name: gatecub
+    name: kitsu
   draft: true
   # A second run for the same tag replaces the draft of the first.
   replace_existing_draft: true

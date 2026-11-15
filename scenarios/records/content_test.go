@@ -14,7 +14,7 @@ func TestMovingAFileOutOfPathsNeedsANewRun(t *testing.T) {
 	}
 	repo.Git("mv", "src/app.txt", "docs/app.txt")
 
-	assertState(t, repo.Gatecub("status"), "unit", "not run")
+	assertState(t, repo.Kitsu("status"), "unit", "not run")
 }
 
 // Requirement "Same checked content", scenario "A file made executable".
@@ -28,5 +28,5 @@ func TestMakingAFileExecutableNeedsANewRun(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assertState(t, repo.Gatecub("status"), "unit", "not run")
+	assertState(t, repo.Kitsu("status"), "unit", "not run")
 }

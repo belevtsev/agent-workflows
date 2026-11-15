@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/fslock"
+	"github.com/belevtsev/kitsu/v3/internal/fslock"
 )
 
 // Environment of a re-executed test binary that holds a lock until killed:

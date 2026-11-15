@@ -21,7 +21,7 @@ if [ "$#" -ne 1 ] || [ -z "$1" ]; then
 	exit 2
 fi
 tag=$1
-repository=${GITHUB_REPOSITORY:-belevtsev/gatecub}
+repository=${GITHUB_REPOSITORY:-belevtsev/kitsu}
 
 # section NAME: the lines between the heading "## [NAME]" and the next
 # heading, or the link definitions at the end of the file. A line inside a

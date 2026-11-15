@@ -24,10 +24,10 @@ func TestProgramIsFoundWithoutItsExtension(t *testing.T) {
 	}
 	prependPath(repo, bin)
 
-	result := repo.Gatecub("run")
+	result := repo.Kitsu("run")
 
 	if !exists(marker) {
-		t.Errorf("hello.cmd was not executed\ngatecub run (exit status %d):\n%s", result.Code, result.Output())
+		t.Errorf("hello.cmd was not executed\nkitsu run (exit status %d):\n%s", result.Code, result.Output())
 	}
 }
 
@@ -73,7 +73,7 @@ func TestArgumentsReachABatchFileAsTheyWereWritten(t *testing.T) {
 	}
 	prependPath(repo, bin)
 
-	result := repo.Gatecub("run")
+	result := repo.Kitsu("run")
 
 	if exists(dStarted) {
 		t.Errorf("a program named d was started: an argument was read as a second command")
@@ -86,19 +86,19 @@ func TestArgumentsReachABatchFileAsTheyWereWritten(t *testing.T) {
 		}
 	case result.Code == 1:
 		if !strings.Contains(result.Output(), "c&d") {
-			t.Errorf("gatecub run exited 1 but does not name c&d")
+			t.Errorf("kitsu run exited 1 but does not name c&d")
 		}
 	default:
-		t.Errorf("the program received nothing (%v) and gatecub run exit status is %d, want the arguments or exit status 1", err, result.Code)
+		t.Errorf("the program received nothing (%v) and kitsu run exit status is %d, want the arguments or exit status 1", err, result.Code)
 	}
 	if t.Failed() {
-		t.Logf("gatecub run (exit status %d):\n%s", result.Code, result.Output())
+		t.Logf("kitsu run (exit status %d):\n%s", result.Code, result.Output())
 	}
 }
 
 // Requirement "Programs on Windows": an argument of plain characters reaches
 // a batch file unchanged, and a program that is not a batch file gets every
-// argument unchanged, also one that gatecub refuses for a batch file.
+// argument unchanged, also one that kitsu refuses for a batch file.
 func TestPlainArgumentsReachABatchFileAndEveryArgumentReachesAProgram(t *testing.T) {
 	t.Parallel()
 	repo := portable(t, "[[check]]\nid = \"batch\"\nrun = [\"hello\", \"--name=value\", \"a.b/c:d\", \"x+y,z@w\", \"back\\\\slash-1_2\"]\n\n"+
@@ -115,7 +115,7 @@ func TestPlainArgumentsReachABatchFileAndEveryArgumentReachesAProgram(t *testing
 	}
 	prependPath(repo, bin)
 
-	result := repo.Gatecub("run", "batch", "program")
+	result := repo.Kitsu("run", "batch", "program")
 
 	for file, want := range map[string]string{
 		viaBatch: "--name=value\na.b/c:d\nx+y,z@w\nback\\slash-1_2\n",
@@ -131,10 +131,10 @@ func TestPlainArgumentsReachABatchFileAndEveryArgumentReachesAProgram(t *testing
 		}
 	}
 	if result.Code != 0 {
-		t.Errorf("gatecub run exit status %d, want 0", result.Code)
+		t.Errorf("kitsu run exit status %d, want 0", result.Code)
 	}
 	if t.Failed() {
-		t.Logf("gatecub run batch program (exit status %d):\n%s", result.Code, result.Output())
+		t.Logf("kitsu run batch program (exit status %d):\n%s", result.Code, result.Output())
 	}
 }
 
@@ -147,7 +147,7 @@ func TestBatchFileRuleHoldsFromASubfolder(t *testing.T) {
 	repo.Write("tools/check.bat", "@echo off\r\necho ran> \""+marker+"\"\r\n")
 	repo.Write("sub/README.md", "# sub\n")
 
-	result := repo.In("sub").Gatecub("run", "batch")
+	result := repo.In("sub").Kitsu("run", "batch")
 
 	if exists(marker) {
 		t.Errorf("tools\\check.bat was started")
@@ -156,16 +156,16 @@ func TestBatchFileRuleHoldsFromASubfolder(t *testing.T) {
 		t.Errorf("the output does not say that the batch file was not started and name a&b")
 	}
 	if result.Code == 0 {
-		t.Errorf("gatecub run exited 0, want a refusal")
+		t.Errorf("kitsu run exited 0, want a refusal")
 	}
 	if t.Failed() {
-		t.Logf("gatecub run batch in sub (exit status %d):\n%s", result.Code, result.Output())
+		t.Logf("kitsu run batch in sub (exit status %d):\n%s", result.Code, result.Output())
 	}
 }
 
 // Requirement "Programs on Windows", scenario "A batch file of the same name
 // in the repository".
-func TestCheckIsStartedByThePathGatecubFound(t *testing.T) {
+func TestCheckIsStartedByThePathKitsuFound(t *testing.T) {
 	t.Parallel()
 	repo := portable(t, "[[check]]\nid = \"which\"\nrun = [\"check.bat\"]\n")
 	bin := t.TempDir()
@@ -175,9 +175,9 @@ func TestCheckIsStartedByThePathGatecubFound(t *testing.T) {
 	repo.Write("check.bat", "@echo off\r\necho from root\r\n")
 	prependPath(repo, bin)
 
-	result := repo.Gatecub("run", "which")
+	result := repo.Kitsu("run", "which")
 
 	if !strings.Contains(result.Output(), "from path") || strings.Contains(result.Output(), "from root") {
-		t.Errorf("the check did not run check.bat of PATH alone\ngatecub run which (exit status %d):\n%s", result.Code, result.Output())
+		t.Errorf("the check did not run check.bat of PATH alone\nkitsu run which (exit status %d):\n%s", result.Code, result.Output())
 	}
 }

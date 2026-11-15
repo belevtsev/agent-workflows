@@ -34,7 +34,7 @@ func (s indexState) same(other indexState) bool {
 }
 
 // tmpOf is the directory the callers pass for index copies.
-func tmpOf(repo *Repo) string { return filepath.Join(repo.GitDir, "gatecub", "tmp") }
+func tmpOf(repo *Repo) string { return filepath.Join(repo.GitDir, "kitsu", "tmp") }
 
 // checkNoTmp fails when the index copy or its empty directories are left.
 func checkNoTmp(t *testing.T, repo *Repo) {
@@ -42,8 +42,8 @@ func checkNoTmp(t *testing.T, repo *Repo) {
 	if exists(tmpOf(repo)) {
 		t.Errorf("%s is left behind", tmpOf(repo))
 	}
-	if exists(filepath.Join(repo.GitDir, "gatecub")) {
-		t.Errorf("%s is left behind", filepath.Join(repo.GitDir, "gatecub"))
+	if exists(filepath.Join(repo.GitDir, "kitsu")) {
+		t.Errorf("%s is left behind", filepath.Join(repo.GitDir, "kitsu"))
 	}
 }
 
@@ -157,7 +157,7 @@ func TestSnapshotWithoutIndex(t *testing.T) {
 
 func TestSnapshotLeavesNonEmptyStore(t *testing.T) {
 	_, repo := demo(t)
-	mode := filepath.Join(repo.GitDir, "gatecub", "mode")
+	mode := filepath.Join(repo.GitDir, "kitsu", "mode")
 	write(t, filepath.Dir(mode), "mode", "enforce\n")
 	snapshot(t, repo)
 	if exists(tmpOf(repo)) {
@@ -315,7 +315,7 @@ func TestIndexTreeInLinkedWorktree(t *testing.T) {
 	write(t, wt, "README.md", "in wt\n")
 	git(t, wt, "add", "README.md")
 	linked := open(t, wt)
-	tmp := filepath.Join(linked.CommonDir, "gatecub", "tmp")
+	tmp := filepath.Join(linked.CommonDir, "kitsu", "tmp")
 	tree, err := linked.IndexTree(t.Context(), tmp)
 	if err != nil {
 		t.Fatal(err)

@@ -165,5 +165,5 @@ func TestRuleThatNamesCheckNobodyDeclared(t *testing.T) {
 	r := newRecord(t)
 	r.edit(folder+"design.md", "makes. | review |", "makes. | layers |")
 	out := r.check(5)
-	assertLineWith(t, out, "gatecub.toml", "layers")
+	assertLineWith(t, out, "kitsu.toml", "layers")
 }

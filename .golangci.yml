@@ -43,7 +43,7 @@ linters:
         - -QF*
   exclusions:
     rules:
-      # gatecub runs the programs a repository declares and reads the files it is
+      # kitsu runs the programs a repository declares and reads the files it is
       # pointed at: a variable command and a variable path are its job.
       - linters: [gosec]
         text: "G104:"
@@ -54,17 +54,17 @@ linters:
       # G703 is the same finding as G304, by taint analysis.
       - linters: [gosec]
         text: "G703:"
-      # What gatecub writes lives in the git directory and the working tree, and
-      # follows git's own modes: a hook file must be executable, gatecub.toml and
+      # What kitsu writes lives in the git directory and the working tree, and
+      # follows git's own modes: a hook file must be executable, kitsu.toml and
       # the records are as readable as the files next to them.
       - linters: [gosec]
         text: "G(301|302|306):"
-      # The sweep walks gatecub's own store, which only the user can write.
+      # The sweep walks kitsu's own store, which only the user can write.
       - path: internal/store/
         linters: [gosec]
         text: "G122:"
       # The harness of the scenario tests builds fixtures, as tests do.
-      - path: internal/gatecubtest/
+      - path: internal/kitsutest/
         linters: [gosec]
       # Tests build fixtures: files, commands and loose permissions.
       - path: _test\.go

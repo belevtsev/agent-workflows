@@ -26,8 +26,8 @@ func TestAskBeforeAChangeToTheDeclaration(t *testing.T) {
 	needShell(t)
 	repo := gatedDemo(t)
 	inputs := map[string]map[string]any{
-		"Edit":  {"file_path": repo.Path("gatecub.toml"), "old_string": "version = 1", "new_string": "version = 1\n"},
-		"Write": {"file_path": repo.Path("gatecub.toml"), "content": "version = 1\n"},
+		"Edit":  {"file_path": repo.Path("kitsu.toml"), "old_string": "version = 1", "new_string": "version = 1\n"},
+		"Write": {"file_path": repo.Path("kitsu.toml"), "content": "version = 1\n"},
 	}
 	for tool, input := range inputs {
 		t.Run(tool, func(t *testing.T) {
@@ -44,7 +44,7 @@ func TestAskBeforeAChangeToTheDeclaration(t *testing.T) {
 }
 
 // Requirement "Ask before skipping", scenario "An ordinary command". Both
-// hosts are checked, and so is an edit of a file other than gatecub.toml (the
+// hosts are checked, and so is an edit of a file other than kitsu.toml (the
 // plugin SHALL NOT act on any other tool call).
 func TestOrdinaryCommandIsNeitherAskedNorDenied(t *testing.T) {
 	t.Parallel()
@@ -82,8 +82,8 @@ func TestCodexDeniesWithTheReason(t *testing.T) {
 			t.Errorf("the reason does not say that the command skips the commit gate: %q", got.Reason)
 		}
 	})
-	t.Run("apply_patch gatecub.toml", func(t *testing.T) {
-		patch := "*** Begin Patch\n*** Update File: gatecub.toml\n@@\n-version = 1\n+version = 1\n*** End Patch"
+	t.Run("apply_patch kitsu.toml", func(t *testing.T) {
+		patch := "*** Begin Patch\n*** Update File: kitsu.toml\n@@\n-version = 1\n+version = 1\n*** End Patch"
 		got := decisionOf(t, preToolUse(t, repo, codexHooks, "apply_patch", shellInput(patch)))
 		if got.Permission != "deny" {
 			t.Errorf("permissionDecision is %q, want deny", got.Permission)

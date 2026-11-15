@@ -5,8 +5,8 @@ Five commands take a repository from nothing to a gated commit. A test,
 two blocks below in a new directory, so the commands of this page cannot
 drift from the program.
 
-You need `gatecub` and git on your `PATH`; [the README](../README.md#install) says
-how to get `gatecub`. git must know your name and e-mail, as for any commit: when
+You need `kitsu` and git on your `PATH`; [the README](../README.md#install) says
+how to get `kitsu`. git must know your name and e-mail, as for any commit: when
 `git config user.name` or `git config user.email` prints nothing, set it first.
 
 ## A new repository
@@ -21,21 +21,21 @@ In a repository you already have, skip this and start with the five commands.
 ## The five commands
 
 ```sh
-gatecub init
-gatecub add version -- git --version
-gatecub run
+kitsu init
+kitsu add version -- git --version
+kitsu run
 git add -A
 git commit -m "first gated commit"
 ```
 
-1. `gatecub init` writes `gatecub.toml` with no check yet and installs the hooks
+1. `kitsu init` writes `kitsu.toml` with no check yet and installs the hooks
    `pre-commit`, `pre-merge-commit` and `pre-push`.
-2. `gatecub add` appends one check to `gatecub.toml`: an id, and after `--` the program
+2. `kitsu add` appends one check to `kitsu.toml`: an id, and after `--` the program
    to run with its arguments. `git --version` is only an example that works
    everywhere. Use the command that tests your code, for instance
-   `gatecub add test -- make test`. Add one check for each command you want to
+   `kitsu add test -- make test`. Add one check for each command you want to
    pass: the tests, the linter, the build.
-3. `gatecub run` executes every check that has no passing run on the content of the
+3. `kitsu run` executes every check that has no passing run on the content of the
    working tree, shows its output, and records the result for exactly that
    content.
 4. `git add -A` stages everything, so the commit holds what was checked.
@@ -45,17 +45,17 @@ git commit -m "first gated commit"
 
 ## What a denial looks like
 
-Change a file and commit without `gatecub run`:
+Change a file and commit without `kitsu run`:
 
 ```text
 $ echo change >> notes.txt && git add -A && git commit -m second
-gatecub: this commit is denied: its content has no recorded passing run of every declared check.
+kitsu: this commit is denied: its content has no recorded passing run of every declared check.
   version: not run on this content
-gatecub: to produce the missing evidence, run:
-  gatecub run
+kitsu: to produce the missing evidence, run:
+  kitsu run
 ```
 
-Run `gatecub run` and commit again. `gatecub status` says at any time whether a commit
+Run `kitsu run` and commit again. `kitsu status` says at any time whether a commit
 of the working tree would be allowed, and what is missing.
 
 ## Next

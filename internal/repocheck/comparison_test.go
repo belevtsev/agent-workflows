@@ -205,7 +205,7 @@ const (
 // Scenario: A claim without numbers
 func TestAClaimWithoutNumbers(t *testing.T) {
 	t.Parallel()
-	readme := map[string]string{"README.md": "# gatecub\n\nThe workflow improves quality.\n"}
+	readme := map[string]string{"README.md": "# kitsu\n\nThe workflow improves quality.\n"}
 	for name, evaluation := range map[string]string{
 		"the table is missing":     "# Evaluation\n\nNot run.\n",
 		"the table holds no value": comparisonTable(rowNotRun, sumNotRun),
@@ -218,7 +218,7 @@ func TestAClaimWithoutNumbers(t *testing.T) {
 		t.Errorf("with the numbers beside it the claim gives the problems %q, want none", problems)
 	}
 	plain := map[string]string{"README.md": "Whether seven roles give better code than one agent is **not measured**.\n\n" +
-		"`gatecub tokens` shows how many tokens the roles used.\n\n```text\nThe workflow improves quality.\n```\n"}
+		"`kitsu tokens` shows how many tokens the roles used.\n\n```text\nThe workflow improves quality.\n```\n"}
 	if problems := claimProblems(plain, "# Evaluation\n"); problems != nil {
 		t.Errorf("a text that states no benefit gives the problems %q", problems)
 	}
@@ -236,7 +236,7 @@ func TestBenefitSentencesAreFound(t *testing.T) {
 		"Whether the roles give better code is not measured.":         false,
 		"A benefit may be stated only with the table beside it.":      false,
 		"The gate does not improve the code a check does not test.":   false,
-		"`gatecub tokens` says what a task cost, role by role.":       false,
+		"`kitsu tokens` says what a task cost, role by role.":         false,
 		"A commit is allowed only when every check has a passing run": false,
 		"Save a copy of the tests as `quality-engineer` left them.":   false,
 		"A name is in lower-case words, as [the label](tokens.md).":   false,

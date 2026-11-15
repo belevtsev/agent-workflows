@@ -120,7 +120,7 @@ type Unlabelled struct {
 	Entry
 }
 
-// Report is what `gatecub tokens` prints.
+// Report is what `kitsu tokens` prints.
 type Report struct {
 	Tasks      []Task       `json:"tasks"`
 	Unlabelled []Unlabelled `json:"unlabelled"`

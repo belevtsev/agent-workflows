@@ -1,6 +1,6 @@
 # A small change, from the first look to the commit
 
-**Situation.** The repository holds `gatecub.toml` with two checks: `test`, which reads `src/` and
+**Situation.** The repository holds `kitsu.toml` with two checks: `test`, which reads `src/` and
 `tests/`, and `lint`, which reads `src/`. The user asks: "`total` must add any number of prices,
 not only two." The change is small and its cause is plain, so it needs no roles: the loop below
 is the whole method.
@@ -8,7 +8,7 @@ is the whole method.
 ## 1. Look before you change anything
 
 ```console
-$ gatecub status
+$ kitsu status
 verified: every declared check has a passing run on this content
   test  satisfied
   lint  satisfied
@@ -30,13 +30,13 @@ The repository is verified now, so a check that fails later fails because of you
 ```
 
 ```console
-$ gatecub run
+$ kitsu run
 == test: sh tests/run.sh
 three prices: want 6, got 3
 == test: failed with exit status 1
-   log: <repo>/.git/gatecub/logs/<run>.log
+   log: <repo>/.git/kitsu/logs/<run>.log
 == lint: satisfied, not run again: run <run> passed on this content
-not verified: 1 of 2 checks did not pass; fix what each log shows, then run `gatecub run` again
+not verified: 1 of 2 checks did not pass; fix what each log shows, then run `kitsu run` again
 [exit 5]
 ```
 
@@ -60,7 +60,7 @@ new one. `lint` was not executed, because nothing it reads has changed. That is 
 ```
 
 ```console
-$ gatecub run
+$ kitsu run
 == test: sh tests/run.sh
 tests passed
 == test: passed in 0s
@@ -74,7 +74,7 @@ every declared check has a passing run on this content
 ```console
 $ git add -A
 $ git commit -q -m "total adds any number of prices"
-$ gatecub status
+$ kitsu status
 verified: every declared check has a passing run on this content
   test  satisfied
   lint  satisfied
@@ -82,13 +82,13 @@ index: holds the same content as the working tree
 ```
 
 The hook allowed the commit without running anything: it found the two passing runs on exactly
-this content. Tell the user what you changed and quote the last line of `gatecub run`.
+this content. Tell the user what you changed and quote the last line of `kitsu run`.
 
 ## What to take from this
 
-- `gatecub status` first, `gatecub run` after each step, commit last.
+- `kitsu status` first, `kitsu run` after each step, commit last.
 - A check that reads none of the changed files is not run again.
-- After the last `gatecub run`, change nothing a check reads. One more edit makes new content, and
-  the commit is denied until `gatecub run` passes on it.
+- After the last `kitsu run`, change nothing a check reads. One more edit makes new content, and
+  the commit is denied until `kitsu run` passes on it.
 
 <!-- A test replays this example from the fixture "shop": internal/repocheck/skill_test.go -->
