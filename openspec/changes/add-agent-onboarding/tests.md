@@ -123,6 +123,28 @@ case after its fix: agent check returned exit 5 and ready:false. The Claude plug
 standalone skillOverrides remained exit 0 and ready:true, matching the documented plugin exemption.
 This is local diagnostic evidence, not a live host workflow; `reviews.md` records the review scope.
 
+### PR CI follow-up
+
+The initial [PR #231 CI run](https://github.com/belevtsev/kitsu/actions/runs/43820935540)
+passed nine checks and failed the native Windows test job. Two test expectations failed:
+`TestForegroundCancellationAndStartFailure` assumed a killed child always reports Unix's
+exit status `-1`, but Windows reports `1` with `Stopped` and `Cancelled` set;
+`TestCodexWindowsSessionStartSaysWhenKitsuIsMissing` still expected silence outside Git,
+where the new onboarding contract requires one-line install/PATH guidance.
+No PR review comments or inline review threads were present when the follow-up began.
+The foreground regression now checks the exact native killed-child status separately from
+`Stopped` and `Cancelled`, and verifies that an ordinary child exit `1` is not cancellation.
+Pre-start cancellation still requires no child output and the cancellation error. Windows
+bootstrap assertions now require exactly the one-line install/PATH message and exit `0`
+across gated, undeclared, nested, and outside-Git locations, with and without Git on PATH and
+both `cmd.exe` invocation forms. Planted-binary lookup protections remain checked. Production
+behavior is unchanged; the process-result API comment now describes the native status correctly.
+After these corrections, local build, vet, the full race suite, all three targets' lint and
+vulnerability checks, module verification, and diff checks passed again. Focused foreground
+cancellation tests also passed 100 repetitions. The corrected process and Windows platform
+test binaries cross-compiled successfully; native Windows execution is verified separately
+by the follow-up PR CI run.
+
 ## Limits
 
 No live model, authentication, trusted-hook execution, workflow quality comparison, formal

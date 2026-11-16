@@ -123,6 +123,15 @@ func systemPath() string {
 	return filepath.Join(root, "System32")
 }
 
+func assertMissingKitsuGuidance(t *testing.T, result kitsutest.Result) {
+	t.Helper()
+	const want = "kitsu is not installed or is missing from absolute PATH. Install it: https://github.com/belevtsev/kitsu#install"
+	text := strings.TrimSuffix(strings.TrimSuffix(result.Stdout, "\n"), "\r")
+	if result.Code != 0 || text != want {
+		t.Errorf("SessionStart exited %d and printed %q, want exit 0 and only the install/PATH guidance %q; stderr:\n%s", result.Code, result.Stdout, want, result.Stderr)
+	}
+}
+
 // Requirement "Hooks on Windows", scenario "A kitsu of the working directory".
 func TestCodexWindowsCommandsRunNoKitsuOfTheWorkingDirectory(t *testing.T) {
 	t.Parallel()
@@ -142,6 +151,9 @@ func TestCodexWindowsCommandsRunNoKitsuOfTheWorkingDirectory(t *testing.T) {
 					}
 					if strings.Contains(result.Stdout, "hookSpecificOutput") {
 						t.Errorf("the command printed what kitsu.bat of the working directory prints:\n%s", result.Stdout)
+					}
+					if event == "SessionStart" {
+						assertMissingKitsuGuidance(t, result)
 					}
 				})
 			}
@@ -191,6 +203,9 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 						}
 						if strings.Contains(result.Stdout, "hookSpecificOutput") {
 							t.Errorf("the command printed what a program of the repository prints:\n%s", result.Stdout)
+						}
+						if event == "SessionStart" {
+							assertMissingKitsuGuidance(t, result)
 						}
 					})
 				}
@@ -256,8 +271,8 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 						t.Errorf("cmd.exe finds kitsu through this PATH, and the command did not print what `kitsu context` prints:\n%s", result.Output())
 					case !found && first != "":
 						t.Errorf("cmd.exe finds no kitsu through this PATH:\n%s", control.Output())
-					case !found && !said:
-						t.Errorf("cmd.exe finds no kitsu through this PATH, and the command did not say that kitsu is not installed:\n%s", result.Output())
+					case !found:
+						assertMissingKitsuGuidance(t, result)
 					}
 				})
 			}
@@ -331,6 +346,9 @@ func TestCodexWindowsCommandsRunNoProgramOfADriveRelativeEntryOfPATH(t *testing.
 						if strings.Contains(result.Stdout, "hookSpecificOutput") {
 							t.Errorf("the command printed what a program of the repository prints:\n%s", result.Stdout)
 						}
+						if event == "SessionStart" {
+							assertMissingKitsuGuidance(t, result)
+						}
 					})
 				}
 			}
@@ -352,9 +370,7 @@ func TestCodexWindowsSessionStartSaysWhenKitsuCannotBeRun(t *testing.T) {
 		for _, way := range cmdWays {
 			t.Run(way, func(t *testing.T) {
 				result := runCmd(t, way, repo.Dir, path, command, codexNotice("SessionStart", repo.Dir))
-				if result.Code != 0 || !strings.Contains(result.Stdout, "kitsu is not installed") {
-					t.Errorf("exit status %d, want 0 and the line that says kitsu is not installed:\n%s", result.Code, result.Output())
-				}
+				assertMissingKitsuGuidance(t, result)
 			})
 		}
 	}
@@ -413,22 +429,32 @@ func TestCodexWindowsCommandsExitZeroWithAnOlderKitsu(t *testing.T) {
 func TestCodexWindowsSessionStartSaysWhenKitsuIsMissing(t *testing.T) {
 	t.Parallel()
 	repo := portable(t, "")
+	plain := kitsutest.NewRepo(t)
+	plain.Write("nested/README.md", "# no gate\n")
 	git, err := exec.LookPath("git")
 	if err != nil {
 		t.Fatal(err)
 	}
-	withoutKitsu := filepath.Dir(git) + string(os.PathListSeparator) + systemPath()
-	outside := t.TempDir()
+	paths := []struct{ name, path string }{
+		{"with Git", filepath.Dir(git) + string(os.PathListSeparator) + systemPath()},
+		{"without Git", systemPath()},
+	}
+	sessions := []struct{ name, dir string }{
+		{"repository with kitsu.toml", repo.Dir},
+		{"repository without kitsu.toml", plain.Dir},
+		{"subfolder without kitsu.toml", filepath.Join(plain.Dir, "nested")},
+		{"outside Git", t.TempDir()},
+	}
 	for _, command := range codexWindowsCommands(t)["SessionStart"] {
 		for _, way := range cmdWays {
 			t.Run(way, func(t *testing.T) {
-				missing := runCmd(t, way, repo.Dir, withoutKitsu, command, codexNotice("SessionStart", repo.Dir))
-				if missing.Code != 0 || !strings.Contains(missing.Stdout, "kitsu is not installed") || !strings.Contains(missing.Stdout, "#install") {
-					t.Errorf("without kitsu in a repository with kitsu.toml: exit status %d, want 0 and the line that says kitsu is not installed:\n%s", missing.Code, missing.Output())
-				}
-				elsewhere := runCmd(t, way, outside, withoutKitsu, command, codexNotice("SessionStart", outside))
-				if elsewhere.Code != 0 || strings.TrimSpace(elsewhere.Stdout) != "" {
-					t.Errorf("without kitsu outside a repository: exit status %d and printed, want 0 and nothing:\n%s", elsewhere.Code, elsewhere.Output())
+				for _, path := range paths {
+					for _, session := range sessions {
+						t.Run(path.name+"/"+session.name, func(t *testing.T) {
+							missing := runCmd(t, way, session.dir, path.path, command, codexNotice("SessionStart", session.dir))
+							assertMissingKitsuGuidance(t, missing)
+						})
+					}
 				}
 				present := runCmd(t, way, repo.Dir, pathOf(repo), command, codexNotice("SessionStart", repo.Dir))
 				if present.Code != 0 || strings.TrimSpace(present.Stdout) == "" || strings.Contains(present.Stdout, "kitsu is not installed") {

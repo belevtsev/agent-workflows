@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -48,21 +50,25 @@ func TestForegroundPreservesLiteralArgumentsStreamsAndStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := "literal 'quotes'; $(program) C:\\work\\file\nnext line"
-	var out, diagnostics bytes.Buffer
-	got := proc.RunForeground(t.Context(), proc.ForegroundSpec{
-		Path: program, Args: []string{"-test.run=^TestForegroundHelper$", "--", foregroundHelper, request},
-		Env:   []string{"KITSU_PROC_FOREGROUND_MARKER=explicit", "KITSU_PROC_FOREGROUND_EXIT=17", "GORACE=atexit_sleep_ms=0"},
-		Stdin: strings.NewReader("interactive input"), Stdout: &out, Stderr: &diagnostics,
-	})
-	var result struct {
-		Args          []string
-		Input, Marker string
-	}
-	if err := json.Unmarshal(out.Bytes(), &result); err != nil || !slices.Equal(result.Args, []string{request}) || result.Input != "interactive input" || result.Marker != "explicit" {
-		t.Fatalf("lost argv, input or explicit environment: %s; %v", &out, err)
-	}
-	if got.Code != 17 || got.Err == nil || got.Stopped || got.Cleanup != nil || diagnostics.String() != "foreground diagnostic" {
-		t.Fatalf("lost exit or diagnostics: %+v, %q", got, &diagnostics)
+	for _, code := range []int{1, 17} {
+		t.Run("exit "+strconv.Itoa(code), func(t *testing.T) {
+			var out, diagnostics bytes.Buffer
+			got := proc.RunForeground(t.Context(), proc.ForegroundSpec{
+				Path: program, Args: []string{"-test.run=^TestForegroundHelper$", "--", foregroundHelper, request},
+				Env:   []string{"KITSU_PROC_FOREGROUND_MARKER=explicit", "KITSU_PROC_FOREGROUND_EXIT=" + strconv.Itoa(code), "GORACE=atexit_sleep_ms=0"},
+				Stdin: strings.NewReader("interactive input"), Stdout: &out, Stderr: &diagnostics,
+			})
+			var result struct {
+				Args          []string
+				Input, Marker string
+			}
+			if err := json.Unmarshal(out.Bytes(), &result); err != nil || !slices.Equal(result.Args, []string{request}) || result.Input != "interactive input" || result.Marker != "explicit" {
+				t.Fatalf("lost argv, input or explicit environment: %s; %v", &out, err)
+			}
+			if got.Code != code || got.Err == nil || got.Stopped || got.Cancelled || got.Cleanup != nil || diagnostics.String() != "foreground diagnostic" {
+				t.Fatalf("lost exit or diagnostics: %+v, %q", got, &diagnostics)
+			}
+		})
 	}
 }
 
@@ -99,26 +105,41 @@ func TestForegroundCancellationAndStartFailure(t *testing.T) {
 	defer stop()
 	ended, end := context.WithCancel(ctx)
 	end()
+	killedCode := -1
+	if runtime.GOOS == "windows" {
+		// os.Process.Kill uses TerminateProcess with exit code 1 on Windows;
+		// Stopped and Cancelled distinguish it from a program's own exit 1.
+		killedCode = 1
+	}
+	var beforeOutput bytes.Buffer
 	for _, test := range []struct {
-		name string
-		ctx  context.Context
-		out  io.Writer
+		name     string
+		ctx      context.Context
+		out      io.Writer
+		wantCode int
+		wantErr  error
 	}{
-		{name: "during execution", ctx: running, out: foregroundCancelWriter{stop}},
-		{name: "before execution", ctx: ended, out: io.Discard},
+		{name: "during execution", ctx: running, out: foregroundCancelWriter{stop}, wantCode: killedCode},
+		{name: "before execution", ctx: ended, out: &beforeOutput, wantCode: -1, wantErr: context.Canceled},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			got := proc.RunForeground(test.ctx, proc.ForegroundSpec{
 				Path: program, Args: []string{"-test.run=^TestForegroundHelper$", "--", foregroundHelper},
 				Env: []string{"KITSU_PROC_FOREGROUND_EXIT=wait", "GORACE=atexit_sleep_ms=0"}, Stdout: test.out,
 			})
-			if got.Code != -1 || !got.Cancelled || !got.Stopped || got.Err == nil || ctx.Err() != nil {
+			if got.Code != test.wantCode || !got.Cancelled || !got.Stopped || got.Err == nil || got.Cleanup != nil || ctx.Err() != nil {
 				t.Fatalf("cancellation not propagated: %+v; guard=%v", got, ctx.Err())
+			}
+			if test.wantErr != nil && !errors.Is(got.Err, test.wantErr) {
+				t.Fatalf("cancellation error: %v; want %v", got.Err, test.wantErr)
 			}
 		})
 	}
+	if beforeOutput.Len() != 0 {
+		t.Fatalf("pre-cancelled context executed program: %q", &beforeOutput)
+	}
 	got := proc.RunForeground(ctx, proc.ForegroundSpec{Path: filepath.Join(t.TempDir(), "missing-host")})
-	if got.Code != -1 || got.Err == nil || got.Stopped {
+	if got.Code != -1 || got.Err == nil || got.Stopped || got.Cancelled {
 		t.Fatalf("start failure treated as a child exit: %+v", got)
 	}
 }
