@@ -3,7 +3,73 @@
 Generated from command metadata. For setup and worked examples, see the [CLI guide](cli.md).
 Regenerate with `GOWORK=off go test ./internal/cli -run TestUXCommandReferenceIsGenerated -update-cli-reference`.
 
+## agent
+
+### kitsu agent check
+
+```text
+usage: kitsu agent check [options]
+
+Check local CLI, plugin, task skill and hooks without executing the host.
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Setup: local inspection does not prove host authentication, model access, hook
+trust or runtime execution. Follow the reported manual host checks.
+
+Examples:
+  kitsu agent check --host codex
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
 ## task
+
+### kitsu task start
+
+```text
+usage: kitsu task start <request> [options]
+
+Open an interactive agent host with the Kitsu task skill.
+
+Arguments:
+  <request>          one nonempty request; quote the complete request
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --print                  print diagnostics and the handoff prompt without
+                           opening the host
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Setup: local inspection does not prove host authentication, model access, hook
+trust or runtime execution. Follow the reported manual host checks.
+
+Start: requires terminal input, stdout and stderr and no known local blockers.
+The host remains the orchestrator and may request permissions. --print and
+--json prepare a handoff even when setup is incomplete; they execute nothing
+and create no task records. The two output options are mutually exclusive.
+A launched host's exit status is preserved; interruption exits 130.
+
+Examples:
+  kitsu task start "Add a login screen" --host codex
+  kitsu task start "Fix the failing test" --host claude --print
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
 
 ### kitsu task list
 

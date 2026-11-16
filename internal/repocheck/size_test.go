@@ -11,11 +11,12 @@ import (
 // Keep separate budgets for the gate, the role workflow and configurable
 // advisers. Test files and testdata do not count.
 const (
-	maxCoreLines    = 6250
-	maxRolesLines   = 4000
-	maxAdviserLines = 4000 // CLI advisers plus native typed providers and usage records.
-	maxSkillLines   = 2000
-	maxUXLines      = 3500 // Shared routing, help, preferences, forms and completion.
+	maxCoreLines       = 6250
+	maxRolesLines      = 4000
+	maxAdviserLines    = 4000 // CLI advisers plus native typed providers and usage records.
+	maxSkillLines      = 2000
+	maxUXLines         = 3500 // Shared routing, help, preferences, forms and completion.
+	maxOnboardingLines = 1200 // Local setup diagnostics and explicit host handoff.
 )
 
 // rolesCode says whether a Go file belongs to the role workflow.
@@ -32,7 +33,7 @@ func rolesCode(file string) bool {
 }
 
 func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
-	core, roles, advisers, skills, ux := 0, 0, 0, 0, 0
+	core, roles, advisers, skills, ux, onboarding := 0, 0, 0, 0, 0, 0
 	for _, file := range repoFiles(t) {
 		if !strings.HasSuffix(file, ".go") || strings.HasSuffix(file, "_test.go") || strings.Contains(file, "/testdata/") {
 			continue
@@ -42,7 +43,9 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 			t.Fatal(err)
 		}
 		lines := bytes.Count(data, []byte("\n"))
-		if strings.HasPrefix(file, "internal/cli/ux_") || strings.HasPrefix(file, "internal/shellwords/ux_") {
+		if strings.HasPrefix(file, "internal/onboarding/") || strings.HasPrefix(file, "internal/cli/onboarding") {
+			onboarding += lines
+		} else if strings.HasPrefix(file, "internal/cli/ux_") || strings.HasPrefix(file, "internal/shellwords/ux_") {
 			ux += lines
 		} else if strings.HasPrefix(file, "internal/skills/") || strings.HasPrefix(file, "internal/cli/skills") || strings.HasPrefix(file, "internal/roles/skills") {
 			skills += lines
@@ -58,6 +61,7 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	t.Logf("advisers: %d of %d lines", advisers, maxAdviserLines)
 	t.Logf("skills: %d of %d lines", skills, maxSkillLines)
 	t.Logf("CLI presentation: %d of %d lines", ux, maxUXLines)
+	t.Logf("agent onboarding: %d of %d lines", onboarding, maxOnboardingLines)
 	if core > maxCoreLines {
 		t.Errorf("the gate holds %d lines of Go, want at most %d", core, maxCoreLines)
 	}
@@ -72,5 +76,8 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	}
 	if ux > maxUXLines {
 		t.Errorf("CLI presentation holds %d lines of Go, want at most %d", ux, maxUXLines)
+	}
+	if onboarding > maxOnboardingLines {
+		t.Errorf("agent onboarding holds %d lines of Go, want at most %d", onboarding, maxOnboardingLines)
 	}
 }

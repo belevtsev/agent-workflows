@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- [Agent onboarding](docs/cli.md#check-setup-and-start-a-task) checks local host, plugin, skill, and hook setup;
+  `kitsu task start` launches the selected host or prepares a handoff with explicit trust and runtime limits.
 - A grouped [CLI](docs/cli.md) adds complete help, private host preferences, explicit terminal editors,
   skill actions, and completion for four shells while preserving existing commands quietly.
 - Select [existing skills](docs/skills.md) per role from local repository, personal, and plugin sources,

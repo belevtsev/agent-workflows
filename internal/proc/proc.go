@@ -1,5 +1,6 @@
-// Package proc runs one external program directly, never through a shell, in
-// a process group of its own, and stops the whole group when the run ends.
+// Package proc runs external programs directly, never through a shell. Run
+// starts a process group of its own and stops the whole group when work ends.
+// RunForeground retains the caller's group for interactive host handoffs.
 //
 // One kill(-pgid, SIGKILL) is not enough on macOS: a member that is forking
 // when the signal is sent can produce a child that joins the group after the

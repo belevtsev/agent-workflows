@@ -5,7 +5,8 @@ by the thing you work with:
 
 | Group | Commands |
 | --- | --- |
-| `task` | `list`, `show`, `check` |
+| `agent` | `check` |
+| `task` | `start`, `list`, `show`, `check` |
 | `role` | `list`, `show`, `set`, `edit`, `reset`, `check`, `text` |
 | `skill` | `list`, `show`, `attach`, `detach`, `clear`, `reset`, `resolve` |
 | `adviser` | `list`, `show`, `providers`, `bind`, `ask`, `accept`, `reject`, `defer`, `status`, `check` |
@@ -72,6 +73,66 @@ hosts. Neither preference file is a shared task record. `config` currently suppo
 commands keep their existing explicit-host behavior.
 Removing the supporting gate keeps the CLI host preference.
 
+## Check setup and start a task
+
+After [installing the CLI](release-install.md) and [adding the host plugin](../README.md#for-a-coding-agent),
+inspect local setup from the directory where you want to work:
+
+```sh
+kitsu agent check --host codex
+kitsu agent check --host claude --json
+kitsu task start "Add an order CSV export" --host codex
+```
+
+`agent check` reads local PATH, the selected host CLI, the installed and enabled Kitsu plugin,
+its task skill, and its hook bundle and known disable settings. Each check gives evidence and
+next steps. It runs no host, hook, authentication flow, or model and changes no settings.
+It needs neither `kitsu.toml` nor the supporting Git gate.
+
+| Finding | What to do |
+| --- | --- |
+| Local prerequisites available | Start the task; confirm skill loading and hook behavior in the host session. |
+| CLI missing from PATH | Follow the installer's PATH step and restart the terminal or desktop app. |
+| Plugin, task skill, or hooks missing or disabled | Install or enable Kitsu in that host and follow the diagnostic's configuration step. |
+| Hook trust or execution unknown | Inspect the host's hooks and session output; configuration alone does not prove execution. |
+
+On Codex, open `/hooks` to review and trust the exact current Kitsu hooks. Updates can require
+another review. This is a manual host action; Kitsu neither accepts trust nor guesses it from
+configuration. See the official [hook guide](https://learn.chatgpt.com/docs/hooks).
+On Claude Code, inspect Kitsu in `/plugin`; after installing from a shell, start a new session
+or use `/reload-plugins`. See the official [plugin guide](https://code.claude.com/docs/en/discover-plugins).
+
+Default `task start` explicitly launches `codex` or `claude` in the current directory with a
+prompt to use Kitsu's task skill. All three standard streams must be terminals. Demonstrated
+local setup failures prevent launch; unknown trust or runtime behavior remains a stated caveat.
+The host controls authentication, model access, permissions, and delegation. On Claude Code the
+workflow is `/kitsu:task` and workers are `kitsu:<role>`; on Codex the host loads Kitsu's `task`
+skill and the role texts. Starting the host creates no workflow stage or completion evidence.
+
+To prepare a handoff for an existing desktop session, or inspect it before installing the host CLI:
+
+```sh
+kitsu task start "Add an order CSV export" --host codex --print
+kitsu task start "Add an order CSV export" --host claude --json
+```
+
+These mutually exclusive modes return the prompt and local diagnostics without launching
+anything or creating a task folder, receipt, or usage record. Paste the printed prompt into
+your selected host. JSON returns `host`, `ready`, `host_executable`, and `checks`,
+plus `prompt` and `argv` for task preparation. `ready` concerns local prerequisites, not verified
+trust, authentication, model access, or successful workflow execution.
+Checks use `pass` for established local facts, `fail` for blocking setup problems, and `warn`
+for caveats such as unknown runtime or optional gate setup. An inconclusive required installation
+inventory blocks readiness and explains what could not be established; it does not prove absence.
+
+`agent check` exits 0 when no blocking local problem is found and 5 when local setup is blocked.
+Handoff-only modes exit 0 after successful inspection even with `ready: false`; inspect their
+diagnostics. Invalid usage, conflicting output modes, or a default launch without terminals
+exits 2. A launched host's exit status is preserved. A read or process-start failure exits 1.
+Launch requires a native host executable; for a `.cmd` or `.bat` wrapper, use a native installation
+or prepare the handoff with `--print`.
+Host selection follows the [same preference order](#select-your-host-once) as other preferred commands.
+
 ## Inspect a task, role, or skill
 
 ```sh
@@ -126,7 +187,7 @@ These commands preserve unrelated roles, hosts, and configuration.
 
 ## Open an editor when you want one
 
-Only explicit editor commands prompt:
+Only explicit editor commands open configuration forms:
 
 ```sh
 kitsu role edit developer

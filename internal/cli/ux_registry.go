@@ -15,6 +15,8 @@ func uxCommands() []uxCommand {
 	role := uxOption("role", "role", "role requesting advice or receiving skill selections")
 	accessible := uxOption("accessible", "", "use descriptive accessible prompts instead of the full-screen form")
 	list := []uxCommand{
+		{path: "agent check", summary: "Check local CLI, plugin, task skill and hooks without executing the host", flags: []uxFlag{host, json}, run: runUXAgentCheck, host: true, requiredHost: true},
+		{path: "task start", args: "<request>", summary: "Open an interactive agent host with the Kitsu task skill", flags: []uxFlag{host, uxOption("print", "", "print diagnostics and the handoff prompt without opening the host"), json}, operands: [][2]string{{"request", "one nonempty request; quote the complete request"}}, examples: []string{"kitsu task start \"Add a login screen\" --host codex", "kitsu task start \"Fix the failing test\" --host claude --print"}, run: runUXTaskStart, host: true, requiredHost: true},
 		{path: "task list", summary: "List full tasks and saved small-task histories", flags: []uxFlag{json}, run: runUXTaskList},
 		{path: "task show", args: "<task>", summary: "Show a full task's stage or a small task's saved history", flags: []uxFlag{json}, run: runUXTaskShow},
 		{path: "task check", args: "[<task>]", summary: "Check saved task records offline", run: uxLegacy("change", "check")},

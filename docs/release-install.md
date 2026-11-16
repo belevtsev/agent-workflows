@@ -31,6 +31,26 @@ The installer adds its directory to user `PATH` unless you opt out. Rerunning it
 duplicate entries. It installs the CLI only; add the [agent plugin](../README.md#for-a-coding-agent)
 through your host's marketplace. Provider CLIs and Git are installed separately.
 
+## Check the host and start a task
+
+After adding the [Kitsu plugin](../README.md#for-a-coding-agent), run:
+
+```sh
+kitsu agent check --host codex
+kitsu task start "Add an order CSV export" --host codex
+```
+
+Use `--host claude` for Claude Code. The first command reads local PATH, host, plugin, task
+skill, and hook setup without executing the host or changing configuration. Follow any next
+steps; on Codex, manually review and trust Kitsu's current definitions in `/hooks`.
+The second command explicitly opens the interactive host after local preflight. Confirm
+authentication, model availability, hook execution, and skill loading in that session.
+
+For a desktop session or a machine without the host CLI, add `--print` to prepare a prompt to
+paste; `--json` also exposes diagnostics and proposed argv. Both modes execute nothing and
+create no task record. See [onboarding](cli.md#check-setup-and-start-a-task) for exit statuses and
+ready, broken, and unknown evidence. Installing the supporting Git gate is a separate step.
+
 ## Install a CI artifact before publication
 
 1. Open a passing run of [CI](https://github.com/belevtsev/kitsu/actions/workflows/ci.yml) and
