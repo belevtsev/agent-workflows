@@ -1,11 +1,12 @@
 <#
 .SYNOPSIS
-Installs a checksummed Kitsu release for the current Windows user.
+Installs a checksummed Kitsu archive for the current Windows user.
 .DESCRIPTION
 Downloads the exact Windows archive and SHA256SUMS, or reads them from ArchiveDir.
 Requires PowerShell 5.1 or newer. No Go toolchain or administrator access is needed.
+No releases are currently published. Use the scripts and archives from a successful CI artifact.
 .PARAMETER Version
-Release tag. Defaults to KITSU_VERSION, then v3.0.0-beta.2.
+Archive version label. Defaults to KITSU_VERSION, then v3.0.0-beta.2.
 .PARAMETER InstallDir
 Destination directory. Defaults to KITSU_INSTALL_DIR, then LOCALAPPDATA\kitsu.
 .PARAMETER NoModifyPath
@@ -13,7 +14,7 @@ Leaves both user PATH and the current session PATH unchanged. Also set by KITSU_
 .PARAMETER ArchiveDir
 Reads the archive and SHA256SUMS locally, without network access. Defaults to KITSU_ARCHIVE_DIR.
 .EXAMPLE
-irm https://github.com/belevtsev/kitsu/releases/download/v3.0.0-beta.2/install.ps1 | iex
+.\install.ps1 -ArchiveDir C:\Downloads\kitsu-archives
 .EXAMPLE
 .\install.ps1 -ArchiveDir C:\Downloads\kitsu -InstallDir C:\Tools\kitsu -NoModifyPath
 #>
