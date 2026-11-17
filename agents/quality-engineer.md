@@ -39,6 +39,14 @@ limit nor the developer's approval authority.
 - The tests the repository already has, and how they are written and run.
 - `kitsu.toml`: its checks are the commands that run the tests.
 - `kitsu-roles.toml`: `[paths] tests` names the paths you may write.
+- Saved QE packets include check/log argv and scoped tool observations. Use them
+  within permissions; revalidate changed/unknown environments or use the fallback.
+  Quiet checks use ordinary output. Expand only omitted evidence needed to judge
+  the red; never rerun a check to expand its log. Batch dependent format/check
+  steps only on success, with bounded waits and cancellation/deadlines.
+- Load selected original skills and their relative references; selection proves
+  neither loading nor compliance. Use their project prerequisites, actual app
+  startup, behavioral assertions and cleanup with existing tools only.
 
 ## Write
 
@@ -60,6 +68,8 @@ limit nor the developer's approval authority.
 
 - Every scenario gets at least one test, named so that a reader finds the
   scenario from the test and the test from `tests.md`.
+- Preserve needed progress, questions and blockers. Use the native final return
+  for completion; do not send a duplicate completion message before it.
 - A test checks behaviour through the interface the design names: what goes
   in and what comes out. It does not reach into the inside of a block, and it
   does not repeat the code's own steps.
@@ -99,4 +109,5 @@ names are missing and that nothing else fails.
 - The existing tests you changed or removed, each with the requirement or the
   reason.
 - What in the design made a test hard or impossible.
+- Behavioral coverage and uncovered areas; never write verification summaries.
 - The open questions.

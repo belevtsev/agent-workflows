@@ -37,7 +37,7 @@ role definitions, record checks, and usage reports. The Git gate supports that w
 
 ## The roles
 
-<img src="docs/diagrams/task-workflow.svg" alt="The task workflow. Full tasks start with specification and design, each independently reviewed and approved by you, with or without advisers. Both paths continue through tests, code, review, and a gated commit. Experimental advisers are off by default. Explicit definition and role access, followed by a task binding, allow the coordinator to check a requesting role's writes, consult an adviser API or CLI, record the answer and decision, and resume the role." width="100%">
+<img src="docs/diagrams/task-workflow.svg" alt="The task workflow. Full tasks start with specification and design, each independently reviewed and approved by you. Both paths continue through tests, code, review and a gated commit. Repository opt-in behavioral verification follows finished worker intervals: plan targets and gaps, verify targets, publish a summary, then satisfy full checks using local evidence. Experimental advisers remain off by default; explicit access and binding allow consultation and recorded decisions without replacing approval." width="100%">
 
 A task that needs a requirement written or changed takes the full path: specification, design, tests, code, review
 and commit. A task whose intended behaviour is already clear and does not change starts at the tests. You approve
@@ -116,12 +116,28 @@ with small output, typed collection for broad or noisy retrieval, and bounded no
 Agents expand retained evidence when needed and keep original role instructions and skills
 uncompressed. It ships in the existing binary, preserving reviews, approvals and check evidence.
 [How to use it](docs/compact-context.md), [research and tradeoffs](docs/context-research.md).
+Worker packets include their role and reading policy; keep coordinator guides out of
+repeated assignments and use ordinary output for quiet checks. See the
+[offline delivery checks](docs/benchmarks/compact-delivery-report.md); these measure bytes and calls, not provider tokens.
+Fitting failed logs now return complete evidence, and QE packets include executable
+check/log recipes and scoped optional-tool observations. For a smaller native
+handoff, use `task prepare --dispatch --view launch`; `task dispatch <id>` reads
+the original full response. The [handoff how-to](docs/compact-response-cycles.md)
+explains safe sequential finish/preparation and the offline quality checks.
+The [latest paid pair](docs/benchmarks/response-cycles-paid-report.md) recorded 1,655,932 ordinary and 1,467,207 compact tokens,
+with all ten sessions closed and both attempts passing protected quality checks. This one pair does not establish general savings or quality equivalence.
+The [revised paid pair](docs/benchmarks/compact-delivery-paid-report.md) recorded 1,982,129 ordinary and 1,872,131 compact tokens,
+with passing frozen checks. Uncached input increased; no general quality equivalence or lower bill is established.
 The [24-run Codex pilot](docs/benchmarks/codex-compact-pilot-report.md) found passing frozen tests
 in both modes, additional defects on review, and less workflow completion with compact mode
 under an eight-minute limit. Complete-task token savings remain unestablished.
 The separate [selective evaluation](docs/benchmarks/selective-compact-report.md) includes offline
 replay overhead and a rejected v2 charset reference. Its bounded canary stopped the first ordinary
 run at 3.26M captured tokens; three runs stayed unstarted, leaving no new on/off savings evidence.
+The [offline verification guide](docs/verification.md) covers historical defect calibration,
+generated evidence-equivalence checks and bounded fuzzing without model calls.
+Repositories can also opt in to [task behavioral verification](docs/verification.md#verify-task-behavior):
+plan relevant declared checks, exercise actual behavior and retain source-bound attempt summaries before the final gate checks.
 
 For an opted-in coordinator, common reads need no request JSON:
 
@@ -156,6 +172,16 @@ The first command returns a bounded snapshot of stage, active interval, checks,
 open recorded findings, policy keys and missing prerequisites. The second returns
 only changed sections. Expand original references when needed; snapshots certify
 no task completion. See [state snapshots and deltas](docs/coordinator-state.md).
+
+Optional [workflow insights](docs/workflow-insights.md) add `usage show --diagnostics`,
+source-linked uncertainty and troubleshooting notes, and task budget estimates or
+sourced limits. Unknown usage remains unknown; recorded budgets authorize no paid
+work and enforce no runtime cap.
+
+The latest [Codex compact comparison](docs/benchmarks/workflow-insights-paid-report.md)
+records actual coordinator and worker tokens on one real task. Both attempts
+passed the frozen quality checks; compact used 21.1% more captured tokens in this
+pair. Compact remains opt-in.
 
 ### Find a command
 
@@ -418,7 +444,7 @@ and what it does not, and [operations](docs/operations.md) lists every command a
 
 The workflow, adviser records, token reports, and gate share the same CLI:
 
-<img src="docs/diagrams/overview.svg" alt="Kitsu connects role coordination, optional advisers, usage reporting and the supporting Git gate. Opt-in Go context collection retains private worktree artifacts, supplies bounded expansion and prepares fresh worker briefs. Advisers are disabled by default, and normal check evidence retains gate authority." width="100%">
+<img src="docs/diagrams/overview.svg" alt="Kitsu connects role coordination, optional advisers, usage reporting and the supporting Git gate. Opt-in context collection retains private worktree artifacts and prepares fresh briefs. Repository opt-in task verification plans targeted checks, publishes historical attempt summaries on success and then satisfies full gate checks with current local evidence. Advisers remain disabled by default; normal check evidence retains gate authority." width="100%">
 
 The usage column shows host records. `kitsu usage show` also reports provider-supplied API adviser usage
 separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advisers.md) shows the opt-in steps.

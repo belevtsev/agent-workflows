@@ -146,6 +146,11 @@ publication. Recollect after a stale-artifact error.
 
 ## Prepare and finish a worker
 
+The [handoff how-to](compact-response-cycles.md) covers the optional launch view,
+archival full response, QE recipes and success-only sequential handoffs. Fitting
+failed check results now include complete chronological evidence under the exact
+serialized byte budget; genuine noisy previews retain original-log expansion.
+
 For Go-generated native launch instructions and bounded structured worker returns,
 see [coordinator handoffs](coordinator-overhead.md). The explicit
 `task prepare ... --dispatch` option adds a version 2 launch description; omitting
@@ -184,8 +189,12 @@ and hashes, allowed advisers, factual task state and source references. Codex re
 original role instructions exactly once. On Claude, start the named native role
 (`kitsu:<role>`); its definition supplies the role body once. Each worker still loads the
 selected original skills and reports what loaded; a selection receipt proves no loading.
-Keep those full original instructions and skill bodies uncompressed. Every fresh assignment
-carries the selective policy, including native short reads and retained-log expansion.
+Keep those full original instructions and skill bodies uncompressed. The saved packet
+already includes the worker's selective policy. Assign the complete original behavioral
+contract and role-specific work; keep coordinator scheduling, budgets and state bookkeeping
+out of worker assignments. Do not require another read of the coordinator task skill or
+compact reference unless selected as a skill or needed by an explicit task reference.
+Kitsu preserves assignment bytes exactly; it never strips user instructions automatically.
 
 Preparation orders the skill receipt **before** the saved baseline. One managed interval
 may be active in a worktree. A second preparation, including ordinary `task brief`, refuses
@@ -196,7 +205,7 @@ After the tests worker, run the repository's declared checks. For a defect, insp
 expected meaningful regression, then record that current red evidence:
 
 ```sh
-kitsu check run --compact
+kitsu check run
 kitsu task finish <tests-dispatch-id> --expect-checks fail
 ```
 
@@ -206,7 +215,7 @@ let the host launch it, and inspect its result. Run any checks that still lack c
 ```sh
 kitsu task prepare fix-login --role developer --stage code --round 1 \
   --host codex --workflow small --assignment /absolute/path/code-assignment.txt
-kitsu check run --compact
+kitsu check run
 kitsu task finish <code-dispatch-id> --expect-checks pass
 ```
 
@@ -251,6 +260,10 @@ interval is active. Saved brief files have private permissions where supported; 
 only when no worker or active interval needs them. Neither form proves task completion.
 
 ## Keep check output compact
+
+Use ordinary `kitsu check run` for quiet checks, including the handoff examples
+above. Compact opt-in does not require a compact envelope for every operation.
+Do not rerun a check just to fill a worker return, or expand a complete result.
 
 For noisy declared checks, request bounded outcomes and recover relevant retained evidence:
 
@@ -336,6 +349,10 @@ The input-byte convention is CLI words separated by spaces plus newline and stdi
 not a provider request or exact shell-quoting size. [Raw samples](benchmarks/compact-context.txt).
 
 ### Evaluate a real task
+
+Use the [offline verification guide](verification.md) to replay historical defect
+evidence and exercise generated read/search, worker-return and state-delta cases.
+These local checks invoke no model and do not replace independent code review.
 
 Filtering noisy output and narrowing reads can reduce model-visible text. JSON framing, long
 paths, hashes, extra pages and worker instructions can also increase it. Native reads are

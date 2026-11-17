@@ -126,6 +126,11 @@ func (s *session) changeStatus(ctx context.Context, folders []*change.Folder, na
 		if err := applyAdviserRequirements(s.repo.Root, report, git.Committed); err != nil {
 			return failf("%v", err)
 		}
+		verification, err := observeTaskVerification(ctx, s, folder.Task)
+		if err != nil {
+			return failf("%v", err)
+		}
+		applyTaskVerification(report, verification)
 	}
 	out := s.cfg.Out
 	switch {

@@ -34,6 +34,7 @@ type stageRecord struct {
 	Checks   string              `json:"check_policy_key"`
 	Sources  map[string]string   `json:"raw_sources"`
 	Prepared preparedWorkerBrief `json:"prepared"`
+	Prompt   string              `json:"native_prompt,omitempty"`
 }
 
 func openStageLedger(ctx context.Context, s *session) (*stageLedger, error) {
@@ -57,7 +58,9 @@ func openStageLedger(ctx context.Context, s *session) (*stageLedger, error) {
 
 func (l *stageLedger) close() {
 	_ = l.root.Close()
-	_ = l.lock.Close()
+	if l.lock != nil {
+		_ = l.lock.Close()
+	}
 	_ = l.gitRoot.Close()
 }
 
@@ -113,8 +116,10 @@ func stageLedgerRoot(gitRoot *os.Root) (*os.Root, os.FileInfo, error) {
 }
 
 func (l *stageLedger) verify() error {
-	if err := l.lock.Verify(); err != nil {
-		return err
+	if l.lock != nil {
+		if err := l.lock.Verify(); err != nil {
+			return err
+		}
 	}
 	info, err := l.gitRoot.Lstat("kitsu-stages")
 	if err != nil || !info.IsDir() || !os.SameFile(l.info, info) {

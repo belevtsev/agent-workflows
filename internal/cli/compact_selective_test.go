@@ -51,6 +51,7 @@ func TestSelectiveCompactTaskStartRequiresExplicitOptIn(t *testing.T) {
 					"every fresh worker brief", "original full role instructions and selected skills uncompressed",
 					"independent reviews and required evidence", "local rendered text, not provider prompt cache",
 					"all requests, responses and expansions",
+					"ordinary check output for quiet checks", "do not copy coordinator guides",
 				} {
 					if !strings.Contains(handoff.Prompt, instruction) {
 						t.Errorf("compact handoff lost %q", instruction)
@@ -91,6 +92,9 @@ func TestSelectiveCompactSavedWorkersRetainPolicyAndOriginalInstructions(t *test
 				"noisy declared checks use kitsu check run --compact", "expand retained logs with context show",
 				"Expansion never reruns a check", "local rendered text, not provider prompt cache",
 				"all requests, responses and expansions", "never proves passing checks",
+				"ordinary kitsu check run for quiet declared checks", "Do not reread the coordinator's task skill",
+				"unless selected as a skill or needed by an explicit assignment reference",
+				"do not duplicate managed baseline or role checks",
 			} {
 				if !strings.Contains(constraints, instruction) {
 					t.Errorf("fresh worker lost %q", instruction)

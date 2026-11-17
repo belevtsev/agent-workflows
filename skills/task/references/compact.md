@@ -28,8 +28,8 @@ kitsu context search 'register[A-Z]' internal --regex
 
 Paths are repository-relative. Search is literal by default; use `--` before a
 pattern/path beginning with `-`. A single `-` is literal, not stdin. Items are
-`source` for read and `matches` for search. Give these examples to every fresh
-worker using compact observations. `--help` gives exact options without setup.
+`source` for read and `matches` for search. Saved worker packets already contain
+this syntax and the selective policy. `--help` gives exact options without setup.
 
 Batch independent operations with `kitsu context collect --request <file|-> --json`.
 The advanced request is JSON, not executable code:
@@ -62,7 +62,10 @@ when measuring. Neither local cache hits nor smaller previews prove model token 
 
 ## Fresh workers
 
-For coordinator observations, take `kitsu task show <task> --compact` first.
+For coordinator observations, take `kitsu task show <task> --compact` after a full
+task folder or the first successful small-task preparation exists. Do not probe
+state before that history exists. A successful `prepare`/`finish` already returns
+its interval and check facts; request a view only for additional state you need.
 Keep its complete sections and `snapshot_id`; after relevant events use
 `kitsu task show <task> --since <snapshot-id>`. Replace each returned section in
 your saved view; keep omitted sections unchanged. Explicit empty collections or
@@ -83,6 +86,22 @@ Only the coordinator writes the specific assignment and runs:
 kitsu task prepare <task> --role <role> --stage <stage> --round <round> \
   --host <host> --workflow full|small --assignment <file|-> --dispatch
 ```
+
+Add `--view launch` to return only launch fields, inline warnings and
+`full_dispatch`; default full v2 JSON remains. `kitsu task dispatch <dispatch-id>`
+reads the original saved native dispatch without new evidence, locks or workers.
+It preserves archived source state and fails on policy/skill/packet drift; it
+grants no current pass. Older/non-native records lack a bound prompt and require
+fresh native preparation after finishing or explicitly abandoning their interval.
+Never preview a worker packet merely to recover its launch identity.
+
+Assignments carry the complete original behavioral contract, role-specific work,
+primary source references and required evidence. Keep coordinator scheduling,
+budget supervision and state/interval instructions in the coordinator. Do not
+paste this whole reference or the coordinator's task skill into every assignment,
+or require workers to reread them: the packet already contains their full role
+and selective observation policy. Selected skills and explicit task references
+are exceptions and must still be loaded in full; never trim user instructions.
 
 The v2 JSON holds `dispatch_id`, `label`, saved `path`/`sha256`, `model`, `baseline`,
 `selection_id`, `worktree`, `state` and `native`. Use `native.prompt`, `native.model`
@@ -113,10 +132,22 @@ model, config, skill, test or check changes; a saved packet is not permission fo
 stale reuse. Use an available fallback for missing optional tools such as `rg`;
 do not repeatedly retry or automatically install them.
 
+QE packets snapshot bounded check/log/search argv recipes and scoped `rg` lookup
+observations. Unknown or mismatched host/session/cwd/PATH scope uses the typed
+search fallback directly; no hash computation or discovery turn is needed.
+Full fitting failed logs have zero omissions; expand only needed omitted facts.
+Use recipes within existing permissions; no lookup grants execution authority.
+
 Prefer native completion notifications; otherwise use a long bounded native wait.
 Avoid ten-second polling and time-pressure pings. Keep deadline/cancellation duties,
 user progress updates and an independent host budget monitor active while waiting.
 Do not add a CLI wait daemon, host rollout watcher or worker spawner.
+Coalesce routine worker progress; preserve real questions, risks and blockers.
+Use the native final return without a duplicate worker completion message when
+it suffices. Only after terminal completion and required semantic red/review
+decisions, sequentially batch `task finish` then `task prepare` in one host call
+on success. A failed finish blocks preparation; failed preparation preserves
+an already-finished predecessor. Never advance from a receipt or author claim.
 
 After the worker has stopped, optionally ingest its structured return with
 `kitsu task return <dispatch-id> --request <file|->`. The generated native prompt supplies
@@ -126,6 +157,10 @@ Minimal JSON has `version:1`, `dispatch_id`, `task`,
 Paths are repository-relative; findings carry `severity` (`blocker`, `major` or
 `minor`), `path`, positive `line` and `message`.
 Check claims carry `id`, `state` and optional `run_id`; blockers are strings.
+Copy the exact gate evidence state (for example `satisfied` or `failed`), not
+the runner's `passed` outcome. Use `checks:[]` when no check evidence was observed;
+this grants no passing-check authority. Omit optional claims unless needed;
+`loaded.skills` names only selected packet skill ids/hashes, not support reads.
 The optional `worktree` and `source` assert current state. Optional `loaded` and
 `worker` reports remain unverified claims about loading, identity and completion.
 Retain the raw host result when ingestion fails. Ingestion validates local bindings
@@ -151,9 +186,10 @@ For an unmanaged saved brief, capture a baseline before the worker and run the
 normal `role check --from <baseline>` afterwards. Shipped-change finalization keeps
 its separate saved baseline and `--finalize` check.
 
-Carry this selective observation policy into every fresh worker's assignment, including
-native short-file reads, scoped search, collection for noisy retrieval and retained-log
-expansion for checks. Workers keep their existing tool
+Saved packets carry the worker's selective policy; use the original complete packet
+once. For unmanaged briefs, include only that worker-facing policy: native short-file
+reads, scoped search, ordinary quiet checks, collection for noisy retrieval and
+retained-log expansion. Workers keep their existing tool
 permissions. For a role without command execution, the coordinator collects evidence and
 supplies it; never add tool access to make the compact commands available. Lookup can create
 Kitsu-managed private context artifacts when its host permits the call; its repository source
@@ -174,7 +210,9 @@ never replace those requirements.
 
 ## Declared checks
 
-Use `kitsu check run --compact` (or `--json`) for bounded outcomes and diagnostic excerpts.
+Use ordinary `kitsu check run` for quiet checks. Use `kitsu check run --compact`
+(or `--json`) for noisy outcomes and diagnostic excerpts. Do not collect a quiet
+result, expand a complete result, or rerun checks solely to populate a handback.
 The normal runner executes the same checks sequentially, retains logs under its existing
 size/age limits, and records failures, timeouts, interruption and source changes normally.
 Do not infer success from a preview. Read every outcome and warning, expand relevant failed

@@ -30,10 +30,15 @@ func TestCoordinatorReplayCheckChild(t *testing.T) {
 	if err != nil {
 		os.Exit(9)
 	}
-	fmt.Fprint(os.Stderr, strings.Repeat(workflowNoise, 120))
+	quiet := os.Getenv("KITSU_TEST_COORDINATOR_QUIET") == "1"
+	if !quiet {
+		fmt.Fprint(os.Stderr, strings.Repeat(workflowNoise, 120))
+	}
 	if !strings.HasPrefix(string(body), strings.TrimSpace(string(want))) {
 		fmt.Fprintln(os.Stderr, replayDiagnostic)
-		fmt.Fprint(os.Stderr, strings.Repeat(workflowNoise, 120))
+		if !quiet {
+			fmt.Fprint(os.Stderr, strings.Repeat(workflowNoise, 120))
+		}
 		os.Exit(7)
 	}
 	fmt.Fprintln(os.Stderr, "PASS: anonymous fallback")
@@ -43,6 +48,7 @@ func TestCoordinatorReplayCheckChild(t *testing.T) {
 type coordinatorReplay struct {
 	replayMeter
 	managed                                      bool
+	lean, cadence                                bool
 	executed, reused, rejected, returns, retries int
 	facts                                        map[string]string
 	currentChecks                                []stageCheck
@@ -94,6 +100,9 @@ func (h *coordinatorReplay) preparePacket(role, stage string, round int, assignm
 	args := []string{"task", "prepare", workflowTask, "--role", role, "--stage", stage, "--round", strconv.Itoa(round), "--host", "codex", "--workflow", "small", "--assignment", "-"}
 	if h.managed {
 		args = append(args, "--dispatch")
+		if h.lean {
+			args = append(args, "--view", "launch")
+		}
 	}
 	return workflowJSON[map[string]any](h.t, h.run(assignment, "kitsu", 0, args...).Stdout)
 }
@@ -112,8 +121,16 @@ func (h *coordinatorReplay) readWorkerPacket(d map[string]any, role, stage strin
 	if err := json.NewDecoder(strings.NewReader(metadata)).Decode(&b); err != nil {
 		h.t.Fatal(err)
 	}
-	if b.Role != role || b.Stage != stage || b.Round != round || b.LoadStatus != "unverified" || b.State.Stage != "unknown" || b.Model.Model != "fake-sol-profile" || b.Model.Effort != "high" || b.Baseline != d["baseline"] || b.Selection != d["selection_id"] || len(b.Skills) != 1 || len(b.Constraints) < 5 {
+	if b.Role != role || b.Stage != stage || b.Round != round || b.LoadStatus != "unverified" || b.State.Stage != "unknown" || b.Model.Model != "fake-sol-profile" || b.Model.Effort != "high" || b.Baseline == "" || b.Selection == "" || len(b.Skills) != 1 || len(b.Constraints) < 5 {
 		h.t.Fatal("worker authority/unknown state changed", b)
+	}
+	if !h.lean && (b.Baseline != d["baseline"] || b.Selection != d["selection_id"]) {
+		h.t.Fatal("full dispatch identity differs from packet", b)
+	}
+	if h.lean {
+		// Role/round are recovered from the complete hash-verified worker packet,
+		// without another host response or a full dispatch expansion.
+		d["stage"], d["round"] = b.Stage, float64(b.Round)
 	}
 	_, instructions, _ := strings.Cut(body, "Original role instructions:\n")
 	instructions, _, _ = strings.Cut(instructions, "\n\nOriginal assignment:\n")
@@ -208,7 +225,9 @@ func (h *coordinatorReplay) check(expect int, force, expand bool) {
 
 func (h *coordinatorReplay) complete(d map[string]any, changed []string, findings []map[string]any, expected string) stageReceipt {
 	h.t.Helper()
-	h.recordTransport("fake-native-followup", `{"worker_id":"offline-script","message":"Return observed paths, checks, findings and blockers; do not claim approval."}`, `{"accepted":true}`, "")
+	if !h.cadence {
+		h.recordTransport("fake-native-followup", `{"worker_id":"offline-script","message":"Return observed paths, checks, findings and blockers; do not claim approval."}`, `{"accepted":true}`, "")
+	}
 	request := map[string]any{"version": 1, "dispatch_id": d["dispatch_id"], "task": workflowTask, "packet_sha256": d["sha256"], "changed_paths": changed, "checks": h.currentChecks, "findings": findings, "blockers": []string{}}
 	returned := stringMustJSON(request)
 	h.recordTransport("fake-native-worker-return", `{"worker_id":"offline-script","operation":"wait"}`, returned, "")

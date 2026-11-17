@@ -1,0 +1,3 @@
+run_id,arm,execution,seconds,accounting_complete,all_sessions_terminal,sessions,acceptance,regressions,patch_integrity,protocol,input_uncached,input_total,cached_input,output,total,reasoning_subset
+pflag-unknown-flags-r1-normal,normal,completed,465.215,true,true,5,true,true,true,unknown,166251,1636843,1470592,19089,1655932,3092
+pflag-unknown-flags-r1-compact,compact,completed,449.363,true,true,5,true,true,true,unknown,162709,1451413,1288704,15794,1467207,3721

@@ -2,7 +2,7 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "The task workflow: advisers are experimental and off by default",
+    "title": "The task workflow: behavioral verification is repository opt-in",
     "locale": "en",
     "quality_profile": "showcase",
     "output": ".archify/task-workflow.html",
@@ -20,6 +20,7 @@
     {"id": "roles", "label": "The role that works"},
     {"id": "checks", "label": "What comes next"},
     {"id": "approval", "label": "Full path: you approve"},
+    {"id": "verification", "label": "Opt-in: finish worker intervals first"},
     {"id": "consultation", "label": "Experimental advice: default off"}
   ],
   "phases": [
@@ -43,6 +44,9 @@
     {"id": "gate", "lane": "checks", "col": 5, "type": "security", "label": "the gate", "sublabel": "allows or denies"},
     {"id": "spec-approval", "lane": "approval", "col": 1, "type": "frontend", "label": "Approve spec", "sublabel": "your decision", "icon": "backend"},
     {"id": "design-approval", "lane": "approval", "col": 2, "type": "frontend", "label": "Approve design", "sublabel": "your decision", "icon": "backend"},
+    {"id": "verify-plan", "lane": "verification", "col": 3, "type": "frontend", "label": "check plan", "sublabel": "targets + gaps", "icon": "backend", "width": 92},
+    {"id": "verify-task", "lane": "verification", "col": 4, "type": "frontend", "label": "task verify", "sublabel": "then summary", "icon": "backend", "width": 92},
+    {"id": "verify-full", "lane": "verification", "col": 5, "type": "frontend", "label": "Full checks", "sublabel": "local evidence", "icon": "backend", "width": 92},
     {"id": "consult-access", "lane": "consultation", "col": 0, "type": "frontend", "label": "Explicit opt-in", "sublabel": "definition + access", "icon": "backend"},
     {"id": "consult-bind", "lane": "consultation", "col": 1, "type": "frontend", "label": "Bind task", "sublabel": "snapshot policy", "icon": "backend"},
     {"id": "consult-scope", "lane": "consultation", "col": 2, "type": "frontend", "label": "Scope check", "sublabel": "after role returns", "icon": "backend"},
@@ -62,6 +66,8 @@
     {"id": "commit-to-gate", "from": "git", "to": "gate"},
     {"id": "spec-approval", "from": "spec-review", "to": "spec-approval", "route": "drop", "fromSide": "bottom", "toSide": "top"},
     {"id": "design-approval", "from": "design-review", "to": "design-approval", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "plan-verify", "from": "verify-plan", "to": "verify-task"},
+    {"id": "verify-final", "from": "verify-task", "to": "verify-full"},
     {"id": "access-bind", "from": "consult-access", "to": "consult-bind"},
     {"id": "bind-scope", "from": "consult-bind", "to": "consult-scope"},
     {"id": "scope-consult", "from": "consult-scope", "to": "consult-run"},

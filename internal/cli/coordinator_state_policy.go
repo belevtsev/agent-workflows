@@ -17,13 +17,14 @@ import (
 )
 
 type coordinatorPolicyKeys struct {
-	Checks     string              `json:"checks"`
-	Roles      string              `json:"roles"`
-	Skills     string              `json:"skills"`
-	Advisers   string              `json:"advisers"`
-	Sources    string              `json:"source_visibility"`
-	Problems   []map[string]any    `json:"problems"`
-	References map[string][]string `json:"references"`
+	Checks       string              `json:"checks"`
+	Verification string              `json:"verification"`
+	Roles        string              `json:"roles"`
+	Skills       string              `json:"skills"`
+	Advisers     string              `json:"advisers"`
+	Sources      string              `json:"source_visibility"`
+	Problems     []map[string]any    `json:"problems"`
+	References   map[string][]string `json:"references"`
 }
 
 func coordinatorPolicy(ctx context.Context, s *session, task string, state contextpack.State) (coordinatorPolicyKeys, error) {
@@ -36,6 +37,10 @@ func coordinatorPolicy(ctx context.Context, s *session, task string, state conte
 	}}
 	var err error
 	p.Checks, err = stageCheckPolicy(ctx, s, state.Tree)
+	if err != nil {
+		return p, err
+	}
+	p.Verification, err = taskVerificationPolicyKey(ctx, s, state.Tree)
 	if err != nil {
 		return p, err
 	}
@@ -95,7 +100,7 @@ func coordinatorRecordKey(ctx context.Context, directory, task string) (string, 
 	}
 	defer func() { _ = root.Close() }()
 	files := map[string]string{}
-	for _, dir := range []string{"openspec/changes/" + task, "openspec/changes/.skills/" + task, "openspec/changes/.advice/" + task} {
+	for _, dir := range []string{"openspec/changes/" + task, "openspec/changes/.skills/" + task, "openspec/changes/.advice/" + task, "openspec/changes/.verification/" + task, "openspec/changes/.usage/" + task} {
 		if exists, err := coordinatorRealDir(root, dir); err != nil {
 			return "", err
 		} else if !exists {

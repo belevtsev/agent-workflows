@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Kitsu: roles, compact context, advisers, usage and the Git gate",
+    "title": "Kitsu: roles, task verification, advisers, usage and the Git gate",
     "locale": "en",
     "quality_profile": "showcase",
     "output": ".archify/overview.html",
@@ -19,7 +19,7 @@
   "components": [
     {"id": "roles", "type": "backend", "label": "kitsu role list", "sublabel": "kitsu-roles.toml", "row": 0, "col": 0, "size": [150, 58]},
     {"id": "agent", "type": "external", "label": "Your coding agent", "sublabel": "starts seven roles", "row": 1, "col": 0, "size": [150, 58]},
-    {"id": "change", "type": "frontend", "label": "Task record", "sublabel": "specs, tests, reviews", "row": 2, "col": 0, "size": [150, 58]},
+    {"id": "change", "type": "frontend", "label": "Task record", "sublabel": "specs, reviews, verify", "row": 2, "col": 0, "size": [150, 58]},
     {"id": "change-check", "type": "backend", "label": "kitsu task check", "sublabel": "record structure", "row": 3, "col": 0, "size": [150, 58]},
     {"id": "adviser-settings", "type": "frontend", "label": "Explicit opt-in", "sublabel": "none by default", "row": 0, "col": 1, "size": [150, 58]},
     {"id": "consult", "type": "backend", "label": "kitsu adviser ask", "sublabel": "native API or CLI", "row": 1, "col": 1, "size": [150, 58]},
@@ -36,7 +36,11 @@
     {"id": "context-collect", "type": "backend", "label": "context commands", "sublabel": "read / search / collect", "row": 4, "col": 0, "size": [150, 58]},
     {"id": "context-artifacts", "type": "database", "label": "Context artifacts", "sublabel": "private per worktree", "row": 4, "col": 1, "size": [150, 58]},
     {"id": "context-expand", "type": "backend", "label": "context show", "sublabel": "bounded expansion", "row": 4, "col": 2, "size": [150, 58]},
-    {"id": "context-brief", "type": "backend", "label": "task prepare", "sublabel": "saved brief + finish", "row": 4, "col": 3, "size": [150, 58]}
+    {"id": "context-brief", "type": "backend", "label": "task prepare", "sublabel": "saved brief + finish", "row": 4, "col": 3, "size": [150, 58]},
+    {"id": "verify-plan", "type": "backend", "label": "kitsu check plan", "sublabel": "priorities + gaps", "row": 5, "col": 0, "size": [150, 58]},
+    {"id": "verify-task", "type": "backend", "label": "kitsu task verify", "sublabel": "repository opt-in", "row": 5, "col": 1, "size": [150, 58]},
+    {"id": "verify-summary", "type": "frontend", "label": "Attempt summary", "sublabel": "historical claim", "row": 5, "col": 2, "size": [150, 58]},
+    {"id": "verify-final", "type": "backend", "label": "Full gate checks", "sublabel": "current local evidence", "row": 5, "col": 3, "size": [150, 58]}
   ],
   "boundaries": [
     {"kind": "region", "label": "Role coordination", "wraps": ["roles", "agent", "change", "change-check"], "pad": 20},
@@ -59,6 +63,9 @@
     {"id": "reports", "from": "counts", "to": "tokens", "label": "summed", "variant": "emphasis"},
     {"id": "context-retain", "from": "context-collect", "to": "context-artifacts", "label": "retain"},
     {"id": "context-inspect", "from": "context-artifacts", "to": "context-expand", "label": "expand"},
-    {"id": "context-handoff", "from": "context-expand", "to": "context-brief", "label": "prepare", "variant": "emphasis"}
+    {"id": "context-handoff", "from": "context-expand", "to": "context-brief", "label": "prepare", "variant": "emphasis"},
+    {"id": "verify-priority", "from": "verify-plan", "to": "verify-task", "label": "targeted first"},
+    {"id": "verify-publish", "from": "verify-task", "to": "verify-summary", "label": "targets pass"},
+    {"id": "verify-before-final", "from": "verify-summary", "to": "verify-final", "label": "before checks", "variant": "emphasis"}
   ]
 }

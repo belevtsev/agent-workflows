@@ -54,12 +54,21 @@ func TestCoordinatorGuidedProtocol(t *testing.T) {
 			required: []string{"native completion notifications", "long bounded native wait", "Do not poll every ten seconds", "cancellation", "deadlines", "user progress updates", "independent host budget monitor", "no CLI daemon watches or starts host workers"},
 		},
 		{
+			name: "managed cadence retains semantic decisions", document: coordinator, heading: "Starting a role",
+			required: []string{"Coalesce routine progress", "keep questions/blockers and user updates", "After terminal red/review decisions", "batch finish/prepare on success", "receipts grant no approval"},
+		},
+		{
 			name: "compact stays opt in", document: compact,
 			required: []string{"only when the developer requests compact mode", "--compact", "v1 reference contract", "task brief ... --json", "For an unmanaged saved brief", "`role check --from <baseline>`", "separate saved baseline and `--finalize`"},
 		},
 		{
 			name: "native dispatch and optional return", document: compact, heading: "Fresh workers",
 			required: []string{"--assignment <file|-> --dispatch", "`native.prompt`", "only the host starts workers", "After the worker has stopped", "Structured return is optional; finish never requires it", "releases no interval, executes no checks", "do not run both"},
+		},
+		{
+			name: "worker delivery and quiet checks", document: compact,
+			required:  []string{"Keep coordinator scheduling", "Do not paste this whole reference", "never trim user instructions", "Use ordinary `kitsu check run` for quiet checks", "Do not probe state before that history exists", "rerun checks solely to populate a handback"},
+			forbidden: []string{"Give these examples to every fresh worker", "Carry this selective observation policy into every fresh worker's assignment"},
 		},
 		{
 			name: "private records cannot certify workflow", document: compact, heading: "Fresh workers",

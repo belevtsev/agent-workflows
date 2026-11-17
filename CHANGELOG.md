@@ -13,6 +13,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A [response-cycle comparison](docs/benchmarks/response-cycles-paid-report.md) records −11.4% compact tokens in one completed pair;
+  all coordinator/worker sessions are counted, protected checks pass, and general quality or billing savings remain unproven.
+
+- Opt-in [native launch views](docs/compact-response-cycles.md) retain mandatory worker fields and a read-only original full dispatch;
+  QE packets add bounded command recipes and scoped optional-tool observations, with existing quality and gate authority.
+
+- A [Codex follow-up](docs/benchmarks/workflow-insights-paid-report.md) records complete coordinator and worker usage;
+  both attempts pass protected checks, while compact uses 21.1% more captured tokens in this pair and remains opt-in.
+
+- Optional [workflow insights](docs/workflow-insights.md) join captured usage, managed intervals and repeated failures;
+  source-linked notes and task budget metadata preserve unknowns without enforcing caps or authorizing paid work.
+
+- Opt-in [task behavioral verification](docs/verification.md) prioritizes mapped checks and records source-bound attempts;
+  final gate checks and current local evidence still determine readiness.
+
+- [Offline verification](docs/verification.md) adds historical defect calibration, generated evidence-equivalence checks
+  and bounded Go fuzz targets without model calls; compact remains opt-in.
+
+- A [revised Codex comparison](docs/benchmarks/compact-delivery-paid-report.md) captures every solver worker and protected quality checks;
+  compact uses 5.5% fewer total tokens in one completed pair, with higher uncached input and no general quality or billing claim.
+
 - [Coordinator state](docs/coordinator-state.md) adds opt-in bounded `task show --compact` snapshots and `--since` section deltas,
   with original references, current check evidence, policy changes and completion blockers; ordinary task views stay unchanged.
 
@@ -45,6 +66,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   of a task. The README, [hooks](docs/hooks.md) and [the task workflow](docs/workflow.md) show them.
 
 ### Changed
+
+- [Compact handoffs](docs/coordinator-overhead.md) use shorter native prompts and worker-focused guidance, ordinary quiet checks,
+  and minimal returns; [offline replay](docs/benchmarks/compact-delivery-report.md) checks fidelity without paid model calls.
 
 - [Compact mode](docs/compact-context.md) now prefers native short reads and scoped searches, reserving collection for noisy retrieval
   and checks; a [separate evaluation](docs/benchmarks/selective-compact-report.md) counts expansions, retries and bounded canary usage.

@@ -81,6 +81,9 @@ with `kitsu role check spec-writer --from <tree> --task <task> --finalize`.
   names, and for each way it can fail.
 - A source is a place a reader can open: the request, a file and line, a
   document. Do not cite what you did not read.
+- For a consequential assumption, optional proposal notes may distinguish
+  observed, inferred and unknown claims, with an opened source, consequence if
+  wrong and revisit trigger. These notes do not answer open questions.
 - When a current requirement in `openspec/specs/` already covers the
   behaviour, change it under `## MODIFIED Requirements` with the same name and
   its full new text. Never add a second requirement for the same behaviour.

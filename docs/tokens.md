@@ -6,6 +6,16 @@ tests and the code. The counts come from the record the host keeps of a session,
 plugin's hooks say that a role or the session has ended. Host totals come only from these records.
 It reports no price and no amount of money.
 
+The preferred CLI spelling is `kitsu usage show`; `kitsu tokens` remains
+available. Optional `kitsu usage show --diagnostics [--task <task>] [--json]`
+joins captured counts with check records and managed preparation-to-finish
+intervals, preserving exact known totals and unknown attribution. Intervals
+include coordinator wait and do not measure actual worker runtime. See
+[workflow insights](workflow-insights.md) for interval overlap limits,
+source-linked notes and `kitsu usage budget` estimates or sourced limits.
+Budget metadata neither authorizes provider calls nor enforces a hard cap;
+incomplete actuals cannot establish an under-budget result.
+
 The report is a split of one task's tokens. It is not a comparison with one agent working alone,
 and it shows no saving and no benefit; see [What is not measured](#what-is-not-measured).
 

@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "experiment": "response-cycles-paired-20261117",
+  "scope": "Posthoc observations from retained native tool outputs, check records, stage receipts and original packet bytes; no additional model execution. Full native dispatch equality and reviewer-input neutrality remain unknown.",
+  "protocol_certification": "unknown",
+  "runs": [
+    {
+      "run_id": "pflag-unknown-flags-r1-normal",
+      "protocol_facts_sha256": "c9d02567f9dd639fb719d56be72e8d339041a18cb7a17cb0e4c48c4b821a9fda",
+      "completed_required_role_steps": 4,
+      "actual_stored_check_runs": 6,
+      "stored_check_outcomes": {
+        "failed": 3,
+        "passed": 3
+      },
+      "meaningful_red_observed": true,
+      "coordinator_red_output_line": 115,
+      "coordinator_red_output_time": "2026-11-17T13:20:15.490Z",
+      "developer_session_started": "2026-11-17T13:20:50.115Z",
+      "role_boundary_validations": 4,
+      "managed_intervals_finished": 0,
+      "final_commit": "c1b8c0ebd8a7d4897574a022b204759ee6535919",
+      "normal_hooked_commit_observed": true,
+      "final_gate_verified": true,
+      "final_tree_clean": true,
+      "additional_rework_workers": 0,
+      "replacement_attempts": 0,
+      "retained_native_trace_calls": {
+        "coordinator": 26,
+        "tests": 9,
+        "code": 7,
+        "review": 5,
+        "commit": 6
+      },
+      "retained_code_mode_cells": {
+        "coordinator": 13,
+        "tests": 9,
+        "code": 6,
+        "review": 5,
+        "commit": 6
+      },
+      "posthoc_cli_host_tokens": {
+        "status": "unknown",
+        "complete": false
+      }
+    },
+    {
+      "run_id": "pflag-unknown-flags-r1-compact",
+      "protocol_facts_sha256": "381fb649da886db079315c3e1992a16d5d6f9417f8bd10f0fec86958910eb449",
+      "completed_required_role_steps": 4,
+      "actual_stored_check_runs": 4,
+      "stored_check_outcomes": {
+        "failed": 1,
+        "passed": 3
+      },
+      "meaningful_red_observed": true,
+      "coordinator_red_output_line": 100,
+      "coordinator_red_output_time": "2026-11-17T13:28:22.815Z",
+      "developer_session_started": "2026-11-17T13:28:47.053Z",
+      "role_boundary_validations": 4,
+      "managed_intervals_finished": 4,
+      "managed_intervals_unfinished": 0,
+      "finish_expectations": [
+        "fail",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "final_commit": "43057a4396884cd39c04fdacd4212de845101dec",
+      "normal_hooked_commit_observed": true,
+      "final_gate_verified": true,
+      "final_tree_clean": true,
+      "additional_rework_workers": 0,
+      "replacement_attempts": 0,
+      "retained_native_trace_calls": {
+        "coordinator": 25,
+        "tests": 7,
+        "code": 9,
+        "review": 5,
+        "commit": 8
+      },
+      "retained_code_mode_cells": {
+        "coordinator": 14,
+        "tests": 6,
+        "code": 9,
+        "review": 4,
+        "commit": 8
+      },
+      "posthoc_cli_host_tokens": {
+        "status": "unknown",
+        "complete": false
+      },
+      "feature_uptake": {
+        "lean_native_launches": 4,
+        "conditional_finish_then_prepare_cells": 3,
+        "qe_recipe_check_observed": true,
+        "qe_typed_searches": 3,
+        "qe_rg_attempts": 0,
+        "qe_help_calls": 0,
+        "qe_lookup_state": "missing",
+        "fit_aware_compact_check_used": false,
+        "read_only_full_dispatch_used": false,
+        "other_roles_optional_tool_or_help_discovery_observed": true
+      },
+      "packets": [
+        {
+          "stage": "tests",
+          "sha256": "348edd09ec02138a2c78b81d538c9c2c20072478582bfe53b3d92dcc120f59da",
+          "hash_matches": true,
+          "original_role_matches_frozen_source": true
+        },
+        {
+          "stage": "code",
+          "sha256": "58d75f1e7687b2c539df29bb1c81ad98b3e85dfc1c2b377242af071846136f2b",
+          "hash_matches": true,
+          "original_role_matches_frozen_source": true
+        },
+        {
+          "stage": "review",
+          "sha256": "1542cd8f52929efb20680643ccccbf59f7f759003fce6ec865adb5b5d97dbcdf",
+          "hash_matches": true,
+          "original_role_matches_frozen_source": true
+        },
+        {
+          "stage": "commit",
+          "sha256": "efcf89135106405cf5930324547bd35de7761e4ac03fc10dbf2ab64f5e41a144",
+          "hash_matches": true,
+          "original_role_matches_frozen_source": true
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Outer native tool-call counts include exec cells that may contain several inner operations; they are not model-response counts.",
+    "All required roles ran, but encrypted native assignment messages prevent full dispatch-equivalence and reviewer-neutrality certification.",
+    "No custom selected skills are exercised by this fixture; empty selection receipts do not prove loading.",
+    "Native captured usage is authoritative for this experiment; task CLI hook counters remain unknown rather than zero.",
+    "One task and one attempt per arm cannot establish general quality, causal feature effects or billing savings."
+  ]
+}

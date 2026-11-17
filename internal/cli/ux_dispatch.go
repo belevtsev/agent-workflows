@@ -75,33 +75,46 @@ func uxExecutePreferred(ctx context.Context, cfg Config, args []string) error {
 	if args[1] == "help" {
 		return uxHelp(cfg, append([]string{args[0]}, args[2:]...), false)
 	}
-	path := args[0] + " " + args[1]
-	for _, c := range uxCommands() {
-		if c.path != path {
-			continue
-		}
-		if uxWantsHelp(args[2:]) {
-			return uxPrintLeaf(cfg, c)
-		}
-		remaining := args[2:]
-		var err error
-		if c.host {
-			remaining, err = uxHostArgs(ctx, remaining, c.requiredHost)
-		}
-		if err == nil {
-			err = c.run(ctx, cfg, remaining)
-		}
-		if ExitCode(err) == ExitUsage && err.Error() != "" {
-			message, _, _ := strings.Cut(err.Error(), "usage:")
-			message = strings.TrimRight(strings.TrimSpace(message), ";, ")
-			if message == "" {
-				message = "invalid or missing arguments"
+	for depth := 2; depth <= len(args); depth++ {
+		path := strings.Join(args[:depth], " ")
+		for _, c := range uxCommands() {
+			if c.path == path {
+				return uxExecuteLeaf(ctx, cfg, c, args[depth:])
 			}
-			return usagef("%s\nusage: %s\nRun `kitsu %s --help` for arguments and examples.", message, uxUsage(c), c.path)
 		}
-		return err
+		if len(uxChildren(path)) == 0 {
+			return uxUnknown(args[depth-1], strings.Join(args[:depth-1], " "), uxChildren(strings.Join(args[:depth-1], " ")))
+		}
+		if depth == len(args) || args[depth] == "--help" || args[depth] == "-h" {
+			return uxHelp(cfg, args[:depth], false)
+		}
+		if args[depth] == "help" {
+			return uxHelp(cfg, append(slices.Clone(args[:depth]), args[depth+1:]...), false)
+		}
 	}
-	return uxUnknown(args[1], args[0], uxChildren(args[0]))
+	return uxHelp(cfg, args, false)
+}
+
+func uxExecuteLeaf(ctx context.Context, cfg Config, c uxCommand, remaining []string) error {
+	if uxWantsHelp(remaining) {
+		return uxPrintLeaf(cfg, c)
+	}
+	var err error
+	if c.host {
+		remaining, err = uxHostArgs(ctx, remaining, c.requiredHost)
+	}
+	if err == nil {
+		err = c.run(ctx, cfg, remaining)
+	}
+	if ExitCode(err) == ExitUsage && err.Error() != "" {
+		message, _, _ := strings.Cut(err.Error(), "usage:")
+		message = strings.TrimRight(strings.TrimSpace(message), ";, ")
+		if message == "" {
+			message = "invalid or missing arguments"
+		}
+		return usagef("%s\nusage: %s\nRun `kitsu %s --help` for arguments and examples.", message, uxUsage(c), c.path)
+	}
+	return err
 }
 
 func uxWantsHelp(args []string) bool {
@@ -141,7 +154,11 @@ func uxGroupNames() []string {
 func uxChildren(group string) []string {
 	var names []string
 	for _, c := range uxCommands() {
-		if parent, child, ok := strings.Cut(c.path, " "); ok && parent == group && !c.hidden {
+		if c.hidden || !strings.HasPrefix(c.path, group+" ") {
+			continue
+		}
+		child, _, _ := strings.Cut(strings.TrimPrefix(c.path, group+" "), " ")
+		if !slices.Contains(names, child) {
 			names = append(names, child)
 		}
 	}

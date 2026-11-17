@@ -32,18 +32,44 @@ func uxHelp(cfg Config, path []string, all bool) error {
 		}
 		return uxUnknown(names[0], "", uxGroupNames())
 	}
-	requested := strings.Join(names[:2], " ")
+	requestedNames := slices.Clone(names)
 	names = uxAliasPath(names)
-	key := strings.Join(names[:2], " ")
-	for _, c := range uxCommands() {
-		if c.path == key {
+	for depth := len(names); depth >= 2; depth-- {
+		key := strings.Join(names[:depth], " ")
+		requested := strings.Join(requestedNames[:depth], " ")
+		for _, c := range uxCommands() {
+			if c.path != key {
+				continue
+			}
 			if requested != key {
 				c = uxAliasHelp(c, requested)
 			}
 			return uxPrintLeaf(cfg, c)
 		}
+		if depth == len(names) && uxPrintNestedHelp(cfg, key) {
+			return nil
+		}
 	}
-	return uxUnknown(names[1], names[0], uxChildren(names[0]))
+	parent := strings.Join(names[:len(names)-1], " ")
+	return uxUnknown(names[len(names)-1], parent, uxChildren(parent))
+}
+
+func uxPrintNestedHelp(cfg Config, name string) bool {
+	children := uxChildren(name)
+	if len(children) == 0 {
+		return false
+	}
+	fmt.Fprintf(cfg.Out, "usage: kitsu %s <command> [arguments]\n\nCommands:\n", name)
+	for _, child := range children {
+		for _, command := range uxCommands() {
+			if command.path == name+" "+child {
+				fmt.Fprintf(cfg.Out, "  %-12s %s\n", child, command.summary)
+				break
+			}
+		}
+	}
+	fmt.Fprintf(cfg.Out, "\nRun `kitsu %s <command> --help` for arguments and examples.\n", name)
+	return true
 }
 
 func uxUsage(c uxCommand) string {

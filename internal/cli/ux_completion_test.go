@@ -27,6 +27,8 @@ func TestUXCompletionCommandMetadata(t *testing.T) {
 		{name: "group", words: []string{"role", "s"}, want: []string{"set", "show"}, absent: []string{"list"}},
 		{name: "nested help", words: []string{"help", "skill", "a"}, want: []string{"attach"}},
 		{name: "group help", words: []string{"role", "help", "s"}, want: []string{"set", "show"}},
+		{name: "nested budget", words: []string{"usage", "budget", ""}, want: []string{"set", "show", "reset"}},
+		{name: "nested budget help", words: []string{"usage", "budget", "help", "s"}, want: []string{"set", "show"}},
 		{name: "flag", words: []string{"role", "set", "developer", "--mo"}, want: []string{"--model"}},
 		{name: "flag value", words: []string{"role", "set", "--host", "co"}, want: []string{"codex"}, absent: []string{"--host"}},
 		{name: "equal flag value", words: []string{"role", "set", "--host=cl"}, want: []string{"--host=claude"}},

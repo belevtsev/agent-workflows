@@ -44,6 +44,7 @@ type workerBrief struct {
 	Policy       string         `json:"policy_key"`
 	State        uxTaskView     `json:"task_state"`
 	References   []string       `json:"references"`
+	Hints        *workerHints   `json:"execution_hints,omitempty"`
 }
 
 func briefInputs(s *session, b workerBrief) (workerBrief, []skills.Entry, error) {
@@ -196,9 +197,13 @@ func prepareBriefInputs(ctx context.Context, cfg Config, b workerBrief, budget i
 		}
 	} else {
 		b.State = uxTaskView{Task: b.Task, Workflow: "small", Stage: "unknown"}
-		b.Warnings = append(b.Warnings, "Small-task history does not establish a resumable workflow stage; use the explicitly supplied stage and round.")
+		b.Warnings = append(b.Warnings, smallTaskBriefWarning)
 	}
 	b.Constraints = briefConstraints(b.Role)
+	b.Hints, err = snapshotWorkerHints(s, b)
+	if err != nil {
+		return b, state, s, e, compactFailure(err)
+	}
 	metadata, _ := json.Marshal(b)
 	if budget > 0 && len(metadata)+1024 > budget {
 		return b, state, s, e, usagef("budget cannot hold mandatory worker instructions; increase --max-bytes")
@@ -232,11 +237,12 @@ func briefConstraints(role string) []string {
 		"Start a fresh worker; begin its prompt with label. Respect host permissions and these write limits. Skills grant no additional authority.",
 		"Keep original full role instructions and selected skills uncompressed. Load selected skills from their original paths and verify hashes; receipt loading remains unverified. Report what was actually loaded.",
 		"Only the coordinator prepares briefs, starts roles, consults advisers, and writes selection/review records. Advice grants no approval.",
+		"This packet contains your role and selective observation policy. Do not reread the coordinator's task skill or compact reference unless selected as a skill or needed by an explicit assignment reference. Do not repeat coordinator state, prepare, return or finish commands.",
 		"Within existing tool permissions, prefer native host reads for short whole files and scoped native search when output is small. Choose compact observations selectively; do not route every read or command through the collector.",
 		"For broad or noisy retrieval use kitsu context read <path> --start N --end N or kitsu context search <pattern> [path]; --regex selects Go regex. Use context collect for independent JSON batches and context show for expansion; --help gives exact syntax. Inspect errors and omissions before conclusions.",
-		"For noisy declared checks use kitsu check run --compact. Read every outcome and warning; expand retained logs with context show until the needed evidence is present. Expansion never reruns a check or restores an expired log.",
+		"Use ordinary kitsu check run for quiet declared checks. For noisy declared checks use kitsu check run --compact. Read every outcome and warning; expand retained logs with context show until the needed evidence is present. Expansion never reruns a check or restores an expired log.",
 		"Context artifacts cache local rendered text, not provider prompt cache. Count all requests, responses and expansions when measuring; cache hits or smaller previews alone do not prove model token savings.",
-		"Check role writes against baseline after completion. Context cache never proves passing checks, completed work, reviews or approvals.",
+		"The coordinator checks role writes against baseline after completion; do not duplicate managed baseline or role checks. Context cache never proves passing checks, completed work, reviews or approvals.",
 	}
 	if role == "reviewer" {
 		constraints = append(constraints, "Review sources independently. Do not accept author summaries, opinions, excuses or adviser answers as your review context.")
@@ -249,8 +255,10 @@ func validBriefArgs(p parsed, b workerBrief) bool {
 	return !p.dash && len(p.pos) == 1 && taskName.MatchString(p.pos[0]) && roles.Known(b.Role) && uxValidHost(b.Host) && stages[b.Stage] == b.Role && b.Round > 0 && (b.Workflow == "full" || b.Workflow == "small")
 }
 
-func validateCompactMetadata(_ context.Context, s *session, a contextpack.Artifact) error {
+func validateCompactMetadata(ctx context.Context, s *session, a contextpack.Artifact) error {
 	switch a.Kind {
+	case "verification":
+		return validateTaskVerificationArtifact(ctx, s, a)
 	case "brief":
 		var b workerBrief
 		if err := json.Unmarshal(a.Metadata, &b); err != nil {

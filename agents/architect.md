@@ -81,6 +81,9 @@ Only `design.md` and `tasks.md` of the change folder `openspec/changes/<task>/`.
   exists.
 - Say how the design fails: wrong input, a missing file, a dependency that
   does not answer. Say what is deliberately left out.
+- For consequential uncertainty or tradeoffs, optional notes may name the opened
+  source, consequence if wrong and revisit trigger. Distinguish observed,
+  inferred and unknown claims; avoid repeating the reuse table.
 - A rule that a program can check names the check that does it. A check you
   name must be declared in `kitsu.toml`; when it is not, say in the design that
   it is to be declared, and write `review` until it is.

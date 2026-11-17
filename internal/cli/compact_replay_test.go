@@ -15,16 +15,21 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
-const replayDiagnostic = "FAIL: middle-only diagnostic: preserve λ and 🐕"
+const (
+	replayDiagnostic = "FAIL: middle-only diagnostic: preserve λ and 🐕"
+	// The full raw log exceeds the default response budget, so expansion remains
+	// necessary when fitting failed logs correctly return complete evidence.
+	replayNoisePerSide = 400
+)
 
 // This subprocess is a declared check, not a model or agent CLI invocation.
 func TestCompactReplayCheckChild(t *testing.T) {
 	if os.Getenv("KITSU_TEST_COMPACT_REPLAY_CHILD") != "1" {
 		return
 	}
-	fmt.Fprint(os.Stderr, strings.Repeat(workflowNoise, 120))
+	fmt.Fprint(os.Stderr, strings.Repeat(workflowNoise, replayNoisePerSide))
 	fmt.Fprintln(os.Stderr, replayDiagnostic)
-	fmt.Fprint(os.Stderr, strings.Repeat(workflowNoise, 120))
+	fmt.Fprint(os.Stderr, strings.Repeat(workflowNoise, replayNoisePerSide))
 	os.Exit(7)
 }
 
@@ -133,6 +138,9 @@ func replayFixture(t testing.TB, workload string) *kitsutest.Repo {
 		t.Fatal(err)
 	}
 	if workload == "buried-check" {
+		if 2*replayNoisePerSide*len(workflowNoise) <= contextpack.DefaultBytes {
+			t.Fatal("buried-check fixture must exceed the complete-response budget")
+		}
 		r.Setenv("KITSU_TEST_COMPACT_REPLAY_CHILD", "1")
 		r.Setenv("GORACE", "atexit_sleep_ms=0")
 		r.Write("kitsu.toml", fmt.Sprintf("version=1\n[[check]]\nid='buried'\nrun=[%q,'-test.run=^TestCompactReplayCheckChild$']\ntimeout='10s'\n", strings.ReplaceAll(program, `\`, "/")))
@@ -224,10 +232,11 @@ func replayRun(m *replayMeter, workload string, selective bool) map[string]strin
 			facts["outcome"] = status.Checks[0].Outcome + ":" + strconv.Itoa(*status.Checks[0].ExitStatus)
 			facts["verified"] = strconv.FormatBool(status.Verified)
 		}
-		if strings.Count(log, replayDiagnostic) != 1 || strings.Count(log, workflowNoise) != 240 || facts["outcome"] != "failed:7" || facts["verified"] != "false" {
+		noiseLines := 2 * replayNoisePerSide
+		if strings.Count(log, replayDiagnostic) != 1 || strings.Count(log, workflowNoise) != noiseLines || facts["outcome"] != "failed:7" || facts["verified"] != "false" {
 			m.t.Fatal("buried failure or surrounding retained context lost")
 		}
-		facts["diagnostic"], facts["noise_lines"] = replayDiagnostic, "240"
+		facts["diagnostic"], facts["noise_lines"] = replayDiagnostic, strconv.Itoa(noiseLines)
 		return facts
 	}
 	path, kind := "short.go", "read"
