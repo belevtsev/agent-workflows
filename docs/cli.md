@@ -47,6 +47,13 @@ all operands, options, defaults, and examples without running a command.
 
 ## Opt into compact context
 
+`kitsu task show <task> --compact` returns a bounded coordinator snapshot.
+Use `kitsu task show <task> --since <snapshot-id>` after a state change to receive
+only changed sections; it implies compact JSON. `--max-bytes` defaults to 16384.
+Ordinary `task show` and `task show --json` keep their existing output. See the
+[snapshot and delta how-to](coordinator-state.md) for reference expansion, limits
+and recovery when a baseline expires.
+
 ```sh
 kitsu task start "Fix login retries" --host codex --compact
 kitsu context read README.md --start 1 --end 30

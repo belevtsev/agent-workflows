@@ -8,6 +8,7 @@ Start with the task workflow and roles to coordinate coding agents. The Git gate
 | [CLI command reference](cli-reference.md) | Generated command help with operands, options, defaults, and examples. |
 | [Compact context](compact-context.md) | Opt into selective native reads, collection for noisy retrieval, original worker briefs and bounded checks; expand retained evidence. |
 | [Coordinator handoffs](coordinator-overhead.md) | Generate native dispatch descriptions, retain bounded worker claims and avoid repeated managed bookkeeping; verify locally. |
+| [Coordinator state](coordinator-state.md) | Inspect bounded snapshots, expand original references and apply deltas from a known baseline. |
 | [Context and workflow research](context-research.md) | Primary-source comparisons, token/cost tradeoffs, priorities and a controlled evaluation protocol. |
 | [Codex compact pilot](codex-compact-pilot.md) | A controlled 24-run real-task comparison, independent quality checks and actual solver token accounting. |
 | [Codex pilot results](benchmarks/codex-compact-pilot-report.md) | Completed Sol/high comparison: frozen test passes, confirmed additional defects, workflow cutoffs and incomplete token pairs. |

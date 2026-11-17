@@ -1,5 +1,9 @@
 # Coordinator dispatch and returns
 
+Use [bounded state snapshots and deltas](coordinator-state.md) to inspect stage,
+interval, checks, open recorded findings, policy and completion blockers without
+reprinting complete records. These observations complement the handoff protocol below.
+
 Kitsu can generate a native launch description and retain a structured worker
 return. These helpers run locally in Go: they launch no model, change no role's
 model/reasoning and grant no review or completion authority. Compact mode

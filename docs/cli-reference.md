@@ -97,7 +97,7 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ```text
 usage: kitsu task show <task> [options]
 
-Show a full task's stage or a small task's saved history.
+Show task records, or an explicit bounded coordinator snapshot/delta.
 
 Arguments:
   <task>             task name: lowercase words joined by hyphens
@@ -105,6 +105,12 @@ Arguments:
 Options:
   --json                   print machine-readable JSON without prompts or
                            styling
+  --compact                return a full coordinator snapshot with references;
+                           always JSON
+  --since <snapshot-id>    return only sections changed since a retained
+                           snapshot; implies --compact
+  --max-bytes <bytes>      compact response byte limit; default 16384, range 512
+                           to 1048576
   --help, -h               show this command's help without executing it
 
 Examples:

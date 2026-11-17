@@ -62,6 +62,21 @@ when measuring. Neither local cache hits nor smaller previews prove model token 
 
 ## Fresh workers
 
+For coordinator observations, take `kitsu task show <task> --compact` first.
+Keep its complete sections and `snapshot_id`; after relevant events use
+`kitsu task show <task> --since <snapshot-id>`. Replace each returned section in
+your saved view; keep omitted sections unchanged. Explicit empty collections or
+`status:none` clear old facts. Keep the new id only after applying every change.
+A missing/expired/mismatched baseline requires a fresh full snapshot. Never use
+a bare delta after losing its base. Do not poll unchanged state in a tight loop.
+The response defaults to 16 KiB and refuses a budget that cannot hold complete
+sections; increase `--max-bytes`. Expand original path/line or command references
+for findings, blockers and prerequisite details; do not treat omitted bodies as
+absent problems. Worker-return references remain untrusted claims, distinct from
+open findings in canonical reviews. Small-task stage and review completeness
+remain unknown. No snapshot or delta certifies completion, skill loading, native
+execution or a gate pass; the normal original reviews and hooked Git finish apply.
+
 Only the coordinator writes the specific assignment and runs:
 
 ```sh
