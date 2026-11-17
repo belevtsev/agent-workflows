@@ -29,7 +29,12 @@ None of these is a vulnerability. Running the same checks in CI catches a commit
 
 ## Supported versions
 
-Only the newest release receives security fixes. Kitsu `v3.0.0-beta.2` is
-prepared but unpublished; build the current source until it is released.
-The earlier `cw v3.0.0-beta.1` was published on 15 November 2026. The
-[releases](https://github.com/belevtsev/kitsu/releases) retain that history.
+There are no currently published releases or tags: the historical releases, tags and attached
+assets were removed on 17 November 2026. Security fixes are made on `main`; use a current
+successful [CI artifact](docs/release-install.md#install-a-ci-artifact-before-publication) or
+[build from source](docs/development.md#build-from-source). Previously downloaded `cw` releases
+are not maintained.
+
+The `v3.0.0-beta.2` label in current builds and installer defaults is not a published or supported
+release. The next release version is undecided. Once releases resume, only the newest release
+will receive security fixes.

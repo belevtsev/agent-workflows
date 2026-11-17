@@ -2,29 +2,45 @@
 
 Install Kitsu's CLI without a repository checkout or Go. The installer chooses the archive for
 your operating system and native architecture, verifies it against `SHA256SUMS`, then replaces
-the executable. Linux, macOS, and Windows releases provide amd64 and arm64 builds.
+the executable. Linux, macOS, and Windows archives provide amd64 and arm64 builds.
 
-**Prepared for `v3.0.0-beta.2`; this release is not published yet.** The public install commands
-need its release assets. To try this build before publication, use the
-[CI artifact method](#install-a-ci-artifact-before-publication) below. The older
-`v3.0.0-beta.1` release contains `cw`, not a Kitsu executable.
+**No GitHub releases or tags are currently published.** All historical releases, tags and
+attached assets were removed on 17 November 2026. Use a successful CI artifact or
+[build from source](development.md#build-from-source).
 
-## Install from a release
+Current installers, plugin manifests and CI archives use `v3.0.0-beta.2` as their build label.
+That label does not represent an available public release. The next release version and revision
+are undecided; [publication](development.md#releases) must align the version metadata and create new assets.
 
-On macOS or Linux:
+## Install a CI artifact before publication
+
+1. Open a successful run of [CI](https://github.com/belevtsev/kitsu/actions/workflows/ci.yml)
+   for the revision you want, then download its **kitsu-archives** artifact. Extract that download
+   into a directory of your choice.
+2. Keep the contained platform archives intact. Use `install.sh`, `install.ps1`, `SHA256SUMS`
+   and the `kitsu_<version>_<os>_<arch>` archives from the same download.
+3. Run the bundled installer with that directory. It verifies the selected local archive and
+   uses no network. Neither a clone nor Go is needed.
+
+On macOS or Linux, replace the example path with the directory you extracted:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh | sh
+sh /path/to/kitsu-archives/install.sh --archive-dir /path/to/kitsu-archives
 ```
 
-On Windows, in PowerShell 5.1 or 7:
+On Windows, using PowerShell 5.1 or 7:
 
 ```powershell
-irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 | iex
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\path\kitsu-archives\install.ps1" -ArchiveDir "C:\path\kitsu-archives"
 ```
 
-These are user installs. The defaults are `$HOME/.local/bin/kitsu` on macOS/Linux and
+`-ExecutionPolicy Bypass` applies only to that PowerShell process. These are user installs;
+the defaults are `$HOME/.local/bin/kitsu` on macOS/Linux and
 `%LOCALAPPDATA%\kitsu\kitsu.exe` on Windows. Open a new terminal, then run `kitsu version`.
+Check its revision against the CI run: different commits can carry the same version label.
+If the artifact filenames use a different version, pass it explicitly with `--version` or `-Version`.
+The artifact is a build of that CI commit, not a published release.
+
 Kitsu uses Git to work in a repository; Windows hooks use the shell supplied by Git for Windows.
 
 The installer adds its directory to user `PATH` unless you opt out. Rerunning it does not add
@@ -51,54 +67,29 @@ paste; `--json` also exposes diagnostics and proposed argv. Both modes execute n
 create no task record. See [onboarding](cli.md#check-setup-and-start-a-task) for exit statuses and
 ready, broken, and unknown evidence. Installing the supporting Git gate is a separate step.
 
-## Install a CI artifact before publication
-
-1. Open a passing run of [CI](https://github.com/belevtsev/kitsu/actions/workflows/ci.yml) and
-   download its **kitsu-archives** artifact. Extract that download into a directory of your choice.
-2. Keep the contained platform archives intact. The directory must hold `install.sh`,
-   `install.ps1`, `SHA256SUMS`, and the `kitsu_<version>_<os>_<arch>` archives.
-3. Run the bundled installer with that directory. It verifies the selected local archive and
-   uses no network. Neither a clone nor Go is needed.
-
-On macOS or Linux, replace the example path with the directory you extracted:
-
-```sh
-sh /path/to/kitsu-archives/install.sh --archive-dir /path/to/kitsu-archives
-```
-
-On Windows:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "C:\path\kitsu-archives\install.ps1" -ArchiveDir "C:\path\kitsu-archives"
-```
-
-`-ExecutionPolicy Bypass` applies only to that PowerShell process. Open a new terminal and run
-`kitsu version`. The artifact is a build of that CI commit, not a published release.
-If its filenames use a different version, pass that version explicitly.
-
 ## Choose a version or directory
 
-Download the installer once to pass arguments. For example, on macOS/Linux:
+Pass arguments to the bundled installer. For example, with a current CI artifact on macOS/Linux:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh -o kitsu-install.sh
-sh kitsu-install.sh --version v3.0.0-beta.2 --install-dir "$HOME/tools/kitsu" --no-modify-path
+sh /path/to/kitsu-archives/install.sh --archive-dir /path/to/kitsu-archives \
+  --version v3.0.0-beta.2 --install-dir "$HOME/tools/kitsu" --no-modify-path
 ```
 
 On Windows:
 
 ```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 -OutFile "$env:TEMP\kitsu-install.ps1"
-powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\kitsu-install.ps1" -Version v3.0.0-beta.2 -InstallDir "$env:LOCALAPPDATA\tools\kitsu" -NoModifyPath
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\path\kitsu-archives\install.ps1" `
+  -ArchiveDir "C:\path\kitsu-archives" -Version v3.0.0-beta.2 -InstallDir "$env:LOCALAPPDATA\tools\kitsu" -NoModifyPath
 ```
 
 These examples leave `PATH` unchanged. Use the installed executable by its full path, or add the
-chosen directory to user `PATH`. Select an existing `v`-prefixed release tag for a public download.
-The prepared `v3.0.0-beta.2` still needs the CI artifact route until it is published.
+chosen directory to user `PATH`. Match the version to the archive filenames. Public downloads
+require an existing published tag; none is currently available.
 
 | macOS/Linux flag | PowerShell parameter | Environment default | Purpose |
 | --- | --- | --- | --- |
-| `--version TAG` | `-Version TAG` | `KITSU_VERSION` | Select the version; the default is `v3.0.0-beta.2`. |
+| `--version TAG` | `-Version TAG` | `KITSU_VERSION` | Match the archive version; the current default is `v3.0.0-beta.2`. |
 | `--install-dir DIR` | `-InstallDir DIR` | `KITSU_INSTALL_DIR` | Choose the destination directory. |
 | `--no-modify-path` | `-NoModifyPath` | `KITSU_NO_MODIFY_PATH=1` | Install without changing user `PATH`. |
 | `--archive-dir DIR` | `-ArchiveDir DIR` | `KITSU_ARCHIVE_DIR` | Use local archives and `SHA256SUMS`, with no download. |
@@ -109,8 +100,8 @@ directory URL; the installer appends only the archive name and `SHA256SUMS`. It 
 flag. Use HTTPS; HTTP is supported only for loopback test servers. A failed checksum leaves an
 already installed executable in place.
 
-Unix help is `sh kitsu-install.sh --help`; PowerShell help is
-`Get-Help "$env:TEMP\kitsu-install.ps1" -Full` after downloading as above.
+Unix help is `sh /path/to/kitsu-archives/install.sh --help`; PowerShell help is
+`Get-Help "C:\path\kitsu-archives\install.ps1" -Full`.
 
 ## PATH and updates
 
@@ -128,16 +119,42 @@ On macOS/Linux, if the installer cannot update startup configuration, it prints 
 `PATH` step. The verified executable remains installed; follow that step before opening a new
 terminal.
 
-Rerun the one-line install command to reinstall or move to the installer's current default
-version. Defaults stay pinned until a newer release updates them; the installer does not choose
-an arbitrary latest tag. Use the version option to pin a particular release. Reusing a saved
-installer keeps that script's default unless you override it.
+To update a CI installation, download a newer successful artifact and rerun its bundled installer
+against that artifact directory. Verify the installed revision, since the version label may be unchanged.
+Installer defaults stay pinned until updated in source; the installer does not discover the latest
+tag. Reusing a saved installer keeps that script's default unless you override it.
+
+## Install from a release
+
+**For use after publication.** No release download is currently available. Once a new release
+exists, choose its tag from the [releases page](https://github.com/belevtsev/kitsu/releases) and
+replace `vX.Y.Z` below with that exact tag. Download the installer from the same release as its archives.
+
+On macOS or Linux:
+
+```sh
+version='vX.Y.Z'
+curl -fsSL "https://github.com/belevtsev/kitsu/releases/download/$version/install.sh" -o kitsu-install.sh
+sh kitsu-install.sh --version "$version"
+```
+
+On Windows:
+
+```powershell
+$version = 'vX.Y.Z'
+Invoke-WebRequest "https://github.com/belevtsev/kitsu/releases/download/$version/install.ps1" -OutFile "$env:TEMP\kitsu-install.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\kitsu-install.ps1" -Version $version
+```
+
+The installers download the selected archive and verify `SHA256SUMS`. A missing release or
+archive is an error. They do not fall back to a historical `cw` build.
 
 ## Manual archive install
 
-**From a release, without Go.** The following alternative downloads a single archive and checks
-its checksum before unpacking it. These URLs become available after publication. Perform the
-download in an empty directory.
+**For use after publication, without Go.** This alternative downloads a single archive and
+checks its checksum before unpacking it. The tag assignments below retain the current
+`v3.0.0-beta.2` build label; they are prepared recipes, not available downloads. Update them to
+the chosen release version as part of publication. Perform the download in an empty directory.
 
 On macOS or Linux:
 

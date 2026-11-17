@@ -24,7 +24,7 @@ Seven specialist roles, shared task records, and token reporting, with a Git gat
 | **Shared task records** | Requirements, design decisions, tasks, tests, and review findings give the agents a common record to work from. `kitsu task` checks that record and reports the task's stage. |
 | **Existing skills** | Select skills from local repository, personal, and installed plugin sources for each role, while keeping their original files and references. |
 | **Token reporting** | `kitsu usage show` reports recorded token usage by task and role, including the coordination overhead. |
-| **Compact context (opt-in)** | Typed reads/searches, saved original worker briefs, ordered stage write checks and bounded output, with expandable evidence. |
+| **Compact context (opt-in)** | Typed reads/searches, saved worker briefs, managed dispatch/returns, stage write checks and bounded state snapshots/deltas, with original evidence references. |
 | **Advisers (experimental)** | Optional Jev, SubQ Snap, and CLI consultations, with recorded answers and decisions. None are enabled by default. |
 | **Git gate** | As a supporting check, Git hooks allow commits and pushes only when the checks declared in `kitsu.toml` have passing evidence for that content. |
 
@@ -32,7 +32,8 @@ Your agent host runs the coordinator and delegates to the roles. Kitsu supplies 
 role definitions, record checks, and usage reports. The Git gate supports that workflow and can also be used on its own.
 
 > [!NOTE]
-> Kitsu is a pre-release. [Install from release or CI artifacts](#install); [State](#state) covers release status and validation.
+> Kitsu is in development, with no published releases or tags after the 17 November 2026 reset.
+> [Install a CI artifact](#install) or build from source; [State](#state) covers validation and current limits.
 
 ## The roles
 
@@ -299,30 +300,39 @@ The [quick start](docs/quickstart.md) is the same five commands as a text that a
 
 ## Install
 
-Install the CLI from release artifacts, without cloning this repository or installing Go.
+**No release downloads are currently available.** Install a CI build without cloning this
+repository or installing Go:
+
+1. Open a successful [CI run](https://github.com/belevtsev/kitsu/actions/workflows/ci.yml)
+   for the revision you want and download its **kitsu-archives** artifact.
+2. Extract the download into a directory, keeping its platform archives intact alongside
+   `install.sh`, `install.ps1` and `SHA256SUMS`.
+3. Run the bundled installer with that directory, replacing the example paths below.
+
 On macOS or Linux:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh | sh
+sh /path/to/kitsu-archives/install.sh --archive-dir /path/to/kitsu-archives
 ```
 
 On Windows, in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 | iex
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\path\kitsu-archives\install.ps1" -ArchiveDir "C:\path\kitsu-archives"
 ```
 
-**Prepared for `v3.0.0-beta.2`, which is not published yet.** The commands above need the
-corresponding release assets. To try this build now, [install the CI artifact](docs/release-install.md#install-a-ci-artifact-before-publication)
-with the same scripts; that also needs no clone or Go. The old `v3.0.0-beta.1` release contains `cw`.
+The installers read these archives locally. `-ExecutionPolicy Bypass`
+applies only to that PowerShell process. Current CI builds use the label `v3.0.0-beta.2`;
+it is not a published release or a decision about the next release version.
 
 The installer selects your platform and architecture, verifies the archive checksum before
 replacing the executable, and sets up your user `PATH`. The default location is `$HOME/.local/bin`
 on macOS/Linux or `%LOCALAPPDATA%\kitsu` on Windows. Open a new terminal, then run `kitsu version`.
 
-Rerun the installer command to reinstall or update to its current default version. The
-[installation guide](docs/release-install.md) covers version pinning, custom directories, opting
-out of `PATH` changes, and manual archive installation. Contributors can [build from source](docs/development.md#build-from-source).
+To update, download a newer successful CI artifact and run its bundled installer. Check the
+revision printed by `kitsu version`: CI builds can share the same version label. The
+[installation guide](docs/release-install.md) covers custom directories, `PATH`, and installation
+after a future release. Contributors can [build from source](docs/development.md#build-from-source).
 
 Kitsu uses Git to work in a repository. On Windows its Git hooks use the `sh` supplied by Git for
 Windows. The installer installs only Kitsu's CLI; [add the plugin](#for-a-coding-agent) through
@@ -415,10 +425,10 @@ separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advise
 
 ## State
 
-- Kitsu `v3.0.0-beta.2` is prepared but unpublished. The earlier
-  [`cw v3.0.0-beta.1`](https://github.com/belevtsev/kitsu/releases/tag/v3.0.0-beta.1)
-  was published on 15 November 2026. Its installation was checked on Linux, macOS and Windows.
-  CI builds the six Kitsu archives and tests the [prepared release instructions](docs/release-install.md).
+- All historical GitHub releases, tags and attached assets were removed on 17 November 2026.
+  The next release version and revision are undecided. Current installer defaults, manifests and
+  CI archive labels still use `v3.0.0-beta.2`; CI builds six archives and tests their
+  [installation](docs/release-install.md#what-ci-checks) without publishing them.
 - Local build, vet, and race-enabled tests passed on Linux. Lint and vulnerability checks passed for Linux,
   macOS, and Windows targets. See the [adviser change checks](openspec/changes/add-configurable-advisers/tests.md)
   and [installer validation](docs/release-install.md#what-ci-checks) for their scope.
@@ -443,6 +453,10 @@ separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advise
 - [Selective compact evaluation](docs/benchmarks/selective-compact-report.md) counts needed expansions and retries offline;
   some workloads use more bytes. Its Sol/high canary stopped at the budget reserve during the first ordinary run;
   the candidate passed independent tests, but no workflow or on/off pair completed.
+- [Coordinator dispatch and returns](openspec/changes/reduce-coordinator-overhead/tests.md) passed local checks and a complete
+  scripted review/repair/Git replay. The corrected v2 fixture uses more transport than its v1 reference; it does not establish token savings.
+- [Coordinator state snapshots and deltas](openspec/changes/add-coordinator-state/tests.md) passed local build, vet, Linux race
+  tests and three-target lint/vulnerability checks. Bounded observations grant no completion authority; live token savings remain unmeasured.
 - Advisers are optional and experimental, disabled by default. They are tested with local fake executables and
   HTTPS fixtures; CLI examples were checked against provider help.
   No live adviser quality evaluation was run. Native usage is provider-reported; CLI usage is unmeasured.

@@ -148,6 +148,10 @@ no other run showed.
 
 ## Releases
 
+There are no published releases or tags after the 17 November 2026 reset. The next version and
+release revision are undecided. Current CI archive labels, installer defaults and plugin
+manifests still use `v3.0.0-beta.2`; that label keeps build inputs consistent without publishing anything.
+
 A release is made when the owner pushes a `v*` tag. `.github/workflows/release.yml`
 then does four things, each only when the one before it passed:
 
@@ -168,10 +172,10 @@ then does four things, each only when the one before it passed:
    `scenarios/installers`, with Go and Git absent from the install environment's `PATH`, and
    verifies the installed version and revision. Windows covers PowerShell 5.1 and 7.
 
-The former `cw` release pipeline ran once for `v3.0.0-beta.1` on 15 November
-2026; all four steps passed using that version's README instructions. That is
-historical evidence, not a published Kitsu release. Kitsu `v3.0.0-beta.2`
-is prepared but unpublished. The guard has refused a commit only in its tests.
+The former `cw` release pipeline ran for `v3.0.0-beta.1` on 15 November 2026; all four steps
+passed using that version's instructions. Its tag, release and assets were removed on
+17 November. The [historical changelog](../CHANGELOG.md#300-beta1---2026-11-15) links to the
+original source commit. Those results do not verify a future Kitsu publication.
 
 CI runs the commands of step 2 on every commit. Its job `Release archives`
 builds the six archives in the same way, and the same text, from the commit,
@@ -185,19 +189,32 @@ To try the archives of a commit before it is tagged:
 gh run download <run of CI> --name kitsu-archives --dir kitsu-archives
 ```
 
-To publish, the owner does two things:
+To publish:
 
-1. Merge the branch into `main` and wait until the run of CI for the merge
+1. Choose the release version and intended scope. Align the release-install guide's shell and
+   PowerShell tag lines, installer defaults, plugin/marketplace manifests and version-consistency
+   tests. Update README/security publication text and the changelog for that version.
+2. Merge the branch into `main` and wait until the run of CI for the merge
    commit has passed.
-2. Tag that commit with the tag `docs/release-install.md` names and push the tag:
+3. Tag that commit with the tag `docs/release-install.md` names and push the tag:
    `git tag <tag> <commit>` and `git push origin <tag>`.
+4. Verify that publication and public installer checks passed, then link the actual release
+   and replace the no-release notices with its observed status.
+
+If reusing a deleted version name, review the existing changelog heading before tagging:
+`release-notes.sh` prefers that version's section over `Unreleased`, so historical notes could
+otherwise become the new release description. Current `TestPreparedReleaseVersions` also rejects
+the former `cw v3.0.0-beta.1` name; reusing it requires an intentional update to that check and
+the version contract, not just recreating a tag.
 
 After a release, give the section `Unreleased` of the changelog the heading
 of that version, and start a new section `Unreleased` above it.
 
-The README, release installation guide, installer defaults, and plugin/marketplace manifests
-name the version; change them together. After the first Kitsu release is live and its installation
-jobs pass, remove the unpublished notices. Until then, the installers can use a downloaded
+CI reads the single `tag=v<version>` line from the release installation guide to name its archives.
+The release workflow requires that line and the matching PowerShell assignment to match the pushed tag.
+Keep both examples aligned with the installer and manifest versions even while no release exists.
+Until publication, the installers can use a downloaded
 [`kitsu-archives` CI artifact](release-install.md#install-a-ci-artifact-before-publication) without
-a checkout or Go. Never point a Kitsu command at the old `cw` archives. Preparing the installers
-does not tag or publish a release.
+a checkout or Go. Use scripts and archives from the same artifact, and verify the commit shown
+by `kitsu version`; multiple CI builds can share the same version label. Preparing the installers
+does not create a tag or release.

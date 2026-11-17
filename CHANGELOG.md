@@ -54,6 +54,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- [Installation docs](docs/release-install.md) now lead with CI artifacts after the release reset;
+  historical changelog links use source commits, and the next release version remains undecided.
+
 - [Pilot validation](docs/codex-compact-pilot.md) accepts clean Windows rollout/copied-home paths and trusted repository aliases,
   retaining containment, attestation and candidate-tree checks while rejecting duplicate home destinations.
 
@@ -77,6 +80,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [3.0.0-beta.1] - 2026-11-15
 
+Historical `cw` release. Its GitHub release, tag and assets were removed on 17 November 2026;
+the links below retain the original source revision.
+
 ### Breaking
 
 - `cw` is rebuilt as a gate that any git repository can use. Checks are declared in a committed `cw.toml`, and a commit or a
@@ -96,10 +102,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `cw tokens` reports what a task used by role and stage, and the share the workflow itself took; a count that
   cannot be read is `unknown`, never zero ([tokens](docs/tokens.md)).
 - The skill `cw` tells a coding agent how to work in a gated repository: the loop for any change, what each denial
-  means, and seven examples that a test replays against `cw` ([skill](https://github.com/belevtsev/kitsu/blob/v3.0.0-beta.1/skills/cw/SKILL.md)).
+  means, and seven examples that a test replays against `cw` ([skill](https://github.com/belevtsev/kitsu/blob/511ceb11c1946c4185c5a93c0c0a9e79613bdc3d/skills/cw/SKILL.md)).
 - `cw guard` reads a shell command as words. It asks before `git commit -n`, a setting of `core.hooksPath` and an edit of
   a hook file or of a record, and no longer before a command that only mentions `--no-verify`
-  ([operations](https://github.com/belevtsev/kitsu/blob/v3.0.0-beta.1/docs/operations.md#cw-guard)).
+  ([operations](https://github.com/belevtsev/kitsu/blob/511ceb11c1946c4185c5a93c0c0a9e79613bdc3d/docs/operations.md#cw-guard)).
 - `cw tokens record` reads the running totals that Codex writes; the first reader found no count in any real Codex
   record. Both readers were compared with a separate count on real records
   ([tokens](docs/tokens.md#checked-against-real-records)).
@@ -128,10 +134,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   declaration. A submodule that is not checked out but holds files, or that holds a path git is told to overlook, is
   refused ([evidence](docs/evidence.md)).
 - A push of `refs/notes/` is not judged, and a tag that a branch of the same push contains adds nothing. A tree without
-  `cw.toml` is denied with a link to what to do ([operations](https://github.com/belevtsev/kitsu/blob/v3.0.0-beta.1/docs/operations.md#a-tree-without-cwtoml)).
+  `cw.toml` is denied with a link to what to do ([operations](https://github.com/belevtsev/kitsu/blob/511ceb11c1946c4185c5a93c0c0a9e79613bdc3d/docs/operations.md#a-tree-without-cwtoml)).
 - The guard compares files as the file system sees them, also under `core.hooksPath`. It asks before `cw uninstall`,
   `cw init --observe`, an edit of the git configuration and a patch given to the shell, reads commands behind
-  `timeout`, `exec`, `nohup` and `eval`, and matches the `PowerShell` tool ([operations](https://github.com/belevtsev/kitsu/blob/v3.0.0-beta.1/docs/operations.md#cw-guard)).
+  `timeout`, `exec`, `nohup` and `eval`, and matches the `PowerShell` tool ([operations](https://github.com/belevtsev/kitsu/blob/511ceb11c1946c4185c5a93c0c0a9e79613bdc3d/docs/operations.md#cw-guard)).
 - A denial says to fix what the log shows when a check failed, names a last run that decided nothing, and names
   `git add -A` and `git stash push --keep-index --include-untracked`. A failed `cw run` ends with one `not verified` line,
   and `source_changed` says what to do about a file a check writes.
@@ -523,8 +529,9 @@ The first published v3 release candidate (`v3.0.0-rc.1` was never published): ev
 
 ## [2.0.96] - 2026-11-07
 
-Last release published automatically from main.
+Historical final automatic `cw` release from main. Its tag and release assets were removed on
+17 November 2026; the version link retains its source commit.
 
-[Unreleased]: https://github.com/belevtsev/agent-workflows/compare/v3.0.0-beta.1...HEAD
-[3.0.0-beta.1]: https://github.com/belevtsev/agent-workflows/releases/tag/v3.0.0-beta.1
-[2.0.96]: https://github.com/belevtsev/agent-workflows/releases/tag/v2.0.96
+[Unreleased]: https://github.com/belevtsev/kitsu/compare/511ceb11c1946c4185c5a93c0c0a9e79613bdc3d...main
+[3.0.0-beta.1]: https://github.com/belevtsev/kitsu/commit/511ceb11c1946c4185c5a93c0c0a9e79613bdc3d
+[2.0.96]: https://github.com/belevtsev/kitsu/commit/1f26165884e4f6047e6ca12da15fba7bc378b37e
