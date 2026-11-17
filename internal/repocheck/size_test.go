@@ -20,6 +20,7 @@ const (
 	maxContextLines    = 2000 // Opt-in Go collection, briefs, compact checks and private artifacts.
 	maxWorkerLines     = 1200 // Saved worker dispatch and local stage intervals; no model execution.
 	maxProtocolLines   = 700  // Explicit native launch descriptions and bounded untrusted hand-backs.
+	maxStateLines      = 750  // Bounded coordinator projections, retained baselines and section deltas.
 )
 
 // rolesCode says whether a Go file belongs to the role workflow.
@@ -36,7 +37,7 @@ func rolesCode(file string) bool {
 }
 
 func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
-	core, roles, advisers, skills, ux, onboarding, contextLines, workers, protocols := 0, 0, 0, 0, 0, 0, 0, 0, 0
+	core, roles, advisers, skills, ux, onboarding, contextLines, workers, protocols, states := 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 	for _, file := range repoFiles(t) {
 		if !strings.HasSuffix(file, ".go") || strings.HasSuffix(file, "_test.go") || strings.Contains(file, "/testdata/") {
 			continue
@@ -46,7 +47,9 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 			t.Fatal(err)
 		}
 		lines := bytes.Count(data, []byte("\n"))
-		if strings.HasPrefix(file, "internal/cli/worker_protocol") {
+		if strings.HasPrefix(file, "internal/cli/coordinator_state") {
+			states += lines
+		} else if strings.HasPrefix(file, "internal/cli/worker_protocol") {
 			protocols += lines
 		} else if strings.HasPrefix(file, "internal/cli/worker_") {
 			workers += lines
@@ -74,6 +77,10 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	t.Logf("compact context: %d of %d lines", contextLines, maxContextLines)
 	t.Logf("worker handoffs: %d of %d lines", workers, maxWorkerLines)
 	t.Logf("worker protocols: %d of %d lines", protocols, maxProtocolLines)
+	t.Logf("coordinator state: %d of %d lines", states, maxStateLines)
+	if states > maxStateLines {
+		t.Errorf("coordinator state holds %d lines of Go, want at most %d", states, maxStateLines)
+	}
 	if protocols > maxProtocolLines {
 		t.Errorf("worker protocols hold %d lines of Go, want at most %d", protocols, maxProtocolLines)
 	}

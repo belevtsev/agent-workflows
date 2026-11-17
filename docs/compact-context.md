@@ -1,5 +1,8 @@
 # Smaller inputs for coding agents
 
+Coordinators can use [bounded task state and section deltas](coordinator-state.md)
+after relevant events instead of repeatedly printing full task and gate records.
+
 Kitsu's opt-in context engine selects observations, batches noisy repository exploration,
 prepares fresh worker briefs, and returns compact check results. It runs inside the existing Go binary: users need no Go
 compiler, JavaScript runtime, generated program, or additional service.

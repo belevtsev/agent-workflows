@@ -144,6 +144,18 @@ the fresh worker; `task return` retains bounded claims separately from observed 
 facts without finishing the interval. See [coordinator handoffs](docs/coordinator-overhead.md)
 for examples, reduced polling/bookkeeping guidance and offline measurement limits.
 
+Inspect coordinator state without repeatedly printing complete task records:
+
+```sh
+kitsu task show fix-login --compact
+kitsu task show fix-login --since <snapshot-id>
+```
+
+The first command returns a bounded snapshot of stage, active interval, checks,
+open recorded findings, policy keys and missing prerequisites. The second returns
+only changed sections. Expand original references when needed; snapshots certify
+no task completion. See [state snapshots and deltas](docs/coordinator-state.md).
+
 ### Find a command
 
 ```sh

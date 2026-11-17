@@ -233,7 +233,7 @@ func runUXTaskList(ctx context.Context, cfg Config, args []string) error {
 }
 
 func runUXTaskShow(ctx context.Context, cfg Config, args []string) error {
-	return uxPrintTasks(ctx, cfg, args, true)
+	return runCoordinatorTaskShow(ctx, cfg, args)
 }
 
 func uxPrintTasks(ctx context.Context, cfg Config, args []string, named bool) error {

@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- [Coordinator state](docs/coordinator-state.md) adds opt-in bounded `task show --compact` snapshots and `--since` section deltas,
+  with original references, current check evidence, policy changes and completion blockers; ordinary task views stay unchanged.
+
 - [Coordinator handoffs](docs/coordinator-overhead.md) add opt-in generated native dispatch and bounded untrusted worker returns;
   managed guidance avoids duplicate bookkeeping, and corrected offline replays account for full assignment delivery.
 
