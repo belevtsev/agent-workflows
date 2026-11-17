@@ -46,6 +46,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The [installation guide](docs/release-install.md) leads with one command for Linux/macOS and one for Windows;
+  CI artifact downloads remain a contributor option until release assets are published.
+
 - [Compact mode](docs/compact-context.md) now prefers native short reads and scoped searches, reserving collection for noisy retrieval
   and checks; a [separate evaluation](docs/benchmarks/selective-compact-report.md) counts expansions, retries and bounded canary usage.
 - [Role defaults](docs/roles.md#the-roles-at-a-glance) use different models and reasoning efforts for lookup,
@@ -54,8 +57,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- [Installation docs](docs/release-install.md) now lead with CI artifacts after the release reset;
-  historical changelog links use source commits, and the next release version remains undecided.
+- [Installation docs](docs/release-install.md) distinguish unpublished builds after the release reset;
+  historical changelog links use source commits instead of deleted tags and releases.
 
 - [Pilot validation](docs/codex-compact-pilot.md) accepts clean Windows rollout/copied-home paths and trusted repository aliases,
   retaining containment, attestation and candidate-tree checks while rejecting duplicate home destinations.

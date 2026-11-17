@@ -4,7 +4,7 @@ Installs a checksummed Kitsu archive for the current Windows user.
 .DESCRIPTION
 Downloads the exact Windows archive and SHA256SUMS, or reads them from ArchiveDir.
 Requires PowerShell 5.1 or newer. No Go toolchain or administrator access is needed.
-No releases are currently published. Use the scripts and archives from a successful CI artifact.
+The default version must have published release assets; ArchiveDir can install a CI build before publication.
 .PARAMETER Version
 Archive version label. Defaults to KITSU_VERSION, then v3.0.0-beta.2.
 .PARAMETER InstallDir
@@ -14,7 +14,7 @@ Leaves both user PATH and the current session PATH unchanged. Also set by KITSU_
 .PARAMETER ArchiveDir
 Reads the archive and SHA256SUMS locally, without network access. Defaults to KITSU_ARCHIVE_DIR.
 .EXAMPLE
-.\install.ps1 -ArchiveDir C:\Downloads\kitsu-archives
+irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 | iex
 .EXAMPLE
 .\install.ps1 -ArchiveDir C:\Downloads\kitsu -InstallDir C:\Tools\kitsu -NoModifyPath
 #>
