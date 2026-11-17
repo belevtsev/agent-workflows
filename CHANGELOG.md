@@ -48,6 +48,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- [Pilot validation](docs/codex-compact-pilot.md) accepts clean Windows rollout paths and equivalent trusted repository aliases,
+  while retaining path-containment, attestation and candidate-tree checks.
+
 - [Path completion](docs/cli.md#enable-shell-completion) follows `~/` and nested home directories correctly,
   with native directory separators and regression coverage on all supported platforms.
 - The [installer](docs/release-install.md#path-and-updates) makes Kitsu available in new Bash login shells

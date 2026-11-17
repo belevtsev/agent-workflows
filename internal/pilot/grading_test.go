@@ -281,7 +281,14 @@ func trustedGradeCandidate(root string, request gradeRequest) error {
 	if err := readJSON(filepath.Join(canonicalRoot, relative+".json"), &attestation); err != nil {
 		return err
 	}
-	if attestation.Version != 1 || attestation.RunID != relative || attestation.TrustedRepository != canonicalCandidate ||
+	if !filepath.IsAbs(attestation.TrustedRepository) {
+		return errors.New("trusted candidate attestation requires an absolute repository path")
+	}
+	attestedCandidate, err := filepath.EvalSymlinks(attestation.TrustedRepository)
+	if err != nil {
+		return err
+	}
+	if attestation.Version != 1 || attestation.RunID != relative || attestedCandidate != canonicalCandidate ||
 		attestation.BaselineTree != request.BaselineTree || attestation.CandidateTree != request.CandidateTree || attestation.Mechanism == "" {
 		return errors.New("trusted candidate attestation does not match grading request")
 	}
@@ -647,5 +654,55 @@ func TestGradeCandidateRequiresPrivateAttestationBeforeGit(t *testing.T) {
 	request.CandidateTree = "another-candidate"
 	if err := trustedGradeCandidate(root, request); err == nil {
 		t.Fatal("attestation for another candidate accepted")
+	}
+}
+
+func TestGradeCandidateResolvesAttestedRepositoryAliases(t *testing.T) {
+	base := t.TempDir()
+	root := filepath.Join(base, "trusted")
+	candidate := filepath.Join(root, "run-one")
+	if err := os.MkdirAll(candidate, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(base, "trusted-alias")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Skipf("directory symlinks unavailable: %v", err)
+	}
+	request := gradeRequest{CandidateWorktree: candidate, BaselineTree: "base", CandidateTree: "candidate"}
+	attestation := gradeCandidateAttestation{Version: 1, RunID: "run-one", TrustedRepository: filepath.Join(alias, "run-one"),
+		BaselineTree: "base", CandidateTree: "candidate", Mechanism: "trusted raw reconstruction"}
+	receipt := filepath.Join(root, "run-one.json")
+	if err := writeJSON(receipt, attestation, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := trustedGradeCandidate(alias, request); err != nil {
+		t.Fatal("attestation for the same repository through a directory alias rejected", err)
+	}
+	outside := t.TempDir()
+	for _, tc := range []struct {
+		name string
+		path string
+	}{
+		{name: "another repository", path: outside},
+		{name: "relative repository", path: "run-one"},
+		{name: "missing repository", path: filepath.Join(root, "missing")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			attestation.TrustedRepository = tc.path
+			if err := writeJSON(receipt, attestation, false); err != nil {
+				t.Fatal(err)
+			}
+			if err := trustedGradeCandidate(root, request); err == nil {
+				t.Fatalf("attestation for %s accepted", tc.name)
+			}
+		})
+	}
+	attestation.TrustedRepository = filepath.Join(alias, "run-one")
+	if err := writeJSON(receipt, attestation, false); err != nil {
+		t.Fatal(err)
+	}
+	request.CandidateWorktree = outside
+	if err := trustedGradeCandidate(alias, request); err == nil {
+		t.Fatal("directory alias allowed a candidate outside the trusted root")
 	}
 }

@@ -27,3 +27,13 @@ allowed JSON metadata caused those flags; the initial report is retained.
 Workers read and hashed canonical briefs, but encrypted native assignment
 payloads prevent proving exact dispatch equality. Full protocol compliance and
 quality preservation are not certified. No human approval is inferred here.
+
+PR #232 CI follow-up used Sol/high workers for platform failures, review-comment
+inspection and independent security review. The PR had no review threads,
+submitted reviews or issue comments at inspection. Independent review found no
+blocking issue in the path fixes: native separator normalization preserves clean
+local paths, and alias resolution preserves exact trusted repository identity,
+candidate containment and baseline/candidate tree checks. Linux collection-test
+diagnostics were strengthened; its intermittent empty result remains unproven.
+This follow-up runs local fixtures and CI only, with no new paid pilot or model
+calibration and no change to frozen study evidence.

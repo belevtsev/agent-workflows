@@ -121,6 +121,12 @@ upstream revisions, prompts, dependencies and eligibility evidence. They are
 provenance exports; a runnable private manifest needs local toolchain, solver,
 grader, bridge and authorization paths.
 
+Rollout directories must be clean paths relative to the fresh solver home;
+portable slash paths and native Windows separators are accepted. Private grading
+resolves directory aliases before comparing the attested repository identity.
+Aliases do not permit a different repository, a candidate outside the trusted
+root or a mismatch in baseline/candidate trees.
+
 Build the solver executable once before freezing and retain its SHA256. Do not
 replace it or its inputs while controllers are running. Protocol analysis and
 blind-bundle preparation are separate posthoc helpers; build them under a

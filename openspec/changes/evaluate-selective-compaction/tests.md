@@ -14,6 +14,8 @@ any authorized live results. A mapped test or planned cell alone proves no run.
 | Canary profile validation | internal/pilot/canary_budget_test.go | TestCanaryProfileDoesNotWeakenStudyValidation |
 | Captured budget stop | internal/pilot/canary_budget_test.go | TestCanaryBudgetStopsLocalDescendantsAndFurtherLaunches |
 | Incomplete planned cells | internal/pilot/canary_budget_test.go | TestCanaryLaunchReserveAndMissingResultFailClosed |
+| Portable rollout paths | internal/pilot/harness_test.go | TestPilotRolloutPathRequiresCleanLocalPath |
+| Trusted repository aliases | internal/pilot/grading_test.go | TestGradeCandidateResolvesAttestedRepositoryAliases |
 
 Focused selective CLI and original-instruction regressions passed locally on
 17 November 2026. Expanded replay and budget tests use fake model processes;
@@ -52,3 +54,19 @@ Independent audit and all fourteen public canary evidence hashes were verified.
 The original mechanical scan is retained with its three command-text false
 positives explained; actual compact-check execution was zero. Native encrypted
 message equality and full protocol compliance remain unknown.
+
+PR #232 CI follow-up on 17 November 2026 corrects two native-platform issues:
+Windows clean-path comparisons now normalize native separators, and trusted
+candidate attestations resolve directory aliases before exact identity checks.
+Traversal, relative/absolute-path restrictions, root containment and tree
+bindings remain enforced. Local symlink fixtures reproduce the alias failure
+without model execution; negative tests retain rejection of other repositories.
+
+The Linux context test now checks status and length before indexing, preserving
+an actionable error instead of panicking. The original empty-result condition
+was not reproduced in 150 focused race runs and ten full context-package race
+runs; this assertion change is diagnostic, not a claimed production fix.
+The combined source passed build, vet, full Linux race tests and pinned
+lint/vulnerability scans for Linux, Darwin and Windows in
+`20261117T060557Z-core-3588456946`. The final independent outside-root assertion
+also passed its focused race test after restoring a valid alias attestation.

@@ -62,7 +62,7 @@ func TestCollectDeterministicRangesSearchAndPartialFailures(t *testing.T) {
 		Operation{ID: "regex", Kind: "search", Path: "src", Pattern: `^needle [z]`, Regex: true},
 		Operation{ID: "missing", Kind: "read", Path: "missing"},
 		Operation{ID: "git", Kind: "git"})
-	if a.Items[0].Lines[0].Number != 2 || a.Items[0].Lines[1].Number != 3 || len(a.Items[0].Lines) != 2 {
+	if a.Items[0].Status != "ok" || len(a.Items[0].Lines) != 2 || a.Items[0].Lines[0].Number != 2 || a.Items[0].Lines[1].Number != 3 {
 		t.Fatal(a.Items[0])
 	}
 	if len(a.Items[1].Lines) != 1 || a.Items[1].Lines[0].Text != "needle [x]\n" || a.Items[1].Status != "partial" || a.Items[1].Skipped != 1 {

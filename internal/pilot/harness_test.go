@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -68,6 +69,46 @@ func TestPilotFreezeDetectsDriftAndPreservesManifest(t *testing.T) {
 	after, err := os.ReadFile(filepath.Join(output, "frozen-manifest.json"))
 	if err != nil || string(before) != string(after) {
 		t.Fatal("frozen input changed", err)
+	}
+}
+
+func TestPilotRolloutPathRequiresCleanLocalPath(t *testing.T) {
+	type rolloutPathCase struct {
+		name  string
+		path  string
+		valid bool
+	}
+	cases := []rolloutPathCase{
+		{name: "portable separators", path: ".codex/sessions", valid: true},
+		{name: "native separators", path: filepath.Join(".codex", "sessions"), valid: true},
+		{name: "empty", path: ""},
+		{name: "absolute", path: filepath.Join(t.TempDir(), "sessions")},
+		{name: "parent escape", path: "../sessions"},
+		{name: "parent component", path: ".codex/../sessions"},
+		{name: "current component", path: ".codex/./sessions"},
+		{name: "duplicate separator", path: ".codex//sessions"},
+		{name: "trailing separator", path: ".codex/sessions/"},
+	}
+	if runtime.GOOS == "windows" {
+		cases = append(cases,
+			rolloutPathCase{name: "native parent escape", path: `..\sessions`},
+			rolloutPathCase{name: "mixed parent component", path: `.codex/..\sessions`},
+			rolloutPathCase{name: "drive relative", path: `C:sessions`},
+			rolloutPathCase{name: "root relative", path: `\sessions`},
+			rolloutPathCase{name: "UNC path", path: `\\server\share\sessions`})
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path, _ := unitManifest(t)
+			var m manifest
+			if err := readJSON(path, &m); err != nil {
+				t.Fatal(err)
+			}
+			m.Host.Rollouts = tc.path
+			if err := sealManifest(t.Context(), &m, filepath.Dir(path)); (err == nil) != tc.valid {
+				t.Fatalf("rollout path %q: valid=%t: %v", tc.path, tc.valid, err)
+			}
+		})
 	}
 }
 

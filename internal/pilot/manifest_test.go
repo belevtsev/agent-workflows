@@ -199,7 +199,7 @@ func sealManifest(ctx context.Context, m *manifest, base string) error {
 	if len(m.Host.Argv) == 0 || !filepath.IsAbs(m.Host.Argv[0]) || len(m.Grader.Argv) == 0 || !filepath.IsAbs(m.Grader.Argv[0]) {
 		return errors.New("host and grader argv require absolute executable paths")
 	}
-	if !filepath.IsLocal(m.Host.Rollouts) || filepath.Clean(m.Host.Rollouts) != m.Host.Rollouts {
+	if !filepath.IsLocal(m.Host.Rollouts) || filepath.ToSlash(filepath.Clean(m.Host.Rollouts)) != filepath.ToSlash(m.Host.Rollouts) {
 		return errors.New("host.rollouts must be a clean relative path under the fresh home")
 	}
 	if len(m.ObservationPrompts) != 2 {
