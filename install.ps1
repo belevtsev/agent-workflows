@@ -6,7 +6,7 @@ Downloads the exact Windows archive and SHA256SUMS, or reads them from ArchiveDi
 Requires PowerShell 5.1 or newer. No Go toolchain or administrator access is needed.
 The default version must have published release assets; ArchiveDir can install a CI build before publication.
 .PARAMETER Version
-Archive version label. Defaults to KITSU_VERSION, then v3.0.0-beta.2.
+Archive version label. Defaults to KITSU_VERSION, then v0.0.1.
 .PARAMETER InstallDir
 Destination directory. Defaults to KITSU_INSTALL_DIR, then LOCALAPPDATA\kitsu.
 .PARAMETER NoModifyPath
@@ -204,9 +204,9 @@ param(
 
     if ($PSVersionTable.PSVersion -lt [version]'5.1') { throw 'Kitsu requires PowerShell 5.1 or newer.' }
     $architecture = Get-KitsuArchitecture
-    if ([string]::IsNullOrEmpty($ReleaseVersion)) { $ReleaseVersion = 'v3.0.0-beta.2' }
+    if ([string]::IsNullOrEmpty($ReleaseVersion)) { $ReleaseVersion = 'v0.0.1' }
     if ($ReleaseVersion -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?(?:\+[0-9A-Za-z][0-9A-Za-z.-]*)?$') {
-        throw 'Version must be an explicit v-prefixed release tag, such as v3.0.0-beta.2.'
+        throw 'Version must be an explicit v-prefixed release tag, such as v0.0.1.'
     }
     if ([string]::IsNullOrEmpty($DestinationDir)) {
         if ([string]::IsNullOrEmpty($env:LOCALAPPDATA)) { throw 'LOCALAPPDATA is unavailable; supply -InstallDir.' }

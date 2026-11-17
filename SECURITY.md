@@ -29,12 +29,10 @@ None of these is a vulnerability. Running the same checks in CI catches a commit
 
 ## Supported versions
 
-There are no currently published releases or tags: the historical releases, tags and attached
-assets were removed on 17 November 2026. Security fixes are made on `main`; use a current
-successful [CI artifact](docs/release-install.md#install-a-ci-artifact-before-publication) or
-[build from source](docs/development.md#build-from-source). Previously downloaded `cw` releases
-are not maintained.
+Security fixes are made on `main`, and only the newest published release receives them.
+Kitsu versioning starts at `v0.0.1` after the 17 November 2026 release reset. Use the
+[installer](docs/release-install.md) to install its current default version.
 
-The `v3.0.0-beta.2` label in current builds and installer defaults is not a published or supported
-release. The next release version is undecided. Once releases resume, only the newest release
-will receive security fixes.
+Previously downloaded `cw` releases are not maintained. For an unreleased fix, use a successful
+[CI artifact](docs/release-install.md#install-a-ci-artifact-before-publication) or
+[build from source](docs/development.md#build-from-source).

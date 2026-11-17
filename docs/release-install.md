@@ -4,18 +4,10 @@ Install Kitsu's CLI without a repository checkout or Go. The installer chooses t
 your operating system and native architecture, verifies it against `SHA256SUMS`, then replaces
 the executable. Linux, macOS, and Windows archives provide amd64 and arm64 builds.
 
-**No GitHub releases or tags are currently published.** All historical releases, tags and
-attached assets were removed on 17 November 2026. Use a successful CI artifact or
-[build from source](development.md#build-from-source).
-
-Current installers, plugin manifests and CI archives use `v3.0.0-beta.2` as their build label.
-That label does not represent an available public release. The next release version and revision
-are undecided; [publication](development.md#releases) must align the version metadata and create new assets.
-
 ## Install from a release
 
 Run one command. The installer downloads the right binary, checks its checksum, and sets up `PATH`.
-The current default is `v3.0.0-beta.2`; its assets must be published before these commands can succeed.
+The current default is `v0.0.1`.
 
 Linux and macOS:
 
@@ -66,14 +58,14 @@ On macOS/Linux:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh -o kitsu-install.sh
-sh kitsu-install.sh --version v3.0.0-beta.2 --install-dir "$HOME/tools/kitsu" --no-modify-path
+sh kitsu-install.sh --version v0.0.1 --install-dir "$HOME/tools/kitsu" --no-modify-path
 ```
 
 On Windows:
 
 ```powershell
 Invoke-WebRequest https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 -OutFile "$env:TEMP\kitsu-install.ps1"
-powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\kitsu-install.ps1" -Version v3.0.0-beta.2 -InstallDir "$env:LOCALAPPDATA\tools\kitsu" -NoModifyPath
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\kitsu-install.ps1" -Version v0.0.1 -InstallDir "$env:LOCALAPPDATA\tools\kitsu" -NoModifyPath
 ```
 
 These examples leave `PATH` unchanged. Use the installed executable by its full path, or add the
@@ -83,7 +75,7 @@ CI build, add `--archive-dir` or `-ArchiveDir` and match its archive filenames.
 
 | macOS/Linux flag | PowerShell parameter | Environment default | Purpose |
 | --- | --- | --- | --- |
-| `--version TAG` | `-Version TAG` | `KITSU_VERSION` | Match the archive version; the current default is `v3.0.0-beta.2`. |
+| `--version TAG` | `-Version TAG` | `KITSU_VERSION` | Match the archive version; the current default is `v0.0.1`. |
 | `--install-dir DIR` | `-InstallDir DIR` | `KITSU_INSTALL_DIR` | Choose the destination directory. |
 | `--no-modify-path` | `-NoModifyPath` | `KITSU_NO_MODIFY_PATH=1` | Install without changing user `PATH`. |
 | `--archive-dir DIR` | `-ArchiveDir DIR` | `KITSU_ARCHIVE_DIR` | Use local archives and `SHA256SUMS`, with no download. |
@@ -145,16 +137,14 @@ different commits can share the same version label.
 
 ## Manual archive install
 
-**For use after publication, without Go.** This alternative downloads a single archive and
-checks its checksum before unpacking it. The tag assignments below retain the current
-`v3.0.0-beta.2` build label; they are prepared recipes, not available downloads. Update them to
-the chosen release version as part of publication. Perform the download in an empty directory.
+This alternative downloads a single release archive and checks its checksum before unpacking it.
+Perform the download in an empty directory. The one-line installers above also configure `PATH`.
 
 On macOS or Linux:
 
 ```sh
 set -eu
-tag=v3.0.0-beta.2
+tag=v0.0.1
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
 arch=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
 base=https://github.com/belevtsev/kitsu/releases/download/$tag
@@ -179,7 +169,7 @@ On Windows:
 
 ```powershell
 $ErrorActionPreference = "Stop"
-$tag = "v3.0.0-beta.2"
+$tag = "v0.0.1"
 $machineArch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
 $arch = switch ($machineArch) { "ARM64" { "arm64" }; "AMD64" { "amd64" }; default { throw "Unsupported architecture: $machineArch" } }
 $base = "https://github.com/belevtsev/kitsu/releases/download/$tag"

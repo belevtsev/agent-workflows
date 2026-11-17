@@ -32,8 +32,8 @@ Your agent host runs the coordinator and delegates to the roles. Kitsu supplies 
 role definitions, record checks, and usage reports. The Git gate supports that workflow and can also be used on its own.
 
 > [!NOTE]
-> Kitsu is in development, with no published releases or tags after the 17 November 2026 reset.
-> [Installation](#install) is one command once the next release is published; [State](#state) covers validation and current limits.
+> Kitsu is in early development. [Install](#install) with one command;
+> [State](#state) covers validation and current limits.
 
 ## The roles
 
@@ -302,9 +302,6 @@ The [quick start](docs/quickstart.md) is the same five commands as a text that a
 
 Run one command for your system. No clone, Go toolchain, or manual archive extraction is needed.
 
-**Publication pending:** these commands install `v3.0.0-beta.2`, whose release assets must be
-published first. Until then, contributors can use [CI artifacts](docs/release-install.md#install-a-ci-artifact-before-publication).
-
 Linux and macOS:
 
 ```sh
@@ -320,6 +317,7 @@ irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 | iex
 The installer selects your platform and architecture, verifies the archive checksum before
 replacing the executable, and sets up your user `PATH`. The default location is `$HOME/.local/bin`
 on macOS/Linux or `%LOCALAPPDATA%\kitsu` on Windows. Open a new terminal, then run `kitsu version`.
+The current installer selects `v0.0.1`.
 
 Rerun the same command to install the version selected by the current installer. The
 [installation guide](docs/release-install.md) covers version pinning, custom directories and
@@ -416,10 +414,10 @@ separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advise
 
 ## State
 
-- All historical GitHub releases, tags and attached assets were removed on 17 November 2026.
-  The next release version and revision are undecided. Current installer defaults, manifests and
-  CI archive labels still use `v3.0.0-beta.2`; CI builds six archives and tests their
-  [installation](docs/release-install.md#what-ci-checks) without publishing them.
+- Kitsu versioning starts at `v0.0.1` after the historical releases, tags and attached assets
+  were removed on 17 November 2026. Installer defaults, plugin manifests and CI archives use
+  that version. The release workflow builds six archives, attests their provenance, and tests
+  [installation](docs/release-install.md#what-ci-checks) on Linux, macOS and Windows.
 - Local build, vet, and race-enabled tests passed on Linux. Lint and vulnerability checks passed for Linux,
   macOS, and Windows targets. See the [adviser change checks](openspec/changes/add-configurable-advisers/tests.md)
   and [installer validation](docs/release-install.md#what-ci-checks) for their scope.
