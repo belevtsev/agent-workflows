@@ -51,6 +51,11 @@ part of this change; historical experiment artifacts remain frozen.
   when inserting `help`, including new three-level budget commands. Existing
   no-runtime/no-write help expectations remain unchanged (Preserve existing
   workflow authority).
+- `internal/cli/usage_diagnostics_test.go`: snapshot metadata from open handles
+  after native Windows CI exposed stale directory-entry timestamps. Preserve
+  mode, modification-time and content comparisons; a control test detects
+  content-only changes, timestamp-only changes and new lock files (Inspect
+  captured workflow evidence).
 
 Existing runner, token attribution and frozen experiment expectations retain
 their original scope.

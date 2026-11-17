@@ -52,6 +52,13 @@ full suite exposed a formerly noisy fixture that now fits completely; enlarging
 it preserves its original expansion/recovery purpose without weakening fitting
 controls. A public JSON field-name mismatch was also corrected.
 
+Native macOS CI then exposed a successful `os.Getwd` result for a removed cwd.
+Runtime scopes now require the returned path to identify the same directory as
+`.`; the unknown-cwd regression covers both a removed path and a replacement
+directory at that path. The paid measurements remain historical evidence for
+[bf7ffdf](https://github.com/belevtsev/kitsu/commit/bf7ffdfef6e8f03ce09bc84e3525034b78e08016),
+before this portability correction; the paid experiment was not repeated.
+
 Required local results:
 
 - `GOWORK=off go build ./...` and `GOWORK=off go vet ./...`: pass.

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -55,10 +56,23 @@ func diagnosticTree(t *testing.T, dir string) map[string]string {
 			return err
 		}
 		var data []byte
-		if info.Mode().IsRegular() {
-			data, err = os.ReadFile(name)
+		if info.Mode().IsRegular() || info.IsDir() {
+			file, err := os.Open(name)
 			if err != nil {
 				return err
+			}
+			defer file.Close()
+			// Windows directory listings can retain stale timestamps. Read the
+			// open handle's metadata so opening a path is not mistaken for a write.
+			info, err = file.Stat()
+			if err != nil {
+				return err
+			}
+			if info.Mode().IsRegular() {
+				data, err = io.ReadAll(file)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		result[name] = fmt.Sprintf("%s/%s/%x", info.Mode(), info.ModTime(), sha256.Sum256(data))
@@ -67,6 +81,43 @@ func diagnosticTree(t *testing.T, dir string) map[string]string {
 		t.Fatal(err)
 	}
 	return result
+}
+
+func TestDiagnosticTreeDetectsContentAndMetadataChanges(t *testing.T) {
+	t.Parallel()
+	when := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name   string
+		change func(string) error
+	}{
+		{"content", func(file string) error {
+			if err := os.WriteFile(file, []byte("changed"), 0o600); err != nil {
+				return err
+			}
+			return os.Chtimes(file, when, when)
+		}},
+		{"timestamp", func(file string) error { return os.Chtimes(file, when, when.Add(time.Second)) }},
+		{"new file", func(file string) error { return os.WriteFile(file+".lock", nil, 0o600) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			file := filepath.Join(dir, "record.json")
+			diagnosticWrite(t, file, map[string]string{"original": "evidence"})
+			if err := os.Chtimes(file, when, when); err != nil {
+				t.Fatal(err)
+			}
+			before := diagnosticTree(t, dir)
+			if after := diagnosticTree(t, dir); !reflect.DeepEqual(before, after) {
+				t.Fatal("repeated snapshot changed without a write", before, after)
+			}
+			if err := tc.change(file); err != nil {
+				t.Fatal(err)
+			}
+			if after := diagnosticTree(t, dir); reflect.DeepEqual(before, after) {
+				t.Fatal("snapshot concealed a filesystem change", after)
+			}
+		})
+	}
 }
 
 func TestUsageDiagnosticsRepeatedReadsCreateNoLedgerLocksChecksOrHostWork(t *testing.T) {

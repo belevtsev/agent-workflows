@@ -78,6 +78,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- [QE tool observations](docs/compact-response-cycles.md#use-the-qe-packets-recipes) stay unknown when the current directory is removed or replaced,
+  including when macOS reports its stale path.
+
 - [Installation docs](docs/release-install.md) now lead with CI artifacts after the release reset;
   historical changelog links use source commits, and the next release version remains undecided.
 

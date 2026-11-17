@@ -267,18 +267,28 @@ func TestWorkerHintsUnknownDirectoryDoesNotPublishAvailability(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows cannot remove the current directory")
 	}
-	root := t.TempDir()
-	directory := filepath.Join(root, "removed-cwd")
-	if err := os.Mkdir(directory, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	t.Chdir(directory)
-	if err := os.Remove(directory); err != nil {
-		t.Fatal(err)
-	}
-	scope := workerLookupScope("codex", root)
-	if scope.Runtime != "" || observeWorkerTool(scope).State != "unknown" {
-		t.Fatal("missing actual cwd invented a reusable lookup", scope)
+	for _, name := range []string{"removed", "replaced"} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			directory := filepath.Join(root, "removed-cwd")
+			if err := os.Mkdir(directory, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			t.Chdir(directory)
+			if err := os.Remove(directory); err != nil {
+				t.Fatal(err)
+			}
+			if name == "replaced" {
+				// An existing path must still identify the actual current directory.
+				if err := os.Mkdir(directory, 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			scope := workerLookupScope("codex", root)
+			if scope.Runtime != "" || observeWorkerTool(scope).State != "unknown" {
+				t.Fatal("missing actual cwd invented a reusable lookup", scope)
+			}
+		})
 	}
 }
 

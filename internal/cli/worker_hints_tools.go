@@ -29,6 +29,12 @@ func newWorkerToolScope(host, worktree, machine, session string) workerToolScope
 	if directoryErr != nil || executableErr != nil {
 		return scope // Runtime scope is unknown; do not publish a reusable lookup.
 	}
+	// macOS can return a stale path after the current directory is removed.
+	actual, actualErr := os.Stat(".")
+	named, namedErr := os.Stat(directory)
+	if actualErr != nil || namedErr != nil || !os.SameFile(actual, named) {
+		return scope
+	}
 	mount, _ := os.Readlink("/proc/self/ns/mnt")
 	scope.Runtime = contextpack.Key([]string{
 		runtime.GOOS, runtime.GOARCH, executable, mount, worktree, directory,

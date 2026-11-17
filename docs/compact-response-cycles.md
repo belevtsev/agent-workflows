@@ -66,8 +66,10 @@ execution still validates the declaration and evidence normally.
 `rg_lookup` is a local availability observation, not proof of execution or
 authority. It carries fingerprints for host, known machine/session and actual
 cwd/runtime/PATH context; it publishes no raw environment paths. Fresh-worker
-scope can be unknown or different. Use `search_fallback` directly when scope
-cannot be verified; workers need no hash computation or discovery turn.
+scope can be unknown or different. A removed, replaced or unverifiable cwd
+leaves the observation unknown, including on macOS. Use `search_fallback`
+directly when scope cannot be verified; workers need no hash computation or
+discovery turn.
 On a relevant environment change or execution error, revalidate or use the
 available fallback. Do not retry missing tools or install them automatically.
 
