@@ -32,8 +32,8 @@ Your agent host runs the coordinator and delegates to the roles. Kitsu supplies 
 role definitions, record checks, and usage reports. The Git gate supports that workflow and can also be used on its own.
 
 > [!NOTE]
-> Kitsu is in development, with no published releases or tags after the 17 November 2026 reset.
-> [Install a CI artifact](#install) or build from source; [State](#state) covers validation and current limits.
+> Kitsu is in early development. [Install](#install) with one command;
+> [State](#state) covers validation and current limits.
 
 ## The roles
 
@@ -326,39 +326,28 @@ The [quick start](docs/quickstart.md) is the same five commands as a text that a
 
 ## Install
 
-**No release downloads are currently available.** Install a CI build without cloning this
-repository or installing Go:
+Run one command for your system. No clone, Go toolchain, or manual archive extraction is needed.
 
-1. Open a successful [CI run](https://github.com/belevtsev/kitsu/actions/workflows/ci.yml)
-   for the revision you want and download its **kitsu-archives** artifact.
-2. Extract the download into a directory, keeping its platform archives intact alongside
-   `install.sh`, `install.ps1` and `SHA256SUMS`.
-3. Run the bundled installer with that directory, replacing the example paths below.
-
-On macOS or Linux:
+Linux and macOS:
 
 ```sh
-sh /path/to/kitsu-archives/install.sh --archive-dir /path/to/kitsu-archives
+curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh | sh
 ```
 
-On Windows, in PowerShell:
+Windows, in PowerShell:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "C:\path\kitsu-archives\install.ps1" -ArchiveDir "C:\path\kitsu-archives"
+irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 | iex
 ```
-
-The installers read these archives locally. `-ExecutionPolicy Bypass`
-applies only to that PowerShell process. Current CI builds use the label `v3.0.0-beta.2`;
-it is not a published release or a decision about the next release version.
 
 The installer selects your platform and architecture, verifies the archive checksum before
 replacing the executable, and sets up your user `PATH`. The default location is `$HOME/.local/bin`
 on macOS/Linux or `%LOCALAPPDATA%\kitsu` on Windows. Open a new terminal, then run `kitsu version`.
+The current installer selects `v0.0.1`.
 
-To update, download a newer successful CI artifact and run its bundled installer. Check the
-revision printed by `kitsu version`: CI builds can share the same version label. The
-[installation guide](docs/release-install.md) covers custom directories, `PATH`, and installation
-after a future release. Contributors can [build from source](docs/development.md#build-from-source).
+Rerun the same command to install the version selected by the current installer. The
+[installation guide](docs/release-install.md) covers version pinning, custom directories and
+CI artifacts. Contributors can [build from source](docs/development.md#build-from-source).
 
 Kitsu uses Git to work in a repository. On Windows its Git hooks use the `sh` supplied by Git for
 Windows. The installer installs only Kitsu's CLI; [add the plugin](#for-a-coding-agent) through
@@ -451,10 +440,10 @@ separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advise
 
 ## State
 
-- All historical GitHub releases, tags and attached assets were removed on 17 November 2026.
-  The next release version and revision are undecided. Current installer defaults, manifests and
-  CI archive labels still use `v3.0.0-beta.2`; CI builds six archives and tests their
-  [installation](docs/release-install.md#what-ci-checks) without publishing them.
+- Kitsu versioning starts at `v0.0.1` after the historical releases, tags and attached assets
+  were removed on 17 November 2026. Installer defaults, plugin manifests and CI archives use
+  that version. The release workflow builds six archives, attests their provenance, and tests
+  [installation](docs/release-install.md#what-ci-checks) on Linux, macOS and Windows.
 - Local build, vet, and race-enabled tests passed on Linux. Lint and vulnerability checks passed for Linux,
   macOS, and Windows targets. See the [adviser change checks](openspec/changes/add-configurable-advisers/tests.md)
   and [installer validation](docs/release-install.md#what-ci-checks) for their scope.

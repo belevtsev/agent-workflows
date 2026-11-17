@@ -148,9 +148,8 @@ no other run showed.
 
 ## Releases
 
-There are no published releases or tags after the 17 November 2026 reset. The next version and
-release revision are undecided. Current CI archive labels, installer defaults and plugin
-manifests still use `v3.0.0-beta.2`; that label keeps build inputs consistent without publishing anything.
+Kitsu versioning starts at `v0.0.1` after the 17 November 2026 reset. The installer defaults,
+plugin manifests, CI archive labels and release-install examples all use that version.
 
 A release is made when the owner pushes a `v*` tag. `.github/workflows/release.yml`
 then does four things, each only when the one before it passed:
@@ -164,7 +163,7 @@ then does four things, each only when the one before it passed:
    on amd64 and arm64, an SBOM for each, both installer scripts, and `SHA256SUMS`, uploads them to a
    draft release on GitHub, attests the build of each archive, and only then
    makes the release public. A tag with a
-   hyphen, such as `v3.0.0-beta.2`, becomes a pre-release. The text of the
+   hyphen, such as `v0.0.2-beta.1`, becomes a pre-release. The text of the
    release is the section of `CHANGELOG.md` for that version, or the section
    `Unreleased` while the changelog has none
    (`.github/scripts/release-notes.sh`).
@@ -179,9 +178,8 @@ original source commit. Those results do not verify a future Kitsu publication.
 
 CI runs the commands of step 2 on every commit. Its job `Release archives`
 builds the six archives in the same way, and the same text, from the commit,
-and its jobs `Install without Go` install from them. Those archives are not byte for byte
-the ones a release publishes: Go writes the version of the module into the
-program, and that is the tag only once the tag exists.
+and its jobs `Install without Go` install from them. The release workflow rebuilds from the
+tag and tests the published downloads separately; CI artifacts are not published releases.
 
 To try the archives of a commit before it is tagged:
 
@@ -198,8 +196,8 @@ To publish:
    commit has passed.
 3. Tag that commit with the tag `docs/release-install.md` names and push the tag:
    `git tag <tag> <commit>` and `git push origin <tag>`.
-4. Verify that publication and public installer checks passed, then link the actual release
-   and replace the no-release notices with its observed status.
+4. Verify that publication and public installer checks passed, and check the installed version
+   and revision using the one-line commands in the README.
 
 If reusing a deleted version name, review the existing changelog heading before tagging:
 `release-notes.sh` prefers that version's section over `Unreleased`, so historical notes could
@@ -207,7 +205,7 @@ otherwise become the new release description. Current `TestPreparedReleaseVersio
 the former `cw v3.0.0-beta.1` name; reusing it requires an intentional update to that check and
 the version contract, not just recreating a tag.
 
-After a release, give the section `Unreleased` of the changelog the heading
+When preparing a release, give the section `Unreleased` of the changelog the heading
 of that version, and start a new section `Unreleased` above it.
 
 CI reads the single `tag=v<version>` line from the release installation guide to name its archives.
