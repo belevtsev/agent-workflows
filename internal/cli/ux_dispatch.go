@@ -10,6 +10,7 @@ import (
 var uxGroups = [][2]string{
 	{"agent", "Check coding-agent setup"},
 	{"task", "Start a task or inspect task stages and saved records"},
+	{"context", "Collect and expand compact context; bare context preserves session-hook output"},
 	{"role", "Choose models, reasoning, skills and role instructions"},
 	{"skill", "Discover original skills and select them per role"},
 	{"adviser", "Inspect and consult optional experimental advisers"},
@@ -39,6 +40,9 @@ func Execute(ctx context.Context, args []string, cfg Config) error {
 		return runUXComplete(ctx, cfg, args[1:])
 	}
 	preferred := slices.ContainsFunc(uxGroups, func(g [2]string) bool { return g[0] == args[0] })
+	if args[0] == "context" && (len(args) == 1 || strings.HasPrefix(args[1], "-") && args[1] != "--help" && args[1] != "-h") {
+		preferred = false
+	}
 	if !preferred {
 		if uxWantsHelp(args[1:]) && len(args) > 2 && uxLegacyChild(args[0], args[1]) {
 			return uxHelp(cfg, args, false)

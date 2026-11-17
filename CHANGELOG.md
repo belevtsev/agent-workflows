@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Opt-in [typed context and worker handoffs](docs/compact-context.md) add native reads/searches, saved original briefs,
+  and ordered `task prepare`/`finish` write checks without launching models or replacing review and gate evidence.
+- An opt-in [Codex pilot harness](docs/codex-compact-pilot.md) freezes paired real-task experiments and accounts for every solver session;
+  ordinary tests skip paid execution, and independent grading separates functional results from workflow compliance.
+- Opt-in [Go context collection](docs/compact-context.md) batches source reads, prepares fresh worker briefs and bounds check output,
+  retaining expandable evidence; offline comparisons and source-linked research distinguish byte reductions from unmeasured token savings.
+
 - [Agent onboarding](docs/cli.md#check-setup-and-start-a-task) checks local host, plugin, skill, and hook setup;
   `kitsu task start` launches the selected host or prepares a handoff with explicit trust and runtime limits.
 - A grouped [CLI](docs/cli.md) adds complete help, private host preferences, explicit terminal editors,

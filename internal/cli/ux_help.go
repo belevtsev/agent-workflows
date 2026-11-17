@@ -140,6 +140,10 @@ func uxPrintGroupHelp(cfg Config, name string) bool {
 		if name != group[0] {
 			continue
 		}
+		if name == "context" {
+			_ = helpFor(cfg, name)
+			return true
+		}
 		fmt.Fprintf(cfg.Out, "usage: kitsu %s <command> [arguments]\n\n%s.\n\nCommands:\n", group[0], group[1])
 		for _, c := range uxCommands() {
 			if strings.HasPrefix(c.path, group[0]+" ") && !c.hidden {

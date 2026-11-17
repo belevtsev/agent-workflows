@@ -6,7 +6,8 @@ by the thing you work with:
 | Group | Commands |
 | --- | --- |
 | `agent` | `check` |
-| `task` | `start`, `list`, `show`, `check` |
+| `task` | `start`, `brief`, `list`, `show`, `check` |
+| `context` | `collect`, `show`; bare `context` keeps session-hook output |
 | `role` | `list`, `show`, `set`, `edit`, `reset`, `check`, `text` |
 | `skill` | `list`, `show`, `attach`, `detach`, `clear`, `reset`, `resolve` |
 | `adviser` | `list`, `show`, `providers`, `bind`, `ask`, `accept`, `reject`, `defer`, `status`, `check` |
@@ -43,6 +44,29 @@ separates Kitsu options from the program and its arguments. A later `--help` bel
 program.
 The generated [command reference](cli-reference.md) mirrors metadata-derived help for reading
 all operands, options, defaults, and examples without running a command.
+
+## Opt into compact context
+
+```sh
+kitsu task start "Fix login retries" --host codex --compact
+kitsu context read README.md --start 1 --end 30
+kitsu context search 'retry' internal
+kitsu context collect --request context.json --json
+kitsu task prepare fix-login --role developer --stage code --round 1 --host codex --workflow small --assignment /absolute/path/assignment.txt
+kitsu task finish <dispatch-id> --expect-checks pass
+kitsu check run --compact
+kitsu context show <artifact-id> --item <item-id> --json
+```
+
+The [compact-context guide](compact-context.md) supplies typed read/search examples, the
+advanced version 1 request schema, exact byte limits, cursor expansion and freshness rules.
+`task prepare` saves the full original brief and tracks a write-check interval; the host
+launches the worker. `task finish` validates the saved baseline and existing check evidence.
+Use `task brief --save --assignment <file|->` for a saved brief without a managed interval.
+Every command supports `--help`. `--json`
+also selects compact check output. Defaults stay unchanged; bare `kitsu context` and
+`kitsu context --host codex|claude` retain their session-hook protocol. They are the exception
+to bare groups showing help. Context commands, brief, prepare and finish always emit JSON.
 
 ## Select your host once
 

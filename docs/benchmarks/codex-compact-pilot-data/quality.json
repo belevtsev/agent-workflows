@@ -1,0 +1,1266 @@
+{
+  "by_arm": {
+    "compact": {
+      "unknown": 2,
+      "valid_review": 10
+    },
+    "normal": {
+      "unknown": 1,
+      "valid_review": 11
+    }
+  },
+  "deterministic_confirmations": [
+    {
+      "contract_sha256": "b5eebdf78537522e798e165a182caaae87ebedd9736521a1070794f9f38943bf",
+      "helper_executable_sha256": "2f64124df91d9995bb8a5ab9634f80dfec994a0755c8315ec27ffc9bb118528e",
+      "id": "charset-unquoted-stray-quote",
+      "network": "unshare-all; no model, credentials or sockets mounted",
+      "opaque_candidates": [
+        "candidate-a5a2b574124467e1d8d8bac7",
+        "candidate-f7ec0cb156ee2be47d1e2413"
+      ],
+      "private_confirmation_sha256": "a67d821fa5193d2b3b3e346df575172affe310ab08c2b50af54953af6eb83a93",
+      "probe_sha256": "8867eba1ac1c99e2bb03368f1353111ee152b8101c61d0e2c795e1040ec4ad60",
+      "public_baselines_identical_sha256": "14d4b2eb400efc9830d253d5ac01a333d8172aa4fecc03d97b4aa1da99f4a470",
+      "results": [
+        {
+          "candidate_id": "pristine-baseline",
+          "elapsed_ns": 443295511,
+          "exit_code": 0,
+          "output": {
+            "go_version": "go1.27.4",
+            "results": [
+              {
+                "allowed": [
+                  "UTF-8"
+                ],
+                "body_bytes": 4,
+                "case": "legacy_unquoted_stray_quote_utf8",
+                "header": "text/plain; note=foo\"bar; charset=utf-8",
+                "status": 204
+              },
+              {
+                "allowed": [
+                  "UTF-8",
+                  ""
+                ],
+                "body_bytes": 4,
+                "case": "legacy_unquoted_stray_quote_disallowed_latin1",
+                "header": "text/plain; note=foo\"bar; charset=latin-1",
+                "status": 415
+              }
+            ]
+          },
+          "probe_sha256": "8867eba1ac1c99e2bb03368f1353111ee152b8101c61d0e2c795e1040ec4ad60",
+          "source_tree_sha256": "14d4b2eb400efc9830d253d5ac01a333d8172aa4fecc03d97b4aa1da99f4a470",
+          "source_unchanged": true,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_sha256": "5be1256398a65d6befa6de3ce91255a575e6b946c8c4feba9ecf677b95237cb5",
+          "stopped": false
+        },
+        {
+          "candidate_id": "candidate-a5a2b574124467e1d8d8bac7",
+          "elapsed_ns": 446676472,
+          "exit_code": 0,
+          "output": {
+            "go_version": "go1.27.4",
+            "results": [
+              {
+                "allowed": [
+                  "UTF-8"
+                ],
+                "body_bytes": 4,
+                "case": "legacy_unquoted_stray_quote_utf8",
+                "header": "text/plain; note=foo\"bar; charset=utf-8",
+                "status": 204
+              },
+              {
+                "allowed": [
+                  "UTF-8",
+                  ""
+                ],
+                "body_bytes": 4,
+                "case": "legacy_unquoted_stray_quote_disallowed_latin1",
+                "header": "text/plain; note=foo\"bar; charset=latin-1",
+                "status": 415
+              }
+            ]
+          },
+          "probe_sha256": "8867eba1ac1c99e2bb03368f1353111ee152b8101c61d0e2c795e1040ec4ad60",
+          "source_tree_sha256": "9bd6fec998a67cac3940924c4728baf2ed35735e5a90c5f50f5c6a09b4f4c2f1",
+          "source_unchanged": true,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_sha256": "5be1256398a65d6befa6de3ce91255a575e6b946c8c4feba9ecf677b95237cb5",
+          "stopped": false
+        },
+        {
+          "candidate_id": "candidate-f7ec0cb156ee2be47d1e2413",
+          "elapsed_ns": 449082313,
+          "exit_code": 0,
+          "output": {
+            "go_version": "go1.27.4",
+            "results": [
+              {
+                "allowed": [
+                  "UTF-8"
+                ],
+                "body_bytes": 4,
+                "case": "legacy_unquoted_stray_quote_utf8",
+                "header": "text/plain; note=foo\"bar; charset=utf-8",
+                "status": 415
+              },
+              {
+                "allowed": [
+                  "UTF-8",
+                  ""
+                ],
+                "body_bytes": 4,
+                "case": "legacy_unquoted_stray_quote_disallowed_latin1",
+                "header": "text/plain; note=foo\"bar; charset=latin-1",
+                "status": 204
+              }
+            ]
+          },
+          "probe_sha256": "8867eba1ac1c99e2bb03368f1353111ee152b8101c61d0e2c795e1040ec4ad60",
+          "source_tree_sha256": "cde794c9d0a4605ec374ee315bb6c4e2f144908f2edba5b38bff06f1a1d95715",
+          "source_unchanged": true,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_sha256": "26baacf91bacfcb8bc8b9530ce11fd2c0a4298ac692a07b9a3c2ea5f4de1e0aa",
+          "stopped": false
+        }
+      ],
+      "scope": "POSTHOC deterministic confirmation only; not frozen acceptance, not a retry or replacement of original grades; exactly two supplied HTTP counterexamples, no other bug search",
+      "selection": "Exactly two public opaque bundles selected by identical visible task-contract contents and middleware/content_charset.go; no private mapping, arm or usage data read",
+      "version": 1
+    },
+    {
+      "contract_sha256": "b5eebdf78537522e798e165a182caaae87ebedd9736521a1070794f9f38943bf",
+      "helper_executable_sha256": "411107f709a393b4885b33fb90f15aa18846bf376bfeb63011d1e95e461a43e5",
+      "id": "charset-extended-override",
+      "network": "unshare-all; no model, credentials or sockets mounted",
+      "opaque_candidates": [
+        "candidate-a5a2b574124467e1d8d8bac7",
+        "candidate-f7ec0cb156ee2be47d1e2413"
+      ],
+      "private_confirmation_sha256": "ef89ed64742dcaf62528c154fd214b5a19977a4f555db1ffdbdc3930db977f99",
+      "probe_sha256": "e19f156d130e3d84361a97ca86e88fb9befad7165d2e25d66f221f49eef915c2",
+      "public_baselines_identical_sha256": "14d4b2eb400efc9830d253d5ac01a333d8172aa4fecc03d97b4aa1da99f4a470",
+      "results": [
+        {
+          "candidate_id": "pristine-baseline",
+          "elapsed_ns": 296723607,
+          "exit_code": 0,
+          "output": {
+            "go_version": "go1.27.4",
+            "results": [
+              {
+                "allowed": [
+                  "utf-8"
+                ],
+                "body_bytes": 4,
+                "case": "extended_star_overrides_disallowed_charset",
+                "header": "text/plain; charset=latin-1; charset*=UTF-8''utf-8",
+                "status": 415
+              },
+              {
+                "allowed": [
+                  "utf-8"
+                ],
+                "body_bytes": 4,
+                "case": "extended_continuations_override_disallowed_charset",
+                "header": "text/plain; charset=latin-1; charset*0=utf-; charset*1=8",
+                "status": 415
+              },
+              {
+                "allowed": [
+                  "utf-8"
+                ],
+                "body_bytes": 4,
+                "case": "extended_star_overrides_allowed_charset",
+                "header": "text/plain; charset=utf-8; charset*=UTF-8''latin-1",
+                "status": 204
+              }
+            ]
+          },
+          "probe_sha256": "e19f156d130e3d84361a97ca86e88fb9befad7165d2e25d66f221f49eef915c2",
+          "source_tree_sha256": "14d4b2eb400efc9830d253d5ac01a333d8172aa4fecc03d97b4aa1da99f4a470",
+          "source_unchanged": true,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_sha256": "3affce4320162c690bae1d59057349eeb4ac0a7944c1b300146adacc66d2b198",
+          "stopped": false
+        },
+        {
+          "candidate_id": "candidate-a5a2b574124467e1d8d8bac7",
+          "elapsed_ns": 291241048,
+          "exit_code": 0,
+          "output": {
+            "go_version": "go1.27.4",
+            "results": [
+              {
+                "allowed": [
+                  "utf-8"
+                ],
+                "body_bytes": 4,
+                "case": "extended_star_overrides_disallowed_charset",
+                "header": "text/plain; charset=latin-1; charset*=UTF-8''utf-8",
+                "status": 204
+              },
+              {
+                "allowed": [
+                  "utf-8"
+                ],
+                "body_bytes": 4,
+                "case": "extended_continuations_override_disallowed_charset",
+                "header": "text/plain; charset=latin-1; charset*0=utf-; charset*1=8",
+                "status": 204
+              },
+              {
+                "allowed": [
+                  "utf-8"
+                ],
+                "body_bytes": 4,
+                "case": "extended_star_overrides_allowed_charset",
+                "header": "text/plain; charset=utf-8; charset*=UTF-8''latin-1",
+                "status": 415
+              }
+            ]
+          },
+          "probe_sha256": "e19f156d130e3d84361a97ca86e88fb9befad7165d2e25d66f221f49eef915c2",
+          "source_tree_sha256": "9bd6fec998a67cac3940924c4728baf2ed35735e5a90c5f50f5c6a09b4f4c2f1",
+          "source_unchanged": true,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_sha256": "4c7edeaf7d4d3aff5a93e3788edeeb45a12c0481037fbfdf54d4c7140774da69",
+          "stopped": false
+        },
+        {
+          "candidate_id": "candidate-f7ec0cb156ee2be47d1e2413",
+          "elapsed_ns": 287401994,
+          "exit_code": 0,
+          "output": {
+            "go_version": "go1.27.4",
+            "results": [
+              {
+                "allowed": [
+                  "utf-8"
+                ],
+                "body_bytes": 4,
+                "case": "extended_star_overrides_disallowed_charset",
+                "header": "text/plain; charset=latin-1; charset*=UTF-8''utf-8",
+                "status": 204
+              },
+              {
+                "allowed": [
+                  "utf-8"
+                ],
+                "body_bytes": 4,
+                "case": "extended_continuations_override_disallowed_charset",
+                "header": "text/plain; charset=latin-1; charset*0=utf-; charset*1=8",
+                "status": 204
+              },
+              {
+                "allowed": [
+                  "utf-8"
+                ],
+                "body_bytes": 4,
+                "case": "extended_star_overrides_allowed_charset",
+                "header": "text/plain; charset=utf-8; charset*=UTF-8''latin-1",
+                "status": 415
+              }
+            ]
+          },
+          "probe_sha256": "e19f156d130e3d84361a97ca86e88fb9befad7165d2e25d66f221f49eef915c2",
+          "source_tree_sha256": "cde794c9d0a4605ec374ee315bb6c4e2f144908f2edba5b38bff06f1a1d95715",
+          "source_unchanged": true,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_sha256": "4c7edeaf7d4d3aff5a93e3788edeeb45a12c0481037fbfdf54d4c7140774da69",
+          "stopped": false
+        }
+      ],
+      "scope": "POSTHOC deterministic confirmation only; not frozen acceptance, not a retry or replacement of original grades; exactly three supplied HTTP counterexamples, no other bug search",
+      "selection": "Exactly two public opaque bundles selected by identical visible task-contract contents and middleware/content_charset.go; no private mapping, arm or usage data read",
+      "version": 1
+    }
+  ],
+  "effort": "high",
+  "frozen_grades_unchanged": true,
+  "interpretation": "Two blind major findings confirmed. Extended MIME charset override affects both charset patches; unquoted stray-quote fallback additionally affects only the normal patch. No findings reported is not proof of correctness; three reviews remain unknown.",
+  "jobs": [
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-00e98e3fa69afc32185e5ecc",
+        "findings": [],
+        "limitations": [
+          "Both stringify and parser suite execution attempts failed because Node.js is unavailable. Functional test results remain unknown."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Added tests cover special-character keys, nested prefixes, both RFC formats, custom encoder arguments, encoding bypass options, distinct-key round trips, and existing nonempty-array formats. No existing assertions were removed or weakened. Static inspection found no actionable defects."
+      },
+      "candidate_id": "candidate-00e98e3fa69afc32185e5ecc",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "normal",
+        "bundle_hashes_sha256": "d023d01a506e6ac014f4b83be4405e41bcdd41a99de8fb30e7b6be358a9c957a",
+        "bundle_sha256": "a47b70b17b04003357905cd77fe103b99d05921fd71961d5e86d7549c1cc7089",
+        "case_id": "qs-empty-array-keys",
+        "opaque_id": "candidate-00e98e3fa69afc32185e5ecc",
+        "repeat": 1,
+        "result_sha256": "4dd903c3b29294326f3dcda974bdf2f2054fe47069538e81c199e6282a64de7c",
+        "run_id": "qs-empty-array-keys-r1-normal"
+      },
+      "observed_tokens": {
+        "cache_read": 106624,
+        "cache_write": 0,
+        "input_total": 139947,
+        "input_uncached": 33323,
+        "output": 905,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 198,
+        "reasoning_output_tokens": 198,
+        "total": 140852,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "056d638ff2593432de53f02aaaf27c85ddbd0daa73baa5f2feed6f29f905308d",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-056e01d4bf7e869660daf1f6",
+        "findings": [],
+        "limitations": [
+          "Completion tests were attempted but could not run because the go executable is unavailable; functional results remain unknown.",
+          "Native separator behavior on Windows was inspected but not executed."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Added tests cover home and nested paths, trailing separators, partial names, spaces, directory-only filtering, JSON and line callbacks, and native non-home paths. Existing tests are unchanged. No actionable correctness or coverage regression was identified by inspection."
+      },
+      "candidate_id": "candidate-056e01d4bf7e869660daf1f6",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "compact",
+        "bundle_hashes_sha256": "a24ce9b457ad9a5123dc9d9846d29de26998192d09f33213a496d79670ae16f3",
+        "bundle_sha256": "f0fe8cec729d94bb9e4fe35083f56e55dfc6fd4c9be0f2e53d1946910b76188b",
+        "case_id": "kitsu-path-completion",
+        "opaque_id": "candidate-056e01d4bf7e869660daf1f6",
+        "repeat": 1,
+        "result_sha256": "c59e24d93edf1ef15bd45f845cb310463b8e472eb34b7e5cbe580084876051a8",
+        "run_id": "kitsu-path-completion-r1-compact"
+      },
+      "observed_tokens": {
+        "cache_read": 119424,
+        "cache_write": 0,
+        "input_total": 154010,
+        "input_uncached": 34586,
+        "output": 1051,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 209,
+        "reasoning_output_tokens": 209,
+        "total": 155061,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "15f79f5b4eb4088405ecfde4085e365289b8f3bf60c4eeee65470e40cd962937",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": null,
+      "candidate_id": "candidate-11aa0b18d5fcb061c9f0b649",
+      "failure_reasons": [
+        "execution_failed",
+        "usage_incomplete",
+        "invalid_structured_response"
+      ],
+      "identity_after_unblinding": {
+        "arm": "normal",
+        "bundle_hashes_sha256": "338f00b83bd005e3d37a18c5d418c46a2be21b6fcc08712874e86dc0969ee449",
+        "bundle_sha256": "8548c7510c210844ed32cb046329b6a49b2613ec81c070e2a22ce19292efc489",
+        "case_id": "minimatch-escaped-patterns",
+        "opaque_id": "candidate-11aa0b18d5fcb061c9f0b649",
+        "repeat": 1,
+        "result_sha256": "359ec50aa02b25bf64da537d4e11bec6c097147eb6eee578c09ed0715d727795",
+        "run_id": "minimatch-escaped-patterns-r1-normal"
+      },
+      "observed_tokens": {
+        "cache_read": 147584,
+        "cache_write": 0,
+        "input_total": 173533,
+        "input_uncached": 25949,
+        "output": 3095,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 2096,
+        "reasoning_output_tokens": 2096,
+        "total": 176628,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "bb8637b9b454b35210c34b75a648d3695d77dd5c467c64ca6d1d9c6637b62544",
+      "status": "unknown",
+      "usage_complete": false
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-21053eede6b2cad7f4e170a3",
+        "findings": [],
+        "limitations": [
+          "Functional test results are unknown; go test ./... could not run because the Go executable is unavailable."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Added coverage checks Parse and ParseAll in both parsing modes, including unknown long and short flags, cluster suffixes, known prefixes, value consumption, and terminator forwarding. Assertions verify returned arguments, flag values, and callbacks. Existing tests are unchanged. Execution was attempted but unavailable because go is not installed."
+      },
+      "candidate_id": "candidate-21053eede6b2cad7f4e170a3",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "normal",
+        "bundle_hashes_sha256": "d97843761c3b2e630dd535f80058f8c624386383c3844ecba77c44dd17a9f50b",
+        "bundle_sha256": "fda14f752e3f579103c6c5a675150f9618ecaf7b2185c480c23a6dbddec2281b",
+        "case_id": "pflag-unknown-flags",
+        "opaque_id": "candidate-21053eede6b2cad7f4e170a3",
+        "repeat": 1,
+        "result_sha256": "e1bffbdbcf6f229c2cb5f7c3f3a51da690602dfaf14a35e03b9619055d289fbf",
+        "run_id": "pflag-unknown-flags-r1-normal"
+      },
+      "observed_tokens": {
+        "cache_read": 68096,
+        "cache_write": 0,
+        "input_total": 108409,
+        "input_uncached": 40313,
+        "output": 851,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 287,
+        "reasoning_output_tokens": 287,
+        "total": 109260,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "76a3f82874fd2d75dc877d5430ce7063fba3539b52ab7391052a9b99a5a8b94b",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-237b769d0d0938b06c226d1f",
+        "findings": [],
+        "limitations": [
+          "Parser and utility suite execution was attempted, but both commands failed because Node.js is unavailable. Functional test results remain unknown."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Added tests cover sparse merge directions, append positions, compaction, exact element limits, and actual overflow with throwOnLimitExceeded enabled and disabled. Existing coverage is preserved. No actionable correctness or test-adequacy issue was identified by source inspection."
+      },
+      "candidate_id": "candidate-237b769d0d0938b06c226d1f",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "normal",
+        "bundle_hashes_sha256": "eb7d83f3e92f0ef24dbf2b1b40568c32c4c09ed580b02ff686add39eb4922963",
+        "bundle_sha256": "138d2b743576b68b96fde02d0e8dded04f1917640ffe194506451b124348192c",
+        "case_id": "qs-sparse-array-limit",
+        "opaque_id": "candidate-237b769d0d0938b06c226d1f",
+        "repeat": 1,
+        "result_sha256": "1b588970e872c8ffa2be3cb66d81487520aa97eadc59e53a19e4897b9762e006",
+        "run_id": "qs-sparse-array-limit-r1-normal"
+      },
+      "observed_tokens": {
+        "cache_read": 235264,
+        "cache_write": 0,
+        "input_total": 283374,
+        "input_uncached": 48110,
+        "output": 1899,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 833,
+        "reasoning_output_tokens": 833,
+        "total": 285273,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "edc4a0c10e818d4789d890535d701bd060bcfd0c9038f8a2add4b804ad31d4e0",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-25ad1273f18bb6f1164b295a",
+        "findings": [],
+        "limitations": [
+          "CMake was unavailable; tests were compiled directly with g++ using C++11.",
+          "Validation used a 64-bit long double significand. Other platforms and the full CTest suite were not tested."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "The added tests cover both required boundary values in scientific, fixed, and general formats, plus rounding and shortest output. All 153 format tests passed in both header-only and compiled-library builds; all 27 implementation tests passed. An additional 43,281 precision-formatting comparisons against local snprintf produced no mismatches."
+      },
+      "candidate_id": "candidate-25ad1273f18bb6f1164b295a",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "compact",
+        "bundle_hashes_sha256": "34a4bc197f192826a0d8b250b70653a5973b5b68a0eaa6d283b735480782e0b2",
+        "bundle_sha256": "74d3d24ac80b7970d15ba0bd20a47f63d6126de3d355825ceed151b38a2fc617",
+        "case_id": "fmt-long-double-precision",
+        "opaque_id": "candidate-25ad1273f18bb6f1164b295a",
+        "repeat": 1,
+        "result_sha256": "268a3d910a3da501c9ab6066c95e1d4e440549b30a7a0e619265e1cf25bd57f7",
+        "run_id": "fmt-long-double-precision-r1-compact"
+      },
+      "observed_tokens": {
+        "cache_read": 463744,
+        "cache_write": 0,
+        "input_total": 520814,
+        "input_uncached": 57070,
+        "output": 3415,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 872,
+        "reasoning_output_tokens": 872,
+        "total": 524229,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "ff19dc8524963c23c4c919206b399af6ca78a296195d2bde2e217793faa838f6",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-28a37785e766a02bf857d0f9",
+        "findings": [],
+        "limitations": [
+          "Review was limited to the supplied bundle. Separate independent functional evaluation results were unavailable."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Added tests cover the reported hyphen range, equivalent comparator ranges, AND-group prerelease opt-in, OR-group isolation, stable boundaries, build metadata, and Check/Validate agreement. Existing tests are unchanged. Ran /usr/local/go/bin/go test ./... in candidate/; all tests passed."
+      },
+      "candidate_id": "candidate-28a37785e766a02bf857d0f9",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "compact",
+        "bundle_hashes_sha256": "25257218fdebd9d03749a3deff9ee35bef051ec6ee55d33804b9bfc5393b4937",
+        "bundle_sha256": "2ed9b350c327eefd7a1eb74022d1a4a88700e59fc1ce051f1b35891f3cc25300",
+        "case_id": "semver-prerelease-groups",
+        "opaque_id": "candidate-28a37785e766a02bf857d0f9",
+        "repeat": 1,
+        "result_sha256": "eadbb6c3d7aea5436514a134b82a6379731ffa445203539c361d3e21a86b506b",
+        "run_id": "semver-prerelease-groups-r1-compact"
+      },
+      "observed_tokens": {
+        "cache_read": 140160,
+        "cache_write": 0,
+        "input_total": 183034,
+        "input_uncached": 42874,
+        "output": 1090,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 381,
+        "reasoning_output_tokens": 381,
+        "total": 184124,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "686f1e77447db940e3784f442ed6d908803a1b365a50e49686214fa2cdef72e7",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-2a8d1032c3e2d1f153f94893",
+        "findings": [],
+        "limitations": [
+          "CMake was unavailable; test binaries were built directly.",
+          "Other toolchains, long double representations, and the remaining repository suites were not tested.",
+          "The author's prior test execution is unknown."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Added regressions cover both specified values in scientific, fixed, general, and shortest formatting, plus rounding across powers of ten. Existing coverage was preserved. Manually built with g++ in C++17 mode: all 154 format-test tests and 28 format-impl-test/header-only tests passed, including the new regression."
+      },
+      "candidate_id": "candidate-2a8d1032c3e2d1f153f94893",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "normal",
+        "bundle_hashes_sha256": "23c3039196c4361e253a17562fe202660c5ffae00f3d9323c12c528b4ae008bf",
+        "bundle_sha256": "4ffaceddbeb6357722dbed7f6b8cc90b48bdf376b70c0706734840c2d1135f50",
+        "case_id": "fmt-long-double-precision",
+        "opaque_id": "candidate-2a8d1032c3e2d1f153f94893",
+        "repeat": 1,
+        "result_sha256": "1986f2bd19a1eff56f2d9954ffc66776dbb7df2762d63bfe5bc079784c69e1b1",
+        "run_id": "fmt-long-double-precision-r1-normal"
+      },
+      "observed_tokens": {
+        "cache_read": 290944,
+        "cache_write": 0,
+        "input_total": 328514,
+        "input_uncached": 37570,
+        "output": 1631,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 353,
+        "reasoning_output_tokens": 353,
+        "total": 330145,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "b853f955bc380fd819dce877624cb345a511d5758cf4c4bd75e29b7ac59530e6",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-3e98bafd0fdba00924cfdf58",
+        "findings": [],
+        "limitations": [
+          "Direct repository testing was blocked: go.mod requires Go 1.27.1, while the available toolchain is Go 1.26.4. Temporary testing used unchanged installer and test sources with a standalone module.",
+          "macOS behavior was inspected but not executed.",
+          "Actual release-artifact and published-release tests skipped because their required inputs were unavailable."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "The new tests cover isolated fresh homes, interactive and login Bash lookup, login-file precedence, content preservation, idempotence, and both PATH opt-outs. All runnable installer tests passed in a temporary copy using Go 1.26.4. The fresh-home regression test failed against baseline specifically because login Bash could not find kitsu."
+      },
+      "candidate_id": "candidate-3e98bafd0fdba00924cfdf58",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "compact",
+        "bundle_hashes_sha256": "d74dbce871fbe9906828605c9b8b665da981638fabe40c99f40f05ce4bdca250",
+        "bundle_sha256": "e36905bd95dc311a6eb3f7995b9aeb1dc73462b7d087d740b8bb75a58eaff070",
+        "case_id": "kitsu-bash-login",
+        "opaque_id": "candidate-3e98bafd0fdba00924cfdf58",
+        "repeat": 1,
+        "result_sha256": "1e4ce32618375ffeebb148988f3cccf39ae5b885ec9f20db93fea2c658c44199",
+        "run_id": "kitsu-bash-login-r1-compact"
+      },
+      "observed_tokens": {
+        "cache_read": 250624,
+        "cache_write": 0,
+        "input_total": 282141,
+        "input_uncached": 31517,
+        "output": 1582,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 458,
+        "reasoning_output_tokens": 458,
+        "total": 283723,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "686e1f59fdeaa17647974e9787b75f64c17daf70a0d49255d8a403d5f2eef489",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-53067fb2c5e088308e039fb0",
+        "findings": [],
+        "limitations": [
+          "CMake was unavailable, so the printf suite was built directly from the supplied sources.",
+          "Sanitizer builds, other platforms, and the full project suite were not run.",
+          "No evidence is available about the author's test execution."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Added tests directly cover null strings with zero precision, precision below and above six, width and alignment, ordinary %s, and valid-string precision. Assertions exercise both ordinary and positional arguments without weakening existing coverage. Manually compiled and ran the supplied printf suite using GCC 15.2 with C++11; all 47 tests passed."
+      },
+      "candidate_id": "candidate-53067fb2c5e088308e039fb0",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "compact",
+        "bundle_hashes_sha256": "0a922f89431a22f6abe02888cafbb0e99fedc64653966ae11af6d530293db1d8",
+        "bundle_sha256": "1b5b4a13731694aa42a4593be6753d4ec9c1a82b7dc9ba92d087dac49bc8f3d4",
+        "case_id": "fmt-null-printf-precision",
+        "opaque_id": "candidate-53067fb2c5e088308e039fb0",
+        "repeat": 1,
+        "result_sha256": "78d0b553aceb00cbdb75774e47a099671e0ce50af0c6783b49b631bc1dd7ea63",
+        "run_id": "fmt-null-printf-precision-r1-compact"
+      },
+      "observed_tokens": {
+        "cache_read": 265728,
+        "cache_write": 0,
+        "input_total": 304828,
+        "input_uncached": 39100,
+        "output": 1729,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 493,
+        "reasoning_output_tokens": 493,
+        "total": 306557,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "c23795ff8226ccd6290c184e59d960acb876526b810676b98ff0d34cba3165a3",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-5400cfe85e005b09cea18f0c",
+        "findings": [],
+        "limitations": [
+          "Review was limited to the supplied bundle. Separate independent functional evaluation results were unavailable."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Added tests cover inclusive range boundaries, AND-group prerelease opt-in, OR-group isolation, Check/Validate agreement, stable ordering, and build metadata. Existing tests remain unchanged. The full suite passed using /usr/local/go/bin/go test ./... with network dependency fetching disabled."
+      },
+      "candidate_id": "candidate-5400cfe85e005b09cea18f0c",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "normal",
+        "bundle_hashes_sha256": "f05fad4059d2931735a85b0528359e78f5720da626793dbc70c522df9d9832c6",
+        "bundle_sha256": "9f5ae85b9fa0eaef3d06363df51b20f6991f1ebbc71ab2a0005db662542d28a7",
+        "case_id": "semver-prerelease-groups",
+        "opaque_id": "candidate-5400cfe85e005b09cea18f0c",
+        "repeat": 1,
+        "result_sha256": "7ad6bcde9d662fedec7b8f50d191fe257c97e254fced0970ccd330fee9abd827",
+        "run_id": "semver-prerelease-groups-r1-normal"
+      },
+      "observed_tokens": {
+        "cache_read": 188544,
+        "cache_write": 0,
+        "input_total": 233462,
+        "input_uncached": 44918,
+        "output": 1191,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 364,
+        "reasoning_output_tokens": 364,
+        "total": 234653,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "3776bd01fc834d83e45a0c3e031627ba389dd068e063396642394f282e0fd09f",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-5c8a36639c4a42ce11165f1c",
+        "findings": [],
+        "limitations": [
+          "Could not run preprocessing or matching suites: Node.js, npm, and required dependencies are unavailable in the supplied environment."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Static inspection shows focused coverage for positive and negated overflow, cumulative allocations below/at/above the budget, rejection before cloning, preserved bounded matching, and unchanged pattern-count truncation. Existing matching coverage remains intact. Functional test results are unavailable."
+      },
+      "candidate_id": "candidate-5c8a36639c4a42ce11165f1c",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "normal",
+        "bundle_hashes_sha256": "7ed33c1fbe46e508292ebcd32146529ea5c1dce8e355e0893390b76c440f4269",
+        "bundle_sha256": "e578de42b41fdeb0d4f710d8bc8f321ccf4df7dad9778b27024528789b054156",
+        "case_id": "minimatch-split-budget",
+        "opaque_id": "candidate-5c8a36639c4a42ce11165f1c",
+        "repeat": 1,
+        "result_sha256": "b180fe22bf6ecd2a3479372ec63931e32ad7723767a365e971ee99de03459b65",
+        "run_id": "minimatch-split-budget-r1-normal"
+      },
+      "observed_tokens": {
+        "cache_read": 71040,
+        "cache_write": 0,
+        "input_total": 99529,
+        "input_uncached": 28489,
+        "output": 906,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 321,
+        "reasoning_output_tokens": 321,
+        "total": 100435,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "e3831042617b765de63d834e2a28e2aceccfa095a38ebedd5439ec33256378a5",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-5eca3a9ba1cd3260ad30ca77",
+        "findings": [],
+        "limitations": [
+          "Attempted `GOPROXY=off GOTOOLCHAIN=local go test ./...`, but execution failed because `go` is unavailable. Functional test results remain unknown; conclusions are based on source inspection."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Added tests cover Parse and ParseAll in both interspersed modes, including unknown long and short flags, shorthand clusters, preceding known flags, values, and terminators. They assert remaining arguments, flag values, and callback order. Existing tests were unchanged. No actionable coverage defect was identified."
+      },
+      "candidate_id": "candidate-5eca3a9ba1cd3260ad30ca77",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "compact",
+        "bundle_hashes_sha256": "065f364799d598f7af733a11ffd6c449e57ff4f5bc9cbfb412d41d2ed1ac6a39",
+        "bundle_sha256": "8a3e2d0d951e0b588381d89ef70d524117d2490930eba29daafa78aab11e3c0f",
+        "case_id": "pflag-unknown-flags",
+        "opaque_id": "candidate-5eca3a9ba1cd3260ad30ca77",
+        "repeat": 1,
+        "result_sha256": "8af788672f1011283b9bd17d6cb8eb4537e54aa8a05cb102d75799231a05a2a9",
+        "run_id": "pflag-unknown-flags-r1-compact"
+      },
+      "observed_tokens": {
+        "cache_read": 101120,
+        "cache_write": 0,
+        "input_total": 128801,
+        "input_uncached": 27681,
+        "output": 1081,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 391,
+        "reasoning_output_tokens": 391,
+        "total": 129882,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "ee8dd9d40d418eacb01435a60be1e962a774dc910fbdf28af143a0ab8a89103b",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-6a34ea11c8ef2ddb53307d0c",
+        "findings": [],
+        "limitations": [
+          "CMake was unavailable, so the printf suite was compiled and run directly.",
+          "Other platforms and compiler configurations were not tested; separate independent functional evaluation results are unavailable."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Regression coverage adequately exercises zero precision, the six-character boundary, padding, positional arguments, dynamic precision, and valid-string behavior without weakening existing tests. All 48 printf tests passed when compiled directly with GCC in C++11 mode and AddressSanitizer/UndefinedBehaviorSanitizer; no sanitizer diagnostics appeared."
+      },
+      "candidate_id": "candidate-6a34ea11c8ef2ddb53307d0c",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "normal",
+        "bundle_hashes_sha256": "2d1cbfed09024a3566b4ca4a1071593f229e68b675ba48b426ca24a774091bae",
+        "bundle_sha256": "f973fc6f7aef986e70e099556aee09a15335981682e3c0a6bd17dadb10c9c83b",
+        "case_id": "fmt-null-printf-precision",
+        "opaque_id": "candidate-6a34ea11c8ef2ddb53307d0c",
+        "repeat": 1,
+        "result_sha256": "0e7919af336fe60f8766d4b0e8cd0be9d662bdfa41dfc1459f8dbdb19555f365",
+        "run_id": "fmt-null-printf-precision-r1-normal"
+      },
+      "observed_tokens": {
+        "cache_read": 434560,
+        "cache_write": 0,
+        "input_total": 484461,
+        "input_uncached": 49901,
+        "output": 2056,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 627,
+        "reasoning_output_tokens": 627,
+        "total": 486517,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "bda879da3ec350f13242f99b9dfc59228b5ca368a90127ebe6b14dbc2f522eba",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-83e22c096dadabe5623eaa00",
+        "findings": [],
+        "limitations": [
+          "Separate independent functional evaluation results were unavailable."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Focused tests cover self-mounts, With/Group aliases, distinct subrouters, inline middleware, missing paths, and nil handlers. All 21 invalid-registration cases fail promptly against baseline without hanging. Candidate's full router and middleware suites passed with go test -race -count=1 ./.... Existing tests were unchanged."
+      },
+      "candidate_id": "candidate-83e22c096dadabe5623eaa00",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "compact",
+        "bundle_hashes_sha256": "0286b8fa928240efe0e43e989473b414e7b5e8cbc5d4a9d950e5a75df542887f",
+        "bundle_sha256": "ebaeecbc26733e0cec9167e70b1643246abf66714f039eabd9576d5a42490049",
+        "case_id": "chi-self-mount",
+        "opaque_id": "candidate-83e22c096dadabe5623eaa00",
+        "repeat": 1,
+        "result_sha256": "4c0055eda5cd7fa0fb3c16e82de23fb139941cc8817a17a98c103eb5c234a355",
+        "run_id": "chi-self-mount-r1-compact"
+      },
+      "observed_tokens": {
+        "cache_read": 231040,
+        "cache_write": 0,
+        "input_total": 275092,
+        "input_uncached": 44052,
+        "output": 1701,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 746,
+        "reasoning_output_tokens": 746,
+        "total": 276793,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "b1cdd0c596015df48344a22b00542d6076378fce53a631a66209cbefb9fedadf",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-9ba10609a3f96eb38821aeed",
+        "findings": [],
+        "limitations": [
+          "Functional behavior and test results were not verified by execution.",
+          "Whether the candidate author ran the required suites is unknown."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "The added tests cover positive and negated entry points, cumulative allocation immediately below and exactly at the budget, rejection one cell over before copying, bounded matching, and preservation of braceExpandMax truncation. Source inspection found no actionable coverage regression. The preprocessing and matching suites could not be executed because Node.js, npm, and installed dependencies are unavailable."
+      },
+      "candidate_id": "candidate-9ba10609a3f96eb38821aeed",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "compact",
+        "bundle_hashes_sha256": "ea55c32b9b0e21525781b7fc5e5304094d1519dfd29fe94afe64cf7b36b16378",
+        "bundle_sha256": "df83899a53cd8adff8ea9ace86294593653d075a2f78de4907f29d306922a327",
+        "case_id": "minimatch-split-budget",
+        "opaque_id": "candidate-9ba10609a3f96eb38821aeed",
+        "repeat": 1,
+        "result_sha256": "0bfc2aa043dd356fe22a6f88094c22b1e04e59172080f9544bca31a44525246b",
+        "run_id": "minimatch-split-budget-r1-compact"
+      },
+      "observed_tokens": {
+        "cache_read": 83072,
+        "cache_write": 0,
+        "input_total": 101595,
+        "input_uncached": 18523,
+        "output": 777,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 262,
+        "reasoning_output_tokens": 262,
+        "total": 102372,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "9ce2d8b5f01aafb0f0c8c9937098a422cdbd5f8349bc18f7743d1a48ce651dc0",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-9de122595ff032c040de8fa4",
+        "findings": [],
+        "limitations": [
+          "The stringify/parser suites could not run because Node.js and npm are unavailable; the attempted Node.js invocation exited with code 127."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Added tests cover reserved characters, nested keys, RFC3986/RFC1738 formatting, custom encoder arguments and invocation count, disabled key encoding, distinct-key round trips, and existing nonempty array formats. No existing coverage was weakened. Functional test results remain unavailable."
+      },
+      "candidate_id": "candidate-9de122595ff032c040de8fa4",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "compact",
+        "bundle_hashes_sha256": "cc6c318ca48807b0dd3c6c15f40de2f4f46b9d3d6c10bb2c77a4a7158625f907",
+        "bundle_sha256": "8c01c94eb06a02a00fe97e752e799ae09aa268b90e246c9a3eb0beb11929163b",
+        "case_id": "qs-empty-array-keys",
+        "opaque_id": "candidate-9de122595ff032c040de8fa4",
+        "repeat": 1,
+        "result_sha256": "343df15e2ba878189be97d7b07bd009de378cf3df52eb60fc7a394c022b1586d",
+        "run_id": "qs-empty-array-keys-r1-compact"
+      },
+      "observed_tokens": {
+        "cache_read": 86528,
+        "cache_write": 0,
+        "input_total": 132800,
+        "input_uncached": 46272,
+        "output": 1066,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 395,
+        "reasoning_output_tokens": 395,
+        "total": 133866,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "1c76a136d9501bebef20f4ffeef94db9dd095027a2460d1c5a6e2315ff842a0d",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-a5a2b574124467e1d8d8bac7",
+        "findings": [
+          {
+            "behavior": "MIME extended parameters can override the actual charset, allowing a disallowed charset through. Preserve the literal charset parameter when checking the policy.",
+            "evidence": "Reproduced through ContentCharset(\"utf-8\") with a nonempty POST body: Content-Type `text/plain; charset=latin-1; charset*=UTF-8''utf-8` returns 415 in baseline and 200 in candidate. The continuation form `charset=latin-1; charset*0=utf-; charset*1=8` also changes from 415 to 200. Conversely, `charset=utf-8; charset*=UTF-8''latin-1` changes from 200 to 415. mime.ParseMediaType folds these extended parameters into params[\"charset\"], violating the requirement to preserve disallowed-charset behavior.",
+            "line": 43,
+            "path": "middleware/content_charset.go",
+            "severity": "major"
+          }
+        ],
+        "limitations": [
+          "The full repository suite was not run.",
+          "Separate independent functional evaluation results were unavailable."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "The middleware suite passed. Added tests meaningfully cover HTTP status, handler invocation, body preservation, quoting, case, absent charsets, bodyless requests, and malformed-header fallback. Existing tests remain intact. Extended parameters overriding charset are not covered."
+      },
+      "candidate_id": "candidate-a5a2b574124467e1d8d8bac7",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "compact",
+        "bundle_hashes_sha256": "447e961b5889737d456e2e0fbd3737517d416739cf54853b56e6895e3924891f",
+        "bundle_sha256": "72702f9ac5c110df827ee817eb02489d2b785cde6d2f1aec84676dd4c320a594",
+        "case_id": "chi-quoted-charset",
+        "opaque_id": "candidate-a5a2b574124467e1d8d8bac7",
+        "repeat": 1,
+        "result_sha256": "deb085cad82e1e0211031d4d98ef91a85dec6819923458772d0ce8e7b729376e",
+        "run_id": "chi-quoted-charset-r1-compact"
+      },
+      "observed_tokens": {
+        "cache_read": 159872,
+        "cache_write": 0,
+        "input_total": 198017,
+        "input_uncached": 38145,
+        "output": 2231,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 899,
+        "reasoning_output_tokens": 899,
+        "total": 200248,
+        "units": 1
+      },
+      "reported_findings_by_severity": {
+        "major": 1
+      },
+      "result_sha256": "865bceed4ec195a02f18b4f84c9a50a5a871d587cb2874234b9b5b599d779e2c",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-bda5497b9dbf17c53b6ea4d3",
+        "findings": [],
+        "limitations": [
+          "The added Go test and existing Go installer tests were not executed.",
+          "macOS behavior was inspected but not executed.",
+          "Direct checks used a fixture executable rather than an actual release binary."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "The added end-to-end test covers fresh homes, Bash login-file precedence, content preservation, repeat-install idempotence, and both PATH opt-outs. Direct Linux checks using local fixture archives passed these cases and confirmed the baseline fresh-login failure. The Go installer suite was attempted but could not run because Go is unavailable."
+      },
+      "candidate_id": "candidate-bda5497b9dbf17c53b6ea4d3",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "normal",
+        "bundle_hashes_sha256": "17aaa4b20f3a73b81633a26d8442d9bf3b653a3122cbb5021320b6bbaa82343d",
+        "bundle_sha256": "a55eb91af0205bb2c081e4a75cbc79893747ed4627aec6d58897e78a1c82c777",
+        "case_id": "kitsu-bash-login",
+        "opaque_id": "candidate-bda5497b9dbf17c53b6ea4d3",
+        "repeat": 1,
+        "result_sha256": "31f70f0aa1d1c7143a65a64bb852519632b926f162e74fd5cf338279e6a45251",
+        "run_id": "kitsu-bash-login-r1-normal"
+      },
+      "observed_tokens": {
+        "cache_read": 119936,
+        "cache_write": 0,
+        "input_total": 151170,
+        "input_uncached": 31234,
+        "output": 2625,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 469,
+        "reasoning_output_tokens": 469,
+        "total": 153795,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "88124bb60d55c56e63ff9a486083e6a42c992bab986223fa67e419d87f251d37",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-e23fba441cea9f7ddc74c107",
+        "findings": [],
+        "limitations": [
+          "Functional test results are unavailable: the go executable was not found. Conclusions are based on the supplied source and patch."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "The added tests cover direct self-mounts, With/Group aliases in both directions, sibling and nested aliases, distinct subrouters, ordinary handlers, inline middleware, and invalid registrations. Regression tests check registration-time panics without serving potentially looping requests. No existing tests were weakened. Execution was attempted but could not start because Go is unavailable."
+      },
+      "candidate_id": "candidate-e23fba441cea9f7ddc74c107",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "normal",
+        "bundle_hashes_sha256": "001da44e9a107a835b5fd495ec021786d9e5adfd7f74f39695596dbfa780e7c7",
+        "bundle_sha256": "dc98fd8ea4a50e5feb810a7aad1de5e8fe6c4dc6b888b2f5f8ff2645f51ab619",
+        "case_id": "chi-self-mount",
+        "opaque_id": "candidate-e23fba441cea9f7ddc74c107",
+        "repeat": 1,
+        "result_sha256": "15f62ac58469b1d6dbf35038d893f31a8fbf6dc222986a47eee6969b6daeb6ae",
+        "run_id": "chi-self-mount-r1-normal"
+      },
+      "observed_tokens": {
+        "cache_read": 61056,
+        "cache_write": 0,
+        "input_total": 87814,
+        "input_uncached": 26758,
+        "output": 845,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 289,
+        "reasoning_output_tokens": 289,
+        "total": 88659,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "f1338df3b4012d68cfb51dc4db1f75040452ada5b69820e9c2f55f0ede5e70cc",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-f7ec0cb156ee2be47d1e2413",
+        "findings": [
+          {
+            "behavior": "A stray quote inside a malformed unquoted parameter hides subsequent charset parameters, breaking legacy compatibility and potentially accepting a disallowed charset.",
+            "evidence": "Public HTTP probes with a nonempty body demonstrated that Content-Type: text/plain; note=foo\"bar; charset=utf-8 returns 204 in baseline but 415 in candidate with ContentCharset(\"UTF-8\"). With charset=latin-1 and ContentCharset(\"UTF-8\", \"\"), baseline returns 415 but candidate returns 204. The fallback toggles quoted mode at the embedded quote, skips the real charset, and treats it as absent. Recognize quoted parameter values without letting stray quotes in malformed unquoted values hide later parameters.",
+            "line": 62,
+            "path": "middleware/content_charset.go",
+            "severity": "major"
+          }
+        ],
+        "limitations": [
+          "The full repository suite was not run.",
+          "Separate independent functional-evaluation results were not supplied."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "The middleware suite passed with go test -race ./middleware. Added tests meaningfully cover quoted values, decoys, bodyless requests, and several malformed headers; existing coverage is retained. They miss malformed unquoted parameters containing stray quotes, allowing the demonstrated regression."
+      },
+      "candidate_id": "candidate-f7ec0cb156ee2be47d1e2413",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "normal",
+        "bundle_hashes_sha256": "d766e174ea14f627c840129d08ab851a3ff65d6939a427f7e894199fe4a2e370",
+        "bundle_sha256": "9ddb62369bd90938a5f67b99f7627666f8814a959e6c02237b31aa04bc29bfb3",
+        "case_id": "chi-quoted-charset",
+        "opaque_id": "candidate-f7ec0cb156ee2be47d1e2413",
+        "repeat": 1,
+        "result_sha256": "2f821e85487be5350f44d8e442a1d5eddfcbdaa248d7dd08998de6406f2b62c2",
+        "run_id": "chi-quoted-charset-r1-normal"
+      },
+      "observed_tokens": {
+        "cache_read": 192256,
+        "cache_write": 0,
+        "input_total": 215341,
+        "input_uncached": 23085,
+        "output": 2970,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 1515,
+        "reasoning_output_tokens": 1515,
+        "total": 218311,
+        "units": 1
+      },
+      "reported_findings_by_severity": {
+        "major": 1
+      },
+      "result_sha256": "5ea90fda26f0055564279b54c2ab3e9b3fbfe516620c71a0d51ef09159fb9ef1",
+      "status": "valid_review",
+      "usage_complete": true
+    },
+    {
+      "blind_decision": null,
+      "candidate_id": "candidate-f8e68c01bf19319374046247",
+      "failure_reasons": [
+        "execution_failed",
+        "usage_incomplete",
+        "invalid_structured_response"
+      ],
+      "identity_after_unblinding": {
+        "arm": "compact",
+        "bundle_hashes_sha256": "5a739c890490a28edd5aefaa681127ae6fc5325d2389ff07c44dd8019d2d843c",
+        "bundle_sha256": "def528b96df67d2031522af9fdae56545d27390ca87f1ab764fbc582d5123f71",
+        "case_id": "minimatch-escaped-patterns",
+        "opaque_id": "candidate-f8e68c01bf19319374046247",
+        "repeat": 1,
+        "result_sha256": "1b1502be9cb0dce780ca9eb42f0bfaae3f083515594c615a012007c28129226d",
+        "run_id": "minimatch-escaped-patterns-r1-compact"
+      },
+      "observed_tokens": {
+        "cache_read": 199424,
+        "cache_write": 0,
+        "input_total": 235548,
+        "input_uncached": 36124,
+        "output": 3479,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 2026,
+        "reasoning_output_tokens": 2026,
+        "total": 239027,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "068d0e387bf3e71279b4f8d5543feaff8434fa673420ef9df2a4dd94d779bfa4",
+      "status": "unknown",
+      "usage_complete": false
+    },
+    {
+      "blind_decision": null,
+      "candidate_id": "candidate-fb538300750a8da907cfa160",
+      "failure_reasons": [
+        "execution_failed",
+        "usage_incomplete",
+        "invalid_structured_response"
+      ],
+      "identity_after_unblinding": {
+        "arm": "compact",
+        "bundle_hashes_sha256": "d5afdae19bd4d37d9b22c69d597fad5619bf2bcebf87bcf4d24c8cd1a5f02b42",
+        "bundle_sha256": "9daeeebde94c016d687ca78f75843d89652c382b7563b429ca5fec737ceb6ca4",
+        "case_id": "qs-sparse-array-limit",
+        "opaque_id": "candidate-fb538300750a8da907cfa160",
+        "repeat": 1,
+        "result_sha256": "f1982a8f057577431ecc2535f360da5476536ff4708f17176335b16ebd13b1b7",
+        "run_id": "qs-sparse-array-limit-r1-compact"
+      },
+      "observed_tokens": {
+        "cache_read": 236800,
+        "cache_write": 0,
+        "input_total": 284514,
+        "input_uncached": 47714,
+        "output": 2809,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 1733,
+        "reasoning_output_tokens": 1733,
+        "total": 287323,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "43cb534d2d8f51016c892a90c807cb6875d369f5b0f6f1bd60519990345b5119",
+      "status": "unknown",
+      "usage_complete": false
+    },
+    {
+      "blind_decision": {
+        "candidate_id": "candidate-fedc6fcb15f6ca6ac37c0fd5",
+        "findings": [],
+        "limitations": [
+          "The completion test command could not run because Go is not installed. Functional results and cross-platform behavior remain unverified."
+        ],
+        "review_status": "complete",
+        "test_adequacy": "Added tests cover home and nested paths, trailing separators, partial names, spaces, directory-only filtering, native separators, non-home paths, and inline/quoted callback inputs. Existing tests are unchanged. Coverage appears adequate by inspection; execution was unavailable."
+      },
+      "candidate_id": "candidate-fedc6fcb15f6ca6ac37c0fd5",
+      "failure_reasons": null,
+      "identity_after_unblinding": {
+        "arm": "normal",
+        "bundle_hashes_sha256": "56ea89c4234c67aa6186f23a7115ba3c68d38a3b95f9c962a6aa1509ed33b40c",
+        "bundle_sha256": "d50fad93c96021af92028a7d9a5240d5510a572963e48004c754c1cc3291e614",
+        "case_id": "kitsu-path-completion",
+        "opaque_id": "candidate-fedc6fcb15f6ca6ac37c0fd5",
+        "repeat": 1,
+        "result_sha256": "49b1fa26c0698e90a8c7a83276c198ca8a1fa4802d65b401630cbae7cfdab9dd",
+        "run_id": "kitsu-path-completion-r1-normal"
+      },
+      "observed_tokens": {
+        "cache_read": 61184,
+        "cache_write": 0,
+        "input_total": 132727,
+        "input_uncached": 71543,
+        "output": 1291,
+        "reasoning_known_units": 1,
+        "reasoning_observed_tokens": 293,
+        "reasoning_output_tokens": 293,
+        "total": 134018,
+        "units": 1
+      },
+      "reported_findings_by_severity": {},
+      "result_sha256": "0594423c1e80f8bfdccaba5452b4a0644a271545b2f5763deccbae48bc39e12e",
+      "status": "valid_review",
+      "usage_complete": true
+    }
+  ],
+  "model": "gpt-6.1-sol",
+  "posthoc": true,
+  "review_accounting_complete": false,
+  "review_limit_seconds": 120,
+  "review_manifest_sha256": "297ad4a04bd20c4df4e4c19f07928a9c2f8135cfb3e01a9015a7c24d3cd382a8",
+  "review_tokens_separate_from_solver": {
+    "cache_read": 4314624,
+    "cache_write": 0,
+    "input_total": 5239475,
+    "input_uncached": 924851,
+    "output": 42276,
+    "reasoning_known_units": 24,
+    "reasoning_observed_tokens": 16510,
+    "reasoning_output_tokens": 16510,
+    "total": 5281751,
+    "units": 24
+  },
+  "unblinding": "All 24 blind model attempts and both deterministic opaque confirmation batches finished before the parent opened the private arm mapping. The confirmation agent did not read the mapping.",
+  "version": 1
+}

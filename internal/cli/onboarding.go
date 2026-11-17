@@ -12,8 +12,8 @@ import (
 )
 
 type onboardingArgs struct {
-	host, request string
-	json, print   bool
+	host, request        string
+	json, print, compact bool
 }
 
 func parseOnboardingArgs(args []string, start bool) (onboardingArgs, error) {
@@ -32,6 +32,7 @@ func parseOnboardingArgs(args []string, start bool) (onboardingArgs, error) {
 	flags.BoolVar(&options.json, "json", false, "")
 	if start {
 		flags.BoolVar(&options.print, "print", false, "")
+		flags.BoolVar(&options.compact, "compact", false, "")
 	}
 	p, err := parseArgs(flags, args)
 	if err != nil {
@@ -141,6 +142,10 @@ func runUXTaskStart(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	handoff := prepareTaskHandoff(report, options.request)
+	if options.compact {
+		handoff.Prompt += "\n\nKitsu compact mode: read the task skill's references/compact.md before starting roles. Use the built-in Go context collector, fresh task briefs and compact declared-check output. Carry compact mode into every worker brief; preserve permissions, independent reviews and required evidence."
+		handoff.Argv[1] = handoff.Prompt
+	}
 	if options.json {
 		return printJSON(cfg, handoff)
 	}

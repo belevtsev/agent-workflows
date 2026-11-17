@@ -49,6 +49,8 @@ Options:
                            opening the host
   --json                   print machine-readable JSON without prompts or
                            styling
+  --compact                opt in to Go context collection, compact briefs and
+                           check results
   --help, -h               show this command's help without executing it
 
 Host: --host > KITSU_HOST > private checkout preference > personal preference.
@@ -127,6 +129,216 @@ Options:
 
 Examples:
   kitsu task check add-login
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task brief
+
+```text
+usage: kitsu task brief <task> [options]
+
+Prepare a fresh worker brief and record skill selection before its baseline.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --host <codex|claude>    required host
+  --role <role>            required specialist role
+  --stage <stage>          required explicit worker stage
+  --round <number>         required positive worker round
+  --workflow <full|small>  full requires a task folder; small cannot infer saved
+                           workflow state
+  --assignment <file|->    UTF-8 assignment file or standard input; required
+                           with --save
+  --save                   save complete instructions once and return only
+                           dispatch metadata; requires --assignment
+  --max-bytes <bytes>      maximum JSON response bytes including metadata;
+                           default 16384, range 512 to 1048576
+  --json                   print JSON; collection, show and brief always use
+                           JSON
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Examples:
+  kitsu task brief fix-login --role developer --stage code --round 1 --host codex --workflow small --assignment assignment.txt --save
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task prepare
+
+```text
+usage: kitsu task prepare <task> [options]
+
+Save a worker assignment and start one private write-check interval.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --host <codex|claude>    required host
+  --role <role>            required specialist role
+  --stage <stage>          required explicit stage
+  --round <number>         required positive worker round
+  --workflow <full|small>  default full requires a task folder; small needs
+                           explicit stage and round
+  --assignment <file|->    required UTF-8 assignment; - reads standard input
+  --max-bytes <bytes>      maximum response bytes; default 16384, range 512 to
+                           1048576
+  --json                   print JSON; these explicit compact helpers always use
+                           JSON
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Examples:
+  kitsu task prepare fix-login --role developer --stage code --round 1 --host codex --workflow small --assignment assignment.txt
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task finish
+
+```text
+usage: kitsu task finish <dispatch-id> [options]
+
+Validate a prepared role's writes and record current checks without rerunning them.
+
+Arguments:
+  <dispatch-id>      private interval id returned by task prepare in this worktree
+
+Options:
+  --expect-checks <pass|fail|any> default any records the actual verdict; pass
+                                  requires current passes; fail requires current
+                                  failures
+  --abandon                record abandonment and release the interval; gives no
+                           write or quality approval
+  --reason <text>          required explanation with --abandon; cannot combine
+                           abandonment with --expect-checks
+  --max-bytes <bytes>      maximum response bytes; default 16384, range 512 to
+                           1048576
+  --json                   print JSON; these explicit compact helpers always use
+                           JSON
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task finish <dispatch-id> --expect-checks pass
+  kitsu task finish <dispatch-id> --abandon --reason 'Role settings changed; prepare a fresh worker'
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+## context
+
+### kitsu context read
+
+```text
+usage: kitsu context read <path> [options]
+
+Read bounded original source without writing a JSON request.
+
+Arguments:
+  <path>             repository-relative source file; use -- before a path beginning with -
+
+Options:
+  --start <line>           first inclusive line; omitted starts at 1
+  --end <line>             last inclusive line; omitted reads through the end
+  --task <task>            include the saved task state
+  --max-bytes <bytes>      maximum JSON response bytes including metadata;
+                           default 16384, range 512 to 1048576
+  --json                   print JSON; collection, show and brief always use
+                           JSON
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu context read internal/server.go --start 10 --end 60
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu context search
+
+```text
+usage: kitsu context search <pattern> [<path>] [options]
+
+Search eligible source literally, or with an explicit Go regular expression.
+
+Arguments:
+  <pattern>          literal text by default; use -- before a pattern beginning with -
+  <path>             optional repository-relative file or directory; omitted searches all eligible sources
+
+Options:
+  --regex                  interpret the pattern as a Go regular expression
+  --task <task>            include the saved task state
+  --max-bytes <bytes>      maximum JSON response bytes including metadata;
+                           default 16384, range 512 to 1048576
+  --json                   print JSON; collection, show and brief always use
+                           JSON
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu context search register internal
+  kitsu context search -- -flag
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu context collect
+
+```text
+usage: kitsu context collect --request <file|-> [options]
+
+Batch repository reads, searches and Git queries in the built-in Go engine.
+
+Options:
+  --request <file|->       required version 1 JSON request; - reads standard
+                           input
+  --task <task>            include the saved task state
+  --max-bytes <bytes>      maximum JSON response bytes including metadata;
+                           default 16384, range 512 to 1048576
+  --json                   print JSON; collection, show and brief always use
+                           JSON
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu context collect --request context.json --json
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu context show
+
+```text
+usage: kitsu context show <artifact-id> [options]
+
+Inspect retained evidence without rerunning operations or checks.
+
+Arguments:
+  <artifact-id>      private artifact id returned by collect, brief or compact checks
+
+Options:
+  --item <item-id>         show one named operation or check log
+  --cursor <cursor>        next_cursor from this artifact and item
+  --max-bytes <bytes>      maximum JSON response bytes including metadata;
+                           default 16384, range 512 to 1048576
+  --json                   print JSON; collection, show and brief always use
+                           JSON
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu context show <artifact-id> --item source --json
 
 Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
@@ -904,6 +1116,9 @@ Options:
   --force                  run even when passing evidence exists
   --base <rev>             reuse evidence only when checked content matches this
                            revision
+  --compact                retain logs privately and return bounded diagnostics
+  --json                   select compact JSON output automatically
+  --max-bytes <bytes>      compact JSON byte limit; default 16384
   --help, -h               show this command's help without executing it
 
 Examples:
@@ -1356,13 +1571,16 @@ Append one check to kitsu.toml.
 ### kitsu run
 
 ```text
-usage: kitsu run [<id>...] [--force] [--base <rev>]
+usage: kitsu run [<id>...] [--force] [--base <rev>] [--compact|--json] [--max-bytes <bytes>]
 
 Execute the declared checks that have no passing run on this content.
 
-  <id>...       consider only these checks
-  --force       execute them even when they have a passing run on this content
-  --base <rev>  count a check as passed when its checked content is the same as in the revision <rev>
+  <id>...              consider only these checks
+  --force              execute even when passing evidence exists
+  --base <rev>         count unchanged checked content as passed on this revision
+  --compact            retain logs privately and return bounded JSON diagnostics
+  --json               select compact JSON output automatically
+  --max-bytes <bytes>  compact JSON limit including metadata; default 16384, range 512 to 1048576
 ```
 
 ### kitsu status
@@ -1393,7 +1611,9 @@ usage: kitsu context [--host claude|codex]
 
 Print what an agent should know at the start of a session here.
 
-  --host claude|codex  read the host's notice from standard input and judge the directory it names
+  --host claude|codex       read the host's notice from standard input and judge its directory
+  collect --request <file>  batch source reads and searches; run `kitsu context collect --help`
+  show <artifact-id>        expand retained evidence; run `kitsu context show --help`
 ```
 
 ### kitsu hook

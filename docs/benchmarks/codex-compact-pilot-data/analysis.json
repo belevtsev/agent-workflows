@@ -1,0 +1,4914 @@
+{
+  "version": 1,
+  "manifest_sha256": "36e0158fe0add361e4b2c4d378f2347a2d7d3205af176d17c8481a195ae984ba",
+  "calibration_excluded_sha256": "08f2d392a45105a8512019cdc91ce49e9f02d9ff6c215b8c405b67512baa5eb4",
+  "analysis_executable_sha256": "3caf8bf533e4509cd9ff2ecf3c1df99b15000f2613862eea22a82729b4c1f262",
+  "go_version": "go1.27.4",
+  "topology": "kitsu-small-path",
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "controllers": 6,
+  "all_assigned_results_present": true,
+  "arms": [
+    {
+      "arm": "normal",
+      "assigned": 12,
+      "results": 12,
+      "measured": 12,
+      "functional_passed": 12,
+      "functional_failed": 0,
+      "functional_unknown": 0,
+      "protocol_verified": 0,
+      "protocol_violated": 3,
+      "protocol_unknown": 9,
+      "functional_and_protocol_verified": 0,
+      "accounting_complete_runs": 8,
+      "model_elapsed_ns_exploratory": 5454877468239,
+      "all_attempts_observed_tokens": {
+        "input_uncached": 2229570,
+        "input_total": 30524482,
+        "cache_read": 28294912,
+        "cache_write": 0,
+        "output": 210023,
+        "total": 30734505,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 37124,
+        "reasoning_known_units": 11,
+        "units": 12
+      },
+      "observed_tokens_per_functional_success": 2561208.75,
+      "observed_tokens_per_verified_success": null,
+      "all_assigned_accounting_complete": false
+    },
+    {
+      "arm": "compact",
+      "assigned": 12,
+      "results": 12,
+      "measured": 12,
+      "functional_passed": 12,
+      "functional_failed": 0,
+      "functional_unknown": 0,
+      "protocol_verified": 0,
+      "protocol_violated": 11,
+      "protocol_unknown": 1,
+      "functional_and_protocol_verified": 0,
+      "accounting_complete_runs": 0,
+      "model_elapsed_ns_exploratory": 5760639796362,
+      "all_attempts_observed_tokens": {
+        "input_uncached": 1855997,
+        "input_total": 30713341,
+        "cache_read": 28857344,
+        "cache_write": 0,
+        "output": 233725,
+        "total": 30947066,
+        "reasoning_output_tokens": 35100,
+        "reasoning_observed_tokens": 35100,
+        "reasoning_known_units": 12,
+        "units": 12
+      },
+      "observed_tokens_per_functional_success": 2578922.1666666665,
+      "observed_tokens_per_verified_success": null,
+      "all_assigned_accounting_complete": false
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "pflag-unknown-flags",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 0,
+          "protocol_unknown": 1,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 1,
+          "model_elapsed_ns_exploratory": 409461174096,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 205076,
+            "input_total": 1991316,
+            "cache_read": 1786240,
+            "cache_write": 0,
+            "output": 16111,
+            "total": 2007427,
+            "reasoning_output_tokens": 2130,
+            "reasoning_observed_tokens": 2130,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2007427,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": true
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480055849691,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 149800,
+            "input_total": 2166312,
+            "cache_read": 2016512,
+            "cache_write": 0,
+            "output": 20114,
+            "total": 2186426,
+            "reasoning_output_tokens": 2216,
+            "reasoning_observed_tokens": 2216,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2186426,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    },
+    {
+      "case_id": "chi-quoted-charset",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480043743101,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 105841,
+            "input_total": 2070513,
+            "cache_read": 1964672,
+            "cache_write": 0,
+            "output": 16969,
+            "total": 2087482,
+            "reasoning_output_tokens": 4073,
+            "reasoning_observed_tokens": 4073,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2087482,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480067193813,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 93228,
+            "input_total": 2521644,
+            "cache_read": 2428416,
+            "cache_write": 0,
+            "output": 18366,
+            "total": 2540010,
+            "reasoning_output_tokens": 4842,
+            "reasoning_observed_tokens": 4842,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2540010,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    },
+    {
+      "case_id": "semver-prerelease-groups",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 0,
+          "protocol_unknown": 1,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 1,
+          "model_elapsed_ns_exploratory": 421982941095,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 236059,
+            "input_total": 2541723,
+            "cache_read": 2305664,
+            "cache_write": 0,
+            "output": 17872,
+            "total": 2559595,
+            "reasoning_output_tokens": 2621,
+            "reasoning_observed_tokens": 2621,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2559595,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": true
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480049281703,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 228472,
+            "input_total": 2734328,
+            "cache_read": 2505856,
+            "cache_write": 0,
+            "output": 19637,
+            "total": 2753965,
+            "reasoning_output_tokens": 2322,
+            "reasoning_observed_tokens": 2322,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2753965,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    },
+    {
+      "case_id": "chi-self-mount",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 0,
+          "protocol_unknown": 1,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480030581710,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 146143,
+            "input_total": 2381279,
+            "cache_read": 2235136,
+            "cache_write": 0,
+            "output": 16889,
+            "total": 2398168,
+            "reasoning_output_tokens": 2539,
+            "reasoning_observed_tokens": 2539,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2398168,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480067913159,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 128156,
+            "input_total": 2351516,
+            "cache_read": 2223360,
+            "cache_write": 0,
+            "output": 17556,
+            "total": 2369072,
+            "reasoning_output_tokens": 2358,
+            "reasoning_observed_tokens": 2358,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2369072,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    },
+    {
+      "case_id": "qs-sparse-array-limit",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 0,
+          "protocol_unknown": 1,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 1,
+          "model_elapsed_ns_exploratory": 445995772043,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 217445,
+            "input_total": 2957157,
+            "cache_read": 2739712,
+            "cache_write": 0,
+            "output": 18157,
+            "total": 2975314,
+            "reasoning_output_tokens": 2484,
+            "reasoning_observed_tokens": 2484,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2975314,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": true
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 0,
+          "protocol_unknown": 1,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480085637388,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 162976,
+            "input_total": 2999200,
+            "cache_read": 2836224,
+            "cache_write": 0,
+            "output": 21685,
+            "total": 3020885,
+            "reasoning_output_tokens": 2503,
+            "reasoning_observed_tokens": 2503,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 3020885,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    },
+    {
+      "case_id": "qs-empty-array-keys",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 0,
+          "protocol_unknown": 1,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 1,
+          "model_elapsed_ns_exploratory": 428940260094,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 157194,
+            "input_total": 2686602,
+            "cache_read": 2529408,
+            "cache_write": 0,
+            "output": 19369,
+            "total": 2705971,
+            "reasoning_output_tokens": 3203,
+            "reasoning_observed_tokens": 3203,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2705971,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": true
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480053412197,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 145211,
+            "input_total": 2424251,
+            "cache_read": 2279040,
+            "cache_write": 0,
+            "output": 19482,
+            "total": 2443733,
+            "reasoning_output_tokens": 2636,
+            "reasoning_observed_tokens": 2636,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2443733,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    },
+    {
+      "case_id": "minimatch-split-budget",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 0,
+          "protocol_unknown": 1,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 1,
+          "model_elapsed_ns_exploratory": 465645708106,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 210041,
+            "input_total": 2731897,
+            "cache_read": 2521856,
+            "cache_write": 0,
+            "output": 16881,
+            "total": 2748778,
+            "reasoning_output_tokens": 2815,
+            "reasoning_observed_tokens": 2815,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2748778,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": true
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480040329232,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 175802,
+            "input_total": 3560634,
+            "cache_read": 3384832,
+            "cache_write": 0,
+            "output": 21112,
+            "total": 3581746,
+            "reasoning_output_tokens": 3595,
+            "reasoning_observed_tokens": 3595,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 3581746,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    },
+    {
+      "case_id": "minimatch-escaped-patterns",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480041665782,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 211550,
+            "input_total": 3030750,
+            "cache_read": 2819200,
+            "cache_write": 0,
+            "output": 18410,
+            "total": 3049160,
+            "reasoning_output_tokens": null,
+            "reasoning_observed_tokens": 4842,
+            "reasoning_known_units": 0,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 3049160,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480048626684,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 152360,
+            "input_total": 2686632,
+            "cache_read": 2534272,
+            "cache_write": 0,
+            "output": 18889,
+            "total": 2705521,
+            "reasoning_output_tokens": 4954,
+            "reasoning_observed_tokens": 4954,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2705521,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    },
+    {
+      "case_id": "fmt-long-double-precision",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 0,
+          "protocol_unknown": 1,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 1,
+          "model_elapsed_ns_exploratory": 452909145285,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 173429,
+            "input_total": 2328565,
+            "cache_read": 2155136,
+            "cache_write": 0,
+            "output": 16423,
+            "total": 2344988,
+            "reasoning_output_tokens": 2969,
+            "reasoning_observed_tokens": 2969,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2344988,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": true
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480045618623,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 113294,
+            "input_total": 1843726,
+            "cache_read": 1730432,
+            "cache_write": 0,
+            "output": 20131,
+            "total": 1863857,
+            "reasoning_output_tokens": 2143,
+            "reasoning_observed_tokens": 2143,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 1863857,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    },
+    {
+      "case_id": "fmt-null-printf-precision",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 0,
+          "protocol_unknown": 1,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 1,
+          "model_elapsed_ns_exploratory": 477918795521,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 163784,
+            "input_total": 2343880,
+            "cache_read": 2180096,
+            "cache_write": 0,
+            "output": 19824,
+            "total": 2363704,
+            "reasoning_output_tokens": 3076,
+            "reasoning_observed_tokens": 3076,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2363704,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": true
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480049615434,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 169568,
+            "input_total": 2013280,
+            "cache_read": 1843712,
+            "cache_write": 0,
+            "output": 17467,
+            "total": 2030747,
+            "reasoning_output_tokens": 1965,
+            "reasoning_observed_tokens": 1965,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2030747,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    },
+    {
+      "case_id": "kitsu-path-completion",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 0,
+          "protocol_unknown": 1,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 1,
+          "model_elapsed_ns_exploratory": 431899185931,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 167630,
+            "input_total": 2096974,
+            "cache_read": 1929344,
+            "cache_write": 0,
+            "output": 14658,
+            "total": 2111632,
+            "reasoning_output_tokens": 1906,
+            "reasoning_observed_tokens": 1906,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2111632,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": true
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480067338799,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 161591,
+            "input_total": 2841527,
+            "cache_read": 2679936,
+            "cache_write": 0,
+            "output": 19327,
+            "total": 2860854,
+            "reasoning_output_tokens": 2716,
+            "reasoning_observed_tokens": 2716,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2860854,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    },
+    {
+      "case_id": "kitsu-bash-login",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480008495475,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 235378,
+            "input_total": 3363826,
+            "cache_read": 3128448,
+            "cache_write": 0,
+            "output": 18460,
+            "total": 3382286,
+            "reasoning_output_tokens": 4466,
+            "reasoning_observed_tokens": 4466,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 3382286,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 480008979639,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 175539,
+            "input_total": 2570291,
+            "cache_read": 2394752,
+            "cache_write": 0,
+            "output": 19959,
+            "total": 2590250,
+            "reasoning_output_tokens": 2850,
+            "reasoning_observed_tokens": 2850,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 2590250,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    }
+  ],
+  "role_attribution": [
+    {
+      "arm": "normal",
+      "role": "coordinator",
+      "threads": 12,
+      "known_threads": 12,
+      "observed_tokens": {
+        "input_uncached": 800112,
+        "input_total": 20025840,
+        "cache_read": 19225728,
+        "cache_write": 0,
+        "output": 119603,
+        "total": 20145443,
+        "reasoning_output_tokens": 17088,
+        "reasoning_observed_tokens": 17088,
+        "reasoning_known_units": 12,
+        "units": 12
+      }
+    },
+    {
+      "arm": "normal",
+      "role": "lookup",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    },
+    {
+      "arm": "normal",
+      "role": "tests",
+      "threads": 12,
+      "known_threads": 12,
+      "observed_tokens": {
+        "input_uncached": 438961,
+        "input_total": 3723697,
+        "cache_read": 3284736,
+        "cache_write": 0,
+        "output": 41083,
+        "total": 3764780,
+        "reasoning_output_tokens": 8423,
+        "reasoning_observed_tokens": 8423,
+        "reasoning_known_units": 12,
+        "units": 12
+      }
+    },
+    {
+      "arm": "normal",
+      "role": "code",
+      "threads": 13,
+      "known_threads": 13,
+      "observed_tokens": {
+        "input_uncached": 414136,
+        "input_total": 3279032,
+        "cache_read": 2864896,
+        "cache_write": 0,
+        "output": 23261,
+        "total": 3302293,
+        "reasoning_output_tokens": 6389,
+        "reasoning_observed_tokens": 6389,
+        "reasoning_known_units": 13,
+        "units": 13
+      }
+    },
+    {
+      "arm": "normal",
+      "role": "review",
+      "threads": 12,
+      "known_threads": 12,
+      "observed_tokens": {
+        "input_uncached": 440106,
+        "input_total": 2538538,
+        "cache_read": 2098432,
+        "cache_write": 0,
+        "output": 19313,
+        "total": 2557851,
+        "reasoning_output_tokens": 4831,
+        "reasoning_observed_tokens": 4831,
+        "reasoning_known_units": 12,
+        "units": 12
+      }
+    },
+    {
+      "arm": "normal",
+      "role": "commit",
+      "threads": 10,
+      "known_threads": 9,
+      "observed_tokens": {
+        "input_uncached": 136255,
+        "input_total": 957375,
+        "cache_read": 821120,
+        "cache_write": 0,
+        "output": 6763,
+        "total": 964138,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 393,
+        "reasoning_known_units": 9,
+        "units": 10
+      }
+    },
+    {
+      "arm": "normal",
+      "role": "worker-unassigned",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "coordinator",
+      "threads": 12,
+      "known_threads": 12,
+      "observed_tokens": {
+        "input_uncached": 640479,
+        "input_total": 19109087,
+        "cache_read": 18468608,
+        "cache_write": 0,
+        "output": 141159,
+        "total": 19250246,
+        "reasoning_output_tokens": 15781,
+        "reasoning_observed_tokens": 15781,
+        "reasoning_known_units": 12,
+        "units": 12
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "lookup",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "tests",
+      "threads": 12,
+      "known_threads": 12,
+      "observed_tokens": {
+        "input_uncached": 472264,
+        "input_total": 5656520,
+        "cache_read": 5184256,
+        "cache_write": 0,
+        "output": 51023,
+        "total": 5707543,
+        "reasoning_output_tokens": 9840,
+        "reasoning_observed_tokens": 9840,
+        "reasoning_known_units": 12,
+        "units": 12
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "code",
+      "threads": 12,
+      "known_threads": 12,
+      "observed_tokens": {
+        "input_uncached": 417645,
+        "input_total": 4118765,
+        "cache_read": 3701120,
+        "cache_write": 0,
+        "output": 27039,
+        "total": 4145804,
+        "reasoning_output_tokens": 6906,
+        "reasoning_observed_tokens": 6906,
+        "reasoning_known_units": 12,
+        "units": 12
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "review",
+      "threads": 10,
+      "known_threads": 10,
+      "observed_tokens": {
+        "input_uncached": 297325,
+        "input_total": 1613549,
+        "cache_read": 1316224,
+        "cache_write": 0,
+        "output": 12803,
+        "total": 1626352,
+        "reasoning_output_tokens": 2480,
+        "reasoning_observed_tokens": 2480,
+        "reasoning_known_units": 10,
+        "units": 10
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "commit",
+      "threads": 3,
+      "known_threads": 3,
+      "observed_tokens": {
+        "input_uncached": 28284,
+        "input_total": 215420,
+        "cache_read": 187136,
+        "cache_write": 0,
+        "output": 1701,
+        "total": 217121,
+        "reasoning_output_tokens": 93,
+        "reasoning_observed_tokens": 93,
+        "reasoning_known_units": 3,
+        "units": 3
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "worker-unassigned",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    }
+  ],
+  "paired_token_comparisons": [
+    {
+      "name": "all_pairs",
+      "selected_pairs": 0,
+      "normal_tokens": 0,
+      "compact_tokens": 0,
+      "all_required_accounting_and_outcomes_assessed": false,
+      "task_cluster_token_ratio_ci": null,
+      "task_cluster_mean_paired_token_delta_ci": null,
+      "repository_cluster_token_ratio_ci_exploratory": null,
+      "repository_cluster_mean_paired_token_delta_ci_exploratory": null
+    },
+    {
+      "name": "both_functional_success",
+      "selected_pairs": 0,
+      "normal_tokens": 0,
+      "compact_tokens": 0,
+      "all_required_accounting_and_outcomes_assessed": false,
+      "task_cluster_token_ratio_ci": null,
+      "task_cluster_mean_paired_token_delta_ci": null,
+      "repository_cluster_token_ratio_ci_exploratory": null,
+      "repository_cluster_mean_paired_token_delta_ci_exploratory": null
+    },
+    {
+      "name": "both_verified_success",
+      "selected_pairs": 0,
+      "normal_tokens": 0,
+      "compact_tokens": 0,
+      "all_required_accounting_and_outcomes_assessed": false,
+      "task_cluster_token_ratio_ci": null,
+      "task_cluster_mean_paired_token_delta_ci": null,
+      "repository_cluster_token_ratio_ci_exploratory": null,
+      "repository_cluster_mean_paired_token_delta_ci_exploratory": null
+    }
+  ],
+  "functional_task_loss": {
+    "planned_task_clusters": 12,
+    "known_loss_tasks": 0,
+    "fully_assessed_tasks": 12,
+    "unassessed_tasks_without_confirmed_loss": 0,
+    "tasks_with_a_normal_functional_success": 12,
+    "one_sided_95pct_upper_loss_probability_assessed_tasks": 0.22092219194555596,
+    "one_sided_95pct_upper_loss_probability_unknown_tasks_count_as_loss": 0.22092219194555596
+  },
+  "functional_pass_rate_delta_task_cluster_ci": {
+    "estimate": 0,
+    "lower": 0,
+    "upper": 0,
+    "confidence": 0.95,
+    "clusters": 12,
+    "cluster_unit": "task",
+    "bootstrap_draws": 10000,
+    "valid_draws": 10000,
+    "seed": 20261116
+  },
+  "verified_pass_rate_delta_task_cluster_ci": null,
+  "functional_pass_rate_delta_repository_cluster_ci_exploratory": {
+    "estimate": 0,
+    "lower": 0,
+    "upper": 0,
+    "confidence": 0.95,
+    "clusters": 7,
+    "cluster_unit": "repository",
+    "bootstrap_draws": 10000,
+    "valid_draws": 10000,
+    "seed": 20261116
+  },
+  "verified_pass_rate_delta_repository_cluster_ci_exploratory": null,
+  "runs": [
+    {
+      "run_id": "qs-empty-array-keys-r1-normal",
+      "case_id": "qs-empty-array-keys",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 1,
+      "controller": 0,
+      "state": "completed",
+      "result_sha256": "4dd903c3b29294326f3dcda974bdf2f2054fe47069538e81c199e6282a64de7c",
+      "protocol_sha256": "bfe8e83893b41c488c208a91defaa15ee11337a083424e409e2f713801568019",
+      "measured": true,
+      "accounting_complete": true,
+      "accounting_unknown_reasons": [],
+      "functional_status": "passed",
+      "protocol_status": "unknown",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 428940260094,
+      "observed_tokens": {
+        "input_uncached": 157194,
+        "input_total": 2686602,
+        "cache_read": 2529408,
+        "cache_write": 0,
+        "output": 19369,
+        "total": 2705971,
+        "reasoning_output_tokens": 3203,
+        "reasoning_observed_tokens": 3203,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "qs-empty-array-keys-r1-normal",
+          "trace_sha256": "1b3856673998298579a89691453c40e25afcce6180c65e5feb65f087fe6a75a0",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 51948,
+            "input_total": 1916908,
+            "cache_read": 1864960,
+            "cache_write": 0,
+            "output": 10628,
+            "total": 1927536,
+            "reasoning_output_tokens": 1745,
+            "reasoning_observed_tokens": 1745,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-empty-array-keys-r1-normal",
+          "trace_sha256": "04ea41e245adf1cb38bae182e498bcaafc5f9297f5ccb9712492bc15f3eea1fc",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 27961,
+            "input_total": 243001,
+            "cache_read": 215040,
+            "cache_write": 0,
+            "output": 3602,
+            "total": 246603,
+            "reasoning_output_tokens": 669,
+            "reasoning_observed_tokens": 669,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-empty-array-keys-r1-normal",
+          "trace_sha256": "89abe9fab9f8c52f1980b960dfc1c5d8a4b6215a89b48f851cfa33adf4d84e08",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 33017,
+            "input_total": 176505,
+            "cache_read": 143488,
+            "cache_write": 0,
+            "output": 930,
+            "total": 177435,
+            "reasoning_output_tokens": 114,
+            "reasoning_observed_tokens": 114,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-empty-array-keys-r1-normal",
+          "trace_sha256": "f533ad5cf8c2ae6429ce95990847b0ac561c760de9d47c51df405fc72f20e3ca",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 32140,
+            "input_total": 243980,
+            "cache_read": 211840,
+            "cache_write": 0,
+            "output": 3347,
+            "total": 247327,
+            "reasoning_output_tokens": 655,
+            "reasoning_observed_tokens": 655,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-empty-array-keys-r1-normal",
+          "trace_sha256": "deb51482ecce293fbf14a4b5fffad001125e4face02d7bcc89bd67759b2f1d25",
+          "role": "commit",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 12128,
+            "input_total": 106208,
+            "cache_read": 94080,
+            "cache_write": 0,
+            "output": 862,
+            "total": 107070,
+            "reasoning_output_tokens": 20,
+            "reasoning_observed_tokens": 20,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "qs-empty-array-keys-r1-compact",
+      "case_id": "qs-empty-array-keys",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 2,
+      "controller": 0,
+      "state": "timed_out",
+      "result_sha256": "343df15e2ba878189be97d7b07bd009de378cf3df52eb60fc7a394c022b1586d",
+      "protocol_sha256": "c39749233d22993c07eb340d3e62e8ee69626594b2f944d199f63d7d5f05ea2e",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480053412197,
+      "observed_tokens": {
+        "input_uncached": 145211,
+        "input_total": 2424251,
+        "cache_read": 2279040,
+        "cache_write": 0,
+        "output": 19482,
+        "total": 2443733,
+        "reasoning_output_tokens": 2636,
+        "reasoning_observed_tokens": 2636,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "qs-empty-array-keys-r1-compact",
+          "trace_sha256": "b29321c16b8e0037ff6849d235544a51ee0fbc1fb00a4c019fe0874df6965acb",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 47243,
+            "input_total": 1546507,
+            "cache_read": 1499264,
+            "cache_write": 0,
+            "output": 11625,
+            "total": 1558132,
+            "reasoning_output_tokens": 1156,
+            "reasoning_observed_tokens": 1156,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-empty-array-keys-r1-compact",
+          "trace_sha256": "cdfb65459787609cda9c5b791ff487c4b8c57d53e076a5bfd4c0334ea4e47510",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 47385,
+            "input_total": 497945,
+            "cache_read": 450560,
+            "cache_write": 0,
+            "output": 4886,
+            "total": 502831,
+            "reasoning_output_tokens": 945,
+            "reasoning_observed_tokens": 945,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-empty-array-keys-r1-compact",
+          "trace_sha256": "5e3d36612dc7e7171fd22a21e75bce91e93ad730728bc33980b71a384474344b",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 19713,
+            "input_total": 150401,
+            "cache_read": 130688,
+            "cache_write": 0,
+            "output": 1236,
+            "total": 151637,
+            "reasoning_output_tokens": 67,
+            "reasoning_observed_tokens": 67,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-empty-array-keys-r1-compact",
+          "trace_sha256": "9135d159baba5e853b3a245a79a34fa0ff87dec9ca402707f06a1b792575c6c6",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 30870,
+            "input_total": 229398,
+            "cache_read": 198528,
+            "cache_write": 0,
+            "output": 1735,
+            "total": 231133,
+            "reasoning_output_tokens": 468,
+            "reasoning_observed_tokens": 468,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "kitsu-path-completion-r1-compact",
+      "case_id": "kitsu-path-completion",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 3,
+      "controller": 1,
+      "state": "timed_out",
+      "result_sha256": "c59e24d93edf1ef15bd45f845cb310463b8e472eb34b7e5cbe580084876051a8",
+      "protocol_sha256": "b749b6cdfca6084ebc4a3814978ffff6af80b07281089045cd162c9c43f5412c",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480067338799,
+      "observed_tokens": {
+        "input_uncached": 161591,
+        "input_total": 2841527,
+        "cache_read": 2679936,
+        "cache_write": 0,
+        "output": 19327,
+        "total": 2860854,
+        "reasoning_output_tokens": 2716,
+        "reasoning_observed_tokens": 2716,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "kitsu-path-completion-r1-compact",
+          "trace_sha256": "945393866b61a4683e4c5243f7eb316442189820cc3ceed3d7a40cd418bafaa4",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 59241,
+            "input_total": 1906537,
+            "cache_read": 1847296,
+            "cache_write": 0,
+            "output": 12158,
+            "total": 1918695,
+            "reasoning_output_tokens": 1566,
+            "reasoning_observed_tokens": 1566,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "kitsu-path-completion-r1-compact",
+          "trace_sha256": "5037ee17c113150af07dc0b8d209ec3554b8b0f0df41b4a59bee781697e24ef5",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 31076,
+            "input_total": 360164,
+            "cache_read": 329088,
+            "cache_write": 0,
+            "output": 3487,
+            "total": 363651,
+            "reasoning_output_tokens": 560,
+            "reasoning_observed_tokens": 560,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "kitsu-path-completion-r1-compact",
+          "trace_sha256": "fc342bca094e6a4b3b2ed41750ae867e2d79ecbd22cabcd50b90e5bb5e226416",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 36875,
+            "input_total": 280203,
+            "cache_read": 243328,
+            "cache_write": 0,
+            "output": 1330,
+            "total": 281533,
+            "reasoning_output_tokens": 83,
+            "reasoning_observed_tokens": 83,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "kitsu-path-completion-r1-compact",
+          "trace_sha256": "1a60abb48958c106799000d2481d0f41b534a839404cd241fad54bf51dbe5fbd",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 34399,
+            "input_total": 294623,
+            "cache_read": 260224,
+            "cache_write": 0,
+            "output": 2352,
+            "total": 296975,
+            "reasoning_output_tokens": 507,
+            "reasoning_observed_tokens": 507,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "kitsu-path-completion-r1-normal",
+      "case_id": "kitsu-path-completion",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 4,
+      "controller": 1,
+      "state": "completed",
+      "result_sha256": "49b1fa26c0698e90a8c7a83276c198ca8a1fa4802d65b401630cbae7cfdab9dd",
+      "protocol_sha256": "ad3d8fca2edef0b35f7d4d2f6c34c33e7604ff94f019b256afd333bd36a0d58a",
+      "measured": true,
+      "accounting_complete": true,
+      "accounting_unknown_reasons": [],
+      "functional_status": "passed",
+      "protocol_status": "unknown",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 431899185931,
+      "observed_tokens": {
+        "input_uncached": 167630,
+        "input_total": 2096974,
+        "cache_read": 1929344,
+        "cache_write": 0,
+        "output": 14658,
+        "total": 2111632,
+        "reasoning_output_tokens": 1906,
+        "reasoning_observed_tokens": 1906,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "kitsu-path-completion-r1-normal",
+          "trace_sha256": "f20ddf18e6d0f0eef66e56b06f57c220eaeb07e2c6da2a292a9012da457ee159",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 70931,
+            "input_total": 1160083,
+            "cache_read": 1089152,
+            "cache_write": 0,
+            "output": 7935,
+            "total": 1168018,
+            "reasoning_output_tokens": 907,
+            "reasoning_observed_tokens": 907,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "kitsu-path-completion-r1-normal",
+          "trace_sha256": "030176f4e8206d89f55f34fa3e98ba0b38d04263e9ce916cf3c32dc5e2f203d4",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 30350,
+            "input_total": 440334,
+            "cache_read": 409984,
+            "cache_write": 0,
+            "output": 3544,
+            "total": 443878,
+            "reasoning_output_tokens": 542,
+            "reasoning_observed_tokens": 542,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "kitsu-path-completion-r1-normal",
+          "trace_sha256": "7c2af5f014a7ade6dcbc5f9174306518fa570af37ea619583a9e5974934adb99",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 24744,
+            "input_total": 219688,
+            "cache_read": 194944,
+            "cache_write": 0,
+            "output": 1269,
+            "total": 220957,
+            "reasoning_output_tokens": 222,
+            "reasoning_observed_tokens": 222,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "kitsu-path-completion-r1-normal",
+          "trace_sha256": "784bac425e6b36b4f3697eb6ae144d2b4676fa9ff7214fcf65da5132030a009a",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 31914,
+            "input_total": 185386,
+            "cache_read": 153472,
+            "cache_write": 0,
+            "output": 1259,
+            "total": 186645,
+            "reasoning_output_tokens": 235,
+            "reasoning_observed_tokens": 235,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "kitsu-path-completion-r1-normal",
+          "trace_sha256": "52f63cae718b78326bc4e62166cf68833935de6922d6e22f9a0fb3469c18f17b",
+          "role": "commit",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 9691,
+            "input_total": 91483,
+            "cache_read": 81792,
+            "cache_write": 0,
+            "output": 651,
+            "total": 92134,
+            "reasoning_output_tokens": 0,
+            "reasoning_observed_tokens": 0,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "chi-self-mount-r1-compact",
+      "case_id": "chi-self-mount",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 5,
+      "controller": 2,
+      "state": "timed_out",
+      "result_sha256": "4c0055eda5cd7fa0fb3c16e82de23fb139941cc8817a17a98c103eb5c234a355",
+      "protocol_sha256": "213be8e93e39704a2630f9fcb3cc4752c97b8b9cf54fe46f1a558f31fa6416d3",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480067913159,
+      "observed_tokens": {
+        "input_uncached": 128156,
+        "input_total": 2351516,
+        "cache_read": 2223360,
+        "cache_write": 0,
+        "output": 17556,
+        "total": 2369072,
+        "reasoning_output_tokens": 2358,
+        "reasoning_observed_tokens": 2358,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "chi-self-mount-r1-compact",
+          "trace_sha256": "ca42ceeee5cbcae98a311e520b925db24265fc95f898b0cd1960a432f56165c9",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 33339,
+            "input_total": 1434427,
+            "cache_read": 1401088,
+            "cache_write": 0,
+            "output": 10816,
+            "total": 1445243,
+            "reasoning_output_tokens": 1357,
+            "reasoning_observed_tokens": 1357,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-self-mount-r1-compact",
+          "trace_sha256": "2d8e238ba6d04098bb1061ff155105db48ecdadf1f1d83c664602d87a7e06f92",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 32250,
+            "input_total": 540538,
+            "cache_read": 508288,
+            "cache_write": 0,
+            "output": 4253,
+            "total": 544791,
+            "reasoning_output_tokens": 656,
+            "reasoning_observed_tokens": 656,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-self-mount-r1-compact",
+          "trace_sha256": "bf191cd77c8a00b672e3f8a1ed43d9fb17150f20cc848cebfbb78920e8f38477",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 23604,
+            "input_total": 209844,
+            "cache_read": 186240,
+            "cache_write": 0,
+            "output": 1255,
+            "total": 211099,
+            "reasoning_output_tokens": 216,
+            "reasoning_observed_tokens": 216,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-self-mount-r1-compact",
+          "trace_sha256": "87117cdf883edf51f1e8a9b61adf0cc3c2da68e69be24481bb3aa5bc2e4a2f21",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 27862,
+            "input_total": 83798,
+            "cache_read": 55936,
+            "cache_write": 0,
+            "output": 719,
+            "total": 84517,
+            "reasoning_output_tokens": 72,
+            "reasoning_observed_tokens": 72,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-self-mount-r1-compact",
+          "trace_sha256": "ad9547922af62adc4448f2871b410b11ff71013cc98fc9b85f9905e096357d70",
+          "role": "commit",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 11101,
+            "input_total": 82909,
+            "cache_read": 71808,
+            "cache_write": 0,
+            "output": 513,
+            "total": 83422,
+            "reasoning_output_tokens": 57,
+            "reasoning_observed_tokens": 57,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "chi-self-mount-r1-normal",
+      "case_id": "chi-self-mount",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 6,
+      "controller": 2,
+      "state": "timed_out",
+      "result_sha256": "15f62ac58469b1d6dbf35038d893f31a8fbf6dc222986a47eee6969b6daeb6ae",
+      "protocol_sha256": "95cc622d7148a06b596f4c5a24147f152e758551972959aab6cc120f2832b332",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "unknown",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480030581710,
+      "observed_tokens": {
+        "input_uncached": 146143,
+        "input_total": 2381279,
+        "cache_read": 2235136,
+        "cache_write": 0,
+        "output": 16889,
+        "total": 2398168,
+        "reasoning_output_tokens": 2539,
+        "reasoning_observed_tokens": 2539,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "chi-self-mount-r1-normal",
+          "trace_sha256": "53794d05ec29f9bda14b21d3fe504d9c4b541526f1446a8b884e10eb7f193f02",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 35815,
+            "input_total": 1384551,
+            "cache_read": 1348736,
+            "cache_write": 0,
+            "output": 9960,
+            "total": 1394511,
+            "reasoning_output_tokens": 1316,
+            "reasoning_observed_tokens": 1316,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-self-mount-r1-normal",
+          "trace_sha256": "140e5f8e996bb16eff8c67971dfa37a95f2d74c136d535cfdcf54a4697e321a4",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 24622,
+            "input_total": 305838,
+            "cache_read": 281216,
+            "cache_write": 0,
+            "output": 2951,
+            "total": 308789,
+            "reasoning_output_tokens": 363,
+            "reasoning_observed_tokens": 363,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-self-mount-r1-normal",
+          "trace_sha256": "68180a1d551ffce0d71589b9773584f5c9d81a7c8529c4af50b83a335640b51f",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 27517,
+            "input_total": 229757,
+            "cache_read": 202240,
+            "cache_write": 0,
+            "output": 1663,
+            "total": 231420,
+            "reasoning_output_tokens": 506,
+            "reasoning_observed_tokens": 506,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-self-mount-r1-normal",
+          "trace_sha256": "9c4591a28962dfa90fdfc589600dde409bb539765bf6ca6f767fb1dea69dd171",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 37980,
+            "input_total": 355932,
+            "cache_read": 317952,
+            "cache_write": 0,
+            "output": 1597,
+            "total": 357529,
+            "reasoning_output_tokens": 323,
+            "reasoning_observed_tokens": 323,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-self-mount-r1-normal",
+          "trace_sha256": "0be8190eb489d3cc4111de80771d042ceb61c715d387693799bd553d4b58265c",
+          "role": "commit",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 20209,
+            "input_total": 105201,
+            "cache_read": 84992,
+            "cache_write": 0,
+            "output": 718,
+            "total": 105919,
+            "reasoning_output_tokens": 31,
+            "reasoning_observed_tokens": 31,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "fmt-null-printf-precision-r1-compact",
+      "case_id": "fmt-null-printf-precision",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 7,
+      "controller": 3,
+      "state": "timed_out",
+      "result_sha256": "78d0b553aceb00cbdb75774e47a099671e0ce50af0c6783b49b631bc1dd7ea63",
+      "protocol_sha256": "f72cc767d44dc156895edbd28adcb632cb96b36eccbc06f6103f94297f29778e",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480049615434,
+      "observed_tokens": {
+        "input_uncached": 169568,
+        "input_total": 2013280,
+        "cache_read": 1843712,
+        "cache_write": 0,
+        "output": 17467,
+        "total": 2030747,
+        "reasoning_output_tokens": 1965,
+        "reasoning_observed_tokens": 1965,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "fmt-null-printf-precision-r1-compact",
+          "trace_sha256": "c2d948f53b05c9c4188ab5e389e1f16d77af6da06062bfadfd080fcbb4a3a0b3",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 64066,
+            "input_total": 1068866,
+            "cache_read": 1004800,
+            "cache_write": 0,
+            "output": 10291,
+            "total": 1079157,
+            "reasoning_output_tokens": 634,
+            "reasoning_observed_tokens": 634,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-null-printf-precision-r1-compact",
+          "trace_sha256": "e0cfe21f934c8793602f972a47eccdafd15dec8d0e0d0b1bf6b164a72049772f",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 34276,
+            "input_total": 307812,
+            "cache_read": 273536,
+            "cache_write": 0,
+            "output": 2696,
+            "total": 310508,
+            "reasoning_output_tokens": 290,
+            "reasoning_observed_tokens": 290,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-null-printf-precision-r1-compact",
+          "trace_sha256": "3c16d33924adeb25a1721b19331bef378d59c1f7fc498843635050b791d29993",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 34495,
+            "input_total": 441663,
+            "cache_read": 407168,
+            "cache_write": 0,
+            "output": 2419,
+            "total": 444082,
+            "reasoning_output_tokens": 743,
+            "reasoning_observed_tokens": 743,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-null-printf-precision-r1-compact",
+          "trace_sha256": "dd3bdab7c5ffd90322d5349ded069cba81e5ac767d55626a15489a2dd5826249",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 36731,
+            "input_total": 194939,
+            "cache_read": 158208,
+            "cache_write": 0,
+            "output": 2061,
+            "total": 197000,
+            "reasoning_output_tokens": 298,
+            "reasoning_observed_tokens": 298,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "fmt-null-printf-precision-r1-normal",
+      "case_id": "fmt-null-printf-precision",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 8,
+      "controller": 3,
+      "state": "completed",
+      "result_sha256": "0e7919af336fe60f8766d4b0e8cd0be9d662bdfa41dfc1459f8dbdb19555f365",
+      "protocol_sha256": "54dac16e678296e68eb1239024a138802d5d4fb6ecc206f6bdce72c12fbfe1ac",
+      "measured": true,
+      "accounting_complete": true,
+      "accounting_unknown_reasons": [],
+      "functional_status": "passed",
+      "protocol_status": "unknown",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 477918795521,
+      "observed_tokens": {
+        "input_uncached": 163784,
+        "input_total": 2343880,
+        "cache_read": 2180096,
+        "cache_write": 0,
+        "output": 19824,
+        "total": 2363704,
+        "reasoning_output_tokens": 3076,
+        "reasoning_observed_tokens": 3076,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "fmt-null-printf-precision-r1-normal",
+          "trace_sha256": "02d581c15ff4126943a28f881c4688d5d9d9c7ccb71186d566b392738b82d838",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 39945,
+            "input_total": 1563785,
+            "cache_read": 1523840,
+            "cache_write": 0,
+            "output": 13253,
+            "total": 1577038,
+            "reasoning_output_tokens": 1843,
+            "reasoning_observed_tokens": 1843,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-null-printf-precision-r1-normal",
+          "trace_sha256": "ee72c8ee4a8b0f177238427c393e21919aa576ae6c87f619336c96d1bd034420",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 32101,
+            "input_total": 234213,
+            "cache_read": 202112,
+            "cache_write": 0,
+            "output": 2408,
+            "total": 236621,
+            "reasoning_output_tokens": 478,
+            "reasoning_observed_tokens": 478,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-null-printf-precision-r1-normal",
+          "trace_sha256": "298883fa0bbebdcc705bca6e7056e3daa5d1f50ea8cd7a99e84065fe11cb88f0",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 21825,
+            "input_total": 193985,
+            "cache_read": 172160,
+            "cache_write": 0,
+            "output": 1553,
+            "total": 195538,
+            "reasoning_output_tokens": 250,
+            "reasoning_observed_tokens": 250,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-null-printf-precision-r1-normal",
+          "trace_sha256": "d7c78293e44c820a01b629c16a7e57a83ecc9092330886aacd3c26db343f3e7d",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 49091,
+            "input_total": 215491,
+            "cache_read": 166400,
+            "cache_write": 0,
+            "output": 1688,
+            "total": 217179,
+            "reasoning_output_tokens": 496,
+            "reasoning_observed_tokens": 496,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-null-printf-precision-r1-normal",
+          "trace_sha256": "cac4d447c1c196c5f8a0dc865cb6f94df523076e30af2b8d5200646b484822c2",
+          "role": "commit",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 20822,
+            "input_total": 136406,
+            "cache_read": 115584,
+            "cache_write": 0,
+            "output": 922,
+            "total": 137328,
+            "reasoning_output_tokens": 9,
+            "reasoning_observed_tokens": 9,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "kitsu-bash-login-r1-compact",
+      "case_id": "kitsu-bash-login",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 9,
+      "controller": 4,
+      "state": "timed_out",
+      "result_sha256": "1e4ce32618375ffeebb148988f3cccf39ae5b885ec9f20db93fea2c658c44199",
+      "protocol_sha256": "f87d2776a6701adabb1934e93f1368bb85bccbf61e65a45115484278e96d9304",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480008979639,
+      "observed_tokens": {
+        "input_uncached": 175539,
+        "input_total": 2570291,
+        "cache_read": 2394752,
+        "cache_write": 0,
+        "output": 19959,
+        "total": 2590250,
+        "reasoning_output_tokens": 2850,
+        "reasoning_observed_tokens": 2850,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "kitsu-bash-login-r1-compact",
+          "trace_sha256": "7a90ad9836cd5ab5d62895e8a691c2fde6f9ea19939bc49aa2cea0fa4726104e",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 43069,
+            "input_total": 1711165,
+            "cache_read": 1668096,
+            "cache_write": 0,
+            "output": 12086,
+            "total": 1723251,
+            "reasoning_output_tokens": 1090,
+            "reasoning_observed_tokens": 1090,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "kitsu-bash-login-r1-compact",
+          "trace_sha256": "501eb3c0d0d9afe83ea79eeef0cff28e7af6ae5072da4ef9dc2c07e5628c4b91",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 51872,
+            "input_total": 351776,
+            "cache_read": 299904,
+            "cache_write": 0,
+            "output": 5027,
+            "total": 356803,
+            "reasoning_output_tokens": 1029,
+            "reasoning_observed_tokens": 1029,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "kitsu-bash-login-r1-compact",
+          "trace_sha256": "8243c94c6efa978c86469f2e08a4867f8bdb210d1717cdd4f0aaa58ca0a8bc0a",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 55146,
+            "input_total": 361962,
+            "cache_read": 306816,
+            "cache_write": 0,
+            "output": 1740,
+            "total": 363702,
+            "reasoning_output_tokens": 340,
+            "reasoning_observed_tokens": 340,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "kitsu-bash-login-r1-compact",
+          "trace_sha256": "f5184bf54725e9be350a2dc782ebc29c84b42006a5c2ed573b0d57c2303daa29",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 25452,
+            "input_total": 145388,
+            "cache_read": 119936,
+            "cache_write": 0,
+            "output": 1106,
+            "total": 146494,
+            "reasoning_output_tokens": 391,
+            "reasoning_observed_tokens": 391,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "kitsu-bash-login-r1-normal",
+      "case_id": "kitsu-bash-login",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 10,
+      "controller": 4,
+      "state": "timed_out",
+      "result_sha256": "31f70f0aa1d1c7143a65a64bb852519632b926f162e74fd5cf338279e6a45251",
+      "protocol_sha256": "9b569e4a3ffcd52705f12ebcc392e718d0cd11e5489eece8e1e00322e22f8445",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480008495475,
+      "observed_tokens": {
+        "input_uncached": 235378,
+        "input_total": 3363826,
+        "cache_read": 3128448,
+        "cache_write": 0,
+        "output": 18460,
+        "total": 3382286,
+        "reasoning_output_tokens": 4466,
+        "reasoning_observed_tokens": 4466,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "kitsu-bash-login-r1-normal",
+          "trace_sha256": "9dcbdef9216ffd2982123d54290fe21ca41d38129efeef44edbedc2b44ca4dd2",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 100934,
+            "input_total": 2372166,
+            "cache_read": 2271232,
+            "cache_write": 0,
+            "output": 10023,
+            "total": 2382189,
+            "reasoning_output_tokens": 2067,
+            "reasoning_observed_tokens": 2067,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "kitsu-bash-login-r1-normal",
+          "trace_sha256": "f497a0a6caa84796f9cf8f4e224991996fe1ea19f2ef4f4f35136d28483286f1",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 55547,
+            "input_total": 324219,
+            "cache_read": 268672,
+            "cache_write": 0,
+            "output": 4995,
+            "total": 329214,
+            "reasoning_output_tokens": 1776,
+            "reasoning_observed_tokens": 1776,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "kitsu-bash-login-r1-normal",
+          "trace_sha256": "7367ace25493479fac431df15bd6b087060642a40ec788891068b37fea64f2d3",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 41431,
+            "input_total": 536279,
+            "cache_read": 494848,
+            "cache_write": 0,
+            "output": 2349,
+            "total": 538628,
+            "reasoning_output_tokens": 365,
+            "reasoning_observed_tokens": 365,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "kitsu-bash-login-r1-normal",
+          "trace_sha256": "d42542a2b00dde4c05e2bc9a5d6f9916ab857aa56218bc7bf95952ee64027cc9",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 37466,
+            "input_total": 131162,
+            "cache_read": 93696,
+            "cache_write": 0,
+            "output": 1093,
+            "total": 132255,
+            "reasoning_output_tokens": 258,
+            "reasoning_observed_tokens": 258,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "chi-quoted-charset-r1-compact",
+      "case_id": "chi-quoted-charset",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 11,
+      "controller": 5,
+      "state": "timed_out",
+      "result_sha256": "deb085cad82e1e0211031d4d98ef91a85dec6819923458772d0ce8e7b729376e",
+      "protocol_sha256": "35ae5afe2351247d03f0231ee552fc90abbbc59257b55beb6d4a8398af98c204",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480067193813,
+      "observed_tokens": {
+        "input_uncached": 93228,
+        "input_total": 2521644,
+        "cache_read": 2428416,
+        "cache_write": 0,
+        "output": 18366,
+        "total": 2540010,
+        "reasoning_output_tokens": 4842,
+        "reasoning_observed_tokens": 4842,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "chi-quoted-charset-r1-compact",
+          "trace_sha256": "b0ddfb0d8985e0b64c589ba62398621271c7f9c4e5c5c21ef8b61435766f817d",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 39287,
+            "input_total": 1731191,
+            "cache_read": 1691904,
+            "cache_write": 0,
+            "output": 10311,
+            "total": 1741502,
+            "reasoning_output_tokens": 2294,
+            "reasoning_observed_tokens": 2294,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-quoted-charset-r1-compact",
+          "trace_sha256": "d0e4ba06016439e672edd7a52f06964c4276b8a89a20fa25aaf6c42e6568beda",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 33198,
+            "input_total": 389678,
+            "cache_read": 356480,
+            "cache_write": 0,
+            "output": 4052,
+            "total": 393730,
+            "reasoning_output_tokens": 806,
+            "reasoning_observed_tokens": 806,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-quoted-charset-r1-compact",
+          "trace_sha256": "44bdb03c67c5937000b198c5395ad2af28c6076b0cd1e1848717bf5f34e84952",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 20743,
+            "input_total": 400775,
+            "cache_read": 380032,
+            "cache_write": 0,
+            "output": 4003,
+            "total": 404778,
+            "reasoning_output_tokens": 1742,
+            "reasoning_observed_tokens": 1742,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "chi-quoted-charset-r1-normal",
+      "case_id": "chi-quoted-charset",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 12,
+      "controller": 5,
+      "state": "timed_out",
+      "result_sha256": "2f821e85487be5350f44d8e442a1d5eddfcbdaa248d7dd08998de6406f2b62c2",
+      "protocol_sha256": "b1ea645590e1f6179d1f2ee1e9d1a8d02e950a3f167e486695ff03d3e7c5fb0c",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480043743101,
+      "observed_tokens": {
+        "input_uncached": 105841,
+        "input_total": 2070513,
+        "cache_read": 1964672,
+        "cache_write": 0,
+        "output": 16969,
+        "total": 2087482,
+        "reasoning_output_tokens": 4073,
+        "reasoning_observed_tokens": 4073,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "chi-quoted-charset-r1-normal",
+          "trace_sha256": "e95726cb905d26469bd8a56d2fcc0dda55bf7fe9c8249540822cfe79b0f6afe6",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 34509,
+            "input_total": 1519949,
+            "cache_read": 1485440,
+            "cache_write": 0,
+            "output": 9676,
+            "total": 1529625,
+            "reasoning_output_tokens": 1744,
+            "reasoning_observed_tokens": 1744,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-quoted-charset-r1-normal",
+          "trace_sha256": "a81d2a07133ec17ac91436be39289d2c258be229adfe274f74795523971d8ff0",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 31443,
+            "input_total": 214227,
+            "cache_read": 182784,
+            "cache_write": 0,
+            "output": 2751,
+            "total": 216978,
+            "reasoning_output_tokens": 299,
+            "reasoning_observed_tokens": 299,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-quoted-charset-r1-normal",
+          "trace_sha256": "84c420740bdabd4ded24415aeffbda7da685130da7bd1da133528264a6edd177",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 11515,
+            "input_total": 120315,
+            "cache_read": 108800,
+            "cache_write": 0,
+            "output": 1756,
+            "total": 122071,
+            "reasoning_output_tokens": 803,
+            "reasoning_observed_tokens": 803,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-quoted-charset-r1-normal",
+          "trace_sha256": "8b4cc38dffcc3260100272b523772f7dafa2913a8dae1ded9fb4d4ea7a2dbf21",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 18584,
+            "input_total": 120088,
+            "cache_read": 101504,
+            "cache_write": 0,
+            "output": 1927,
+            "total": 122015,
+            "reasoning_output_tokens": 1155,
+            "reasoning_observed_tokens": 1155,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "chi-quoted-charset-r1-normal",
+          "trace_sha256": "39865e2ee0b446e21a34086f1b8769cef05e25dc17b6e2f89bbdf19afceffa4f",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 9790,
+            "input_total": 95934,
+            "cache_read": 86144,
+            "cache_write": 0,
+            "output": 859,
+            "total": 96793,
+            "reasoning_output_tokens": 72,
+            "reasoning_observed_tokens": 72,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "minimatch-escaped-patterns-r1-normal",
+      "case_id": "minimatch-escaped-patterns",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 13,
+      "controller": 0,
+      "state": "timed_out",
+      "result_sha256": "359ec50aa02b25bf64da537d4e11bec6c097147eb6eee578c09ed0715d727795",
+      "protocol_sha256": "3875997d7c7553a16dd2669f44c7721eb36b7ebb420aa8f8657087c02502f898",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop",
+        "captured_usage_incomplete"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480041665782,
+      "observed_tokens": {
+        "input_uncached": 211550,
+        "input_total": 3030750,
+        "cache_read": 2819200,
+        "cache_write": 0,
+        "output": 18410,
+        "total": 3049160,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 4842,
+        "reasoning_known_units": 0,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "minimatch-escaped-patterns-r1-normal",
+          "trace_sha256": "38686e5d5f22e5e3421967ad0eaf992e85450f01778b40c109b52c0045dc0254",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 86324,
+            "input_total": 1855028,
+            "cache_read": 1768704,
+            "cache_write": 0,
+            "output": 9728,
+            "total": 1864756,
+            "reasoning_output_tokens": 2109,
+            "reasoning_observed_tokens": 2109,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "minimatch-escaped-patterns-r1-normal",
+          "trace_sha256": "cc3744181809fbf1a6fd995a0b434cc7f4d3ae317022550c1024ad90080e4b6e",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 70366,
+            "input_total": 596830,
+            "cache_read": 526464,
+            "cache_write": 0,
+            "output": 3527,
+            "total": 600357,
+            "reasoning_output_tokens": 699,
+            "reasoning_observed_tokens": 699,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "minimatch-escaped-patterns-r1-normal",
+          "trace_sha256": "9fa1b3f1d7a69452bad64cd83f6c03f712c2ba948b437a9c61f48dc52ef582d9",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 29281,
+            "input_total": 376417,
+            "cache_read": 347136,
+            "cache_write": 0,
+            "output": 3669,
+            "total": 380086,
+            "reasoning_output_tokens": 1651,
+            "reasoning_observed_tokens": 1651,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "minimatch-escaped-patterns-r1-normal",
+          "trace_sha256": "88d2fe732cd87caf867477d9e480b12e1a850095f2a53499cc86f83055bb259f",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 25579,
+            "input_total": 202475,
+            "cache_read": 176896,
+            "cache_write": 0,
+            "output": 1486,
+            "total": 203961,
+            "reasoning_output_tokens": 383,
+            "reasoning_observed_tokens": 383,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "minimatch-escaped-patterns-r1-normal",
+          "trace_sha256": "b2b6114c54298b3c3add0a2784ca3a70bb5f8c2d62c226d87f632d2967c778de",
+          "role": "commit",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": false,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 0,
+            "input_total": 0,
+            "cache_read": 0,
+            "cache_write": 0,
+            "output": 0,
+            "total": 0,
+            "reasoning_output_tokens": null,
+            "reasoning_observed_tokens": 0,
+            "reasoning_known_units": 0,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "minimatch-escaped-patterns-r1-compact",
+      "case_id": "minimatch-escaped-patterns",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 14,
+      "controller": 0,
+      "state": "timed_out",
+      "result_sha256": "1b1502be9cb0dce780ca9eb42f0bfaae3f083515594c615a012007c28129226d",
+      "protocol_sha256": "5f70490ed5ef90f8aa1e3b8aeb2bb4856a62ffa7b34bc836237e0f3b569651d4",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480048626684,
+      "observed_tokens": {
+        "input_uncached": 152360,
+        "input_total": 2686632,
+        "cache_read": 2534272,
+        "cache_write": 0,
+        "output": 18889,
+        "total": 2705521,
+        "reasoning_output_tokens": 4954,
+        "reasoning_observed_tokens": 4954,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "minimatch-escaped-patterns-r1-compact",
+          "trace_sha256": "2cdd090f454c5b55313f1d5b632400d7341494abc610bdceebc8bf4bc2d600bb",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 67739,
+            "input_total": 1621659,
+            "cache_read": 1553920,
+            "cache_write": 0,
+            "output": 9882,
+            "total": 1631541,
+            "reasoning_output_tokens": 2004,
+            "reasoning_observed_tokens": 2004,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "minimatch-escaped-patterns-r1-compact",
+          "trace_sha256": "2aa7d2a67e8ab474c613fb0cd6182ac0d26be20f3eaf0b1069dc82b6bb528295",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 54484,
+            "input_total": 669396,
+            "cache_read": 614912,
+            "cache_write": 0,
+            "output": 5170,
+            "total": 674566,
+            "reasoning_output_tokens": 1598,
+            "reasoning_observed_tokens": 1598,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "minimatch-escaped-patterns-r1-compact",
+          "trace_sha256": "6aa86a639585158fb18149edc24ae83c5b87804ae69a5a8561df1804b64e92c1",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 30137,
+            "input_total": 395577,
+            "cache_read": 365440,
+            "cache_write": 0,
+            "output": 3837,
+            "total": 399414,
+            "reasoning_output_tokens": 1352,
+            "reasoning_observed_tokens": 1352,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "minimatch-split-budget-r1-compact",
+      "case_id": "minimatch-split-budget",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 15,
+      "controller": 1,
+      "state": "timed_out",
+      "result_sha256": "0bfc2aa043dd356fe22a6f88094c22b1e04e59172080f9544bca31a44525246b",
+      "protocol_sha256": "f8d994922c1fa7bad428fbe4328fdf42f311661f560fdc6623667e4e1eeb6244",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480040329232,
+      "observed_tokens": {
+        "input_uncached": 175802,
+        "input_total": 3560634,
+        "cache_read": 3384832,
+        "cache_write": 0,
+        "output": 21112,
+        "total": 3581746,
+        "reasoning_output_tokens": 3595,
+        "reasoning_observed_tokens": 3595,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "minimatch-split-budget-r1-compact",
+          "trace_sha256": "692e987b8807ab1059e4ca9c5f965707da652cc27eb7be9f5bf9bf4eacc42830",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 72672,
+            "input_total": 2030816,
+            "cache_read": 1958144,
+            "cache_write": 0,
+            "output": 12273,
+            "total": 2043089,
+            "reasoning_output_tokens": 1492,
+            "reasoning_observed_tokens": 1492,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "minimatch-split-budget-r1-compact",
+          "trace_sha256": "796c65d5b0f223c91f91f1b1607e5d6274e0167ec037d564747cafba499d8017",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 53140,
+            "input_total": 971412,
+            "cache_read": 918272,
+            "cache_write": 0,
+            "output": 6153,
+            "total": 977565,
+            "reasoning_output_tokens": 1853,
+            "reasoning_observed_tokens": 1853,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "minimatch-split-budget-r1-compact",
+          "trace_sha256": "9005fcab8154568f4518f892b7cadf8479e14a5003a110da7e70b0fd634659f8",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 36963,
+            "input_total": 474211,
+            "cache_read": 437248,
+            "cache_write": 0,
+            "output": 2145,
+            "total": 476356,
+            "reasoning_output_tokens": 237,
+            "reasoning_observed_tokens": 237,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "minimatch-split-budget-r1-compact",
+          "trace_sha256": "a69e54e09afd6808ca7c230f919680f6d8e5c9830c5a9a3da661e13c2f867658",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 13027,
+            "input_total": 84195,
+            "cache_read": 71168,
+            "cache_write": 0,
+            "output": 541,
+            "total": 84736,
+            "reasoning_output_tokens": 13,
+            "reasoning_observed_tokens": 13,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "minimatch-split-budget-r1-normal",
+      "case_id": "minimatch-split-budget",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 16,
+      "controller": 1,
+      "state": "completed",
+      "result_sha256": "b180fe22bf6ecd2a3479372ec63931e32ad7723767a365e971ee99de03459b65",
+      "protocol_sha256": "3ae4185e4449d390c22fc1fa0ff89d7ba777b3ec1f2b919f4e5cb10dafe314db",
+      "measured": true,
+      "accounting_complete": true,
+      "accounting_unknown_reasons": [],
+      "functional_status": "passed",
+      "protocol_status": "unknown",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 465645708106,
+      "observed_tokens": {
+        "input_uncached": 210041,
+        "input_total": 2731897,
+        "cache_read": 2521856,
+        "cache_write": 0,
+        "output": 16881,
+        "total": 2748778,
+        "reasoning_output_tokens": 2815,
+        "reasoning_observed_tokens": 2815,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "minimatch-split-budget-r1-normal",
+          "trace_sha256": "388511073bcfd3598201fb817818c6960aaadd1b237387c1c7c04fde13f08427",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 77792,
+            "input_total": 1724896,
+            "cache_read": 1647104,
+            "cache_write": 0,
+            "output": 9857,
+            "total": 1734753,
+            "reasoning_output_tokens": 1370,
+            "reasoning_observed_tokens": 1370,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "minimatch-split-budget-r1-normal",
+          "trace_sha256": "560ffa726ab5b1a718ab229d50616eea40234fb80e4704406d90d4d09be6041e",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 21276,
+            "input_total": 286236,
+            "cache_read": 264960,
+            "cache_write": 0,
+            "output": 3633,
+            "total": 289869,
+            "reasoning_output_tokens": 1087,
+            "reasoning_observed_tokens": 1087,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "minimatch-split-budget-r1-normal",
+          "trace_sha256": "9e336cc9e44243bbbc91d34df9b42228b26aaa12b8db6d16caf9f45abab43eb9",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 41873,
+            "input_total": 281361,
+            "cache_read": 239488,
+            "cache_write": 0,
+            "output": 1548,
+            "total": 282909,
+            "reasoning_output_tokens": 143,
+            "reasoning_observed_tokens": 143,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "minimatch-split-budget-r1-normal",
+          "trace_sha256": "8d94d9906182591871f5a05c821dcfaccb7dd5d494c1be3accba7a6be22d690a",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 44901,
+            "input_total": 323173,
+            "cache_read": 278272,
+            "cache_write": 0,
+            "output": 1172,
+            "total": 324345,
+            "reasoning_output_tokens": 116,
+            "reasoning_observed_tokens": 116,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "minimatch-split-budget-r1-normal",
+          "trace_sha256": "9cc47b628d229c6d851599f2658be5a07373876d5438bdc94a5563bcda72cde1",
+          "role": "commit",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 24199,
+            "input_total": 116231,
+            "cache_read": 92032,
+            "cache_write": 0,
+            "output": 671,
+            "total": 116902,
+            "reasoning_output_tokens": 99,
+            "reasoning_observed_tokens": 99,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "qs-sparse-array-limit-r1-compact",
+      "case_id": "qs-sparse-array-limit",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 17,
+      "controller": 2,
+      "state": "timed_out",
+      "result_sha256": "f1982a8f057577431ecc2535f360da5476536ff4708f17176335b16ebd13b1b7",
+      "protocol_sha256": "66c5588f9ce15b2eb01bcde724b50a2eab4870b2a819a42457de633fba201c1d",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "unknown",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480085637388,
+      "observed_tokens": {
+        "input_uncached": 162976,
+        "input_total": 2999200,
+        "cache_read": 2836224,
+        "cache_write": 0,
+        "output": 21685,
+        "total": 3020885,
+        "reasoning_output_tokens": 2503,
+        "reasoning_observed_tokens": 2503,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "qs-sparse-array-limit-r1-compact",
+          "trace_sha256": "3e4d5e241848a42e81f7a0ec56eddbc6523e1b43a9fccbc94121f6c3da860228",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 78054,
+            "input_total": 2066534,
+            "cache_read": 1988480,
+            "cache_write": 0,
+            "output": 14088,
+            "total": 2080622,
+            "reasoning_output_tokens": 1526,
+            "reasoning_observed_tokens": 1526,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-sparse-array-limit-r1-compact",
+          "trace_sha256": "b41cbf7fdbaa6aeb6cb691d53a44b17dd4e485ec8d421e62121b2109c467a484",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 28247,
+            "input_total": 323927,
+            "cache_read": 295680,
+            "cache_write": 0,
+            "output": 3171,
+            "total": 327098,
+            "reasoning_output_tokens": 355,
+            "reasoning_observed_tokens": 355,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-sparse-array-limit-r1-compact",
+          "trace_sha256": "645770c3fbfc48d1ba0c4e5a0ab7371102d67fc0b809e42a2206c1a74dc07058",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 23466,
+            "input_total": 340010,
+            "cache_read": 316544,
+            "cache_write": 0,
+            "output": 2018,
+            "total": 342028,
+            "reasoning_output_tokens": 252,
+            "reasoning_observed_tokens": 252,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-sparse-array-limit-r1-compact",
+          "trace_sha256": "5062b83d4259790a408a9f9104d26578c2fc4b98c498ff9125863c4a55de87eb",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 20105,
+            "input_total": 161161,
+            "cache_read": 141056,
+            "cache_write": 0,
+            "output": 1386,
+            "total": 162547,
+            "reasoning_output_tokens": 334,
+            "reasoning_observed_tokens": 334,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-sparse-array-limit-r1-compact",
+          "trace_sha256": "e236233c355871d9559f1842057904e86468002e043b316900e98e2f9f687d78",
+          "role": "commit",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 13104,
+            "input_total": 107568,
+            "cache_read": 94464,
+            "cache_write": 0,
+            "output": 1022,
+            "total": 108590,
+            "reasoning_output_tokens": 36,
+            "reasoning_observed_tokens": 36,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "qs-sparse-array-limit-r1-normal",
+      "case_id": "qs-sparse-array-limit",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 18,
+      "controller": 2,
+      "state": "completed",
+      "result_sha256": "1b588970e872c8ffa2be3cb66d81487520aa97eadc59e53a19e4897b9762e006",
+      "protocol_sha256": "b57d5144b25843c324717e830a261522199dcb80419b9bc9f027ad6db48810ab",
+      "measured": true,
+      "accounting_complete": true,
+      "accounting_unknown_reasons": [],
+      "functional_status": "passed",
+      "protocol_status": "unknown",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 445995772043,
+      "observed_tokens": {
+        "input_uncached": 217445,
+        "input_total": 2957157,
+        "cache_read": 2739712,
+        "cache_write": 0,
+        "output": 18157,
+        "total": 2975314,
+        "reasoning_output_tokens": 2484,
+        "reasoning_observed_tokens": 2484,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "qs-sparse-array-limit-r1-normal",
+          "trace_sha256": "e8036a5d258d233bd7cb61f60253b2538f22569e2c9288ce19fbb4a900fa1e06",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 78586,
+            "input_total": 2003706,
+            "cache_read": 1925120,
+            "cache_write": 0,
+            "output": 10312,
+            "total": 2014018,
+            "reasoning_output_tokens": 1086,
+            "reasoning_observed_tokens": 1086,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-sparse-array-limit-r1-normal",
+          "trace_sha256": "f1e4ebf2c0ff2850fc20dee42f18bf89f0b6d2f365573f22e294a4180c020414",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 53248,
+            "input_total": 391808,
+            "cache_read": 338560,
+            "cache_write": 0,
+            "output": 3390,
+            "total": 395198,
+            "reasoning_output_tokens": 405,
+            "reasoning_observed_tokens": 405,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-sparse-array-limit-r1-normal",
+          "trace_sha256": "12da4d6602b4f14a0c2543da906f0b414b7b7d40b64bb87fa0819e4cd17e20e3",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 33916,
+            "input_total": 233468,
+            "cache_read": 199552,
+            "cache_write": 0,
+            "output": 1749,
+            "total": 235217,
+            "reasoning_output_tokens": 551,
+            "reasoning_observed_tokens": 551,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-sparse-array-limit-r1-normal",
+          "trace_sha256": "4c9e6a62138baf62c9e132f8c08a533959421e4eb2089e7e3619e95cc99a7734",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 40532,
+            "input_total": 235732,
+            "cache_read": 195200,
+            "cache_write": 0,
+            "output": 1876,
+            "total": 237608,
+            "reasoning_output_tokens": 420,
+            "reasoning_observed_tokens": 420,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-sparse-array-limit-r1-normal",
+          "trace_sha256": "7a97f1df5f11a41c362d94b1f224e82ca6ba96354677b7c2c579be4baa047e6b",
+          "role": "commit",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 11163,
+            "input_total": 92443,
+            "cache_read": 81280,
+            "cache_write": 0,
+            "output": 830,
+            "total": 93273,
+            "reasoning_output_tokens": 22,
+            "reasoning_observed_tokens": 22,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "pflag-unknown-flags-r1-compact",
+      "case_id": "pflag-unknown-flags",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 19,
+      "controller": 3,
+      "state": "timed_out",
+      "result_sha256": "8af788672f1011283b9bd17d6cb8eb4537e54aa8a05cb102d75799231a05a2a9",
+      "protocol_sha256": "c454e6d4e722d52cf4bdf5b610962fb10aae93f2fd36213fb45c652ff23f75ce",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480055849691,
+      "observed_tokens": {
+        "input_uncached": 149800,
+        "input_total": 2166312,
+        "cache_read": 2016512,
+        "cache_write": 0,
+        "output": 20114,
+        "total": 2186426,
+        "reasoning_output_tokens": 2216,
+        "reasoning_observed_tokens": 2216,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "pflag-unknown-flags-r1-compact",
+          "trace_sha256": "bd076fdfbf51160e872d70719db597c99ffaa73ffa089e0665702f564c8b8f80",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 41281,
+            "input_total": 1311041,
+            "cache_read": 1269760,
+            "cache_write": 0,
+            "output": 11918,
+            "total": 1322959,
+            "reasoning_output_tokens": 804,
+            "reasoning_observed_tokens": 804,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "pflag-unknown-flags-r1-compact",
+          "trace_sha256": "ae0af29a798f1b4e9c0f44375fcadaa87fa2e3c3feda9a9eea827bedad14359a",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 36191,
+            "input_total": 397663,
+            "cache_read": 361472,
+            "cache_write": 0,
+            "output": 4702,
+            "total": 402365,
+            "reasoning_output_tokens": 707,
+            "reasoning_observed_tokens": 707,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "pflag-unknown-flags-r1-compact",
+          "trace_sha256": "06c9a43fc2e68f89aded1dfd5bbbbbc2e8b390830c37493557ad5a3f75474561",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 39826,
+            "input_total": 332306,
+            "cache_read": 292480,
+            "cache_write": 0,
+            "output": 2207,
+            "total": 334513,
+            "reasoning_output_tokens": 503,
+            "reasoning_observed_tokens": 503,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "pflag-unknown-flags-r1-compact",
+          "trace_sha256": "39e784d0070aaacd14730cbd6d9ae85140b385c46e5309dc4c4f4a3fce567ad3",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 32502,
+            "input_total": 125302,
+            "cache_read": 92800,
+            "cache_write": 0,
+            "output": 1287,
+            "total": 126589,
+            "reasoning_output_tokens": 202,
+            "reasoning_observed_tokens": 202,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "pflag-unknown-flags-r1-normal",
+      "case_id": "pflag-unknown-flags",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 20,
+      "controller": 3,
+      "state": "completed",
+      "result_sha256": "e1bffbdbcf6f229c2cb5f7c3f3a51da690602dfaf14a35e03b9619055d289fbf",
+      "protocol_sha256": "762f7fe3bf04002e424424e4af0229e42bdc53809c7563c1ea36cffecabb0591",
+      "measured": true,
+      "accounting_complete": true,
+      "accounting_unknown_reasons": [],
+      "functional_status": "passed",
+      "protocol_status": "unknown",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 409461174096,
+      "observed_tokens": {
+        "input_uncached": 205076,
+        "input_total": 1991316,
+        "cache_read": 1786240,
+        "cache_write": 0,
+        "output": 16111,
+        "total": 2007427,
+        "reasoning_output_tokens": 2130,
+        "reasoning_observed_tokens": 2130,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "pflag-unknown-flags-r1-normal",
+          "trace_sha256": "6935a805681bd35188e2c574117054df02dac0d88322c89e2365b9dbcd2e98c9",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 83413,
+            "input_total": 1396949,
+            "cache_read": 1313536,
+            "cache_write": 0,
+            "output": 8864,
+            "total": 1405813,
+            "reasoning_output_tokens": 654,
+            "reasoning_observed_tokens": 654,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "pflag-unknown-flags-r1-normal",
+          "trace_sha256": "f7b38bc133e6f751fc2bbc6019e9214ddc0013ec9e384e30056588e0706d5832",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 34135,
+            "input_total": 242263,
+            "cache_read": 208128,
+            "cache_write": 0,
+            "output": 4080,
+            "total": 246343,
+            "reasoning_output_tokens": 1002,
+            "reasoning_observed_tokens": 1002,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "pflag-unknown-flags-r1-normal",
+          "trace_sha256": "95efb603d24cbabeffd609d01755481e469663a9a51b90db0fd81777927dc1e1",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 44392,
+            "input_total": 145000,
+            "cache_read": 100608,
+            "cache_write": 0,
+            "output": 1502,
+            "total": 146502,
+            "reasoning_output_tokens": 232,
+            "reasoning_observed_tokens": 232,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "pflag-unknown-flags-r1-normal",
+          "trace_sha256": "d4633b9bd4cdf64473e5084a5b0dd35f9caea394a7022cdabf69d00aaf9275b6",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 27914,
+            "input_total": 113418,
+            "cache_read": 85504,
+            "cache_write": 0,
+            "output": 1098,
+            "total": 114516,
+            "reasoning_output_tokens": 225,
+            "reasoning_observed_tokens": 225,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "pflag-unknown-flags-r1-normal",
+          "trace_sha256": "d33dbe34f92e1960024df62faf80d00925adf7dc28757b27772fbe1bd2804211",
+          "role": "commit",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 15222,
+            "input_total": 93686,
+            "cache_read": 78464,
+            "cache_write": 0,
+            "output": 567,
+            "total": 94253,
+            "reasoning_output_tokens": 17,
+            "reasoning_observed_tokens": 17,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "semver-prerelease-groups-r1-normal",
+      "case_id": "semver-prerelease-groups",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 21,
+      "controller": 4,
+      "state": "completed",
+      "result_sha256": "7ad6bcde9d662fedec7b8f50d191fe257c97e254fced0970ccd330fee9abd827",
+      "protocol_sha256": "15d3efd6c07f289beab73264d94a950d08e7e217deb477db1aaa55d9bf4ab8c3",
+      "measured": true,
+      "accounting_complete": true,
+      "accounting_unknown_reasons": [],
+      "functional_status": "passed",
+      "protocol_status": "unknown",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 421982941095,
+      "observed_tokens": {
+        "input_uncached": 236059,
+        "input_total": 2541723,
+        "cache_read": 2305664,
+        "cache_write": 0,
+        "output": 17872,
+        "total": 2559595,
+        "reasoning_output_tokens": 2621,
+        "reasoning_observed_tokens": 2621,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "semver-prerelease-groups-r1-normal",
+          "trace_sha256": "4ab690be66ccca9708233d0d5a4df86b6eccdf682cf714873d9492f8eaf6f058",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 95165,
+            "input_total": 1681213,
+            "cache_read": 1586048,
+            "cache_write": 0,
+            "output": 9320,
+            "total": 1690533,
+            "reasoning_output_tokens": 1048,
+            "reasoning_observed_tokens": 1048,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "semver-prerelease-groups-r1-normal",
+          "trace_sha256": "862a1feec38a42a7e10cb703d71b51478f88f1314059c97d83a7f85b64ef172b",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 43012,
+            "input_total": 279044,
+            "cache_read": 236032,
+            "cache_write": 0,
+            "output": 4034,
+            "total": 283078,
+            "reasoning_output_tokens": 301,
+            "reasoning_observed_tokens": 301,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "semver-prerelease-groups-r1-normal",
+          "trace_sha256": "11598afecf507bc81dea9ee7186845af945786f867858e10a4acb159fb8c6dd1",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 44919,
+            "input_total": 305399,
+            "cache_read": 260480,
+            "cache_write": 0,
+            "output": 2534,
+            "total": 307933,
+            "reasoning_output_tokens": 919,
+            "reasoning_observed_tokens": 919,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "semver-prerelease-groups-r1-normal",
+          "trace_sha256": "31f799ccff56206d20271873dcc792ed95b9a0a878de44ea550fc23eaa36efa0",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 42235,
+            "input_total": 182011,
+            "cache_read": 139776,
+            "cache_write": 0,
+            "output": 1406,
+            "total": 183417,
+            "reasoning_output_tokens": 353,
+            "reasoning_observed_tokens": 353,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "semver-prerelease-groups-r1-normal",
+          "trace_sha256": "7bd25b09c90115d6c0b447604f589876661a826a394c5f5f1a34eea742ffc0e5",
+          "role": "commit",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 10728,
+            "input_total": 94056,
+            "cache_read": 83328,
+            "cache_write": 0,
+            "output": 578,
+            "total": 94634,
+            "reasoning_output_tokens": 0,
+            "reasoning_observed_tokens": 0,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "semver-prerelease-groups-r1-compact",
+      "case_id": "semver-prerelease-groups",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 22,
+      "controller": 4,
+      "state": "timed_out",
+      "result_sha256": "eadbb6c3d7aea5436514a134b82a6379731ffa445203539c361d3e21a86b506b",
+      "protocol_sha256": "44d29d32be52c170e4ab9b4523801194d13e098e4e20739efb5616d8129f209c",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480049281703,
+      "observed_tokens": {
+        "input_uncached": 228472,
+        "input_total": 2734328,
+        "cache_read": 2505856,
+        "cache_write": 0,
+        "output": 19637,
+        "total": 2753965,
+        "reasoning_output_tokens": 2322,
+        "reasoning_observed_tokens": 2322,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "semver-prerelease-groups-r1-compact",
+          "trace_sha256": "a04e7c5a30ede9048bcc7e7c7ccc047371977423cc8f9cf291df4b08e4434efc",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 49805,
+            "input_total": 1448973,
+            "cache_read": 1399168,
+            "cache_write": 0,
+            "output": 10773,
+            "total": 1459746,
+            "reasoning_output_tokens": 1123,
+            "reasoning_observed_tokens": 1123,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "semver-prerelease-groups-r1-compact",
+          "trace_sha256": "61a62e2aadc864a2426a601cc394be275806cf17be828bbbb4db83318504bf2b",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 45653,
+            "input_total": 517205,
+            "cache_read": 471552,
+            "cache_write": 0,
+            "output": 4148,
+            "total": 521353,
+            "reasoning_output_tokens": 246,
+            "reasoning_observed_tokens": 246,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "semver-prerelease-groups-r1-compact",
+          "trace_sha256": "61f7c897b33dccfea86ca803cfed2697863b0f1877d3d17ac4f07b8839deb155",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 64271,
+            "input_total": 478607,
+            "cache_read": 414336,
+            "cache_write": 0,
+            "output": 3050,
+            "total": 481657,
+            "reasoning_output_tokens": 773,
+            "reasoning_observed_tokens": 773,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "semver-prerelease-groups-r1-compact",
+          "trace_sha256": "133441cb7b3b6ac9a5fb2851959ea0fd76039c9ab99a37d8bf7591942974e9b1",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 64664,
+            "input_total": 264600,
+            "cache_read": 199936,
+            "cache_write": 0,
+            "output": 1500,
+            "total": 266100,
+            "reasoning_output_tokens": 180,
+            "reasoning_observed_tokens": 180,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "semver-prerelease-groups-r1-compact",
+          "trace_sha256": "e379e45555bdf06b1de1710f7dc530aba4246a2416145605b234e619b4d9ac06",
+          "role": "commit",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 4079,
+            "input_total": 24943,
+            "cache_read": 20864,
+            "cache_write": 0,
+            "output": 166,
+            "total": 25109,
+            "reasoning_output_tokens": 0,
+            "reasoning_observed_tokens": 0,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "fmt-long-double-precision-r1-normal",
+      "case_id": "fmt-long-double-precision",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 23,
+      "controller": 5,
+      "state": "completed",
+      "result_sha256": "1986f2bd19a1eff56f2d9954ffc66776dbb7df2762d63bfe5bc079784c69e1b1",
+      "protocol_sha256": "ae3fa037172174ec4d399482d3fbb87a85ad85bc8746dc387c7dc63c8de4630c",
+      "measured": true,
+      "accounting_complete": true,
+      "accounting_unknown_reasons": [],
+      "functional_status": "passed",
+      "protocol_status": "unknown",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 452909145285,
+      "observed_tokens": {
+        "input_uncached": 173429,
+        "input_total": 2328565,
+        "cache_read": 2155136,
+        "cache_write": 0,
+        "output": 16423,
+        "total": 2344988,
+        "reasoning_output_tokens": 2969,
+        "reasoning_observed_tokens": 2969,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "fmt-long-double-precision-r1-normal",
+          "trace_sha256": "a74efec76b98ef2a9415b4f487b680b5742f0ab1b201681975ae658e19cc9cab",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 44750,
+            "input_total": 1446606,
+            "cache_read": 1401856,
+            "cache_write": 0,
+            "output": 10047,
+            "total": 1456653,
+            "reasoning_output_tokens": 1199,
+            "reasoning_observed_tokens": 1199,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-long-double-precision-r1-normal",
+          "trace_sha256": "56c92af9444a8cee49502d02d51752d85f6954b269274c92bdf89d2b73942598",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 14900,
+            "input_total": 165684,
+            "cache_read": 150784,
+            "cache_write": 0,
+            "output": 2168,
+            "total": 167852,
+            "reasoning_output_tokens": 802,
+            "reasoning_observed_tokens": 802,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-long-double-precision-r1-normal",
+          "trace_sha256": "c1de22c3b9bc3bd66a0e392cfd530f49dd71fc1441097c8f227808a1fca75c94",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 49916,
+            "input_total": 364924,
+            "cache_read": 315008,
+            "cache_write": 0,
+            "output": 1880,
+            "total": 366804,
+            "reasoning_output_tokens": 561,
+            "reasoning_observed_tokens": 561,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-long-double-precision-r1-normal",
+          "trace_sha256": "f344ed8a874070a3592e8bed5fc65bd21184fbc5f13ad03be0456a7b00f9d51e",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 51770,
+            "input_total": 229690,
+            "cache_read": 177920,
+            "cache_write": 0,
+            "output": 1364,
+            "total": 231054,
+            "reasoning_output_tokens": 212,
+            "reasoning_observed_tokens": 212,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-long-double-precision-r1-normal",
+          "trace_sha256": "d8dfdae203cb2fd1d3207afd28406dd65ad34d7872362ee5c95d4786f8096704",
+          "role": "commit",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 12093,
+            "input_total": 121661,
+            "cache_read": 109568,
+            "cache_write": 0,
+            "output": 964,
+            "total": 122625,
+            "reasoning_output_tokens": 195,
+            "reasoning_observed_tokens": 195,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "fmt-long-double-precision-r1-compact",
+      "case_id": "fmt-long-double-precision",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 24,
+      "controller": 5,
+      "state": "timed_out",
+      "result_sha256": "268a3d910a3da501c9ab6066c95e1d4e440549b30a7a0e619265e1cf25bd57f7",
+      "protocol_sha256": "835c33b227853aa36be31ada583e82d818caa7a1d8fcee319337723cbe46ac25",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 480045618623,
+      "observed_tokens": {
+        "input_uncached": 113294,
+        "input_total": 1843726,
+        "cache_read": 1730432,
+        "cache_write": 0,
+        "output": 20131,
+        "total": 1863857,
+        "reasoning_output_tokens": 2143,
+        "reasoning_observed_tokens": 2143,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "fmt-long-double-precision-r1-compact",
+          "trace_sha256": "3a5dea8dd4ef516d3a5aef8891b8e32d19687ec0c9e3b6226f42fe8f45755613",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 44683,
+            "input_total": 1231371,
+            "cache_read": 1186688,
+            "cache_write": 0,
+            "output": 14938,
+            "total": 1246309,
+            "reasoning_output_tokens": 735,
+            "reasoning_observed_tokens": 735,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-long-double-precision-r1-compact",
+          "trace_sha256": "36cf56c3131ff18da87074824810a10e1f73afa29023ad1cf68edf1f51519d24",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 24492,
+            "input_total": 329004,
+            "cache_read": 304512,
+            "cache_write": 0,
+            "output": 3278,
+            "total": 332282,
+            "reasoning_output_tokens": 795,
+            "reasoning_observed_tokens": 795,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-long-double-precision-r1-compact",
+          "trace_sha256": "fc7e9f0f64f720596d52ca5e7a36fb47d7af8a0348d96469d7701ff2bdf25f86",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 32406,
+            "input_total": 253206,
+            "cache_read": 220800,
+            "cache_write": 0,
+            "output": 1799,
+            "total": 255005,
+            "reasoning_output_tokens": 598,
+            "reasoning_observed_tokens": 598,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "fmt-long-double-precision-r1-compact",
+          "trace_sha256": "163f229b61faffaa99f7dbc6a58a36973d3c60e991a66aa2e75c12c9ff8f70af",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 11713,
+            "input_total": 30145,
+            "cache_read": 18432,
+            "cache_write": 0,
+            "output": 116,
+            "total": 30261,
+            "reasoning_output_tokens": 15,
+            "reasoning_observed_tokens": 15,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    }
+  ],
+  "pairs": [
+    {
+      "case_id": "pflag-unknown-flags",
+      "repeat": 1,
+      "normal_run": "pflag-unknown-flags-r1-normal",
+      "compact_run": "pflag-unknown-flags-r1-compact",
+      "normal_functional": "passed",
+      "compact_functional": "passed",
+      "normal_protocol": "unknown",
+      "compact_protocol": "violated",
+      "accounting_comparable": false,
+      "both_functional_success": true,
+      "both_verified_success": false,
+      "functional_loss": false,
+      "normal_observed_tokens": 2007427,
+      "compact_observed_tokens": 2186426,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    },
+    {
+      "case_id": "chi-quoted-charset",
+      "repeat": 1,
+      "normal_run": "chi-quoted-charset-r1-normal",
+      "compact_run": "chi-quoted-charset-r1-compact",
+      "normal_functional": "passed",
+      "compact_functional": "passed",
+      "normal_protocol": "violated",
+      "compact_protocol": "violated",
+      "accounting_comparable": false,
+      "both_functional_success": true,
+      "both_verified_success": false,
+      "functional_loss": false,
+      "normal_observed_tokens": 2087482,
+      "compact_observed_tokens": 2540010,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    },
+    {
+      "case_id": "semver-prerelease-groups",
+      "repeat": 1,
+      "normal_run": "semver-prerelease-groups-r1-normal",
+      "compact_run": "semver-prerelease-groups-r1-compact",
+      "normal_functional": "passed",
+      "compact_functional": "passed",
+      "normal_protocol": "unknown",
+      "compact_protocol": "violated",
+      "accounting_comparable": false,
+      "both_functional_success": true,
+      "both_verified_success": false,
+      "functional_loss": false,
+      "normal_observed_tokens": 2559595,
+      "compact_observed_tokens": 2753965,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    },
+    {
+      "case_id": "chi-self-mount",
+      "repeat": 1,
+      "normal_run": "chi-self-mount-r1-normal",
+      "compact_run": "chi-self-mount-r1-compact",
+      "normal_functional": "passed",
+      "compact_functional": "passed",
+      "normal_protocol": "unknown",
+      "compact_protocol": "violated",
+      "accounting_comparable": false,
+      "both_functional_success": true,
+      "both_verified_success": false,
+      "functional_loss": false,
+      "normal_observed_tokens": 2398168,
+      "compact_observed_tokens": 2369072,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    },
+    {
+      "case_id": "qs-sparse-array-limit",
+      "repeat": 1,
+      "normal_run": "qs-sparse-array-limit-r1-normal",
+      "compact_run": "qs-sparse-array-limit-r1-compact",
+      "normal_functional": "passed",
+      "compact_functional": "passed",
+      "normal_protocol": "unknown",
+      "compact_protocol": "unknown",
+      "accounting_comparable": false,
+      "both_functional_success": true,
+      "both_verified_success": false,
+      "functional_loss": false,
+      "normal_observed_tokens": 2975314,
+      "compact_observed_tokens": 3020885,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    },
+    {
+      "case_id": "qs-empty-array-keys",
+      "repeat": 1,
+      "normal_run": "qs-empty-array-keys-r1-normal",
+      "compact_run": "qs-empty-array-keys-r1-compact",
+      "normal_functional": "passed",
+      "compact_functional": "passed",
+      "normal_protocol": "unknown",
+      "compact_protocol": "violated",
+      "accounting_comparable": false,
+      "both_functional_success": true,
+      "both_verified_success": false,
+      "functional_loss": false,
+      "normal_observed_tokens": 2705971,
+      "compact_observed_tokens": 2443733,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    },
+    {
+      "case_id": "minimatch-split-budget",
+      "repeat": 1,
+      "normal_run": "minimatch-split-budget-r1-normal",
+      "compact_run": "minimatch-split-budget-r1-compact",
+      "normal_functional": "passed",
+      "compact_functional": "passed",
+      "normal_protocol": "unknown",
+      "compact_protocol": "violated",
+      "accounting_comparable": false,
+      "both_functional_success": true,
+      "both_verified_success": false,
+      "functional_loss": false,
+      "normal_observed_tokens": 2748778,
+      "compact_observed_tokens": 3581746,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    },
+    {
+      "case_id": "minimatch-escaped-patterns",
+      "repeat": 1,
+      "normal_run": "minimatch-escaped-patterns-r1-normal",
+      "compact_run": "minimatch-escaped-patterns-r1-compact",
+      "normal_functional": "passed",
+      "compact_functional": "passed",
+      "normal_protocol": "violated",
+      "compact_protocol": "violated",
+      "accounting_comparable": false,
+      "both_functional_success": true,
+      "both_verified_success": false,
+      "functional_loss": false,
+      "normal_observed_tokens": 3049160,
+      "compact_observed_tokens": 2705521,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    },
+    {
+      "case_id": "fmt-long-double-precision",
+      "repeat": 1,
+      "normal_run": "fmt-long-double-precision-r1-normal",
+      "compact_run": "fmt-long-double-precision-r1-compact",
+      "normal_functional": "passed",
+      "compact_functional": "passed",
+      "normal_protocol": "unknown",
+      "compact_protocol": "violated",
+      "accounting_comparable": false,
+      "both_functional_success": true,
+      "both_verified_success": false,
+      "functional_loss": false,
+      "normal_observed_tokens": 2344988,
+      "compact_observed_tokens": 1863857,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    },
+    {
+      "case_id": "fmt-null-printf-precision",
+      "repeat": 1,
+      "normal_run": "fmt-null-printf-precision-r1-normal",
+      "compact_run": "fmt-null-printf-precision-r1-compact",
+      "normal_functional": "passed",
+      "compact_functional": "passed",
+      "normal_protocol": "unknown",
+      "compact_protocol": "violated",
+      "accounting_comparable": false,
+      "both_functional_success": true,
+      "both_verified_success": false,
+      "functional_loss": false,
+      "normal_observed_tokens": 2363704,
+      "compact_observed_tokens": 2030747,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    },
+    {
+      "case_id": "kitsu-path-completion",
+      "repeat": 1,
+      "normal_run": "kitsu-path-completion-r1-normal",
+      "compact_run": "kitsu-path-completion-r1-compact",
+      "normal_functional": "passed",
+      "compact_functional": "passed",
+      "normal_protocol": "unknown",
+      "compact_protocol": "violated",
+      "accounting_comparable": false,
+      "both_functional_success": true,
+      "both_verified_success": false,
+      "functional_loss": false,
+      "normal_observed_tokens": 2111632,
+      "compact_observed_tokens": 2860854,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    },
+    {
+      "case_id": "kitsu-bash-login",
+      "repeat": 1,
+      "normal_run": "kitsu-bash-login-r1-normal",
+      "compact_run": "kitsu-bash-login-r1-compact",
+      "normal_functional": "passed",
+      "compact_functional": "passed",
+      "normal_protocol": "violated",
+      "compact_protocol": "violated",
+      "accounting_comparable": false,
+      "both_functional_success": true,
+      "both_verified_success": false,
+      "functional_loss": false,
+      "normal_observed_tokens": 3382286,
+      "compact_observed_tokens": 2590250,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    }
+  ],
+  "cautions": [
+    "All recorded attempt tokens are charged, including failed and timed-out candidates; missing accounting is unknown and observed partial totals are lower bounds.",
+    "Forced stops, cancellation, and cleanup failures can lose the final usage event of an in-flight model request; known captured counters do not establish complete actual total usage for these runs.",
+    "Input total includes uncached input, cache reads, and cache writes. Reasoning is included in output and is never added again. Tokens are not a monetary bill.",
+    "Functional acceptance, infrastructure, and independently verified protocol compliance are distinct. Unknown outcomes or audits never count as verified successes.",
+    "Success-conditioned token comparisons are descriptive and may select easier tasks; compare all-assignment outcomes and costs first.",
+    "Primary bootstrap intervals resample 12 task IDs with all 1 paired repetitions intact; exploratory repository-cluster sensitivity uses 7 groups from recorded repository provenance, falling back to task IDs when unavailable.",
+    "These convenience-selected public tasks are not random population samples. Cluster intervals describe observed variability under resampling assumptions, not guaranteed external coverage.",
+    "The loss event is any normal-pass/compact-fail functional pair within a task. The exact one-sided binomial bound is descriptive under an independent-task Bernoulli assumption that related repository tasks may violate.",
+    "Zero observed losses does not establish noninferiority or universal quality preservation; tasks without a normal success offer no observed successful baseline to preserve.",
+    "Intervals are suppressed until the required paired accounting and outcomes are assessed; unresolved tasks count as losses in the conservative loss bound.",
+    "Elapsed times are exploratory because 6 controllers share the host and model service; provider cache state and service contention are uncontrolled.",
+    "Role attribution uses causal parent metadata and recorded stage sources. Saved briefs and task names do not prove encrypted native message payloads were identical.",
+    "Calibration tokens are excluded from these measured-run totals and must be reported separately. Public historical-task contamination and two Kitsu cases limit generalization."
+  ]
+}

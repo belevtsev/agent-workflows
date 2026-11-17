@@ -21,6 +21,7 @@ import (
 
 // The only host executed by these tests is a copy of this test binary.
 func TestMain(m *testing.M) {
+	compactCheckChild()
 	if os.Getenv("KITSU_TEST_ONBOARDING_CHILD") == "1" {
 		var input []byte
 		if os.Getenv("KITSU_TEST_ONBOARDING_TTY") != "1" {

@@ -1,0 +1,36 @@
+goos: linux
+goarch: amd64
+pkg: github.com/belevtsev/kitsu/v3/internal/cli
+cpu: AMD Ryzen 9 3900X 12-Core Processor
+BenchmarkCompactWorkflows/exploration/normal-24  	       1	   5533832 ns/op	         0 cache-hits/op	         3.000 calls/op	         0 expansions/op	       109.0 request-B/op	      5933 response-B/op
+BenchmarkCompactWorkflows/exploration/normal-24  	       1	   5046987 ns/op	         0 cache-hits/op	         3.000 calls/op	         0 expansions/op	       109.0 request-B/op	      5933 response-B/op
+BenchmarkCompactWorkflows/exploration/normal-24  	       1	   5125047 ns/op	         0 cache-hits/op	         3.000 calls/op	         0 expansions/op	       109.0 request-B/op	      5933 response-B/op
+BenchmarkCompactWorkflows/exploration/normal-24  	       1	   5041366 ns/op	         0 cache-hits/op	         3.000 calls/op	         0 expansions/op	       109.0 request-B/op	      5933 response-B/op
+BenchmarkCompactWorkflows/exploration/normal-24  	       1	   5038587 ns/op	         0 cache-hits/op	         3.000 calls/op	         0 expansions/op	       109.0 request-B/op	      5933 response-B/op
+BenchmarkCompactWorkflows/exploration/compact-24 	       1	  69851969 ns/op	         0 cache-hits/op	         3.000 calls/op	         2.000 expansions/op	       766.0 request-B/op	     10137 response-B/op
+BenchmarkCompactWorkflows/exploration/compact-24 	       1	  71404063 ns/op	         0 cache-hits/op	         3.000 calls/op	         2.000 expansions/op	       766.0 request-B/op	     10137 response-B/op
+BenchmarkCompactWorkflows/exploration/compact-24 	       1	  71533345 ns/op	         0 cache-hits/op	         3.000 calls/op	         2.000 expansions/op	       766.0 request-B/op	     10137 response-B/op
+BenchmarkCompactWorkflows/exploration/compact-24 	       1	  69568497 ns/op	         0 cache-hits/op	         3.000 calls/op	         2.000 expansions/op	       766.0 request-B/op	     10137 response-B/op
+BenchmarkCompactWorkflows/exploration/compact-24 	       1	  71230052 ns/op	         0 cache-hits/op	         3.000 calls/op	         2.000 expansions/op	       766.0 request-B/op	     10137 response-B/op
+BenchmarkCompactWorkflows/handoff/normal-24      	       1	  41069332 ns/op	         0 cache-hits/op	         6.000 calls/op	         0 expansions/op	       256.0 request-B/op	      5198 response-B/op
+BenchmarkCompactWorkflows/handoff/normal-24      	       1	  40897320 ns/op	         0 cache-hits/op	         6.000 calls/op	         0 expansions/op	       256.0 request-B/op	      5198 response-B/op
+BenchmarkCompactWorkflows/handoff/normal-24      	       1	  41267833 ns/op	         0 cache-hits/op	         6.000 calls/op	         0 expansions/op	       256.0 request-B/op	      5198 response-B/op
+BenchmarkCompactWorkflows/handoff/normal-24      	       1	  42091111 ns/op	         0 cache-hits/op	         6.000 calls/op	         0 expansions/op	       256.0 request-B/op	      5199 response-B/op
+BenchmarkCompactWorkflows/handoff/normal-24      	       1	  40746638 ns/op	         0 cache-hits/op	         6.000 calls/op	         0 expansions/op	       256.0 request-B/op	      5199 response-B/op
+BenchmarkCompactWorkflows/handoff/compact-24     	       1	  25812220 ns/op	         0 cache-hits/op	         2.000 calls/op	         0 expansions/op	       148.0 request-B/op	      5896 response-B/op
+BenchmarkCompactWorkflows/handoff/compact-24     	       1	  26568266 ns/op	         0 cache-hits/op	         2.000 calls/op	         0 expansions/op	       148.0 request-B/op	      5897 response-B/op
+BenchmarkCompactWorkflows/handoff/compact-24     	       1	  25030793 ns/op	         0 cache-hits/op	         2.000 calls/op	         0 expansions/op	       148.0 request-B/op	      5897 response-B/op
+BenchmarkCompactWorkflows/handoff/compact-24     	       1	  25504207 ns/op	         0 cache-hits/op	         2.000 calls/op	         0 expansions/op	       148.0 request-B/op	      5897 response-B/op
+BenchmarkCompactWorkflows/handoff/compact-24     	       1	  25969931 ns/op	         0 cache-hits/op	         2.000 calls/op	         0 expansions/op	       148.0 request-B/op	      5897 response-B/op
+BenchmarkCompactWorkflows/checks/normal-24       	       1	  56241722 ns/op	         0 cache-hits/op	         2.000 calls/op	         0 expansions/op	        49.00 request-B/op	    193520 response-B/op
+BenchmarkCompactWorkflows/checks/normal-24       	       1	  56079621 ns/op	         0 cache-hits/op	         2.000 calls/op	         0 expansions/op	        49.00 request-B/op	    193520 response-B/op
+BenchmarkCompactWorkflows/checks/normal-24       	       1	  57968819 ns/op	         0 cache-hits/op	         2.000 calls/op	         0 expansions/op	        49.00 request-B/op	    193520 response-B/op
+BenchmarkCompactWorkflows/checks/normal-24       	       1	  58126221 ns/op	         0 cache-hits/op	         2.000 calls/op	         0 expansions/op	        49.00 request-B/op	    193520 response-B/op
+BenchmarkCompactWorkflows/checks/normal-24       	       1	  56303043 ns/op	         0 cache-hits/op	         2.000 calls/op	         0 expansions/op	        49.00 request-B/op	    193520 response-B/op
+BenchmarkCompactWorkflows/checks/compact-24      	       1	  64311247 ns/op	         0 cache-hits/op	         1.000 calls/op	         0 expansions/op	        41.00 request-B/op	      6354 response-B/op
+BenchmarkCompactWorkflows/checks/compact-24      	       1	  64516300 ns/op	         0 cache-hits/op	         1.000 calls/op	         0 expansions/op	        41.00 request-B/op	      6354 response-B/op
+BenchmarkCompactWorkflows/checks/compact-24      	       1	  64273017 ns/op	         0 cache-hits/op	         1.000 calls/op	         0 expansions/op	        41.00 request-B/op	      6353 response-B/op
+BenchmarkCompactWorkflows/checks/compact-24      	       1	  64299997 ns/op	         0 cache-hits/op	         1.000 calls/op	         0 expansions/op	        41.00 request-B/op	      6353 response-B/op
+BenchmarkCompactWorkflows/checks/compact-24      	       1	  64379079 ns/op	         0 cache-hits/op	         1.000 calls/op	         0 expansions/op	        41.00 request-B/op	      6354 response-B/op
+PASS
+ok  	github.com/belevtsev/kitsu/v3/internal/cli	2.047s

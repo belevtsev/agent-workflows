@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/belevtsev/kitsu/v3/internal/contextpack"
 	"github.com/belevtsev/kitsu/v3/internal/decl"
 	"github.com/belevtsev/kitsu/v3/internal/evidence"
 	"github.com/belevtsev/kitsu/v3/internal/runner"
@@ -20,12 +21,17 @@ func runRun(ctx context.Context, cfg Config, args []string) error {
 	flags := newFlags("run")
 	force := flags.Bool("force", false, "")
 	baseRev := flags.String("base", "", "")
+	compact, asJSON := flags.Bool("compact", false, ""), flags.Bool("json", false, "")
+	budget := flags.Int("max-bytes", contextpack.DefaultBytes, "")
 	p, err := parseArgs(flags, args)
 	if err != nil {
 		return err
 	}
 	if p.dash {
 		return usagef("run takes check ids only; usage: kitsu run [<id>...] [--force] [--base <rev>]")
+	}
+	if err := compactBudget(*budget); err != nil {
+		return err
 	}
 	s, err := open(ctx, cfg, true)
 	if err != nil {
@@ -44,6 +50,9 @@ func runRun(ctx context.Context, cfg Config, args []string) error {
 	ids, err := selectChecks(first, p.pos)
 	if err != nil {
 		return err
+	}
+	if *compact || *asJSON {
+		return runCompactChecks(ctx, s, ids, *force, base, *budget)
 	}
 	s.store.Sweep(ctx, time.Now())
 	if len(first.Checks) == 0 {
@@ -109,6 +118,9 @@ func (s *session) runOne(ctx context.Context, id string, force bool, base *evide
 		return false, failf("kitsu.toml changed during the run: the check `%s` is no longer declared", id)
 	}
 	s.warn(verdict.Warnings)
+	if s.compact != nil {
+		s.compact.begin(check, force)
+	}
 	out := s.cfg.Out
 	if check.State == evidence.Satisfied && !force {
 		switch {
@@ -152,6 +164,9 @@ func (s *session) runOne(ctx context.Context, id string, force bool, base *evide
 		return false, failf("%v", err)
 	}
 	s.warn(result.Warnings)
+	if s.compact != nil {
+		s.compact.finish(result.Record)
+	}
 	fmt.Fprintf(out, "== %s: %s\n", id, describeRun(s.store, result.Record))
 	return result.Record.Outcome == store.Passed, nil
 }
