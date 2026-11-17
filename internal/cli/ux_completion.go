@@ -122,9 +122,14 @@ func uxCompleteCandidates(ctx context.Context, words []string) []uxSuggestion {
 	help := len(previous) > 0 && previous[0] == "help"
 	if help {
 		previous = previous[1:]
-	} else if len(previous) > 1 && previous[1] == "help" {
-		help = true
-		previous = append([]string{previous[0]}, previous[2:]...)
+	} else {
+		for i, word := range previous {
+			if word == "help" && len(uxChildren(strings.Join(previous[:i], " "))) > 0 {
+				help = true
+				previous = append(slices.Clone(previous[:i]), previous[i+1:]...)
+				break
+			}
+		}
 	}
 	command, consumed, children := uxCompletionNode(previous)
 	if len(previous) == 0 {

@@ -111,7 +111,7 @@ func runCompactChecks(ctx context.Context, s *session, ids []string, force bool,
 		inner.compact.Error = runErr.Error()
 	}
 	// The runner has already retained interrupted-run records. Finish local reporting even on cancellation.
-	a, err := compactCheckArtifact(context.WithoutCancel(ctx), &inner, e, state)
+	a, err := compactCheckArtifact(context.WithoutCancel(ctx), &inner, e, state, budget)
 	if err != nil {
 		return failf("checks recorded, but compact report unavailable: %v", err)
 	}
@@ -144,7 +144,7 @@ func (s *session) executeCompactChecks(ctx context.Context, ids []string, force 
 	return nil
 }
 
-func compactCheckArtifact(ctx context.Context, s *session, e *contextpack.Engine, state contextpack.State) (contextpack.Artifact, error) {
+func compactCheckArtifact(ctx context.Context, s *session, e *contextpack.Engine, state contextpack.State, budget int) (contextpack.Artifact, error) {
 	a := contextpack.Artifact{Kind: "checks", State: state, Items: []contextpack.Item{}}
 	var err error
 	slices.Sort(s.compact.Warnings)
@@ -154,13 +154,17 @@ func compactCheckArtifact(ctx context.Context, s *session, e *contextpack.Engine
 		item := contextpack.Item{ID: check.ID, Status: check.State}
 		if check.Record != nil && !check.Implied {
 			item.LogRunID = check.Record.RunID
-			lines, err := compactLog(s, check.Record.RunID)
+			limit := budget
+			if item.Status == "passed" || item.Status == "satisfied" {
+				limit = 0
+			}
+			lines, total, err := compactLogCandidate(s, check.Record.RunID, limit)
 			if err != nil {
 				item.Status, item.Error = "partial", "retained log unavailable: "+err.Error()
 			} else {
-				item.LogChunks = len(lines)
-				if len(lines) > 4 {
-					lines = append(append([]contextpack.Line{}, lines[len(lines)-3:]...), lines[0])
+				item.LogChunks = total
+				if limit > 0 && len(lines) == total {
+					budget = max(0, budget-compactLogBytes(lines))
 				}
 				item.Lines = lines
 			}

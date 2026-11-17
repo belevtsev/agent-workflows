@@ -194,3 +194,22 @@ kitsu role set reviewer --host codex --skills codex:repo:.agents/skills/js-ui
 Run only the checks the repository already defines. Discovering or selecting these skills does
 not download a language pack, install a package, or run any of the example commands. See
 [roles](roles.md) for path ownership and [the workflow](workflow.md#starting-a-role) for the brief.
+
+## Describe behavioral verification
+
+Attach existing project skills to `quality-engineer`, `developer` and `reviewer`
+when they explain how to exercise changed behavior. Keep prerequisites, actual
+application startup, concrete inputs, observable assertions and cleanup in those
+original instructions. Use the project's existing tools and declared commands;
+Kitsu neither starts services nor automatically discovers or executes scripts.
+The quality engineer establishes a regression that fails for the missing
+behavior, the developer exercises the running change, and the reviewer checks
+the observations independently. Readiness comes from matching local evidence,
+not a selected skill, a worker's claim, or a shared historical summary.
+
+For repository opt-in checks, `when` schedules relevant work, `expect` states
+the behavior and `verify = true` requires verification when applicable. `paths`
+retains its separate dependency/evidence reuse meaning. Workers return their
+observations without writing summaries; after write intervals finish, the
+coordinator runs `kitsu task verify`. See [behavioral verification](verification.md#verify-task-behavior)
+for declaration, planning, local evidence and language examples.

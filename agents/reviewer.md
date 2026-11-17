@@ -43,6 +43,10 @@ The files the brief names, and whatever they rest on:
   `tests.md` or the list of changed tests the brief quotes.
 
 Open the sources. A citation you did not check is not evidence.
+Load selected original skills and relative references; selection proves neither
+loading nor compliance. Use existing project tools for prerequisites, actual app
+startup, behavioral assertions and cleanup. Inspect behavior independently;
+historical verification summaries and worker claims alone prove no current pass.
 
 ## What to look for
 
@@ -103,3 +107,4 @@ Do not soften a finding because the work is otherwise good.
 - The commands you ran, with their results.
 - What you could not check, and why.
 - Paths you wrote: none.
+- Uncovered behavior and unavailable local evidence; write no verification summary.

@@ -22,6 +22,11 @@ each worker. Original contracts, roles and selected skills remain complete.
 Write a specific assignment before opening the interval. Keep it outside the
 worktree, or create it in a coordinator-owned location before preparation.
 Name the full contract, primary sources, write limits and required hand-back.
+The packet supplies the original role and worker observation policy. Keep
+coordinator scheduling, budget supervision and interval/state bookkeeping with
+the coordinator; do not copy the whole task skill or compact reference into
+assignments or ask each worker to reread them. Explicit task references and
+selected skills must still be read in full. Assignment bytes remain unchanged.
 
 ```sh
 kitsu task prepare fix-login --role developer --stage code --round 1 \
@@ -67,6 +72,14 @@ about packet/skill loading, host worker identity and completion. Optional
 `worktree` and `source` assert current identity; workers need not run additional
 commands just to fill them. Their permissions do not expand.
 
+Start with the generated minimal shape and omit optional claims unless needed.
+In `checks`, copy the exact gate evidence state, such as `satisfied` or `failed`;
+the runner's outcome `passed` is a different field and is rejected here.
+`loaded.skills` may name only selected packet skill ids/hashes. Reading a task
+guide does not make it a selected skill; with no selected skills, omit `loaded`
+or use an empty skill list. Retain the raw return when ingestion fails, then
+correct the claim or use optional-return-free finish with actual evidence.
+
 After the worker stops, retain its raw return outside the worktree and ingest it:
 
 ```sh
@@ -98,6 +111,11 @@ where current green evidence is required. Default `any` can record unknown or
 missing checks and grants no passing-gate authority. Finish before writing the
 next role's selections or coordinator task records.
 
+Use ordinary output for quiet checks. Run compact collection/checks only for
+noisy output and expand needed evidence. Request a state snapshot after the task
+folder or first successful small-task preparation exists, and only when its
+additional facts are needed. Prepare/finish already returns interval/check facts.
+
 ## Avoid repeated coordinator work
 
 Resolve stable host setup, role-list/configuration context and optional tool
@@ -119,6 +137,12 @@ approvals, original write limits, current evidence and the final hooked Git-work
 commit remain required. Preparing a Git packet does not complete the Git stage.
 
 ## Verify locally
+
+The [focused delivery replay](benchmarks/compact-delivery-report.md) compares
+repeated coordinator-guide delivery with packet reuse and ordinary quiet checks.
+It verifies full original roles, selected skills, task facts, returns and all four
+write-check finishes while counting every transport boundary. It is an offline
+scripted comparison; real token savings and model quality remain unmeasured.
 
 The replay runs real Kitsu commands in isolated Git fixtures with fake checks
 and scripted workers. Its ledger charges exact canonical CLI payloads and the

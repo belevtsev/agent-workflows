@@ -1,0 +1,121 @@
+{
+  "inspection_paid_calls": 0,
+  "runs": [
+    {
+      "arm": "normal",
+      "clean": true,
+      "commit_count": 2,
+      "controls_unchanged": {
+        "go.mod": true,
+        "go.sum": true,
+        "kitsu-roles.toml": true,
+        "kitsu.toml": true
+      },
+      "copied_credentials_removed": true,
+      "encrypted_native_dispatch_equality": null,
+      "final_commit": "c5decb4c80c8255b2d9ea71afd620c014dfa5311",
+      "full_protocol_compliant": null,
+      "hook_installed": true,
+      "limitation": "Native dispatch message bodies are encrypted; exact original inline instructions and reviewer-input neutrality cannot be fully attested from retained messages.",
+      "original_tests_additive_only": true,
+      "run_id": "pflag-unknown-flags-r1-normal",
+      "test_numstat": "149\t0\tunknown_flag_forwarding_test.go"
+    },
+    {
+      "arm": "compact",
+      "clean": true,
+      "commit_count": 2,
+      "controls_unchanged": {
+        "go.mod": true,
+        "go.sum": true,
+        "kitsu-roles.toml": true,
+        "kitsu.toml": true
+      },
+      "copied_credentials_removed": true,
+      "encrypted_native_dispatch_equality": null,
+      "final_commit": "77799381bc217f775edf14587591722b12617e00",
+      "full_protocol_compliant": null,
+      "hook_installed": true,
+      "limitation": "Native dispatch message bodies are encrypted; exact original inline instructions and reviewer-input neutrality cannot be fully attested from retained messages.",
+      "managed_finishes": [
+        {
+          "checks": [
+            {
+              "id": "pilot-test",
+              "run_id": "20261117T093806Z-606b4187",
+              "state": "failed"
+            }
+          ],
+          "checks_verified": false,
+          "dispatch_id": "19ab54a434250a2215a1a56a6ed3d207e4e7aa740414e6be3c49664e09ca2f2b",
+          "expect_checks": "fail"
+        },
+        {
+          "checks": [
+            {
+              "id": "pilot-test",
+              "run_id": "20261117T094002Z-d017f2e8",
+              "state": "satisfied"
+            }
+          ],
+          "checks_verified": true,
+          "dispatch_id": "1a521c15ebc15fbe0dc9c85ec8d362701ce7db40a8c75237e40a5523b084f604",
+          "expect_checks": "pass"
+        },
+        {
+          "checks": [
+            {
+              "id": "pilot-test",
+              "run_id": "20261117T094116Z-be2e1b1b",
+              "state": "satisfied"
+            }
+          ],
+          "checks_verified": true,
+          "dispatch_id": "85486ec87e8bebe43605e94ee278644f419d3c08a8a841336996ec3c633b0f8e",
+          "expect_checks": "pass"
+        },
+        {
+          "checks": [
+            {
+              "id": "pilot-test",
+              "run_id": "20261117T094249Z-8f170104",
+              "state": "satisfied"
+            }
+          ],
+          "checks_verified": true,
+          "dispatch_id": "e54306916d042726d32538e66dcd53d0537bf2cb767b31b519c2fda085e80b7a",
+          "expect_checks": "pass"
+        }
+      ],
+      "original_tests_additive_only": true,
+      "packets": [
+        {
+          "original_role_body_once": true,
+          "role": "quality-engineer",
+          "sha256": "6aef04e740c0b41b24fa272e242641b250431b7c0587a54ce8dc46427249eca7"
+        },
+        {
+          "original_role_body_once": true,
+          "role": "developer",
+          "sha256": "57745178a42a708790e8684d2cbaa90cf0ccf8579ea4f2891bc24fd3f4ca70e5"
+        },
+        {
+          "original_role_body_once": true,
+          "role": "reviewer",
+          "sha256": "f08835e3a2bd8f4f2c4e971035ccf7b7dcc96756cae493413d45114542bc86ee"
+        },
+        {
+          "original_role_body_once": true,
+          "role": "git",
+          "sha256": "31a11d28eda9f12c21cbccd0c7d00d7f03455061d495d2e8e248814bbd9fe2c7"
+        }
+      ],
+      "retained_state_snapshots": 0,
+      "retained_worker_returns": 0,
+      "run_id": "pflag-unknown-flags-r1-compact",
+      "test_numstat": "136\t0\tunknown_flags_test.go"
+    }
+  ],
+  "scope": "Posthoc offline artifact inspection only; paid execution is accounted in summary.json. Full native dispatch and reviewer-input neutrality remain unknown.",
+  "version": 1
+}

@@ -36,11 +36,35 @@ func Render(a Artifact, itemID, continuation string, budget int, hit bool) ([]by
 	if err != nil {
 		return nil, err
 	}
-	encode := func() []byte { data, _ := json.Marshal(p); return append(data, '\n') }
-	data := encode()
+	checks := (a.Kind == "checks" || a.Kind == "verification") && itemID == ""
+	if checks {
+		if data := completeCheckPage(p, originals, budget); data != nil {
+			return data, nil
+		}
+	}
+	data, _ := json.Marshal(p)
+	data = append(data, '\n')
 	if len(data) > budget {
 		return nil, fmt.Errorf("budget cannot hold required metadata and outcomes (%d bytes); increase --max-bytes", len(data))
 	}
+	if checks {
+		for i := range originals {
+			originals[i].Lines = checkPreview(originals[i])
+		}
+	}
+	data = fillPage(&p, originals, offset, budget)
+	if checks {
+		data = completeFittingChecks(&p, a.Items, budget)
+	}
+	if itemID != "" && len(p.Items[0].Lines) == 0 && p.Items[0].Omitted > 0 {
+		return nil, errors.New("budget holds metadata but no evidence; increase --max-bytes")
+	}
+	return data, nil
+}
+
+func fillPage(p *Page, originals []Item, offset, budget int) []byte {
+	encode := func() []byte { data, _ := json.Marshal(p); return append(data, '\n') }
+	data := encode()
 	// Round-robin allocation gives each operation evidence before spending the budget on one.
 	for progress := true; progress; {
 		progress = false
@@ -63,7 +87,7 @@ func Render(a Artifact, itemID, continuation string, budget int, hit bool) ([]by
 				if page.Preview {
 					next = 0
 				}
-				page.Next = nextCursor(a.ID, page.ID, next)
+				page.Next = nextCursor(p.ID, page.ID, next)
 			}
 			candidate := encode()
 			if len(candidate) > budget {
@@ -75,10 +99,25 @@ func Render(a Artifact, itemID, continuation string, budget int, hit bool) ([]by
 			data, progress = candidate, true
 		}
 	}
-	if itemID != "" && len(p.Items[0].Lines) == 0 && p.Items[0].Omitted > 0 {
-		return nil, errors.New("budget holds metadata but no evidence; increase --max-bytes")
+	return data
+}
+
+func completeCheckPage(p Page, originals []Item, budget int) []byte {
+	p.Items = append([]PageItem{}, p.Items...)
+	for i, original := range originals {
+		if original.Status == "passed" || original.Status == "satisfied" {
+			continue
+		}
+		if len(original.Lines) != p.Items[i].Total {
+			return nil
+		}
+		p.Items[i] = completeCheckItem(p.Items[i], original)
 	}
-	return data, nil
+	data, _ := json.Marshal(p)
+	if len(data)+1 > budget {
+		return nil
+	}
+	return append(data, '\n')
 }
 
 func makePage(a Artifact, itemID string, offset int, hit bool) (Page, []Item, error) {
@@ -101,15 +140,40 @@ func makePage(a Artifact, itemID string, offset int, hit bool) (Page, []Item, er
 			page.Next = nextCursor(a.ID, item.ID, offset)
 		}
 		p.Items = append(p.Items, page)
-		if a.Kind == "checks" && itemID == "" {
+		if (a.Kind == "checks" || a.Kind == "verification") && itemID == "" {
 			p.Items[len(p.Items)-1].Preview = true
-			originals[len(originals)-1].Lines = checkPreview(item)
 		}
 	}
 	if itemID != "" && len(p.Items) == 0 {
 		return p, nil, errors.New("unknown artifact item")
 	}
 	return p, originals, nil
+}
+
+func completeCheckItem(page PageItem, original Item) PageItem {
+	page.Lines = append([]Line{}, original.Lines...)
+	if page.Path != "" {
+		for i := range page.Lines {
+			page.Lines[i].Path = ""
+		}
+	}
+	page.Omitted, page.Next, page.Preview = 0, "", false
+	return page
+}
+
+func completeFittingChecks(p *Page, originals []Item, budget int) []byte {
+	for i, original := range originals {
+		if original.Status == "passed" || original.Status == "satisfied" || len(original.Lines) != p.Items[i].Total {
+			continue
+		}
+		previous := p.Items[i]
+		p.Items[i] = completeCheckItem(previous, original)
+		if data, _ := json.Marshal(p); len(data)+1 > budget {
+			p.Items[i] = previous
+		}
+	}
+	data, _ := json.Marshal(p)
+	return append(data, '\n')
 }
 
 func commonPath(lines []Line) string {

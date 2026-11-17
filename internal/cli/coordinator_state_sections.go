@@ -57,6 +57,7 @@ func coordinatorSections(ctx context.Context, s *session, e *contextpack.Engine,
 	}
 	prerequisites = coordinatorPrerequisites(prerequisites, task, interval, checks, git, policy)
 	taskState := map[string]any{"workflow": view.Workflow, "stage": view.Stage, "reference": []string{"kitsu", "task", "show", task, "--json"}}
+	prerequisites = coordinatorTaskVerification(taskState, view, prerequisites)
 	if view.Report != nil {
 		taskState["content"], taskState["broken_rules"], taskState["not_automated"] = view.Report.Content, view.Report.BrokenRules, view.Report.NotAutomated
 	}

@@ -1,0 +1,153 @@
+{
+  "aggregate_captured_total": 3854260,
+  "aggregate_reconciles": true,
+  "approved_budget": {
+    "approved": true,
+    "approved_by": "user follow-up budget reply in this task",
+    "attempts": 2,
+    "base_commit": "e5d8c17db6ff98aca59c1d7ae9b1590aa3d2cc7d",
+    "captured_token_limit": 10000000,
+    "delayed_usage_reserve": 1000000,
+    "effort": "high",
+    "experiment": "delivery-paired-20261117",
+    "extra_paid_reviewer": false,
+    "model": "gpt-6.1-sol",
+    "new_paid_probe": false,
+    "production_binary_sha256": "242ba61daaa1280cf5da77e594e5cbe3ad464c7d5524eefdc4526d8ed876e398",
+    "replacement_attempts": false,
+    "soft_stop": 9000000,
+    "source_patch_sha256": "d1b6bcc4b4afb28f88156ed146e30c24683d44f814dff211d226a3f329bca8d2",
+    "timeout_seconds_per_attempt": 720,
+    "version": 1
+  },
+  "arm_policy_sha256": {
+    "compact": "ea84f1641f1289172078fd90be6dda586dba1935dd8ee160b13fb381b64c725d",
+    "normal": "d7119938d8b7014e3d20b62f385f371312e1be685e0423343c32902871b8f5b8"
+  },
+  "coordinator_prompt_sha256": "348384de433a9459be3fe04c66f62157c8f0d7c2587e117173a580f80c568c2c",
+  "effort": "high",
+  "experiment": "delivery-paired-20261117",
+  "frozen_executables_sha256": {
+    "codex": "b452ca20f838a8855a88a41050ee4a694033fff4ea3ecdad5633e6e0e8d13f2b",
+    "codex-code-mode-host": "e9f2ef68671b2b6ac68902d19e8dafda3f5928e678ecf3f30c74b203a2c403ed",
+    "codex-exec-server": "b40c7b3212638a90f0704841b87ef1066db1016c092858cdf6df5f20ccb13cc9",
+    "kitsu": "242ba61daaa1280cf5da77e594e5cbe3ad464c7d5524eefdc4526d8ed876e398",
+    "pilot.test": "dd6869c5a1f4cde538ed7647c900c0460b02185dcafec17b46a07def6304074d"
+  },
+  "manifest_sha256": "7743380228579280cc7dc31f1625538582a2c866bd42eed4482bf1ba8f4a0da2",
+  "measured_captured_total": 3854260,
+  "model": "gpt-6.1-sol",
+  "new_probe_tokens": 0,
+  "production": {
+    "accounting_foundation": "prior completed actual parent/child probe; exact CLI/runtime/runner hashes unchanged; no new paid probe",
+    "base_commit": "e5d8c17db6ff98aca59c1d7ae9b1590aa3d2cc7d",
+    "kind": "revised compact delivery comparison",
+    "new_probe_tokens": 0,
+    "preparation_paid_calls": 0,
+    "production_binary_sha256": "242ba61daaa1280cf5da77e594e5cbe3ad464c7d5524eefdc4526d8ed876e398",
+    "runner": "unchanged immutable main-paired-v1 runner",
+    "source_patch_sha256": "d1b6bcc4b4afb28f88156ed146e30c24683d44f814dff211d226a3f329bca8d2",
+    "version": 1
+  },
+  "profile": "main-paired-v1",
+  "provider_cost": null,
+  "runs": [
+    {
+      "accounting_complete": true,
+      "all_sessions_terminal": true,
+      "counts": {
+        "input_uncached": 178467,
+        "input_total": 1963299,
+        "cache_read": 1784832,
+        "cache_write": 0,
+        "output": 18830,
+        "total": 1982129,
+        "reasoning_output_tokens": 3019,
+        "reasoning_observed_tokens": 3019,
+        "reasoning_known_units": 5,
+        "units": 5
+      },
+      "execution": "completed",
+      "grade": {
+        "infrastructure_status": "ok",
+        "eligibility": {
+          "passed": true
+        },
+        "acceptance": {
+          "passed": true
+        },
+        "regressions": {
+          "passed": true
+        },
+        "patch_integrity": {
+          "passed": true
+        }
+      },
+      "protocol_findings": [],
+      "protocol_limit": "Exact encrypted native dispatch equality and reviewer-input neutrality remain unknown; final artifacts and actual returned command evidence require separate audit.",
+      "protocol_status": "unknown",
+      "run": {
+        "id": "pflag-unknown-flags-r1-normal",
+        "order": 1,
+        "case_id": "pflag-unknown-flags",
+        "repeat": 1,
+        "arm": "normal",
+        "controller": 0
+      },
+      "seconds": "511.696",
+      "usage_unknown": []
+    },
+    {
+      "accounting_complete": true,
+      "all_sessions_terminal": true,
+      "counts": {
+        "input_uncached": 211796,
+        "input_total": 1856596,
+        "cache_read": 1644800,
+        "cache_write": 0,
+        "output": 15535,
+        "total": 1872131,
+        "reasoning_output_tokens": 3017,
+        "reasoning_observed_tokens": 3017,
+        "reasoning_known_units": 5,
+        "units": 5
+      },
+      "execution": "completed",
+      "grade": {
+        "infrastructure_status": "ok",
+        "eligibility": {
+          "passed": true
+        },
+        "acceptance": {
+          "passed": true
+        },
+        "regressions": {
+          "passed": true
+        },
+        "patch_integrity": {
+          "passed": true
+        }
+      },
+      "protocol_findings": [],
+      "protocol_limit": "Exact encrypted native dispatch equality and reviewer-input neutrality remain unknown; final artifacts and actual returned command evidence require separate audit.",
+      "protocol_status": "unknown",
+      "run": {
+        "id": "pflag-unknown-flags-r1-compact",
+        "order": 2,
+        "case_id": "pflag-unknown-flags",
+        "repeat": 1,
+        "arm": "compact",
+        "controller": 0
+      },
+      "seconds": "484.434",
+      "usage_unknown": []
+    }
+  ],
+  "savings_ratio": null,
+  "scope": "Descriptive actual session usage for one historical task, one attempt per arm. Not proof of general quality equivalence or isolated feature savings.",
+  "stop_reason": "",
+  "tail_unknown": false,
+  "task_prompt_sha256": "a4966fb320b40a68b05ebe51ecd84161d2194667c2b86f7213b573e14dbb94d6",
+  "task_snapshot_sha256": "c14edb0e0bd7287065e01da7a762d3bdaced58395e4d4a78e0d0eced61aee1d6",
+  "version": 1
+}

@@ -52,7 +52,7 @@ type stageReceipt struct {
 const stageReceiptScope = "Local write bounds and existing check evidence only; no model execution, skill loading, semantic TDD, independent review, human approval or task completion is certified. Hooks and the normal gate remain authoritative."
 
 func runTaskPrepare(ctx context.Context, cfg Config, args []string) error {
-	b, assignmentPath, budget, native, err := parseStagePrepare(args)
+	b, assignmentPath, budget, native, view, err := parseStagePrepare(args)
 	if err != nil {
 		return err
 	}
@@ -76,13 +76,12 @@ func runTaskPrepare(ctx context.Context, cfg Config, args []string) error {
 	if active != "" {
 		return failf("unfinished stage %s; finish or explicitly abandon it before preparing another worker", active)
 	}
-	if err := checkWorkerDispatchBudget(s, b, budget, 81); err != nil {
-		return err
-	}
 	if native {
-		if err := checkNativeDispatchBudget(s, b, budget); err != nil {
+		if err := checkNativeDispatchBudget(s, b, budget, view); err != nil {
 			return err
 		}
+	} else if err := checkWorkerDispatchBudget(s, b, budget, 81); err != nil {
+		return err
 	}
 	p, err := prepareWorkerBrief(ctx, cfg, b, assignment)
 	if err != nil {
@@ -97,11 +96,14 @@ func runTaskPrepare(ctx context.Context, cfg Config, args []string) error {
 		return compactFailure(err)
 	}
 	record := stageRecord{Version: 1, Worktree: s.repo.Root, Nonce: rand.Text(), Created: time.Now().UTC(), Checks: checkPolicy, Sources: sources, Prepared: p}
+	if native {
+		record.Prompt = nativeWorkerDispatch(stageDispatch{workerDispatch: p.Dispatch}, p.State, s.repo.Root).Native.Prompt
+	}
 	id := contextpack.Key(record)
 	dispatch := stageDispatch{workerDispatch: p.Dispatch, DispatchID: id}
 	var output any = dispatch
 	if native {
-		output = nativeWorkerDispatch(dispatch, p.State, s.repo.Root)
+		output = nativeDispatchView(nativeDispatchRecord(record, id), p.Brief.Warnings, view)
 	}
 	data, err := boundedStageJSON(output, budget)
 	if err != nil {
@@ -120,7 +122,7 @@ func runTaskPrepare(ctx context.Context, cfg Config, args []string) error {
 	return err
 }
 
-func parseStagePrepare(args []string) (workerBrief, string, int, bool, error) {
+func parseStagePrepare(args []string) (workerBrief, string, int, bool, string, error) {
 	flags := newFlags("task prepare")
 	b := workerBrief{}
 	flags.StringVar(&b.Host, "host", "", "")
@@ -131,16 +133,20 @@ func parseStagePrepare(args []string) (workerBrief, string, int, bool, error) {
 	assignment := flags.String("assignment", "", "")
 	budget := flags.Int("max-bytes", contextpack.DefaultBytes, "")
 	native := flags.Bool("dispatch", false, "")
+	view := flags.String("view", "full", "")
 	flags.Bool("json", false, "")
 	p, err := parseArgs(flags, args)
 	if err != nil {
-		return b, "", 0, false, err
+		return b, "", 0, false, "", err
 	}
 	if !validBriefArgs(p, b) || *assignment == "" {
-		return b, "", 0, false, usagef("prepare requires a task, --role, --stage, positive --round, --host, --workflow full|small and --assignment <file|->")
+		return b, "", 0, false, "", usagef("prepare requires a task, --role, --stage, positive --round, --host, --workflow full|small and --assignment <file|->")
+	}
+	if *view != "full" && *view != "launch" || *view == "launch" && !*native {
+		return b, "", 0, false, "", usagef("--view requires full|launch; launch requires --dispatch")
 	}
 	b.Task = p.pos[0]
-	return b, *assignment, *budget, *native, compactBudget(*budget)
+	return b, *assignment, *budget, *native, *view, compactBudget(*budget)
 }
 
 type stageFinishOptions struct {

@@ -28,11 +28,12 @@ func TestUXHelpAtEveryDepthIsIndependentOfRuntimeState(t *testing.T) {
 	}
 	for _, command := range uxCommands() {
 		path := strings.Fields(command.path)
+		nestedHelp := append(append([]string{}, path[:len(path)-1]...), "help", path[len(path)-1])
 		for _, args := range [][]string{
 			append(append([]string{}, path...), "--help"),
 			append(append([]string{}, path...), "-h"),
 			append([]string{"help"}, path...),
-			{path[0], "help", path[1]},
+			nestedHelp,
 		} {
 			var out, diagnostics bytes.Buffer
 			config := Config{Out: &out, Err: &diagnostics, In: strings.NewReader(""),

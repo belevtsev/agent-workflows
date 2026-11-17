@@ -108,7 +108,7 @@ func runContextShow(ctx context.Context, cfg Config, args []string) error {
 	if err := validateCompactMetadata(ctx, s, a); err != nil {
 		return compactFailure(err)
 	}
-	if *item != "" && a.Kind == "checks" {
+	if *item != "" && (a.Kind == "checks" || a.Kind == "verification") {
 		for i := range a.Items {
 			if a.Items[i].ID == *item && a.Items[i].LogRunID != "" {
 				lines, err := compactLog(s, a.Items[i].LogRunID)
@@ -172,6 +172,15 @@ func collectLog(name string, reader io.Reader) ([]contextpack.Line, error) {
 }
 
 func compactLog(s *session, id string) ([]contextpack.Line, error) {
+	f, err := compactLogFile(s, id)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	return collectLog("logs/"+id+".log", f)
+}
+
+func compactLogFile(s *session, id string) (*os.File, error) {
 	if len(id) != 25 || strings.ContainsAny(id, "/\\:\x00") {
 		return nil, fmt.Errorf("invalid retained log id")
 	}
@@ -184,10 +193,10 @@ func compactLog(s *session, id string) ([]contextpack.Line, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = f.Close() }()
 	info, err := f.Stat()
 	if err != nil || !info.Mode().IsRegular() {
+		_ = f.Close()
 		return nil, fmt.Errorf("retained log is not a regular file")
 	}
-	return collectLog("logs/"+id+".log", f)
+	return f, nil
 }

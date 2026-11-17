@@ -1,0 +1,11 @@
+run_id,arm,session_id,parent_id,role,models,efforts,known,terminal,input_uncached,input_total,cached_input,output,total,reasoning_subset
+pflag-unknown-flags-r1-normal,normal,01a1e9a7-4491-76c2-ae66-ffcdaeb5df5e,,coordinator,[gpt-6.1-sol],[high],true,true,69310,928830,859520,9756,938586,1113
+pflag-unknown-flags-r1-normal,normal,01a1e9a8-2835-7421-ae3a-979a654ff774,01a1e9a7-4491-76c2-ae66-ffcdaeb5df5e,tests,[gpt-6.1-sol],[high],true,true,20542,233150,212608,5310,238460,931
+pflag-unknown-flags-r1-normal,normal,01a1e9aa-d7b5-7f91-8aea-26cecf1c3a05,01a1e9a7-4491-76c2-ae66-ffcdaeb5df5e,code,[gpt-6.1-sol],[high],true,true,19207,180487,161280,1743,182230,483
+pflag-unknown-flags-r1-normal,normal,01a1e9ac-5f8a-7a70-bf01-eb5fa1c35a75,01a1e9a7-4491-76c2-ae66-ffcdaeb5df5e,review,[gpt-6.1-sol],[high],true,true,38229,178389,140160,1524,179913,544
+pflag-unknown-flags-r1-normal,normal,01a1e9ad-c2c6-7743-bd38-e4d5a014375b,01a1e9a7-4491-76c2-ae66-ffcdaeb5df5e,commit,[gpt-6.1-sol],[high],true,true,18963,115987,97024,756,116743,21
+pflag-unknown-flags-r1-compact,compact,01a1e9ae-e60d-7f43-8780-562a62e906b5,,coordinator,[gpt-6.1-sol],[high],true,true,66850,837282,770432,6238,843520,1067
+pflag-unknown-flags-r1-compact,compact,01a1e9af-87ec-71c0-9309-905bf81eb663,01a1e9ae-e60d-7f43-8780-562a62e906b5,tests,[gpt-6.1-sol],[high],true,true,22740,169940,147200,4857,174797,1582
+pflag-unknown-flags-r1-compact,compact,01a1e9b2-1ec3-7e12-a9e4-716cadd122c6,01a1e9ae-e60d-7f43-8780-562a62e906b5,code,[gpt-6.1-sol],[high],true,true,31851,204139,172288,2078,206217,644
+pflag-unknown-flags-r1-compact,compact,01a1e9b3-af39-7fb0-9cc9-e2552181584d,01a1e9ae-e60d-7f43-8780-562a62e906b5,review,[gpt-6.1-sol],[high],true,true,15754,113290,97536,1142,114432,282
+pflag-unknown-flags-r1-compact,compact,01a1e9b4-a908-7381-8951-fbc4bb429ff9,01a1e9ae-e60d-7f43-8780-562a62e906b5,commit,[gpt-6.1-sol],[high],true,true,25514,126762,101248,1479,128241,146

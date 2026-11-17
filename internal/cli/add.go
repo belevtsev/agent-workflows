@@ -15,12 +15,16 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/store"
 )
 
-const addUsage = "usage: kitsu add <id> [--paths <pattern>]... [--timeout <duration>] -- <program> [<argument>...]"
+const addUsage = "usage: kitsu add <id> [--paths <pattern>]... [--when <pattern>]... [--expect <text>] [--verify] [--timeout <duration>] -- <program> [<argument>...]"
 
 func runAdd(ctx context.Context, cfg Config, args []string) error {
 	flags := newFlags("add")
 	var paths stringList
 	flags.Var(&paths, "paths", "")
+	var when stringList
+	flags.Var(&when, "when", "")
+	expect := flags.String("expect", "", "")
+	verify := flags.Bool("verify", false, "")
 	timeout := flags.String("timeout", "", "")
 	p, err := parseArgs(flags, args)
 	if err != nil && !slices.Contains(args, "--") {
@@ -47,7 +51,7 @@ func runAdd(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return failf("%v", err)
 	}
-	updated, err := decl.Append(old, p.pos[0], p.rest, paths, *timeout)
+	updated, err := decl.Append(old, p.pos[0], p.rest, paths, *timeout, decl.Metadata{When: when, Expect: *expect, Verify: *verify})
 	if err != nil {
 		return failf("the check was not added, because the file would not be a valid declaration:\n%v\n`kitsu add` only appends a check; to change or remove one, edit %s", err, decl.FileName)
 	}

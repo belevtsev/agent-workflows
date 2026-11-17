@@ -24,6 +24,9 @@ func compactCheckChild() {
 		return
 	}
 	mode := os.Args[1]
+	if strings.HasPrefix(mode, "bounded-") {
+		compactFitCheckChild(mode)
+	}
 	if mode == "wait" {
 		_ = os.WriteFile(os.Getenv("KITSU_TEST_COMPACT_READY"), []byte("ready"), 0o600)
 		time.Sleep(time.Hour)
@@ -433,7 +436,7 @@ func TestCompactReportRejectsEvidenceCompletionAfterVerdict(t *testing.T) {
 	if result := r.Kitsu("check", "run", "--force"); result.Code != 0 {
 		t.Fatal(result.Output())
 	}
-	if _, err := compactCheckArtifact(t.Context(), s, e, page.State); err == nil || !strings.Contains(err.Error(), "records changed") {
+	if _, err := compactCheckArtifact(t.Context(), s, e, page.State, contextpack.DefaultBytes); err == nil || !strings.Contains(err.Error(), "records changed") {
 		t.Fatal("accepted verdict with another evidence set", err)
 	}
 }

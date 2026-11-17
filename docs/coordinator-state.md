@@ -5,6 +5,11 @@ check run, finding disposition or policy change. It runs locally in Go and
 starts no agent, check or adviser. Compact output is explicit; normal
 `task show` and `task show --json` retain their existing behavior.
 
+For a small task, wait until the first successful `task prepare` creates history;
+for a full task, its task folder must exist. Do not probe a nonexistent task.
+Prepare and finish already return interval/check facts: request this view when
+you need additional state rather than after every command.
+
 ```sh
 kitsu task show fix-login --compact
 kitsu task show fix-login --since <snapshot-id>

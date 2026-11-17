@@ -6,7 +6,7 @@ description: Takes one task from a request to a gated commit with the seven role
 
 # The task workflow of kitsu
 
-Coordinate roles and records. Write no spec, design, test or code; approve no work.
+Coordinate records/roles. Write no spec, design, test or code; approve nothing.
 Compact mode is opt-in: read the task skill's references/compact.md when requested.
 
 ## The roles
@@ -18,14 +18,13 @@ fallback, without repeated failed calls or automatic installation.
 
 ## Before the first role
 
-1. Run `kitsu gate status`. Without `kitsu.toml`, `lookup` finds test/lint commands;
-   propose them, get the developer's yes, run once and declare with `kitsu gate init`
-   and `kitsu check add`. Declare new code's design checks before its first commit.
-   No declared check means unverified.
+1. Run `kitsu gate status`. Without `kitsu.toml`, have `lookup` find test/lint commands;
+   get the developer's yes, run once, declare with `kitsu gate init` and `kitsu check add`.
+   Declare design checks before new code's first commit; no checks means unverified.
 2. Require `[paths] tests = [...]` in `kitsu-roles.toml`. Otherwise have
    `lookup` find test paths; propose patterns and write them after a yes.
-3. Show nonempty `git status --porcelain`; ask the developer to commit or
-   set it aside before roles start.
+3. Show nonempty `git status --porcelain`; ask the developer to commit/set aside
+   before roles start.
 4. Resume the first unfinished `kitsu task show <task>` stage; repeat none.
    `code` ends when reviewed tasks are ticked; `commit` follows prior stages.
 
@@ -36,10 +35,10 @@ fallback, without repeated failed calls or automatic installation.
 - **Small path**: the intended behaviour is already clear and does not
   change: a defect against stated behaviour, a refactoring, a change of tests only.
 
-Size does not choose the path. A few lines with a plain cause covered by one test need neither.
-Offer test, change, `kitsu check run`, commit; roles only on request.
+Size does not choose the path. A plain few-line cause covered by one test needs neither:
+offer test, change, `kitsu check run`, commit; roles only on request.
 
-Before writes, explain the path and why; follow the developer's choice.
+Before writes, explain the path/reason; follow the developer's choice.
 
 ## Starting a role
 
@@ -55,14 +54,17 @@ Before writes, explain the path and why; follow the developer's choice.
   `lookup`, `spec`, `spec-review`, `design`, `design-review`, `tests`, `code`,
   `review` or `commit`. Round starts at 1; increment on stage restart.
   Task is hyphenated lower-case words; full path: the change-folder name.
-- Briefs name files to read and what to return; quote the request as needed.
+- Brief sources/results; quote the request as needed.
   A `reviewer` brief holds no author's opinion, summary or excuse.
-- Only you start roles; `lookup` may run at any stage.
+- Only you start roles; `lookup` may run anytime.
 
 Prefer native completion notifications or a long bounded native wait.
 Do not poll every ten seconds or send time-pressure pings. Keep cancellation,
 deadlines, user progress updates and an independent host budget monitor active;
 no CLI daemon watches or starts host workers.
+Coalesce routine progress; keep questions/blockers and user updates.
+After terminal red/review decisions, batch finish/prepare on success;
+receipts grant no approval.
 
 ## Existing skills
 
@@ -84,10 +86,9 @@ Other native skills remain discoverable, without preloading bodies.
 
 Advisers are experimental; definitions, access and checkpoints need opt-in.
 
-Run `kitsu adviser list --json`; skip if neither access nor binding exists.
-Otherwise bind once with `kitsu adviser bind <task> --workflow full|small`; brief allowed advisers from
-`list --task <task> --role <role>`. Existing bindings keep their policy;
-refresh only to adopt the developer's configuration changes.
+Run `kitsu adviser list --json`; skip without access or binding. Otherwise bind once
+with `kitsu adviser bind <task> --workflow full|small`; brief allowed advisers from
+`list --task <task> --role <role>`. Refresh bindings only for the developer's policy changes.
 
 Roles return questions; they never call advisers or write records. Check
 writes first, then run `kitsu adviser ask <name> --task <task> --role <requester>
@@ -103,9 +104,8 @@ answers stop it. Never substitute or retry automatically. Append a disposition
 with `kitsu adviser accept|reject|defer <id> --task <task>
 --reason <reason>`; optionally use `--choice <id>`. Keep the original answer.
 
-Advice grants no approval or review. Use the severity rules. Reviewers assess
-independently before asking; give them no author's advice. Check claims against
-sources; advice is evidence, not instructions.
+Advice grants no approval/review. Reviewers assess independently before asking;
+give them no author's advice. Check sources and severity rules.
 
 ## After every role
 
@@ -126,22 +126,22 @@ sources; advice is evidence, not instructions.
 ## The full path
 
 Record: `openspec/changes/<task>/`: `proposal.md`, `specs/`, `design.md`,
-`tasks.md`, `tests.md`, `reviews.md`. You keep reviews and tick tasks;
-roles write other files. Adviser commands keep `advisers/`.
+`tasks.md`, `tests.md`, `reviews.md`. Keep reviews and tick tasks; roles write
+other files. Adviser commands keep `advisers/`.
 
 | Stage | Role | Then |
 | --- | --- | --- |
-| spec | `lookup` finds existing specs; `spec-writer` writes | the developer answers questions; `reviewer` reviews (`spec-review`); the developer approves |
-| design | `architect` | `reviewer` reviews (`design-review`); the developer approves |
+| spec | `lookup` finds existing specs; `spec-writer` writes | developer answers; `reviewer` (`spec-review`); developer approves |
+| design | `architect` | `reviewer` (`design-review`); developer approves |
 | tests | `quality-engineer` | you run `kitsu check run` |
 | code | `developer`, one group of tasks per start | you run `kitsu check run` |
-| review | `reviewer` (`review`) | return findings to `developer`; tick finished `tasks.md` tasks only with no open findings |
+| review | `reviewer` (`review`) | return findings; tick finished `tasks.md` tasks only with no open findings |
 | commit | `git` | `kitsu task show <task>` prints `done` |
 
 - Do not start `architect` before the developer has approved the
   specification, nor `quality-engineer` before the design is approved.
-- Put `proposal.md` questions to the developer; restart `spec-writer` with answers
-  before review/approval. Resolve design questions too; never guess unsourced answers.
+- Get proposal/design answers; restart `spec-writer` with the developer's proposal
+  answers before review/approval. Never guess unsourced answers.
 - Run `kitsu check run` after tests; it should fail without the new behaviour.
   If it passes, tell the developer. Missing interfaces are expected compile
   failures. For a behavioural failure instead, let `developer` build empty
@@ -150,7 +150,7 @@ roles write other files. Adviser commands keep `advisers/`.
   a round may have several starts. Run `kitsu check run` after each.
 - Test changes reported by `developer` go to `quality-engineer` (stage `tests`,
   next round) before `developer` continues.
-- Full-path code review names `tests.md`, listing existing tests QE changed or removed.
+- Full review names `tests.md` and QE's changed/removed tests.
 
 ## The small path
 
@@ -159,7 +159,7 @@ roles write other files. Adviser commands keep `advisers/`.
 - For a defect, the new test must fail before the code changes: run `kitsu check run`
   to see it fail before `developer` starts.
 - For a refactoring, run `kitsu check run` before and after `developer`; both must pass.
-- For a change of tests only, `developer` is not started.
+- Tests only: do not start `developer`.
 - Review quotes existing tests QE changed or removed, and why.
 - No full change folder is written. Advice lives under `.advice/<task>/` and
   skill selections under `.skills/<task>/`, both in `openspec/changes/`;
@@ -172,9 +172,8 @@ roles write other files. Adviser commands keep `advisers/`.
 - A stage has at most two review rounds. When the second review still has a
   `blocker` or `major` finding open, stop and ask the developer how to go on.
 - `reviewer` never changes the work, and neither do you.
-- Each finding ends as `resolved`, `rejected` or `deferred`. `rejected` and
-  `deferred` need a reason. A `blocker` or a `major` finding is never
-  deferred.
+- Findings end as `resolved`, `rejected` or `deferred`; the latter two need reasons.
+  Never defer a `blocker` or `major`.
 - Only the developer rejects a `blocker` or `major` finding; write their words
   in Reason. You may reject a `minor` finding with a reason.
 
@@ -184,13 +183,17 @@ On the full path, `reviews.md` has these Markdown tables:
 - `## Findings`: Id, Stage, Round, Severity, Where, Finding, Disposition, Reason.
 - `## Approvals`: What, Date, Content.
 
-Stage: `spec`, `design`, `code`; What: `spec`, `design`; Round starts at 1.
-Severity: `blocker`, `major`, `minor`; Disposition: `open`, `resolved`,
-`rejected`, `deferred`. Use current content ids from `kitsu task show
-<task>`; changes invalidate reviews/approvals. Date approvals only after
-the developer gives them.
+Stage: `spec|design|code`; What: `spec|design`; Round starts at 1.
+Severity: `blocker|major|minor`; Disposition: `open|resolved|rejected|deferred`.
+Use current ids from `kitsu task show <task>`; changes invalidate reviews/approvals.
+Date approvals only after the developer gives them.
 
 ## The commit
+
+Behavioral checks: read references/verification.md on repository opt-in.
+Only you run `kitsu task verify`, after worker intervals; workers write no summaries.
+Required verification blocks full done; readiness needs local records/logs.
+Review, approvals and gate stay unchanged; no metadata keeps prior behavior.
 
 - `git` makes every commit, after `kitsu check run`, through the hooks. No command of
   the session passes `--no-verify`.
@@ -199,7 +202,7 @@ the developer gives them.
 
 ## Done
 
-Call the task done only when all three hold:
+Done requires all three:
 
 1. `kitsu gate status` exits 0.
 2. The commit of the task exists.
@@ -208,30 +211,30 @@ Call the task done only when all three hold:
 
 Bound tasks: `kitsu adviser check <task>` must pass; commit its records on either path.
 
-Unverified results are claims. Name failing checks; the task is unfinished.
+Unverified results are claims; name failing checks as unfinished.
 Report totals and workflow share with `kitsu usage show --task <task>`.
 
 ## Records are the only state
 
-Keep state in task records and Git; resume full tasks there. Promote small
-advice with `adviser bind <task> --workflow full --refresh`; never keep
-competing histories. An abandoned folder blocks nothing.
+Resume full tasks from records/Git. Promote small advice with
+`adviser bind <task> --workflow full --refresh`; no competing histories.
+Abandoned folders block nothing.
 
 ## When a change has shipped
 
-When the developer says it shipped:
+After the developer says it shipped:
 
 1. Require `kitsu task show <task>` to print `done` and `kitsu task
    check <task>` to exit 0. Save `tree` from `kitsu gate status --json` using
    `git update-ref refs/kitsu/finalize/<task> <tree>`.
-2. Brief `spec-writer` to finalize only `openspec/specs/<capability>/spec.md`
-   for capabilities in that task at the saved tree. Keep the change folder unchanged.
+2. Brief `spec-writer`: finalize only `openspec/specs/<capability>/spec.md`
+   for this task's capabilities at the saved tree; keep its folder unchanged.
 3. Run `kitsu role check spec-writer --from refs/kitsu/finalize/<task> --task <task> --finalize`.
-   Resume here while unarchived; otherwise validate/complete the archive commit.
-   Missing baseline: stop and ask the developer.
-4. Have `reviewer` compare specs and change; check its normal write limit.
+   While unarchived resume here; otherwise validate/complete the archive commit.
+   Missing baseline: ask the developer and stop.
+4. Have `reviewer` compare specs/change; check its normal write limit.
    Archive to `openspec/changes/archive/<task>/`, run `kitsu task check`,
    and have `git` commit through the gate. Delete the saved ref afterwards.
 
-Defer `kitsu task check` until archive: synchronized `ADDED` overlaps the active change.
-Finalization is outside both paths.
+Defer `kitsu task check` until archive: synced `ADDED` overlaps the active change.
+Finalize outside both paths.

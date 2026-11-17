@@ -38,6 +38,9 @@ limit nor the developer's approval authority.
 - The code you are about to change and the code next to it.
 - On the small path: the request or the defect, and the test that shows it.
 - The findings of a review, when the brief brings them.
+- Load selected original skills and relative references; selection proves
+  neither loading nor compliance. Follow project prerequisites, actual app
+  startup, behavioral assertions and cleanup using existing tools.
 
 ## Write
 
@@ -81,3 +84,5 @@ shows why.
 - For each task: done or not, and what shows it.
 - Where you left the design, a test or a requirement unmet, and why.
 - The open questions.
+- Actual behavioral observations and gaps. Never write verification summaries;
+  the coordinator runs task verification after worker intervals finish.

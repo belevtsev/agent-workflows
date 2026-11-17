@@ -31,6 +31,7 @@ func runTokens(ctx context.Context, cfg Config, args []string) error {
 	flags := newFlags("tokens")
 	task := flags.String("task", "", "")
 	asJSON := flags.Bool("json", false, "")
+	diagnostics := flags.Bool("diagnostics", false, "")
 	p, err := parseArgs(flags, args)
 	if err != nil {
 		return err
@@ -41,6 +42,9 @@ func runTokens(ctx context.Context, cfg Config, args []string) error {
 	s, err := open(ctx, cfg, false)
 	if err != nil {
 		return err
+	}
+	if *diagnostics {
+		return runUsageDiagnostics(ctx, cfg, *task, *asJSON)
 	}
 	starts, damaged, err := tokens.Load(tokensDir(s.repo))
 	if err != nil {

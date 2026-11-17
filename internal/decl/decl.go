@@ -30,6 +30,9 @@ type Check struct {
 	ID      string
 	Run     []string
 	Paths   []string // nil when the check depends on every path
+	When    []string // optional change triggers, independent of evidence dependencies
+	Expect  string
+	Verify  bool
 	Timeout time.Duration
 	Line    int // the line of its [[check]] header, 0 when unknown
 }
@@ -102,6 +105,9 @@ type rawCheck struct {
 	ID      any `toml:"id"`
 	Run     any `toml:"run"`
 	Paths   any `toml:"paths"`
+	When    any `toml:"when"`
+	Expect  any `toml:"expect"`
+	Verify  any `toml:"verify"`
 	Timeout any `toml:"timeout"`
 }
 
@@ -190,7 +196,40 @@ func (rc rawCheck) check(data []byte, start, end int) (Check, []Problem) {
 		}
 		check.Timeout = d
 	}
+	rc.metadata(&check, fail)
 	return check, problems
+}
+
+func (rc rawCheck) metadata(check *Check, fail func(string, string, ...any)) {
+	if rc.When != nil {
+		patterns, ok := stringList(rc.When)
+		if !ok || len(patterns) == 0 {
+			fail("when", "`when` must be an array of one or more patterns")
+		}
+		for _, pattern := range patterns {
+			if err := ValidPattern(pattern); err != nil {
+				fail("when", "`when`: %v", err)
+			}
+		}
+		check.When = patterns
+	}
+	if rc.Expect != nil {
+		text, ok := rc.Expect.(string)
+		if !ok || strings.TrimSpace(text) == "" {
+			fail("expect", "`expect` must be nonempty text describing the expected behavior")
+		}
+		check.Expect = text
+	}
+	if rc.Verify != nil {
+		value, ok := rc.Verify.(bool)
+		if !ok {
+			fail("verify", "`verify` must be true or false")
+		}
+		check.Verify = value
+	}
+	if check.Verify && strings.TrimSpace(check.Expect) == "" && rc.Expect == nil {
+		fail("verify", "`verify = true` needs nonempty `expect` text")
+	}
 }
 
 // ParseTimeout reads a timeout such as "90s", "5m" or "1h30m".
@@ -272,7 +311,10 @@ func keyLine(data []byte, start, end int, key string) int {
 
 // Append returns old with one more check at its end. No earlier byte
 // changes. timeout is written as given; empty leaves the default.
-func Append(old []byte, id string, run, paths []string, timeout string) ([]byte, error) {
+func Append(old []byte, id string, run, paths []string, timeout string, metadata ...Metadata) ([]byte, error) {
+	if len(metadata) > 1 {
+		return nil, &Error{Problems: []Problem{{Text: "only one check metadata value may be appended"}}}
+	}
 	var b bytes.Buffer
 	b.Write(old)
 	if len(old) > 0 && !bytes.HasSuffix(old, []byte("\n")) {
@@ -287,10 +329,30 @@ func Append(old []byte, id string, run, paths []string, timeout string) ([]byte,
 	if timeout != "" {
 		fmt.Fprintf(&b, "timeout = %s\n", quote(timeout))
 	}
+	if len(metadata) == 1 {
+		m := metadata[0]
+		if m.When != nil {
+			fmt.Fprintf(&b, "when = %s\n", QuoteList(m.When))
+		}
+		if m.Expect != "" {
+			fmt.Fprintf(&b, "expect = %s\n", quote(m.Expect))
+		}
+		if m.Verify {
+			b.WriteString("verify = true\n")
+		}
+	}
 	if _, err := Parse(b.Bytes()); err != nil {
 		return nil, err
 	}
 	return b.Bytes(), nil
+}
+
+// Metadata optionally describes when a check verifies an expected behavior.
+// It does not change the check's run identity or evidence dependencies.
+type Metadata struct {
+	When   []string
+	Expect string
+	Verify bool
 }
 
 // QuoteList writes items as a TOML array of strings.

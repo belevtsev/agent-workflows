@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- A [response-cycle comparison](docs/benchmarks/response-cycles-paid-report.md) records −11.4% compact tokens in one completed pair;
+  all coordinator/worker sessions are counted, protected checks pass, and general quality or billing savings remain unproven.
+
+- Opt-in [native launch views](docs/compact-response-cycles.md) retain mandatory worker fields and a read-only original full dispatch;
+  QE packets add bounded command recipes and scoped optional-tool observations, with existing quality and gate authority.
+
+- A [Codex follow-up](docs/benchmarks/workflow-insights-paid-report.md) records complete coordinator and worker usage;
+  both attempts pass protected checks, while compact uses 21.1% more captured tokens in this pair and remains opt-in.
+
+- Optional [workflow insights](docs/workflow-insights.md) join captured usage, managed intervals and repeated failures;
+  source-linked notes and task budget metadata preserve unknowns without enforcing caps or authorizing paid work.
+
+- Opt-in [task behavioral verification](docs/verification.md) prioritizes mapped checks and records source-bound attempts;
+  final gate checks and current local evidence still determine readiness.
+
+- [Offline verification](docs/verification.md) adds historical defect calibration, generated evidence-equivalence checks
+  and bounded Go fuzz targets without model calls; compact remains opt-in.
+
+- A [revised Codex comparison](docs/benchmarks/compact-delivery-paid-report.md) captures every solver worker and protected quality checks;
+  compact uses 5.5% fewer total tokens in one completed pair, with higher uncached input and no general quality or billing claim.
+
+### Changed
+
+- [Compact handoffs](docs/coordinator-overhead.md) use shorter native prompts and worker-focused guidance, ordinary quiet checks,
+  and minimal returns; [offline replay](docs/benchmarks/compact-delivery-report.md) checks fidelity without paid model calls.
+
+### Fixed
+
+- [QE tool observations](docs/compact-response-cycles.md#use-the-qe-packets-recipes) stay unknown when the current directory is removed or replaced,
+  including when macOS reports its stale path.
+
 ## [0.0.1] - 2026-11-17
 
 Initial Kitsu release after the release reset. Versioning restarts at `0.0.1`;

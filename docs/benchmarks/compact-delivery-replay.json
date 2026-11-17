@@ -1,0 +1,35 @@
+{
+  "paid_calls": 0,
+  "profile": "fake-sol-profile/high",
+  "provider_tokens": null,
+  "required_facts_equal": true,
+  "rows": [
+    {
+      "arm": "duplicated_compact",
+      "calls": 57,
+      "checks_executed": 4,
+      "expansions": 0,
+      "full_workflow_measured": false,
+      "native_reads": 26,
+      "rejected_calls": 1,
+      "request_bytes": 17907,
+      "response_bytes": 199066,
+      "worker_returns": 4
+    },
+    {
+      "arm": "focused_compact",
+      "calls": 48,
+      "checks_executed": 4,
+      "expansions": 0,
+      "full_workflow_measured": false,
+      "native_reads": 18,
+      "rejected_calls": 0,
+      "request_bytes": 14835,
+      "response_bytes": 87471,
+      "worker_returns": 4
+    }
+  ],
+  "scope": "Scripted duplicated compact delivery versus focused compact delivery; not ordinary mode, a historical transcript replay, provider usage or model-quality evidence.",
+  "serialization": "Exact canonical CLI payloads and fake-native JSON envelopes, including full packet/skill reads, repeated guide reads, returns, finishes and rejected requests.",
+  "version": 1
+}

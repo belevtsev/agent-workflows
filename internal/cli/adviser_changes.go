@@ -12,6 +12,7 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/advisers"
 	"github.com/belevtsev/kitsu/v3/internal/change"
 	"github.com/belevtsev/kitsu/v3/internal/skills"
+	"github.com/belevtsev/kitsu/v3/internal/verification"
 )
 
 const smallAdviserChanges = change.Dir + "/.advice"
@@ -71,6 +72,15 @@ func (s *session) checkChanges(tasks []string) error {
 			return exit(ExitNotVerified)
 		}
 		tasks = append(tasks, small...)
+		verified, err := verification.Tasks(s.repo.Root)
+		if err != nil {
+			return failf("%v", err)
+		}
+		tasks = append(tasks, verified...)
+		tasks, err = appendUsageBudgetTasks(s.repo.Root, tasks)
+		if err != nil {
+			return failf("%v", err)
+		}
 		slices.Sort(tasks)
 		tasks = slices.Compact(tasks)
 	}
@@ -93,6 +103,19 @@ func (s *session) checkChanges(tasks []string) error {
 }
 
 func (s *session) checkChange(task string) (int, error) {
+	if count, err := validateUsageBudget(s, task); err != nil || count != 0 {
+		return count, err
+	}
+	verificationProblems, err := verification.ValidateRecords(s.repo.Root, task)
+	if err != nil {
+		return 0, failf("%v", err)
+	}
+	for _, problem := range verificationProblems {
+		fmt.Fprintf(s.cfg.Out, "%s verification records: %s\n", task, problem)
+	}
+	if len(verificationProblems) != 0 {
+		return len(verificationProblems), nil
+	}
 	skillProblems, err := skills.ValidateSelections(s.repo.Root, task)
 	if err != nil {
 		return 0, failf("%v", err)
@@ -105,13 +128,8 @@ func (s *session) checkChange(task string) (int, error) {
 	}
 	folder, err := change.Read(s.repo.Root, task)
 	if errors.Is(err, change.ErrNoFolder) {
-		// A malformed small history still reaches ValidateRecords below.
-		hasSkills, skillErr := skills.HasSelections(s.repo.Root, task)
-		if skillErr != nil {
-			return 0, failf("%v", skillErr)
-		}
-		if _, adviceErr := advisers.Location(s.repo.Root, task); errors.Is(adviceErr, advisers.ErrNoBinding) && !hasSkills {
-			return 0, failf("%s/%s/ does not exist", change.Dir, task)
+		if err := s.checkSmallTaskExists(task); err != nil {
+			return 0, failf("%v", err)
 		}
 	} else if err != nil {
 		return 0, failf("%v", err)
@@ -138,4 +156,26 @@ func (s *session) checkChange(task string) (int, error) {
 		fmt.Fprintf(s.cfg.Out, "%s: the files obey their rules\n", task)
 	}
 	return count, nil
+}
+
+func (s *session) checkSmallTaskExists(task string) error {
+	hasSkills, err := skills.HasSelections(s.repo.Root, task)
+	if err != nil {
+		return err
+	}
+	hasVerification, err := hasVerificationHistory(s.repo.Root, task)
+	if err != nil {
+		return err
+	}
+	hasBudget, err := hasUsageBudget(s.repo.Root, task)
+	if err != nil {
+		return err
+	}
+	_, adviceErr := advisers.Location(s.repo.Root, task)
+	// Malformed adviser locations remain task evidence to validate below.
+	// ValidateRecords reports their structural problems as broken content rules.
+	if errors.Is(adviceErr, advisers.ErrNoBinding) && !hasSkills && !hasVerification && !hasBudget {
+		return fmt.Errorf("%s/%s/ does not exist", change.Dir, task)
+	}
+	return nil
 }

@@ -445,7 +445,7 @@ func TestBudgetPaginationAndUTF8PreserveEveryLine(t *testing.T) {
 func TestCheckPreviewsRetainTailAndExpandFromOriginalLog(t *testing.T) {
 	lines := []Line{}
 	for i := 1; i <= 100; i++ {
-		lines = append(lines, Line{Number: i, Text: "noise\n"})
+		lines = append(lines, Line{Number: i, Text: strings.Repeat("noise ", 100) + "\n"})
 	}
 	lines[99].Text = "IMPORTANT failure\n"
 	a := Artifact{Version: 1, ID: strings.Repeat("f", 64), Kind: "checks", Items: []Item{{ID: "failed", Status: "failed", Lines: lines}, {ID: "passed", Status: "passed", Lines: lines}}}

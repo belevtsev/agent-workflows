@@ -143,7 +143,7 @@ func runUXTaskStart(ctx context.Context, cfg Config, args []string) error {
 	}
 	handoff := prepareTaskHandoff(report, options.request)
 	if options.compact {
-		handoff.Prompt += "\n\nKitsu compact mode (selective opt-in): read the task skill's references/compact.md before starting roles. Prefer native host reads for short whole files and scoped native search with small output. Use context read/search/collect for broad or noisy retrieval and check run --compact for noisy declared checks; expand retained logs when needed. Carry this selective policy into every fresh worker brief. Keep original full role instructions and selected skills uncompressed; preserve permissions, independent reviews and required evidence. Context artifacts cache local rendered text, not provider prompt cache; count all requests, responses and expansions when measuring."
+		handoff.Prompt += "\n\nKitsu compact mode (selective opt-in): read the task skill's references/compact.md before starting roles. Prefer native host reads for short whole files and scoped native search with small output. Use context read/search/collect for broad or noisy retrieval and check run --compact for noisy declared checks; expand retained logs when needed. Use ordinary check output for quiet checks. Saved packets carry this selective policy into every fresh worker brief; do not copy coordinator guides or require their rereading unless selected or explicitly needed. Keep original full role instructions and selected skills uncompressed; preserve permissions, independent reviews and required evidence. Context artifacts cache local rendered text, not provider prompt cache; count all requests, responses and expansions when measuring."
 		handoff.Argv[1] = handoff.Prompt
 	}
 	if options.json {

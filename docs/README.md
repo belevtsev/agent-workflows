@@ -8,6 +8,10 @@ Start with the task workflow and roles to coordinate coding agents. The Git gate
 | [CLI command reference](cli-reference.md) | Generated command help with operands, options, defaults, and examples. |
 | [Compact context](compact-context.md) | Opt into selective native reads, collection for noisy retrieval, original worker briefs and bounded checks; expand retained evidence. |
 | [Coordinator handoffs](coordinator-overhead.md) | Generate native dispatch descriptions, retain bounded worker claims and avoid repeated managed bookkeeping; verify locally. |
+| [Compact delivery replay](benchmarks/compact-delivery-report.md) | Offline checks of original instruction fidelity, packet reuse and quiet-check selection; no model calls or token-saving claim. |
+| [Behavioral and offline verification](verification.md) | Plan and verify task behavior with existing project commands; replay historical calibration and bounded local fuzz campaigns. |
+| [Revised compact comparison plan](benchmarks/compact-delivery-comparison-plan.md) | Frozen binary, task, quality requirements and approved limits for the paid delivery follow-up. |
+| [Revised compact paid comparison](benchmarks/compact-delivery-paid-report.md) | Status and actual solver evidence for the revised delivery package, with quality and accounting reported separately. |
 | [Coordinator state](coordinator-state.md) | Inspect bounded snapshots, expand original references and apply deltas from a known baseline. |
 | [Context and workflow research](context-research.md) | Primary-source comparisons, token/cost tradeoffs, priorities and a controlled evaluation protocol. |
 | [Codex compact pilot](codex-compact-pilot.md) | A controlled 24-run real-task comparison, independent quality checks and actual solver token accounting. |
@@ -27,6 +31,11 @@ Start with the task workflow and roles to coordinate coding agents. The Git gate
 | [Hooks](hooks.md) | The three git hooks, a hook shared with another tool, the plugin's hooks, and the known limits. |
 | [Evidence](evidence.md) | What a recorded passing run is, what it proves and what it does not. |
 | [Tokens](tokens.md) | What `kitsu tokens` counts, what "workflow tokens" are, and when a count is unknown. |
+| [Workflow insights](workflow-insights.md) | Optional usage diagnostics, consequential notes, troubleshooting experiments and sourced task budgets. |
+| [Latest Codex comparison](benchmarks/workflow-insights-paid-report.md) · [Frozen plan](benchmarks/workflow-insights-comparison-plan.md) | Actual compact off/on tokens, quality and workflow evidence for one real task; compact used more captured tokens in this pair. |
+| [Compact overhead investigation](benchmarks/compact-overhead-plan.md) | Offline coordinator/QE forensics, measured response counts and the four implemented fixes with regression coverage. |
+| [Compact worker handoffs](compact-response-cycles.md) | Complete fitting failures, executable QE recipes, conditional handoffs and opt-in native launch/full views. |
+| [Response-cycle results](benchmarks/response-cycles-paid-report.md) · [Plan](benchmarks/response-cycles-comparison-plan.md) | Actual off/on tokens and quality after the four fixes, with feature uptake and limits. |
 | [Evaluation](evaluation.md) | The cases only a model run can show, and the comparison with one agent. No case was run; one first trial of the skill `kitsu` is recorded. |
 | [What other tools taught us](other-tools.md) | What users report about hook managers, agent guardrails, specification workflows and skills, with sources, and what `kitsu` did about each finding. |
 | [Development](development.md) | How to build, test and release `kitsu`. |

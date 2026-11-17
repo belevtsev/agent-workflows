@@ -8,19 +8,21 @@ import (
 	"testing"
 )
 
-// Keep separate budgets for the gate, the role workflow and configurable
-// advisers. Test files and testdata do not count.
+// Keep separate budgets for the gate and its supporting subsystems.
+// Test files and testdata do not count.
 const (
-	maxCoreLines       = 6250
-	maxRolesLines      = 4000
-	maxAdviserLines    = 4000 // CLI advisers plus native typed providers and usage records.
-	maxSkillLines      = 2000
-	maxUXLines         = 3500 // Shared routing, help, preferences, forms and completion.
-	maxOnboardingLines = 1200 // Local setup diagnostics and explicit host handoff.
-	maxContextLines    = 2000 // Opt-in Go collection, briefs, compact checks and private artifacts.
-	maxWorkerLines     = 1200 // Saved worker dispatch and local stage intervals; no model execution.
-	maxProtocolLines   = 700  // Explicit native launch descriptions and bounded untrusted hand-backs.
-	maxStateLines      = 750  // Bounded coordinator projections, retained baselines and section deltas.
+	maxCoreLines         = 6250
+	maxRolesLines        = 4000
+	maxAdviserLines      = 4000 // CLI advisers plus native typed providers and usage records.
+	maxSkillLines        = 2000
+	maxUXLines           = 3500 // Shared routing, help, preferences, forms and completion.
+	maxOnboardingLines   = 1200 // Local setup diagnostics and explicit host handoff.
+	maxContextLines      = 2000 // Opt-in Go collection, briefs, compact checks and private artifacts.
+	maxWorkerLines       = 1400 // Saved dispatch, local intervals and bounded QE hints; no model execution.
+	maxProtocolLines     = 700  // Explicit native launch descriptions and bounded untrusted hand-backs.
+	maxStateLines        = 750  // Bounded coordinator projections, retained baselines and section deltas.
+	maxVerificationLines = 2200 // Behavioral plans, shared history and current local task observations.
+	maxInsightLines      = 3000 // Read-only workflow diagnostics, optional notes and explicit budget metadata.
 )
 
 // rolesCode says whether a Go file belongs to the role workflow.
@@ -38,6 +40,8 @@ func rolesCode(file string) bool {
 
 func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	core, roles, advisers, skills, ux, onboarding, contextLines, workers, protocols, states := 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	verificationLines := 0
+	insightLines := 0
 	for _, file := range repoFiles(t) {
 		if !strings.HasSuffix(file, ".go") || strings.HasSuffix(file, "_test.go") || strings.Contains(file, "/testdata/") {
 			continue
@@ -47,7 +51,11 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 			t.Fatal(err)
 		}
 		lines := bytes.Count(data, []byte("\n"))
-		if strings.HasPrefix(file, "internal/cli/coordinator_state") {
+		if strings.HasPrefix(file, "internal/insights/") || strings.HasPrefix(file, "internal/taskbudget/") || strings.HasPrefix(file, "internal/cli/usage_") {
+			insightLines += lines
+		} else if strings.HasPrefix(file, "internal/verification/") || strings.HasPrefix(file, "internal/cli/task_verification") || file == "internal/cli/check_plan.go" {
+			verificationLines += lines
+		} else if strings.HasPrefix(file, "internal/cli/coordinator_state") {
 			states += lines
 		} else if strings.HasPrefix(file, "internal/cli/worker_protocol") {
 			protocols += lines
@@ -78,6 +86,14 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	t.Logf("worker handoffs: %d of %d lines", workers, maxWorkerLines)
 	t.Logf("worker protocols: %d of %d lines", protocols, maxProtocolLines)
 	t.Logf("coordinator state: %d of %d lines", states, maxStateLines)
+	t.Logf("task verification: %d of %d lines", verificationLines, maxVerificationLines)
+	t.Logf("workflow insights: %d of %d lines", insightLines, maxInsightLines)
+	if insightLines > maxInsightLines {
+		t.Errorf("workflow insights hold %d lines of Go, want at most %d", insightLines, maxInsightLines)
+	}
+	if verificationLines > maxVerificationLines {
+		t.Errorf("task verification holds %d lines of Go, want at most %d", verificationLines, maxVerificationLines)
+	}
 	if states > maxStateLines {
 		t.Errorf("coordinator state holds %d lines of Go, want at most %d", states, maxStateLines)
 	}

@@ -140,6 +140,36 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
 ```
 
+### kitsu task verify
+
+```text
+usage: kitsu task verify <task> [options]
+
+Run prioritized regressions, record historical evidence, then finish required checks.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --from <rev>             starting revision; required initially, then reuse the
+                           pinned base
+  --workflow <full|small>  select full or small task history
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --compact                return an explicit bounded JSON report with retained
+                           log references
+  --max-bytes <bytes>      compact response limit; default 16384, range 512 to
+                           1048576
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task verify fix-login --from HEAD
+  kitsu task verify fix-login --compact
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
 ### kitsu task brief
 
 ```text
@@ -194,9 +224,12 @@ Options:
   --round <number>         required positive worker round
   --workflow <full|small>  default full requires a task folder; small needs
                            explicit stage and round
-  --assignment <file|->    required UTF-8 assignment; - reads standard input
+  --assignment <file|->    required UTF-8 task contract and role work; packet
+                           supplies role/policy; - reads standard input
   --dispatch               emit version 2 with a generated fresh-worker native
                            prompt and host settings
+  --view <full|launch>     default full; launch requires --dispatch and retains
+                           native launch fields with a full response reference
   --max-bytes <bytes>      maximum response bytes; default 16384, range 512 to
                            1048576
   --json                   print JSON; these explicit compact helpers always use
@@ -208,6 +241,30 @@ Set a preference with `kitsu config set host codex` (or add --global).
 
 Examples:
   kitsu task prepare fix-login --role developer --stage code --round 1 --host codex --workflow small --assignment assignment.txt
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task dispatch
+
+```text
+usage: kitsu task dispatch <dispatch-id> [options]
+
+Read the original full native dispatch without preparing or executing a worker.
+
+Arguments:
+  <dispatch-id>      immutable private interval id returned by task prepare in this worktree
+
+Options:
+  --max-bytes <bytes>      maximum response bytes; default 16384, range 512 to
+                           1048576
+  --json                   print JSON; these explicit compact helpers always use
+                           JSON
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task dispatch <dispatch-id>
 
 Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
@@ -225,7 +282,8 @@ Arguments:
 
 Options:
   --request <file|->       required version 1 JSON handback, at most 65536
-                           bytes; - reads standard input
+                           bytes; optional claims may be omitted; - reads
+                           standard input
   --max-bytes <bytes>      maximum response bytes; default 16384, range 512 to
                            1048576
   --json                   print JSON; these explicit compact helpers always use
@@ -1127,10 +1185,37 @@ Options:
   --paths <pattern>        dependent paths; repeatable; omitted means all
                            content
   --timeout <duration>     check timeout from 1s to 6h; default 10m
+  --when <pattern>         prioritize on changed paths; repeatable; never
+                           changes dependencies
+  --expect <text>          behavior asserted by the declared command
+  --verify                 require applicable behavioral verification; requires
+                           --expect
   --help, -h               show this command's help without executing it
 
 Examples:
   kitsu check add test -- go test ./...
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu check plan
+
+```text
+usage: kitsu check plan [options]
+
+Explain changed-path priorities while retaining every declared gate check.
+
+Options:
+  --from <rev>             compare the whole working tree with this revision;
+                           default HEAD
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu check plan --from HEAD
+  kitsu check plan --from origin/main --json
 
 Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
@@ -1254,6 +1339,8 @@ Options:
   --task <task>            task whose saved records or adviser access to use
   --json                   print machine-readable JSON without prompts or
                            styling
+  --diagnostics            inspect captured usage, managed spans, check evidence
+                           and optional task notes offline
   --help, -h               show this command's help without executing it
 
 Examples:
@@ -1277,6 +1364,84 @@ Options:
 
 Examples:
   kitsu usage record --host codex < notice.json
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu usage budget set
+
+```text
+usage: kitsu usage budget set <task> [options]
+
+Record a sourced estimate range or declared limit; authorizes no execution.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --unit <tokens|seconds>  unit of the estimate or declared limit
+  --min <number>           estimated lower bound; requires --max and --basis
+  --max <number>           estimated upper bound; requires --min and --basis
+  --basis <text>           basis for the estimate range
+  --assumption <text>      estimate assumption; repeatable
+  --limit <number>         declared nonnegative limit; requires --source; no
+                           runtime enforcement
+  --source <text>          explicit source of the declared limit; not proof of
+                           approval
+  --workflow <full|small>  match the existing full task or small budget location
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu usage budget set fix-login --unit tokens --min 100000 --max 300000 --basis 'Earlier captured tasks'
+  kitsu usage budget set fix-login --unit tokens --limit 400000 --source 'Owner instruction in task request'
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu usage budget show
+
+```text
+usage: kitsu usage budget show <task> [options]
+
+Inspect optional task estimates and declared limits separately from actuals.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu usage budget show add-login
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu usage budget reset
+
+```text
+usage: kitsu usage budget reset <task> [options]
+
+Remove only one unit's optional estimate and declared limit.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --unit <tokens|seconds>  unit of the estimate or declared limit
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu usage budget reset fix-login --unit tokens
 
 Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.

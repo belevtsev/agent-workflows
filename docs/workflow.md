@@ -25,6 +25,11 @@ It keeps both paths and their approval/review conditions. The coordinator loads 
 [on-demand instructions](../skills/task/references/compact.md) only when requested; byte and
 call comparisons do not establish a total task-token saving.
 
+Optional [workflow insights](workflow-insights.md) join existing usage, check
+records and managed intervals. Consequential source-linked notes, troubleshooting
+experiments and sourced budget metadata remain on demand. They introduce no
+stage or mandatory record format, so the task-flow diagram below is unchanged.
+
 Optional, experimental [advisers](advisers.md) answer a role's question through a native decision API or configured
 CLI. The coordinator brokers these calls and records how each answer was addressed. Required
 checkpoints can hold a stage until advice on its current content has been addressed. No adviser
@@ -39,7 +44,7 @@ This section restates the coordinator's instructions and the task-flow specifica
 here is an instruction to the coordinator or to a role. `kitsu` enforces only what the next section,
 [What kitsu checks](#what-kitsu-checks), lists.
 
-<img src="diagrams/task-workflow.svg" alt="The task workflow. Full tasks start with specification and design, each independently reviewed and approved by you, with or without advisers. Both paths continue through tests, code, review, and a gated commit. Experimental advisers are off by default. Explicit definition and role access, followed by a task binding, allow the coordinator to check a requesting role's writes, consult an adviser API or CLI, record the answer and decision, and resume the role." width="100%">
+<img src="diagrams/task-workflow.svg" alt="The task workflow. Full tasks start with specification and design, each independently reviewed and approved by you. Both paths continue through tests, code, review and a gated commit. Repository opt-in behavioral verification follows finished worker intervals: plan targets and gaps, verify targets, publish a summary, then satisfy full checks using local evidence. Experimental advisers remain off by default; explicit access and binding allow consultation and recorded decisions without replacing approval." width="100%">
 
 The picture holds the order of the roles, their reviews and checks, and the optional adviser
 handoff. Advisers are experimental and off by default. The [adviser flow](advisers.md) shows
@@ -272,6 +277,46 @@ An unfinished or abandoned change folder
 blocks nothing: the gate does not read change folders unless a repository declares
 `kitsu task check` as a check.
 
+### Task behavioral verification
+
+Repositories can opt in with declared checks carrying `when`, `expect` and
+`verify = true`. `kitsu check plan [--from <rev>]` shows targeted priorities,
+remaining gate checks and uncovered changes; it defaults to `HEAD`. Scheduling
+never drops full required checks, and `paths` still declares dependencies for
+evidence reuse. See the [verification guide](verification.md#verify-task-behavior)
+for configuration, help and existing Go, C++ and JavaScript project commands.
+
+Selected project skills guide prerequisites, actual app startup, behavioral
+assertions and cleanup. Quality engineers establish the regression, developers
+exercise the changed app and reviewers independently inspect the evidence.
+Each fresh worker loads the selected original instructions; selection receipts
+prove neither loading nor compliance. Workers never write verification summaries.
+
+After all worker intervals finish, the coordinator runs
+`kitsu task verify <task> --from <base>` (add `--workflow small` for a small task).
+The first attempt requires the explicit base; later attempts reuse its pinned
+revision. Omitted `--workflow` selects full when its task folder exists, otherwise
+small. Targeted failure leaves remaining checks pending. On targeted success,
+the command writes its sanitized historical summary before final required
+checks, reusing only matching actual evidence, with no tracked writes afterwards.
+An unchanged successful repeat adds no history or runs. `--compact` is opt-in
+presentation of the same lifecycle; review, approvals and gate authority stay intact.
+Reuse requires a matching private observation of actual filesystem bytes and
+current deciding evidence. Changed raw source (including hidden or normalized
+edits), policy, selected original skills or deciding records require fresh
+behavioral observation; older Git-only passes cannot establish the first one.
+
+Full summaries live in the task's `verification/`; small summaries in
+`openspec/changes/.verification/<task>/`. Logs remain local. Shared summaries
+use immutable `attempts/<sha256>.json` and a current `binding.json`. They
+are source-bound historical claims; current readiness requires matching local
+records and available logs. A clone without logs reports unavailable, never
+passed; `task verify` runs real local checks to restore evidence. `task check`
+remains structural and needs no private logs. Missing
+applicable required verification blocks full completion; a small task keeps
+stage `unknown` and reports verification separately. Tasks without verification
+metadata keep existing behavior.
+
 ## What kitsu checks
 
 | What | Checked by | When |
@@ -283,6 +328,8 @@ blocks nothing: the gate does not read change folders unless a repository declar
 | Required adviser receipts match the binding, requester, adviser, checkpoint, and current content, and have a disposition | `kitsu adviser check`; `kitsu task show` at the corresponding stage | only when run; `kitsu task check` validates record structure without requiring future advice |
 | Selected skills exist, are valid and available, and are suitable for automatic role loading | `kitsu skill resolve` | before each new worker; reads original local sources without executing them |
 | Skill selection receipts are structurally valid and portable | `kitsu task check` | for full and small histories, without the installed skill sources |
+| Applicable required task behavior has matching current local evidence and logs | `kitsu task verify`; `kitsu task show` | repository opt-in only; historical summaries alone cannot establish readiness |
+| Verification summary records are structurally valid | `kitsu task check` | for full and small histories, without private local logs |
 | A git call that skips the hooks, or an edit of `kitsu.toml`, `kitsu-roles.toml`, `kitsu-advisers.toml`, a hook, or a Kitsu record | the plugin's `PreToolUse` hook | on Claude Code it asks first; on Codex it refuses (see [hooks](hooks.md)) |
 
 What no program checks:
@@ -314,6 +361,13 @@ lower-case words joined by hyphens. `kitsu` reads the folder itself and needs no
 | `reviews.md` | the coordinator | Under `## Reviews` the columns Stage, Round, Date, Content; under `## Findings` the columns Id, Stage, Round, Severity, Where, Finding, Disposition, Reason; under `## Approvals` the columns What, Date, Content. |
 | `advisers/` | adviser commands run by the coordinator | Saved policy revisions, immutable consultations, and appended dispositions; see [advisers](advisers.md). |
 | `skills/` | `kitsu skill resolve` run by the coordinator | Immutable version 1 selections with ids, scopes, source hashes, and unverified loading; see [skills](skills.md). |
+| `usage-budget.json` | explicit `kitsu usage budget` commands | Optional estimates and sourced limits, separate from check policy and role permissions; see [workflow insights](workflow-insights.md#record-an-estimate-or-a-sourced-limit). |
+
+For consequential uncertainty or difficult failures, `proposal.md`, `design.md`
+and `tests.md` may also hold the optional [source-linked notes](workflow-insights.md).
+These remain authored claims. Prose is acceptable; recognizing a table in a
+diagnostic never certifies its truth or changes structural stage requirements.
+Small-task budget metadata lives under `openspec/changes/.usage/<task>/`.
 
 How `kitsu` reads these files:
 
