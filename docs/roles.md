@@ -43,9 +43,10 @@ or configure them.
 | `reviewer` | `opus` | `max` | `gpt-6.1-sol` | `max` |
 | `git` | `haiku` | `low` | `gpt-6-luna` | `low` |
 
-For the coordinator session, the recommendation is `gpt-6.1-sol` with `max` on Codex or `opus`
-with `xhigh` on Claude Code. Select that in the host; `kitsu-roles.toml` configures specialist
-models and can select skills for specialists or the coordinator.
+Start the coordinator with your host session's defaults unless you explicitly
+choose another model or effort. Kitsu does not configure that session;
+`kitsu-roles.toml` configures specialist models and can select skills for
+specialists or the coordinator.
 These selections are recommendations based on the jobs, not results of a benchmark:
 
 | Role | Why this selection | When to choose a stronger setting explicitly |
@@ -63,6 +64,27 @@ takes precedence. The local Codex model catalog was checked for these model ids,
 [effort settings](https://code.claude.com/docs/en/model-config#adjust-effort-level) describe the
 supported levels; availability still depends on the host and account. Historical scratch-session
 results below used earlier defaults and do not validate this routing.
+
+### Reasoning defaults and inheritance
+
+The table above shows current explicit Kitsu presets. An omitted role effort,
+or `role reset`, currently selects that preset; it does not request native host
+inheritance. Literal `default` or `auto` values have no special Kitsu semantics.
+
+The agreed next policy is **inherit host reasoning defaults unless a role has an
+explicit override**. Keep model routing independent and preserve saved overrides,
+including Codex architect `gpt-6.1-sol`/`max`. This inheritance mode is not added
+by the coordinator-handoff changes; current specialist settings remain unchanged.
+
+| Host | Required behavior for a future inheritance mode |
+| --- | --- |
+| Codex | Omit the native effort override and let host/model/agent configuration resolve it. Do not invent `reasoning_effort=auto`. |
+| Claude Code | Omit per-role invocation/definition effort for inheritance. Do not use a global environment override that would also override explicit specialists. |
+
+Host defaults are not necessarily provider-native defaults or low effort.
+Effective reasoning must remain unverified until the host reports it. See
+[Codex subagent settings](https://learn.chatgpt.com/docs/agent-configuration/subagents)
+and [Claude effort resolution](https://code.claude.com/docs/en/model-config#adjust-effort-level).
 
 `kitsu role list --host codex` or `kitsu role list --host claude` prints the selected host in a compact
 **Role / Model / Reasoning / Advisers** table with a **Skills** line beneath each role. Adviser access is configured separately in

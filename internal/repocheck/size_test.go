@@ -19,6 +19,7 @@ const (
 	maxOnboardingLines = 1200 // Local setup diagnostics and explicit host handoff.
 	maxContextLines    = 2000 // Opt-in Go collection, briefs, compact checks and private artifacts.
 	maxWorkerLines     = 1200 // Saved worker dispatch and local stage intervals; no model execution.
+	maxProtocolLines   = 700  // Explicit native launch descriptions and bounded untrusted hand-backs.
 )
 
 // rolesCode says whether a Go file belongs to the role workflow.
@@ -35,7 +36,7 @@ func rolesCode(file string) bool {
 }
 
 func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
-	core, roles, advisers, skills, ux, onboarding, contextLines, workers := 0, 0, 0, 0, 0, 0, 0, 0
+	core, roles, advisers, skills, ux, onboarding, contextLines, workers, protocols := 0, 0, 0, 0, 0, 0, 0, 0, 0
 	for _, file := range repoFiles(t) {
 		if !strings.HasSuffix(file, ".go") || strings.HasSuffix(file, "_test.go") || strings.Contains(file, "/testdata/") {
 			continue
@@ -45,7 +46,9 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 			t.Fatal(err)
 		}
 		lines := bytes.Count(data, []byte("\n"))
-		if strings.HasPrefix(file, "internal/cli/worker_") {
+		if strings.HasPrefix(file, "internal/cli/worker_protocol") {
+			protocols += lines
+		} else if strings.HasPrefix(file, "internal/cli/worker_") {
 			workers += lines
 		} else if strings.HasPrefix(file, "internal/contextpack/") || strings.HasPrefix(file, "internal/cli/compact_") {
 			contextLines += lines
@@ -70,6 +73,10 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	t.Logf("agent onboarding: %d of %d lines", onboarding, maxOnboardingLines)
 	t.Logf("compact context: %d of %d lines", contextLines, maxContextLines)
 	t.Logf("worker handoffs: %d of %d lines", workers, maxWorkerLines)
+	t.Logf("worker protocols: %d of %d lines", protocols, maxProtocolLines)
+	if protocols > maxProtocolLines {
+		t.Errorf("worker protocols hold %d lines of Go, want at most %d", protocols, maxProtocolLines)
+	}
 	if workers > maxWorkerLines {
 		t.Errorf("worker handoffs hold %d lines of Go, want at most %d", workers, maxWorkerLines)
 	}

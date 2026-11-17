@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- [Coordinator handoffs](docs/coordinator-overhead.md) add opt-in generated native dispatch and bounded untrusted worker returns;
+  managed guidance avoids duplicate bookkeeping, and corrected offline replays account for full assignment delivery.
+
 - Opt-in [typed context and worker handoffs](docs/compact-context.md) add native reads/searches, saved original briefs,
   and ordered `task prepare`/`finish` write checks without launching models or replacing review and gate evidence.
 - An opt-in [Codex pilot harness](docs/codex-compact-pilot.md) freezes paired real-task experiments and accounts for every solver session;

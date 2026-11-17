@@ -59,9 +59,11 @@ func TestCompactSelectiveReplayRequiredFacts(t *testing.T) {
 		t.Run(workload, func(t *testing.T) {
 			t.Parallel()
 			r := replayFixture(t, workload)
-			normal := replayMeter{workflowMeter: workflowMeter{t: t, repo: r}}
-			selective := replayMeter{workflowMeter: workflowMeter{t: t, repo: r}}
+			normal := replayMeter{workflowMeter: workflowMeter{t: t, repo: r, retainTransports: true}}
+			selective := replayMeter{workflowMeter: workflowMeter{t: t, repo: r, retainTransports: true}}
 			want, got := replayRun(&normal, workload, false), replayRun(&selective, workload, true)
+			verifyReplayLedger(t, &normal.workflowMeter)
+			verifyReplayLedger(t, &selective.workflowMeter)
 			if !maps.Equal(want, got) {
 				t.Fatalf("required facts differ:\nnormal=%#v\nselective=%#v", want, got)
 			}
@@ -78,8 +80,15 @@ func TestCompactSelectiveReplayRequiredFacts(t *testing.T) {
 					t.Fatal("insufficient page budget did not exercise a charged retry")
 				}
 			case "saved-handoff":
-				if selective.nativeReads != 2 || selective.calls != 3 {
+				if selective.nativeReads != 2 || selective.calls != 4 {
 					t.Fatal("parent envelope, complete worker brief, or original skill read was omitted")
+				}
+				last := normal.transports[len(normal.transports)-1]
+				if last.Boundary != "fake-native-dispatch" || !strings.Contains(last.Request, `"assignment":`) || !strings.Contains(last.Request, `Preserve anonymous fallback and λ.`) {
+					t.Fatal("normal assignment fact was not transported", last)
+				}
+				if selective.transports[1].Boundary != "fake-native-dispatch" || !strings.Contains(selective.transports[1].Request, `"sha256":`) || !strings.Contains(selective.transports[1].Request, `"model":`) {
+					t.Fatal("saved packet was not sent through a charged native dispatch before worker reads")
 				}
 			}
 			t.Logf("normal calls=%d request_bytes=%d response_bytes=%d; selective calls=%d request_bytes=%d response_bytes=%d expansions=%d fallbacks=%d native_reads=%d",
@@ -94,20 +103,18 @@ type replayMeter struct {
 	fallbacks   int64
 }
 
-// Native reads use the real bytes returned by os.ReadFile. The offline request
-// representation is literally "read_file <absolute path>\n"; it does not claim
-// to reproduce a particular host's JSON envelope or tokenizer.
+// Native reads use an explicitly fake JSON host envelope and the actual bytes
+// returned by os.ReadFile. CLI requests use the separate canonical-cli format.
 func (m *replayMeter) read(path string) string {
 	m.t.Helper()
-	m.calls++
 	m.nativeReads++
-	m.requestBytes += int64(len("read_file " + path + "\n"))
 	body, err := os.ReadFile(path)
 	if err != nil {
 		m.t.Fatal(err)
 	}
-	m.responseBytes += int64(len(body))
-	return string(body)
+	response := stringMustJSON(map[string]string{"body": string(body)})
+	m.recordTransport("fake-native-read", stringMustJSON(map[string]string{"tool": "read_file", "path": path}), response, "")
+	return workflowJSON[map[string]string](m.t, response)["body"]
 }
 
 func replayFixture(t testing.TB, workload string) *kitsutest.Repo {
@@ -256,11 +263,16 @@ func replayHandoff(m *replayMeter, selective bool) map[string]string {
 	assignment := "Preserve anonymous fallback and λ.\nRead the complete original skill.\n"
 	if !selective {
 		facts := workflowHandoff(&m.workflowMeter, false)
-		facts["assignment"] = assignment
+		// The original baseline used to insert this fact without transporting
+		// it. Send and decode the complete fake native dispatch instead.
+		request := stringMustJSON(map[string]string{"tool": "spawn_worker", "assignment": assignment, "role": facts["role"], "instructions": facts["instructions"], "model": facts["model"], "effort": facts["effort"]})
+		m.recordTransport("fake-native-dispatch", request, `{"worker":"offline-worker"}`, "")
+		facts["assignment"] = workflowJSON[map[string]string](m.t, request)["assignment"]
 		return facts
 	}
 	result := m.run(assignment, "kitsu", 0, "task", "brief", workflowTask, "--role", "developer", "--stage", "code", "--round", "1", "--host", "codex", "--workflow", "small", "--assignment", "-", "--save")
 	d := workflowJSON[workerDispatch](m.t, result.Stdout)
+	m.recordTransport("fake-native-dispatch", stringMustJSON(map[string]any{"tool": "spawn_worker", "label": d.Label, "path": d.Path, "sha256": d.SHA256, "model": d.Model, "prompt": d.Label + "\nRead and verify the complete original packet and skills."}), `{"worker":"offline-worker"}`, "")
 	body := m.read(d.Path)
 	if workerBriefHash([]byte(body)) != d.SHA256 || !strings.HasSuffix(body, "Original assignment:\n"+assignment) {
 		m.t.Fatal("saved brief changed the original assignment or immutable identity")

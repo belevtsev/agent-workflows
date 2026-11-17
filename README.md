@@ -138,6 +138,12 @@ without running tests again. Finish the prior interval before preparing another 
 These commands launch no model and replace no review or approval. See the
 [worked handoff and recovery steps](docs/compact-context.md#prepare-and-finish-a-worker).
 
+For an opted-in coordinator, `task prepare ... --dispatch` also generates a native
+launch description with the original packet reference and return shape. The host starts
+the fresh worker; `task return` retains bounded claims separately from observed local
+facts without finishing the interval. See [coordinator handoffs](docs/coordinator-overhead.md)
+for examples, reduced polling/bookkeeping guidance and offline measurement limits.
+
 ### Find a command
 
 ```sh

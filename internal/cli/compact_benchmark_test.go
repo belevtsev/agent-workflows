@@ -94,27 +94,28 @@ func TestCompactWorkflowNoisyCheckLogRecoverable(t *testing.T) {
 }
 
 type workflowMeter struct {
-	t             testing.TB
-	repo          *kitsutest.Repo
-	calls         int64
-	requestBytes  int64
-	responseBytes int64
-	expansions    int64
-	cacheHits     int64
+	t                testing.TB
+	repo             *kitsutest.Repo
+	calls            int64
+	requestBytes     int64
+	responseBytes    int64
+	expansions       int64
+	cacheHits        int64
+	transports       []replayTransport
+	retainTransports bool
 }
 
 func (m *workflowMeter) run(input, program string, code int, args ...string) kitsutest.Result {
 	m.t.Helper()
 	// Request bytes are UTF-8 CLI words separated by one space, a final newline,
 	// and the complete stdin JSON. No shell-quoting or token estimate is added.
-	m.calls++
-	m.requestBytes += int64(len(program) + len(strings.Join(args, " ")) + 2 + len(input))
+	request := program + " " + strings.Join(args, " ") + "\n" + input
 	executable := program
 	if program == "kitsu" {
 		executable = filepath.Join(kitsutest.Binary(m.t), compactBinaryName())
 	}
 	result := m.repo.Run(input, executable, args...)
-	m.responseBytes += int64(len(result.Stdout) + len(result.Stderr))
+	m.recordTransport("canonical-cli", request, result.Stdout, result.Stderr)
 	if result.Code != code {
 		m.t.Fatalf("%s %v: exit %d, want %d\n%s", program, args, result.Code, code, result.Output())
 	}

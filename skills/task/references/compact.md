@@ -66,14 +66,22 @@ Only the coordinator writes the specific assignment and runs:
 
 ```sh
 kitsu task prepare <task> --role <role> --stage <stage> --round <round> \
-  --host <host> --workflow full|small --assignment <file|->
+  --host <host> --workflow full|small --assignment <file|-> --dispatch
 ```
 
-The returned JSON holds `dispatch_id`, `label`, saved `path`/`sha256`, `model`
-(model/effort), `baseline` and `selection_id`. Verify the hash. Have the native host
-start a fresh worker from the full saved text unchanged, or begin its prompt with
-`label` and require reading/verifying that file before work. Do not print and
-reconstruct the packet. Stop on unavailable models. This command invokes no model.
+The v2 JSON holds `dispatch_id`, `label`, saved `path`/`sha256`, `model`, `baseline`,
+`selection_id`, `worktree`, `state` and `native`. Use `native.prompt`, `native.model`
+and `native.effort` on the native host's fresh-worker call, with no conversation
+fork (`fresh_context:true`, `fork_turns:"none"`). On Claude Code also select
+`native.role`. The generated prompt requires loading and verifying the saved packet;
+`native_prompt_sha256` identifies that prompt. Do not print and reconstruct the packet.
+Stop on unavailable models. Go prepares local data; only the host starts workers.
+
+Without `--dispatch`, prepare retains its v1 reference contract: verify the saved
+hash, then pass the full saved text unchanged, or begin the native prompt with `label`
+and require reading/verifying the saved file before work. The unmanaged
+`task brief ... --assignment <file|-> --save` and full-metadata `task brief ... --json`
+protocols also remain compatible.
 
 Keep original full role instructions and selected skills uncompressed. The saved text
 includes original Codex role instructions once. On Claude Code use
@@ -81,10 +89,38 @@ native role `kitsu:<role>`; its definition supplies the role body once. Load all
 selected original skills in every fresh worker; receipts do not prove loading.
 Keep other native skills discoverable without preloading their bodies.
 
-Preparation writes skill receipts before its baseline and blocks overlapping
-managed intervals in the worktree. After the worker returns, use
+Preparation resolves current role/model/skill policy, writes skill receipts before
+its baseline and blocks overlapping managed intervals in the worktree. It replaces
+equivalent manual skill resolution/receipt writes and baseline capture; do not run
+them again. Resolve coordinator policy and host capabilities once per current
+policy/session. Refresh affected inputs and regenerate the packet after policy,
+model, config, skill, test or check changes; a saved packet is not permission for
+stale reuse. Use an available fallback for missing optional tools such as `rg`;
+do not repeatedly retry or automatically install them.
+
+Prefer native completion notifications; otherwise use a long bounded native wait.
+Avoid ten-second polling and time-pressure pings. Keep deadline/cancellation duties,
+user progress updates and an independent host budget monitor active while waiting.
+Do not add a CLI wait daemon, host rollout watcher or worker spawner.
+
+After the worker has stopped, optionally ingest its structured return with
+`kitsu task return <dispatch-id> --request <file|->`. The generated native prompt supplies
+the exact schema and identities; the request is at most 64 KiB of UTF-8 JSON.
+Minimal JSON has `version:1`, `dispatch_id`, `task`,
+`packet_sha256` and explicit arrays `changed_paths`, `checks`, `findings`, `blockers`.
+Paths are repository-relative; findings carry `severity` (`blocker`, `major` or
+`minor`), `path`, positive `line` and `message`.
+Check claims carry `id`, `state` and optional `run_id`; blockers are strings.
+The optional `worktree` and `source` assert current state. Optional `loaded` and
+`worker` reports remain unverified claims about loading, identity and completion.
+Retain the raw host result when ingestion fails. Ingestion validates local bindings
+and observed evidence; it releases no interval, executes no checks and grants no
+review or approval authority. Structured return is optional; finish never requires it.
+
+Then use
 `kitsu task finish <dispatch-id> --expect-checks pass|fail|any` instead of retyping
-the baseline for its write check. Finish judges existing records and runs no checks.
+the baseline for its write check. This replaces the equivalent manual `role check`;
+do not run both. Finish judges existing records and runs no checks.
 For defect QE work inspect a meaningful red and use `fail`; for refactoring QE
 and green code/review/Git use `pass` when required. Run declared checks when
 evidence is missing/stale. Default `any` only records the actual verdict and may
@@ -96,9 +132,9 @@ leaves the interval active; correct through the responsible role, or use
 Private intervals expire after 24 hours and can then be abandoned. They are not
 canonical workflow state, approval, review or proof that a native worker ran.
 
-For a saved brief without managed bookkeeping use `task brief ... --assignment
-<file|-> --save`, followed by the normal `role check --from <baseline>`. The
-original full-metadata `task brief ... --json` protocol remains compatible.
+For an unmanaged saved brief, capture a baseline before the worker and run the
+normal `role check --from <baseline>` afterwards. Shipped-change finalization keeps
+its separate saved baseline and `--finalize` check.
 
 Carry this selective observation policy into every fresh worker's assignment, including
 native short-file reads, scoped search, collection for noisy retrieval and retained-log
@@ -109,9 +145,17 @@ Kitsu-managed private context artifacts when its host permits the call; its repo
 and shared task-record write limits remain read-only.
 
 Reviewers receive primary evidence and factual task state, never author opinions, excuses,
-summaries, or adviser answers as review input. Read-only cached context supplies no review
+summaries, or adviser answers as review input. Do not forward author return prose or
+claimed findings as independent review input; give source references and factual state.
+Read-only cached context supplies no review
 approval, check pass, skill loading, or completed-work authority. Small-task stage and round
 must be supplied explicitly; saved history alone cannot resume that workflow.
+
+Inspect the actual red failure for the intended missing behaviour; a claimed failure or
+receipt does not establish semantic TDD. Keep independent reviews, role write bounds,
+canonical reviews/approvals/task records and check freshness. Only the Git role makes the
+final commit through the normal hooks and gate; private dispatch/return/finish records
+never replace those requirements.
 
 ## Declared checks
 

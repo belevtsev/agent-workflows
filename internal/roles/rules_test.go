@@ -24,14 +24,14 @@ func section(text, heading string) string {
 // that an edit that drops one fails. The texts say more than this checks.
 func TestTextsHoldTheRulesOfTheFlow(t *testing.T) {
 	cases := []struct{ id, heading, words string }{
-		{Coordinator, "After every role", "After `spec-writer` and after `architect`, run `kitsu task check <task>`."},
-		{Coordinator, "After every role", "When the same role exceeds its limit a second time, stop and ask the developer."},
+		{Coordinator, "After every role", "After `spec-writer` and `architect`, run `kitsu task check <task>`."},
+		{Coordinator, "After every role", "A second write-limit violation by that role stops for the developer."},
 		{Coordinator, "Reviews", "A stage has at most two review rounds."},
 		{Coordinator, "Reviews", "Only the developer rejects a `blocker` or `major` finding"},
-		{Coordinator, "The full path", "start `quality-engineer` with that report"},
+		{Coordinator, "The full path", "Test changes reported by `developer` go to `quality-engineer`"},
 		{Coordinator, "The small path", "a small-path task cannot be continued from files"},
 		{Coordinator, "Before the first role", "`git status --porcelain`"},
-		{Coordinator, "Starting a role", "When a host offers to copy or fork the conversation into a new agent, do not use it."},
+		{Coordinator, "Starting a role", "Start a fresh worker without this conversation or a fork"},
 		{"quality-engineer", "Rules", "You are the only role that changes or removes an existing test."},
 		{"developer", "Write", "You may not change or remove an existing one."},
 		{"reviewer", "What to look for", "Check each test against its scenario."},

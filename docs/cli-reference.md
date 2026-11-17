@@ -189,6 +189,8 @@ Options:
   --workflow <full|small>  default full requires a task folder; small needs
                            explicit stage and round
   --assignment <file|->    required UTF-8 assignment; - reads standard input
+  --dispatch               emit version 2 with a generated fresh-worker native
+                           prompt and host settings
   --max-bytes <bytes>      maximum response bytes; default 16384, range 512 to
                            1048576
   --json                   print JSON; these explicit compact helpers always use
@@ -200,6 +202,32 @@ Set a preference with `kitsu config set host codex` (or add --global).
 
 Examples:
   kitsu task prepare fix-login --role developer --stage code --round 1 --host codex --workflow small --assignment assignment.txt
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task return
+
+```text
+usage: kitsu task return <dispatch-id> [options]
+
+Bind bounded untrusted worker claims to the active interval without finishing it.
+
+Arguments:
+  <dispatch-id>      private interval id returned by task prepare in this worktree
+
+Options:
+  --request <file|->       required version 1 JSON handback, at most 65536
+                           bytes; - reads standard input
+  --max-bytes <bytes>      maximum response bytes; default 16384, range 512 to
+                           1048576
+  --json                   print JSON; these explicit compact helpers always use
+                           JSON
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task return <dispatch-id> --request -
 
 Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.

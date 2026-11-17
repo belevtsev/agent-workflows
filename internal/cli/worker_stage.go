@@ -52,7 +52,7 @@ type stageReceipt struct {
 const stageReceiptScope = "Local write bounds and existing check evidence only; no model execution, skill loading, semantic TDD, independent review, human approval or task completion is certified. Hooks and the normal gate remain authoritative."
 
 func runTaskPrepare(ctx context.Context, cfg Config, args []string) error {
-	b, assignmentPath, budget, err := parseStagePrepare(args)
+	b, assignmentPath, budget, native, err := parseStagePrepare(args)
 	if err != nil {
 		return err
 	}
@@ -79,6 +79,11 @@ func runTaskPrepare(ctx context.Context, cfg Config, args []string) error {
 	if err := checkWorkerDispatchBudget(s, b, budget, 81); err != nil {
 		return err
 	}
+	if native {
+		if err := checkNativeDispatchBudget(s, b, budget); err != nil {
+			return err
+		}
+	}
 	p, err := prepareWorkerBrief(ctx, cfg, b, assignment)
 	if err != nil {
 		return err
@@ -94,7 +99,11 @@ func runTaskPrepare(ctx context.Context, cfg Config, args []string) error {
 	record := stageRecord{Version: 1, Worktree: s.repo.Root, Nonce: rand.Text(), Created: time.Now().UTC(), Checks: checkPolicy, Sources: sources, Prepared: p}
 	id := contextpack.Key(record)
 	dispatch := stageDispatch{workerDispatch: p.Dispatch, DispatchID: id}
-	data, err := boundedStageJSON(dispatch, budget)
+	var output any = dispatch
+	if native {
+		output = nativeWorkerDispatch(dispatch, p.State, s.repo.Root)
+	}
+	data, err := boundedStageJSON(output, budget)
 	if err != nil {
 		return err
 	}
@@ -111,7 +120,7 @@ func runTaskPrepare(ctx context.Context, cfg Config, args []string) error {
 	return err
 }
 
-func parseStagePrepare(args []string) (workerBrief, string, int, error) {
+func parseStagePrepare(args []string) (workerBrief, string, int, bool, error) {
 	flags := newFlags("task prepare")
 	b := workerBrief{}
 	flags.StringVar(&b.Host, "host", "", "")
@@ -121,16 +130,17 @@ func parseStagePrepare(args []string) (workerBrief, string, int, error) {
 	flags.StringVar(&b.Workflow, "workflow", "full", "")
 	assignment := flags.String("assignment", "", "")
 	budget := flags.Int("max-bytes", contextpack.DefaultBytes, "")
+	native := flags.Bool("dispatch", false, "")
 	flags.Bool("json", false, "")
 	p, err := parseArgs(flags, args)
 	if err != nil {
-		return b, "", 0, err
+		return b, "", 0, false, err
 	}
 	if !validBriefArgs(p, b) || *assignment == "" {
-		return b, "", 0, usagef("prepare requires a task, --role, --stage, positive --round, --host, --workflow full|small and --assignment <file|->")
+		return b, "", 0, false, usagef("prepare requires a task, --role, --stage, positive --round, --host, --workflow full|small and --assignment <file|->")
 	}
 	b.Task = p.pos[0]
-	return b, *assignment, *budget, compactBudget(*budget)
+	return b, *assignment, *budget, *native, compactBudget(*budget)
 }
 
 type stageFinishOptions struct {
