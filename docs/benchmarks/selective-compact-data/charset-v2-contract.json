@@ -1,0 +1,116 @@
+[
+  {
+    "id": "ordinary_allowed",
+    "header": "text/plain; charset=utf-8",
+    "allowed": [
+      "UTF-8"
+    ],
+    "body": "body",
+    "expected": 204,
+    "family": "control"
+  },
+  {
+    "id": "ordinary_disallowed",
+    "header": "text/plain; charset=latin-1",
+    "allowed": [
+      "UTF-8",
+      ""
+    ],
+    "body": "body",
+    "expected": 415,
+    "family": "control"
+  },
+  {
+    "id": "quoted_allowed",
+    "header": "text/plain; charset=\"UTF-8\"",
+    "allowed": [
+      "utf-8"
+    ],
+    "body": "body",
+    "expected": 204,
+    "family": "original_task"
+  },
+  {
+    "id": "quoted_disallowed",
+    "header": "text/plain; charset=\"latin-1\"",
+    "allowed": [
+      "utf-8",
+      ""
+    ],
+    "body": "body",
+    "expected": 415,
+    "family": "original_task"
+  },
+  {
+    "id": "bodyless_bypass",
+    "header": "text/plain; charset=latin-1",
+    "allowed": [
+      "utf-8"
+    ],
+    "body": "",
+    "expected": 204,
+    "family": "control"
+  },
+  {
+    "id": "absent_charset",
+    "header": "text/plain",
+    "allowed": [
+      "utf-8",
+      ""
+    ],
+    "body": "body",
+    "expected": 204,
+    "family": "control"
+  },
+  {
+    "id": "extended_star_overrides_disallowed_charset",
+    "header": "text/plain; charset=latin-1; charset*=UTF-8''utf-8",
+    "allowed": [
+      "utf-8"
+    ],
+    "body": "body",
+    "expected": 415,
+    "family": "extended_override"
+  },
+  {
+    "id": "extended_continuations_override_disallowed_charset",
+    "header": "text/plain; charset=latin-1; charset*0=utf-; charset*1=8",
+    "allowed": [
+      "utf-8"
+    ],
+    "body": "body",
+    "expected": 415,
+    "family": "extended_override"
+  },
+  {
+    "id": "extended_star_overrides_allowed_charset",
+    "header": "text/plain; charset=utf-8; charset*=UTF-8''latin-1",
+    "allowed": [
+      "utf-8"
+    ],
+    "body": "body",
+    "expected": 204,
+    "family": "extended_override"
+  },
+  {
+    "id": "legacy_unquoted_stray_quote_utf8",
+    "header": "text/plain; note=foo\"bar; charset=utf-8",
+    "allowed": [
+      "UTF-8"
+    ],
+    "body": "body",
+    "expected": 204,
+    "family": "unquoted_stray_quote"
+  },
+  {
+    "id": "legacy_unquoted_stray_quote_disallowed_latin1",
+    "header": "text/plain; note=foo\"bar; charset=latin-1",
+    "allowed": [
+      "UTF-8",
+      ""
+    ],
+    "body": "body",
+    "expected": 415,
+    "family": "unquoted_stray_quote"
+  }
+]

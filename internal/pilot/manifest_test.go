@@ -61,6 +61,8 @@ type pilotCase struct {
 
 type manifest struct {
 	Version            int              `json:"version"`
+	Profile            string           `json:"profile,omitempty"`
+	Budget             *canaryBudget    `json:"captured_token_budget,omitempty"`
 	ID                 string           `json:"id"`
 	Topology           string           `json:"topology"`
 	Model              string           `json:"model"`
@@ -191,8 +193,8 @@ func sealManifest(ctx context.Context, m *manifest, base string) error {
 	if m.Controllers < 1 || m.Controllers > 6 {
 		return errors.New("controllers must be between one and six")
 	}
-	if !validStudyProfile(*m) {
-		return errors.New("pilot requires v1, a slug id, kitsu-small-path, gpt-6.1-sol with high or max effort, 12 cases, 1 or 3 repeats and a positive timeout")
+	if !validStudyProfile(*m) && !validCanaryProfile(*m) {
+		return errors.New("pilot requires the original 12-case study profile or explicit selective-canary-v1 with two cases, one repeat, Sol/high, one controller, 480 seconds and a captured-token reserve policy")
 	}
 	if len(m.Host.Argv) == 0 || !filepath.IsAbs(m.Host.Argv[0]) || len(m.Grader.Argv) == 0 || !filepath.IsAbs(m.Grader.Argv[0]) {
 		return errors.New("host and grader argv require absolute executable paths")
@@ -274,7 +276,7 @@ func sealManifest(ctx context.Context, m *manifest, base string) error {
 }
 
 func validStudyProfile(m manifest) bool {
-	return m.Version == 1 && slug.MatchString(m.ID) && m.Topology == "kitsu-small-path" && m.Model == "gpt-6.1-sol" &&
+	return m.Profile == "" && m.Budget == nil && m.Version == 1 && slug.MatchString(m.ID) && m.Topology == "kitsu-small-path" && m.Model == "gpt-6.1-sol" &&
 		(m.Effort == "high" || m.Effort == "max") && (m.Repeats == 1 || m.Repeats == 3) && len(m.Cases) == 12 && m.TimeoutSeconds > 0
 }
 

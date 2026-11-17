@@ -55,6 +55,9 @@ func TestCodexPilot(t *testing.T) {
 	}
 	switch *pilotAction {
 	case "run":
+		if m.Profile == canaryProfile && *pilotRun == "all" {
+			t.Fatal("canary launches exactly one assigned identity per invocation; inspect its result and captured budget before the next")
+		}
 		if *pilotController < -1 || *pilotController >= m.Controllers {
 			t.Fatal("controller is outside the frozen assignment")
 		}
@@ -233,7 +236,7 @@ func summarize(output string, m manifest, p plan) (summaryReport, error) {
 		Cautions: []string{"All assigned identities and failed attempts remain in the report; missing usage is not zero.",
 			"These are actual model tokens, not monetary costs; price is unknown unless separately reported by the provider.",
 			"Functional outcomes, infrastructure, and protocol compliance are distinct; equal pass totals do not prove quality preservation.",
-			"Twelve tasks remain twelve task clusters regardless of repetitions; this pilot does not establish general noninferiority.",
+			fmt.Sprintf("%d tasks remain %d task clusters regardless of repetitions; this pilot does not establish general noninferiority.", len(m.Cases), len(m.Cases)),
 			"Protocol status remains unknown until semantic red-test validity, reviewer independence, write checks, and dispositions are independently audited.",
 			"Concurrent runs may share hardware; elapsed time is not a clean speed comparison when intervals overlap."}}
 	results := map[string]*runResult{}

@@ -1,0 +1,27 @@
+{
+  "algorithm": "SHA-256",
+  "files": {
+    "canary-analysis.json": "4b59b01fd26850fb41a71f9035a499fc4e526c82156d009bee3e186a9b5762a3",
+    "canary-arms.csv": "5a25604e4434bf4efddb731444b70159ead4e926b298eae1e980d0ce93d94195",
+    "canary-audit-evidence.json": "d635f564201aed5be97ff79308c704e26ef07d167c8ed9728c913489affe6cc3",
+    "canary-audit-initial-method.json": "c4d378becd5741ee4e2bf067b887d01562f08756601f717df36c696fb7d9bd14",
+    "canary-audit-review-assignment.txt": "c614ed17a35161ccd132aa236cbf9cc66420bc9a0282dd2ced34f74791e47366",
+    "canary-audit.json": "089a8e6ba6d03a87d860fa141de8a3d1dc92a413843d4bbc26a3e7774ad22eff",
+    "canary-cases.csv": "fce3d0d4cc1b20544dd393f1fe986ec1294a84e3a6c251412c55b008a4ccbaa8",
+    "canary-outcome.json": "2f21cb6fa27c696773873243a7e463921b426729f323cc6e699f78e4ca686614",
+    "canary-pairs.csv": "b1e863ea928bb79dfc7a956107951bc22e88ce410c1afa51d7c120773b8697bf",
+    "canary-plan.json": "10189904e0e714ea70c44ccedf97872ab6a46e468967753597f3857b220edc2e",
+    "canary-policy.json": "1e42195dd4f0a8ae2c4327c236effb927511eed047de6b4fb212d2ca7b8c1cb1",
+    "canary-roles.csv": "380f0a4e6d5c42f5efe3dc705e5624382c41d2480dd8fc0f151ce562846896bb",
+    "canary-runs.csv": "c75f87f585c74f5856070210ac93c2774a9514fad490752d72a014b9fffcd56b",
+    "canary-threads.csv": "b15d268f9f18a5dfb79569a557c2e1a32551fd0d892ca728e1b6e59a58dd32ae"
+  },
+  "scope": "Public canary exports only; each hash binds exact exported bytes. Private absolute paths, credentials, thread IDs and native encrypted message bodies are omitted from audit exports.",
+  "source_bindings": {
+    "frozen_manifest_sha256": "9353db0a442853e04c15c29b0b0e63a4c8f737bba93e890bd2e16ce24836da55",
+    "original_grade_sha256": "ebfcd6b57b791b89a56df8d0455e4a63c97d0868497bd2bbe6ebd71128dab559",
+    "original_initial_method_report_sha256": "c4d378becd5741ee4e2bf067b887d01562f08756601f717df36c696fb7d9bd14",
+    "original_result_sha256": "402213b8432f81e4e479d478bfb9ecff3f4b0dba485b32b13442948f0f3cd223"
+  },
+  "version": 1
+}

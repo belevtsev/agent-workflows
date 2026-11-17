@@ -1,0 +1,31 @@
+{
+  "status": "violated",
+  "facts": {
+    "brief_observability": "Native assignment messages may be encrypted; saved plaintext briefs and native task names do not prove the encrypted payload was identical.",
+    "command_counter_scope": "Requested shell commands or code-mode cells; semantic audit must verify results and distinguish command text from executed branches.",
+    "compact_commands": 3,
+    "full_protocol_review": "required",
+    "native_spawns": 3,
+    "observation_caveat": "Requested shell/code cells are observable, not proof a branch executed; actual check logs, outcomes, returned byte counts, native truncation/fallback, saved briefs and stage receipts require independent trace audit. Unknown is not success.",
+    "profile": "selective-canary-v1",
+    "requested_check_calls": {
+      "compact": 3,
+      "native": 7,
+      "repository_compaction": 0,
+      "retained_log_expansion": 0
+    },
+    "requested_managed_calls": {
+      "finish": 4,
+      "prepare": 5
+    },
+    "stages": {
+      "code": 1,
+      "review": 1,
+      "tests": 1
+    }
+  },
+  "findings": [
+    "missing independently recorded worker stage: commit",
+    "requested observations differ from frozen check-only canary arm"
+  ]
+}

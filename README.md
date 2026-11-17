@@ -110,13 +110,17 @@ explains ready, broken, and unknown setup evidence. The supporting Git gate can 
 kitsu task start "Fix login retries" --host codex --compact
 ```
 
-Compact mode batches repository reads, prepares fresh-worker briefs and keeps noisy check logs
-out of the main response. Agents can expand retained evidence when needed. It ships in the
-existing binary and needs no runtime or compiler. It preserves the workflow's reviews and
-approvals. [How to use it](docs/compact-context.md), [research and tradeoffs](docs/context-research.md).
+Compact mode selects observations: native host reads for short whole files and scoped searches
+with small output, typed collection for broad or noisy retrieval, and bounded noisy check output.
+Agents expand retained evidence when needed and keep original role instructions and skills
+uncompressed. It ships in the existing binary, preserving reviews, approvals and check evidence.
+[How to use it](docs/compact-context.md), [research and tradeoffs](docs/context-research.md).
 The [24-run Codex pilot](docs/benchmarks/codex-compact-pilot-report.md) found passing frozen tests
 in both modes, additional defects on review, and less workflow completion with compact mode
 under an eight-minute limit. Complete-task token savings remain unestablished.
+The separate [selective evaluation](docs/benchmarks/selective-compact-report.md) includes offline
+replay overhead and a rejected v2 charset reference. Its bounded canary stopped the first ordinary
+run at 3.26M captured tokens; three runs stayed unstarted, leaving no new on/off savings evidence.
 
 For an opted-in coordinator, common reads need no request JSON:
 
@@ -418,6 +422,9 @@ separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advise
 - The [Codex-only compact pilot](docs/benchmarks/codex-compact-pilot-report.md) completed 24 real-task attempts with Sol/high.
   Both modes passed frozen tests, but independent probes confirmed defects in both charset patches. Observable workflow mechanics
   completed in 9/12 normal and 1/12 compact attempts; cutoffs left no complete token pairs. Compact mode remains opt-in.
+- [Selective compact evaluation](docs/benchmarks/selective-compact-report.md) counts needed expansions and retries offline;
+  some workloads use more bytes. Its Sol/high canary stopped at the budget reserve during the first ordinary run;
+  the candidate passed independent tests, but no workflow or on/off pair completed.
 - Advisers are optional and experimental, disabled by default. They are tested with local fake executables and
   HTTPS fixtures; CLI examples were checked against provider help.
   No live adviser quality evaluation was run. Native usage is provider-reported; CLI usage is unmeasured.

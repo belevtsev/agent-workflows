@@ -1,0 +1,155 @@
+{
+  "contract_sha256": "2b147315848aec204bfc21771bd63dadf28e57af153c3d2a392965fbd4fb2b08",
+  "go_binary": {
+    "path": "/toolchain/bin/go",
+    "sha256": "de0ae3e082ce7599eae4fb69fa2ef1e43b8f31ffd3fce62cdf81930aa9005050"
+  },
+  "ground_truth_eligible": false,
+  "probe": {
+    "path": "charset-v2-probe.go.txt",
+    "sha256": "324393c4c231fafd5ce6f823f794d537d1574a23088f68dad9570a8c5488a118"
+  },
+  "reference_disposition": "rejected as v2 ground truth",
+  "results": [
+    {
+      "copied_source_sha256": "890a4458342ff8014e391076a1d3e4edf33ea8e34c9c328e18fb09b9dbd08505",
+      "execution": {
+        "argv": [
+          "/toolchain/bin/go",
+          "run",
+          "./_charset_v2_probe",
+          "/workspace/_charset_v2_probe/cases.json"
+        ],
+        "cancelled": false,
+        "elapsed_ns": 10693117293,
+        "ended_at": "2026-11-17T05:11:55.117009953Z",
+        "exit_code": 0,
+        "started_at": "2026-11-17T05:11:44.42389251Z",
+        "stderr": {
+          "path": "charset-v2-baseline-stderr.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr_bytes": 0,
+        "stdout": {
+          "path": "charset-v2-baseline-stdout.json",
+          "sha256": "8f1748d331c79ba49ecac254b6a10f6266bfada186ada24afccbdc010ad89b79"
+        },
+        "stdout_bytes": 839,
+        "stopped": false
+      },
+      "failed_behaviors": [
+        "quoted_allowed"
+      ],
+      "id": "baseline"
+    },
+    {
+      "copied_source_sha256": "4ff4176c5843856c124da77334cfbcd783b4f43208131732ab6b5fa64e6d4d0f",
+      "execution": {
+        "argv": [
+          "/toolchain/bin/go",
+          "run",
+          "./_charset_v2_probe",
+          "/workspace/_charset_v2_probe/cases.json"
+        ],
+        "cancelled": false,
+        "elapsed_ns": 497322022,
+        "ended_at": "2026-11-17T05:11:55.627026405Z",
+        "exit_code": 0,
+        "started_at": "2026-11-17T05:11:55.129704243Z",
+        "stderr": {
+          "path": "charset-v2-reference-stderr.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr_bytes": 0,
+        "stdout": {
+          "path": "charset-v2-reference-stdout.json",
+          "sha256": "cbb939406e017018276a24e0b4e061524146ec0897e18d83b69893b87e281511"
+        },
+        "stdout_bytes": 847,
+        "stopped": false
+      },
+      "failed_behaviors": [
+        "extended_star_overrides_disallowed_charset",
+        "extended_continuations_override_disallowed_charset",
+        "extended_star_overrides_allowed_charset"
+      ],
+      "id": "reference"
+    },
+    {
+      "copied_source_sha256": "7fa623dac7bbd0525c82ed6ac155ee8739e1a17ea49d68effc88d7bdebe58894",
+      "execution": {
+        "argv": [
+          "/toolchain/bin/go",
+          "run",
+          "./_charset_v2_probe",
+          "/workspace/_charset_v2_probe/cases.json"
+        ],
+        "cancelled": false,
+        "elapsed_ns": 497461234,
+        "ended_at": "2026-11-17T05:11:56.135442513Z",
+        "exit_code": 0,
+        "started_at": "2026-11-17T05:11:55.637981099Z",
+        "stderr": {
+          "path": "charset-v2-candidate-1-stderr.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr_bytes": 0,
+        "stdout": {
+          "path": "charset-v2-candidate-1-stdout.json",
+          "sha256": "cbb939406e017018276a24e0b4e061524146ec0897e18d83b69893b87e281511"
+        },
+        "stdout_bytes": 847,
+        "stopped": false
+      },
+      "failed_behaviors": [
+        "extended_star_overrides_disallowed_charset",
+        "extended_continuations_override_disallowed_charset",
+        "extended_star_overrides_allowed_charset"
+      ],
+      "id": "candidate-1"
+    },
+    {
+      "copied_source_sha256": "7a200454d4f538761a7627e1e2eacbe514243cd3ed22c60b6dc1f3526b232621",
+      "execution": {
+        "argv": [
+          "/toolchain/bin/go",
+          "run",
+          "./_charset_v2_probe",
+          "/workspace/_charset_v2_probe/cases.json"
+        ],
+        "cancelled": false,
+        "elapsed_ns": 491599382,
+        "ended_at": "2026-11-17T05:11:56.637640557Z",
+        "exit_code": 0,
+        "started_at": "2026-11-17T05:11:56.146040985Z",
+        "stderr": {
+          "path": "charset-v2-candidate-2-stderr.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr_bytes": 0,
+        "stdout": {
+          "path": "charset-v2-candidate-2-stdout.json",
+          "sha256": "a1b0aab96287c5ff83709e6ac87a292159b4c08efed2ea280182a3ecad7e9094"
+        },
+        "stdout_bytes": 847,
+        "stopped": false
+      },
+      "failed_behaviors": [
+        "extended_star_overrides_disallowed_charset",
+        "extended_continuations_override_disallowed_charset",
+        "extended_star_overrides_allowed_charset",
+        "legacy_unquoted_stray_quote_utf8",
+        "legacy_unquoted_stray_quote_disallowed_latin1"
+      ],
+      "id": "candidate-2"
+    }
+  ],
+  "sanitization": [
+    "Absolute source paths removed; executable and invocation paths use /toolchain and /workspace placeholders; evidence links are relative.",
+    "Historical candidate IDs replaced with candidate-1 and candidate-2; no arm or candidate mapping exported.",
+    "All contract cases, observed HTTP outcomes, handler calls, body values, source digests, timestamps, elapsed nanoseconds, exit status and stream bytes are unchanged."
+  ],
+  "scope": "offline diagnostic probe; frozen acceptance, scores, manifests and prior evidence unchanged; no solver quality claim",
+  "source_receipt_sha256": "d57a02649fa5eb2e103384d68121613bb57cfd6f7fdb8240c0fe608d309e311e",
+  "version": 2
+}

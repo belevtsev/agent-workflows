@@ -13,6 +13,7 @@ import (
 // The solver never receives this file or the private experiment output root.
 type protocolAudit struct {
 	Version                 int      `json:"version"`
+	Profile                 string   `json:"profile,omitempty"`
 	RunID                   string   `json:"run_id"`
 	CandidateTree           string   `json:"candidate_tree"`
 	AssignedArm             string   `json:"assigned_arm"`
@@ -74,6 +75,9 @@ func applyProtocolAudit(runDir string, result *runResult) error {
 	if audit.Version != 1 || audit.RunID != result.Run.ID || audit.CandidateTree != result.CandidateTree || arm != result.Run.Arm {
 		return fmt.Errorf("protocol audit is not bound to this run and candidate: %s", result.Run.ID)
 	}
+	if audit.Profile != result.Profile {
+		return fmt.Errorf("protocol audit profile differs from this result: %s", result.Run.ID)
+	}
 	status := "verified"
 	unknown, violated := false, false
 	for _, observed := range []*bool{audit.Compliant, audit.CorrectModelsAndEffort, audit.IndependentReview, audit.RequiredRoleWriteChecks, audit.TestBeforeCode, audit.CurrentContentEvidence, audit.AuthorizedDispositions} {
@@ -97,7 +101,13 @@ func applyProtocolAudit(runDir string, result *runResult) error {
 	if result.Run.Arm == "normal" && (audit.ExecutedCompactCollect != 0 || audit.ExecutedCompactCheck != 0) {
 		status = "violated"
 	}
-	if result.Run.Arm == "compact" && (audit.ExecutedCompactCollect == 0 || audit.ExecutedCompactCheck == 0) {
+	if result.Profile == canaryProfile && audit.ExecutedCompactCollect != 0 {
+		status = "violated"
+	}
+	if result.Run.Arm == "compact" && result.Profile == canaryProfile && result.Run.CaseID == "qs-sparse-array-limit" && audit.ExecutedCompactCheck == 0 {
+		status = "violated"
+	}
+	if result.Run.Arm == "compact" && result.Profile != canaryProfile && (audit.ExecutedCompactCollect == 0 || audit.ExecutedCompactCheck == 0) {
 		status = "violated"
 	}
 	if len(audit.EvidencePaths) == 0 && status == "verified" {

@@ -1,0 +1,758 @@
+{
+  "version": 1,
+  "manifest_sha256": "9353db0a442853e04c15c29b0b0e63a4c8f737bba93e890bd2e16ce24836da55",
+  "calibration_excluded_sha256": "08f2d392a45105a8512019cdc91ce49e9f02d9ff6c215b8c405b67512baa5eb4",
+  "analysis_executable_sha256": "4aad090b90f962a37ab9e2b9507e6a62e9882c1a55ba8e413bd83356e7fd4669",
+  "go_version": "go1.27.4",
+  "topology": "kitsu-small-path",
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "controllers": 1,
+  "all_assigned_results_present": false,
+  "arms": [
+    {
+      "arm": "normal",
+      "assigned": 2,
+      "results": 1,
+      "measured": 1,
+      "functional_passed": 1,
+      "functional_failed": 0,
+      "functional_unknown": 1,
+      "protocol_verified": 0,
+      "protocol_violated": 1,
+      "protocol_unknown": 1,
+      "functional_and_protocol_verified": 0,
+      "accounting_complete_runs": 0,
+      "model_elapsed_ns_exploratory": 421019012255,
+      "all_attempts_observed_tokens": {
+        "input_uncached": 184923,
+        "input_total": 3240539,
+        "cache_read": 3055616,
+        "cache_write": 0,
+        "output": 16752,
+        "total": 3257291,
+        "reasoning_output_tokens": 3380,
+        "reasoning_observed_tokens": 3380,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "observed_tokens_per_functional_success": 3257291,
+      "observed_tokens_per_verified_success": null,
+      "all_assigned_accounting_complete": false
+    },
+    {
+      "arm": "compact",
+      "assigned": 2,
+      "results": 0,
+      "measured": 0,
+      "functional_passed": 0,
+      "functional_failed": 0,
+      "functional_unknown": 2,
+      "protocol_verified": 0,
+      "protocol_violated": 0,
+      "protocol_unknown": 2,
+      "functional_and_protocol_verified": 0,
+      "accounting_complete_runs": 0,
+      "model_elapsed_ns_exploratory": 0,
+      "all_attempts_observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      },
+      "observed_tokens_per_functional_success": null,
+      "observed_tokens_per_verified_success": null,
+      "all_assigned_accounting_complete": false
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "pflag-unknown-flags",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 0,
+          "measured": 0,
+          "functional_passed": 0,
+          "functional_failed": 0,
+          "functional_unknown": 1,
+          "protocol_verified": 0,
+          "protocol_violated": 0,
+          "protocol_unknown": 1,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 0,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 0,
+            "input_total": 0,
+            "cache_read": 0,
+            "cache_write": 0,
+            "output": 0,
+            "total": 0,
+            "reasoning_output_tokens": null,
+            "reasoning_observed_tokens": 0,
+            "reasoning_known_units": 0,
+            "units": 0
+          },
+          "observed_tokens_per_functional_success": null,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 0,
+          "measured": 0,
+          "functional_passed": 0,
+          "functional_failed": 0,
+          "functional_unknown": 1,
+          "protocol_verified": 0,
+          "protocol_violated": 0,
+          "protocol_unknown": 1,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 0,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 0,
+            "input_total": 0,
+            "cache_read": 0,
+            "cache_write": 0,
+            "output": 0,
+            "total": 0,
+            "reasoning_output_tokens": null,
+            "reasoning_observed_tokens": 0,
+            "reasoning_known_units": 0,
+            "units": 0
+          },
+          "observed_tokens_per_functional_success": null,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    },
+    {
+      "case_id": "qs-sparse-array-limit",
+      "arms": [
+        {
+          "arm": "normal",
+          "assigned": 1,
+          "results": 1,
+          "measured": 1,
+          "functional_passed": 1,
+          "functional_failed": 0,
+          "functional_unknown": 0,
+          "protocol_verified": 0,
+          "protocol_violated": 1,
+          "protocol_unknown": 0,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 421019012255,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 184923,
+            "input_total": 3240539,
+            "cache_read": 3055616,
+            "cache_write": 0,
+            "output": 16752,
+            "total": 3257291,
+            "reasoning_output_tokens": 3380,
+            "reasoning_observed_tokens": 3380,
+            "reasoning_known_units": 1,
+            "units": 1
+          },
+          "observed_tokens_per_functional_success": 3257291,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        },
+        {
+          "arm": "compact",
+          "assigned": 1,
+          "results": 0,
+          "measured": 0,
+          "functional_passed": 0,
+          "functional_failed": 0,
+          "functional_unknown": 1,
+          "protocol_verified": 0,
+          "protocol_violated": 0,
+          "protocol_unknown": 1,
+          "functional_and_protocol_verified": 0,
+          "accounting_complete_runs": 0,
+          "model_elapsed_ns_exploratory": 0,
+          "all_attempts_observed_tokens": {
+            "input_uncached": 0,
+            "input_total": 0,
+            "cache_read": 0,
+            "cache_write": 0,
+            "output": 0,
+            "total": 0,
+            "reasoning_output_tokens": null,
+            "reasoning_observed_tokens": 0,
+            "reasoning_known_units": 0,
+            "units": 0
+          },
+          "observed_tokens_per_functional_success": null,
+          "observed_tokens_per_verified_success": null,
+          "all_assigned_accounting_complete": false
+        }
+      ]
+    }
+  ],
+  "role_attribution": [
+    {
+      "arm": "normal",
+      "role": "coordinator",
+      "threads": 1,
+      "known_threads": 1,
+      "observed_tokens": {
+        "input_uncached": 43192,
+        "input_total": 1849144,
+        "cache_read": 1805952,
+        "cache_write": 0,
+        "output": 7410,
+        "total": 1856554,
+        "reasoning_output_tokens": 1048,
+        "reasoning_observed_tokens": 1048,
+        "reasoning_known_units": 1,
+        "units": 1
+      }
+    },
+    {
+      "arm": "normal",
+      "role": "lookup",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    },
+    {
+      "arm": "normal",
+      "role": "tests",
+      "threads": 1,
+      "known_threads": 1,
+      "observed_tokens": {
+        "input_uncached": 66998,
+        "input_total": 758710,
+        "cache_read": 691712,
+        "cache_write": 0,
+        "output": 5252,
+        "total": 763962,
+        "reasoning_output_tokens": 1152,
+        "reasoning_observed_tokens": 1152,
+        "reasoning_known_units": 1,
+        "units": 1
+      }
+    },
+    {
+      "arm": "normal",
+      "role": "code",
+      "threads": 1,
+      "known_threads": 1,
+      "observed_tokens": {
+        "input_uncached": 36857,
+        "input_total": 282105,
+        "cache_read": 245248,
+        "cache_write": 0,
+        "output": 1771,
+        "total": 283876,
+        "reasoning_output_tokens": 426,
+        "reasoning_observed_tokens": 426,
+        "reasoning_known_units": 1,
+        "units": 1
+      }
+    },
+    {
+      "arm": "normal",
+      "role": "review",
+      "threads": 1,
+      "known_threads": 1,
+      "observed_tokens": {
+        "input_uncached": 37876,
+        "input_total": 350580,
+        "cache_read": 312704,
+        "cache_write": 0,
+        "output": 2319,
+        "total": 352899,
+        "reasoning_output_tokens": 754,
+        "reasoning_observed_tokens": 754,
+        "reasoning_known_units": 1,
+        "units": 1
+      }
+    },
+    {
+      "arm": "normal",
+      "role": "commit",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    },
+    {
+      "arm": "normal",
+      "role": "worker-unassigned",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "coordinator",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "lookup",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "tests",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "code",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "review",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "commit",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    },
+    {
+      "arm": "compact",
+      "role": "worker-unassigned",
+      "threads": 0,
+      "known_threads": 0,
+      "observed_tokens": {
+        "input_uncached": 0,
+        "input_total": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "output": 0,
+        "total": 0,
+        "reasoning_output_tokens": null,
+        "reasoning_observed_tokens": 0,
+        "reasoning_known_units": 0,
+        "units": 0
+      }
+    }
+  ],
+  "paired_token_comparisons": [
+    {
+      "name": "all_pairs",
+      "selected_pairs": 0,
+      "normal_tokens": 0,
+      "compact_tokens": 0,
+      "all_required_accounting_and_outcomes_assessed": false,
+      "task_cluster_token_ratio_ci": null,
+      "task_cluster_mean_paired_token_delta_ci": null,
+      "repository_cluster_token_ratio_ci_exploratory": null,
+      "repository_cluster_mean_paired_token_delta_ci_exploratory": null
+    },
+    {
+      "name": "both_functional_success",
+      "selected_pairs": 0,
+      "normal_tokens": 0,
+      "compact_tokens": 0,
+      "all_required_accounting_and_outcomes_assessed": false,
+      "task_cluster_token_ratio_ci": null,
+      "task_cluster_mean_paired_token_delta_ci": null,
+      "repository_cluster_token_ratio_ci_exploratory": null,
+      "repository_cluster_mean_paired_token_delta_ci_exploratory": null
+    },
+    {
+      "name": "both_verified_success",
+      "selected_pairs": 0,
+      "normal_tokens": 0,
+      "compact_tokens": 0,
+      "all_required_accounting_and_outcomes_assessed": false,
+      "task_cluster_token_ratio_ci": null,
+      "task_cluster_mean_paired_token_delta_ci": null,
+      "repository_cluster_token_ratio_ci_exploratory": null,
+      "repository_cluster_mean_paired_token_delta_ci_exploratory": null
+    }
+  ],
+  "functional_task_loss": {
+    "planned_task_clusters": 2,
+    "known_loss_tasks": 0,
+    "fully_assessed_tasks": 0,
+    "unassessed_tasks_without_confirmed_loss": 2,
+    "tasks_with_a_normal_functional_success": 1,
+    "one_sided_95pct_upper_loss_probability_assessed_tasks": null,
+    "one_sided_95pct_upper_loss_probability_unknown_tasks_count_as_loss": 1
+  },
+  "functional_pass_rate_delta_task_cluster_ci": null,
+  "verified_pass_rate_delta_task_cluster_ci": null,
+  "functional_pass_rate_delta_repository_cluster_ci_exploratory": null,
+  "verified_pass_rate_delta_repository_cluster_ci_exploratory": null,
+  "runs": [
+    {
+      "run_id": "qs-sparse-array-limit-r1-normal",
+      "case_id": "qs-sparse-array-limit",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 1,
+      "controller": 0,
+      "state": "budget_stopped",
+      "result_sha256": "402213b8432f81e4e479d478bfb9ecff3f4b0dba485b32b13442948f0f3cd223",
+      "measured": true,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "tail_usage_unknown_after_forced_stop",
+        "tail_usage_unknown_after_cancellation",
+        "captured_usage_incomplete"
+      ],
+      "functional_status": "passed",
+      "protocol_status": "violated",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": 421019012255,
+      "observed_tokens": {
+        "input_uncached": 184923,
+        "input_total": 3240539,
+        "cache_read": 3055616,
+        "cache_write": 0,
+        "output": 16752,
+        "total": 3257291,
+        "reasoning_output_tokens": 3380,
+        "reasoning_observed_tokens": 3380,
+        "reasoning_known_units": 1,
+        "units": 1
+      },
+      "threads": [
+        {
+          "run_id": "qs-sparse-array-limit-r1-normal",
+          "trace_sha256": "be53d72ba94d0152694f8b3925354893a10188f2a6b7b7a3f599888e66f75b88",
+          "role": "coordinator",
+          "stage_source": "",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 43192,
+            "input_total": 1849144,
+            "cache_read": 1805952,
+            "cache_write": 0,
+            "output": 7410,
+            "total": 1856554,
+            "reasoning_output_tokens": 1048,
+            "reasoning_observed_tokens": 1048,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-sparse-array-limit-r1-normal",
+          "trace_sha256": "9879a20232bd9abebd02d3dbb4ca7dda5e7fe233a9920c2e32a262577a68dd33",
+          "role": "tests",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 66998,
+            "input_total": 758710,
+            "cache_read": 691712,
+            "cache_write": 0,
+            "output": 5252,
+            "total": 763962,
+            "reasoning_output_tokens": 1152,
+            "reasoning_observed_tokens": 1152,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-sparse-array-limit-r1-normal",
+          "trace_sha256": "746188dac2dc3be36bf186240c10d5cb4aa76013e652324f85986609881ba6a1",
+          "role": "code",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 36857,
+            "input_total": 282105,
+            "cache_read": 245248,
+            "cache_write": 0,
+            "output": 1771,
+            "total": 283876,
+            "reasoning_output_tokens": 426,
+            "reasoning_observed_tokens": 426,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        },
+        {
+          "run_id": "qs-sparse-array-limit-r1-normal",
+          "trace_sha256": "154ae19bdbbd1ceb2dc7f9d2347c1b064191439c8e3e967b9f7c6125feb5003c",
+          "role": "review",
+          "stage_source": "native_agent_path_suffix; assignment text may be encrypted",
+          "known": true,
+          "models": [
+            "gpt-6.1-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "observed_tokens": {
+            "input_uncached": 37876,
+            "input_total": 350580,
+            "cache_read": 312704,
+            "cache_write": 0,
+            "output": 2319,
+            "total": 352899,
+            "reasoning_output_tokens": 754,
+            "reasoning_observed_tokens": 754,
+            "reasoning_known_units": 1,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "qs-sparse-array-limit-r1-compact",
+      "case_id": "qs-sparse-array-limit",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 2,
+      "controller": 0,
+      "state": "unclaimed",
+      "measured": false,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "result_unavailable"
+      ],
+      "functional_status": "unknown",
+      "protocol_status": "unknown",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": null,
+      "observed_tokens": null,
+      "threads": []
+    },
+    {
+      "run_id": "pflag-unknown-flags-r1-compact",
+      "case_id": "pflag-unknown-flags",
+      "repeat": 1,
+      "arm": "compact",
+      "order": 3,
+      "controller": 0,
+      "state": "unclaimed",
+      "measured": false,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "result_unavailable"
+      ],
+      "functional_status": "unknown",
+      "protocol_status": "unknown",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": null,
+      "observed_tokens": null,
+      "threads": []
+    },
+    {
+      "run_id": "pflag-unknown-flags-r1-normal",
+      "case_id": "pflag-unknown-flags",
+      "repeat": 1,
+      "arm": "normal",
+      "order": 4,
+      "controller": 0,
+      "state": "unclaimed",
+      "measured": false,
+      "accounting_complete": false,
+      "accounting_unknown_reasons": [
+        "result_unavailable"
+      ],
+      "functional_status": "unknown",
+      "protocol_status": "unknown",
+      "functional_and_protocol_verified": false,
+      "model_elapsed_ns_exploratory": null,
+      "observed_tokens": null,
+      "threads": []
+    }
+  ],
+  "pairs": [
+    {
+      "case_id": "pflag-unknown-flags",
+      "repeat": 1,
+      "normal_run": "pflag-unknown-flags-r1-normal",
+      "compact_run": "pflag-unknown-flags-r1-compact",
+      "normal_functional": "unknown",
+      "compact_functional": "unknown",
+      "normal_protocol": "unknown",
+      "compact_protocol": "unknown",
+      "accounting_comparable": false,
+      "both_functional_success": false,
+      "both_verified_success": false,
+      "functional_loss": null,
+      "normal_observed_tokens": null,
+      "compact_observed_tokens": null,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    },
+    {
+      "case_id": "qs-sparse-array-limit",
+      "repeat": 1,
+      "normal_run": "qs-sparse-array-limit-r1-normal",
+      "compact_run": "qs-sparse-array-limit-r1-compact",
+      "normal_functional": "passed",
+      "compact_functional": "unknown",
+      "normal_protocol": "violated",
+      "compact_protocol": "unknown",
+      "accounting_comparable": false,
+      "both_functional_success": false,
+      "both_verified_success": false,
+      "functional_loss": null,
+      "normal_observed_tokens": 3257291,
+      "compact_observed_tokens": null,
+      "token_delta_compact_minus_normal": null,
+      "token_ratio_compact_over_normal": null
+    }
+  ],
+  "cautions": [
+    "All recorded attempt tokens are charged, including failed and timed-out candidates; missing accounting is unknown and observed partial totals are lower bounds.",
+    "Forced stops, cancellation, and cleanup failures can lose the final usage event of an in-flight model request; known captured counters do not establish complete actual total usage for these runs.",
+    "Input total includes uncached input, cache reads, and cache writes. Reasoning is included in output and is never added again. Tokens are not a monetary bill.",
+    "Functional acceptance, infrastructure, and independently verified protocol compliance are distinct. Unknown outcomes or audits never count as verified successes.",
+    "Success-conditioned token comparisons are descriptive and may select easier tasks; compare all-assignment outcomes and costs first.",
+    "Primary bootstrap intervals resample 2 task IDs with all 1 paired repetitions intact; exploratory repository-cluster sensitivity uses 2 groups from recorded repository provenance, falling back to task IDs when unavailable.",
+    "These convenience-selected public tasks are not random population samples. Cluster intervals describe observed variability under resampling assumptions, not guaranteed external coverage.",
+    "The loss event is any normal-pass/compact-fail functional pair within a task. The exact one-sided binomial bound is descriptive under an independent-task Bernoulli assumption that related repository tasks may violate.",
+    "Zero observed losses does not establish noninferiority or universal quality preservation; tasks without a normal success offer no observed successful baseline to preserve.",
+    "Intervals are suppressed until the required paired accounting and outcomes are assessed; unresolved tasks count as losses in the conservative loss bound.",
+    "Elapsed times are exploratory because 1 controllers share the host and model service; provider cache state and service contention are uncontrolled.",
+    "Role attribution uses causal parent metadata and recorded stage sources. Saved briefs and task names do not prove encrypted native message payloads were identical.",
+    "Calibration tokens are excluded from these measured-run totals and must be reported separately. Public historical-task contamination and two Kitsu cases limit generalization."
+  ]
+}

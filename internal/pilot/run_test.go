@@ -36,6 +36,7 @@ type invocation struct {
 
 type runResult struct {
 	Version           int             `json:"version"`
+	Profile           string          `json:"profile,omitempty"`
 	Run               cell            `json:"run"`
 	ManifestSHA256    string          `json:"manifest_sha256"`
 	Status            string          `json:"status"`
@@ -220,6 +221,13 @@ func executeCell(ctx context.Context, m manifest, p plan, selected cell, output 
 	if err := calibrationApproved(m.Calibration.Path, m.Model, m.Effort); err != nil {
 		return err
 	}
+	if m.Profile == canaryProfile {
+		release, err := canaryClaim(output, *m.Budget)
+		if err != nil {
+			return err
+		}
+		defer release()
+	}
 	runDir := filepath.Join(output, "runs", selected.ID)
 	if err := os.MkdirAll(filepath.Dir(runDir), 0o700); err != nil {
 		return err
@@ -229,7 +237,7 @@ func executeCell(ctx context.Context, m manifest, p plan, selected cell, output 
 	if err := os.Mkdir(runDir, 0o700); err != nil {
 		return fmt.Errorf("run already claimed or unavailable: %s: %w", selected.ID, err)
 	}
-	result := runResult{Version: 1, Run: selected, ManifestSHA256: p.ManifestSHA256, Status: "preparation_failed"}
+	result := runResult{Version: 1, Profile: m.Profile, Run: selected, ManifestSHA256: p.ManifestSHA256, Status: "preparation_failed"}
 	defer func() {
 		if returned != nil {
 			result.Error = returned.Error()
@@ -254,6 +262,22 @@ func executeCell(ctx context.Context, m manifest, p plan, selected cell, output 
 	}
 	if err := os.MkdirAll(vars["home"], 0o700); err != nil {
 		return err
+	}
+	if m.Profile == canaryProfile {
+		defer func() {
+			var removed []string
+			var cleanupErr error
+			for _, file := range m.Host.HomeFiles {
+				path := filepath.Join(vars["home"], file.Destination)
+				if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+					cleanupErr = errors.Join(cleanupErr, err)
+				} else {
+					removed = append(removed, file.Destination)
+				}
+			}
+			cleanupErr = errors.Join(cleanupErr, writeJSON(filepath.Join(runDir, "credential-cleanup.json"), map[string]any{"removed_home_files": removed, "source_credentials_unchanged": true}, true))
+			returned = errors.Join(returned, cleanupErr)
+		}()
 	}
 	for _, file := range m.Host.HomeFiles {
 		if err := copyRegular(file.Source, filepath.Join(vars["home"], file.Destination), 0o600); err != nil {
@@ -302,7 +326,7 @@ func executeCell(ctx context.Context, m manifest, p plan, selected cell, output 
 	if err := writeJSON(filepath.Join(runDir, "running.json"), result, true); err != nil {
 		return err
 	}
-	execution, invokeErr := invoke(ctx, vars["worktree"], filepath.Join(runDir, "host"), prompt, expandedArgv(m.Host.Argv, vars), env, m.TimeoutSeconds)
+	execution, invokeErr := canaryInvoke(ctx, m, output, selected, vars, prompt, env)
 	result.Execution, result.Status = &execution, "completed"
 	if invokeErr != nil || execution.ExitCode != 0 || execution.Cleanup != "" {
 		result.Status = "execution_failed"
@@ -310,8 +334,23 @@ func executeCell(ctx context.Context, m manifest, p plan, selected cell, output 
 	if execution.Stopped {
 		result.Status = "timed_out"
 	}
+	if m.Profile == canaryProfile {
+		if _, err := os.Stat(filepath.Join(runDir, "budget-stop.json")); err == nil {
+			result.Status = "budget_stopped"
+		}
+	}
 	usage, threads, usageErr := collectUsage(vars["home"], m.Host.Rollouts, runDir, stdoutThreadID(execution.Stdout.Path))
+	if m.Profile == canaryProfile {
+		usageErr = errors.Join(usageErr, canaryReconcile(output, selected, *m.Budget, &usage))
+	}
+	if m.Profile == canaryProfile && (execution.Stopped || execution.Cancelled || execution.Cleanup != "" || execution.ExitCode != 0) {
+		usage.Complete = false
+		usage.Unknown = append(usage.Unknown, "tail_usage_unknown_after_forced_stop_or_cleanup")
+	}
 	result.Usage, result.Method = usage, auditMethod(threads, selected.Arm, m.Model, m.Effort)
+	if m.Profile == canaryProfile {
+		result.Method = canaryMethod(threads, selected, m.Model, m.Effort)
+	}
 	// Retain and grade a failed attempt's final candidate too. A process failure
 	// is distinct from functional correctness, and its measured usage stays charged.
 	postCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Minute)

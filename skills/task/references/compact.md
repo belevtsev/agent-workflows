@@ -6,7 +6,19 @@ This mode changes observations and handoffs, not the workflow's reviews or appro
 
 ## Repository evidence
 
-Use native operands for common reads/searches; Go builds the request:
+Choose observations selectively within the host's existing tool permissions:
+
+- Prefer a native host read when the entire short file is needed, and a scoped native
+  search when its output is small. A compact envelope can cost more than that source text.
+- Use typed `kitsu context read` and `kitsu context search` for broad or noisy retrieval,
+  and `context collect` for independent batches. Narrow paths and line ranges first.
+- Use compact declared-check output for noisy checks, then expand the retained logs
+  needed to understand an outcome.
+
+Do not route every read or command through the collector. The existing `--compact`
+opt-in selects this policy; there are no separate component switches.
+
+Typed commands use native operands; Go builds the request:
 
 ```sh
 kitsu context read internal/server.go --start 10 --end 60
@@ -18,7 +30,6 @@ Paths are repository-relative. Search is literal by default; use `--` before a
 pattern/path beginning with `-`. A single `-` is literal, not stdin. Items are
 `source` for read and `matches` for search. Give these examples to every fresh
 worker using compact observations. `--help` gives exact options without setup.
-Native reads remain suitable for a short whole file.
 
 Batch independent operations with `kitsu context collect --request <file|-> --json`.
 The advanced request is JSON, not executable code:
@@ -40,12 +51,14 @@ to expand evidence. Omit the cursor for an item's first page. Cursors belong to 
 and item. Check previews start expansion at the original log's beginning, even when their
 diagnostics came from its tail. Expand until the evidence needed for the decision is present;
 an omitted result is not an absent result. Narrow future requests instead of loading the
-whole repository. Native reads remain useful when an entire short file is needed.
+whole repository. Prefer a native host read when an entire short file is needed.
 
 The collector returns at most 16 KiB by default. Increase `--max-bytes` deliberately when
 required metadata cannot fit. Stale, evicted and expired artifacts require fresh collection;
-expanding a log never runs its check again. Neither cache hits nor smaller byte counts prove
-model token savings.
+expanding a log never runs its check again or restores an expired log. Artifacts cache local
+rendered text; they are not the provider's prompt cache. Count all request and response bytes,
+including envelopes, saved worker instructions, original skill reads and every expansion,
+when measuring. Neither local cache hits nor smaller previews prove model token savings.
 
 ## Fresh workers
 
@@ -62,7 +75,8 @@ start a fresh worker from the full saved text unchanged, or begin its prompt wit
 `label` and require reading/verifying that file before work. Do not print and
 reconstruct the packet. Stop on unavailable models. This command invokes no model.
 
-The saved text includes original Codex role instructions once. On Claude Code use
+Keep original full role instructions and selected skills uncompressed. The saved text
+includes original Codex role instructions once. On Claude Code use
 native role `kitsu:<role>`; its definition supplies the role body once. Load all
 selected original skills in every fresh worker; receipts do not prove loading.
 Keep other native skills discoverable without preloading their bodies.
@@ -86,7 +100,9 @@ For a saved brief without managed bookkeeping use `task brief ... --assignment
 <file|-> --save`, followed by the normal `role check --from <baseline>`. The
 original full-metadata `task brief ... --json` protocol remains compatible.
 
-Carry compact mode into every fresh worker's assignment. Workers keep their existing tool
+Carry this selective observation policy into every fresh worker's assignment, including
+native short-file reads, scoped search, collection for noisy retrieval and retained-log
+expansion for checks. Workers keep their existing tool
 permissions. For a role without command execution, the coordinator collects evidence and
 supplies it; never add tool access to make the compact commands available. Lookup can create
 Kitsu-managed private context artifacts when its host permits the call; its repository source

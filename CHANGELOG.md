@@ -40,6 +40,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- [Compact mode](docs/compact-context.md) now prefers native short reads and scoped searches, reserving collection for noisy retrieval
+  and checks; a [separate evaluation](docs/benchmarks/selective-compact-report.md) counts expansions, retries and bounded canary usage.
 - [Role defaults](docs/roles.md#the-roles-at-a-glance) use different models and reasoning efforts for lookup,
   specification, architecture, tests, implementation, review, and Git work on both supported hosts.
 - Lead with [coding-agent coordination](README.md#the-roles) in the documentation, plugin descriptions and CLI help; the Git gate supports that workflow.

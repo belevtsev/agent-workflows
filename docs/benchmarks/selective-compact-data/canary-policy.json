@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "profile": "selective-canary-v1",
+  "planned_runs": 4,
+  "task_pairs": 2,
+  "repeats": 1,
+  "controllers": 1,
+  "seed": 20261117,
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "timeout_seconds_per_run": 480,
+  "captured_token_budget": {
+    "limit": 4000000,
+    "stop_reserve": 750000,
+    "soft_stop_threshold": 3250000,
+    "launch_reserve": 750000,
+    "poll_milliseconds": 500,
+    "no_changed_counter_seconds": 90,
+    "scope": "All unique cumulative coordinator and descendant input, cached input and output tokens, including failed work and rework. Reasoning is an output subset. No new paid calibration or posthoc model judge.",
+    "unknown_tail_policy": "No further launch after interruption, missing accounting, a live/offline discrepancy, or a claimed run without complete retained evidence.",
+    "caveat": "Counters are discrete. In-flight or missing tails remain unknown; the reserve is not a hard provider billing guarantee. Stopped or unstarted runs are incomplete evidence, not savings."
+  },
+  "execution_policy": {
+    "paired_order": "Noisy qs pair first, then short Go pair; arm order fixed by the preregistered seed before observing outcomes.",
+    "one_identity_per_invocation": true,
+    "automatic_retries": false,
+    "identical_in_both_arms": [
+      "Native short source reads and scoped search",
+      "Canonical saved worker briefs and hash verification",
+      "Managed task prepare and finish bookkeeping",
+      "Original role instructions and skills",
+      "Fresh Sol/high QE, developer, reviewer and Git workers",
+      "Role permissions, meaningful red test, independent review, declared checks and commit hook"
+    ],
+    "normal_arm": "Ordinary declared-check output; retrieve necessary diagnostics after native truncation.",
+    "compact_arm": "Compact output for noisy Tape checks with necessary retained-log expansion; ordinary short Go output remains appropriate.",
+    "repository_retrieval_compaction": "Disabled in both arms to isolate check observations.",
+    "bookkeeping_authority": "Local write bounds and current check evidence only; no semantic TDD, independent review, approval or completion certification."
+  },
+  "frozen_sha256": {
+    "manifest": "9353db0a442853e04c15c29b0b0e63a4c8f737bba93e890bd2e16ce24836da55",
+    "plan": "10189904e0e714ea70c44ccedf97872ab6a46e468967753597f3857b220edc2e",
+    "source_index": "8f5f1e2118e77f206fcce79040e4deaaf5fb0cc28f3ab5e6cd0e9255c3b33067",
+    "noncredential_asset_index": "0b9f60c0514fd9f8890e9ec3d809d46dd3393f21115fa81f0b956d421cc59735",
+    "kitsu_binary": "5b3ffd0192793379b7321017415d66aa680f94a5a26c379b8a1d444a4a902cd6",
+    "harness_binary": "4aad090b90f962a37ab9e2b9507e6a62e9882c1a55ba8e413bd83356e7fd4669",
+    "coordinator_prompt": "0610c515e5c1f1e182706fed919489da9584e726c742d4b16b69810ee7da0f35",
+    "normal_prompt": "377880d966676fee72a4edaf77162e485ae79d15b8700084d43d092081465b2f",
+    "compact_prompt": "c688101814251208f26e2508bc6abb98d1ebbdeeaa179753ed69c4460a639a7c"
+  },
+  "cases": [
+    {
+      "id": "qs-sparse-array-limit",
+      "source_snapshot_sha256": "32954f489c00961864bef8b3d3b53a10fa26b75b11412a4b888be0c433eccacc",
+      "checks_sha256": "4da479338420c8e163f67e88762eb933dfba24a7d1bd42c00609be6847cadef5",
+      "roles_sha256": "026a374cc75596a1c4a21ab099f3bfd5a1cc814b49e3045fae3333f0d0b043f4",
+      "check": ["node", "node_modules/tape/bin/tape", "test/parse.js", "test/stringify.js", "test/utils.js"],
+      "offline_native_check_bytes": 88928,
+      "offline_compact_check_bytes": 1582
+    },
+    {
+      "id": "pflag-unknown-flags",
+      "source_snapshot_sha256": "c14edb0e0bd7287065e01da7a762d3bdaced58395e4d4a78e0d0eced61aee1d6",
+      "checks_sha256": "712d89c8876f095c739d88d7b3bef59c44540ca234dcd9864845b7609bc9b8be",
+      "roles_sha256": "6163cc70a1bebb15c3ead21dffbe4f0667fe8e34fec5e5a6b9de565b759c941e",
+      "check": ["go", "test", "./..."],
+      "offline_native_check_bytes": 147,
+      "offline_compact_check_bytes": 1511
+    }
+  ],
+  "limitations": [
+    "Four planned identities on two selected tasks do not establish quality preservation or general token savings.",
+    "Offline output-byte differences are not model-token measurements.",
+    "Source paths, credentials, provider payloads and private oracle contents are excluded from this public export. Private frozen evidence retains the full content bindings."
+  ]
+}

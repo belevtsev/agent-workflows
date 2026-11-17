@@ -1,0 +1,5 @@
+case_id,arm,assigned,results,measured,functional_passed,functional_failed,functional_unknown,protocol_verified,protocol_violated,protocol_unknown,verified_success,accounting_complete_runs,all_assigned_accounting_complete,elapsed_ns_exploratory,input_uncached,input_total,cache_read,cache_write,output,total,reasoning_output_subset,reasoning_observed,reasoning_known_units,units
+pflag-unknown-flags,normal,1,0,0,0,0,1,0,0,1,0,0,false,0,0,0,0,0,0,0,,0,0,0
+pflag-unknown-flags,compact,1,0,0,0,0,1,0,0,1,0,0,false,0,0,0,0,0,0,0,,0,0,0
+qs-sparse-array-limit,normal,1,1,1,1,0,0,0,1,0,0,0,false,421019012255,184923,3240539,3055616,0,16752,3257291,3380,3380,1,1
+qs-sparse-array-limit,compact,1,0,0,0,0,1,0,0,1,0,0,false,0,0,0,0,0,0,0,,0,0,0

@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "planned_runs": 4,
+  "started_runs": 1,
+  "completed_full_workflows": 0,
+  "unstarted_runs": 3,
+  "comparison_completed": false,
+  "savings_inference": null,
+  "further_paid_launches_allowed": false,
+  "stop_reason": "captured_soft_stop_reserve",
+  "captured_tokens": {
+    "total": 3257291,
+    "input_uncached": 184923,
+    "input_total_including_cached": 3240539,
+    "cache_read": 3055616,
+    "cache_write": 0,
+    "output": 16752,
+    "reasoning_output_subset": 3380,
+    "live_offline_totals_match": true,
+    "accounting_complete": false,
+    "tail_unknown": true,
+    "scope": "All four captured coordinator/worker sessions. Reasoning is included in output, not added again. The forced-stop tail remains unknown."
+  },
+  "runs": [
+    {
+      "id": "qs-sparse-array-limit-r1-normal",
+      "status": "budget_stopped",
+      "started_at": "2026-11-17T05:25:21.031923539Z",
+      "ended_at": "2026-11-17T05:32:22.050935934Z",
+      "model_elapsed_ns": 421019012255,
+      "exit_code": -1,
+      "cancelled": true,
+      "process_cleanup_error": null,
+      "causal_sessions": 4,
+      "native_worker_starts": 3,
+      "managed_stage_finishes_observed": ["tests", "code", "review"],
+      "git_worker_started": false,
+      "task_commit_completed": false,
+      "workflow_complete": false,
+      "captured_tokens_by_role": {
+        "coordinator": 1856554,
+        "tests": 763962,
+        "code": 283876,
+        "review": 352899
+      },
+      "token_counter_events_by_role": {
+        "coordinator": 47,
+        "tests": 16,
+        "code": 9,
+        "review": 10
+      },
+      "counter_event_caveat": "These are captured cumulative token_count events, not independently verified model request or executed command counts.",
+      "offline_grade": {
+        "source": "Reused frozen trusted offline grader and original acceptance/regression/integrity assets from the prior Sol/high study; no model judge or fresh paid calibration.",
+        "grader_binary_sha256": "11d131d8f4eb84dfb0fa8632f20e5c72a20f0805cf2e0fb01b6ada64112b5091",
+        "retained_grade_sha256": "ebfcd6b57b791b89a56df8d0455e4a63c97d0868497bd2bbe6ebd71128dab559",
+        "retained_result_sha256": "402213b8432f81e4e479d478bfb9ecff3f4b0dba485b32b13442948f0f3cd223",
+        "infrastructure": "ok",
+        "eligibility_passed": true,
+        "acceptance_passed": true,
+        "acceptance_criteria": 18,
+        "regressions_passed": true,
+        "patch_integrity_passed": true,
+        "scope": "The retained partial candidate passed functional checks. This does not certify a completed role workflow, commit, accounting tail, independent semantic review or quality preservation."
+      },
+      "baseline_tree": "6a4275d109dc69e645ae69301bc109fb14174d4f",
+      "candidate_tree": "a608cd879754d1c3cc0b66f124bbb86670ea9723"
+    },
+    {"id": "qs-sparse-array-limit-r1-compact", "status": "unstarted", "captured_tokens": null},
+    {"id": "pflag-unknown-flags-r1-compact", "status": "unstarted", "captured_tokens": null},
+    {"id": "pflag-unknown-flags-r1-normal", "status": "unstarted", "captured_tokens": null}
+  ],
+  "cleanup": {
+    "model_tunnel_stopped": true,
+    "model_tunnel_socket_removed": true,
+    "no_matching_solver_or_tunnel_processes": true,
+    "copied_credentials_removed": true,
+    "original_credential_hash_matches_frozen_input": true,
+    "credentials_excluded_from_exports": true
+  },
+  "interpretation": "The bounded canary stopped during its first normal-arm run. Three preplanned identities were not started. There is no completed pair and no token-savings or quality-preservation inference. Independent protocol findings are exported separately as canary-audit artifacts."
+}

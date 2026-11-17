@@ -4,3 +4,6 @@
 
 # The SVG of a diagram is an export of the spec beside it, not written by hand.
 docs/diagrams/*.svg linguist-generated
+
+# Keep the raw Go benchmark receipt byte-for-byte, including CPU-label padding.
+docs/benchmarks/selective-compact-data/replay.txt whitespace=-blank-at-eol

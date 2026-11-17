@@ -1,0 +1,5 @@
+run_id,trace_sha256,role,stage_source,known,input_uncached,input_total,cache_read,cache_write,output,total,reasoning_output_subset,reasoning_observed,reasoning_known_units,units
+qs-sparse-array-limit-r1-normal,be53d72ba94d0152694f8b3925354893a10188f2a6b7b7a3f599888e66f75b88,coordinator,,true,43192,1849144,1805952,0,7410,1856554,1048,1048,1,1
+qs-sparse-array-limit-r1-normal,9879a20232bd9abebd02d3dbb4ca7dda5e7fe233a9920c2e32a262577a68dd33,tests,native_agent_path_suffix; assignment text may be encrypted,true,66998,758710,691712,0,5252,763962,1152,1152,1,1
+qs-sparse-array-limit-r1-normal,746188dac2dc3be36bf186240c10d5cb4aa76013e652324f85986609881ba6a1,code,native_agent_path_suffix; assignment text may be encrypted,true,36857,282105,245248,0,1771,283876,426,426,1,1
+qs-sparse-array-limit-r1-normal,154ae19bdbbd1ceb2dc7f9d2347c1b064191439c8e3e967b9f7c6125feb5003c,review,native_agent_path_suffix; assignment text may be encrypted,true,37876,350580,312704,0,2319,352899,754,754,1,1

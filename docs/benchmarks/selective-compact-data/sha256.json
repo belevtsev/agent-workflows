@@ -1,0 +1,19 @@
+{
+  "algorithm": "SHA-256",
+  "files": {
+    "charset-v2-baseline-stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "charset-v2-baseline-stdout.json": "8f1748d331c79ba49ecac254b6a10f6266bfada186ada24afccbdc010ad89b79",
+    "charset-v2-candidate-1-stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "charset-v2-candidate-1-stdout.json": "cbb939406e017018276a24e0b4e061524146ec0897e18d83b69893b87e281511",
+    "charset-v2-candidate-2-stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "charset-v2-candidate-2-stdout.json": "a1b0aab96287c5ff83709e6ac87a292159b4c08efed2ea280182a3ecad7e9094",
+    "charset-v2-contract.json": "2b147315848aec204bfc21771bd63dadf28e57af153c3d2a392965fbd4fb2b08",
+    "charset-v2-probe.go.txt": "324393c4c231fafd5ce6f823f794d537d1574a23088f68dad9570a8c5488a118",
+    "charset-v2-reference-stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "charset-v2-reference-stdout.json": "cbb939406e017018276a24e0b4e061524146ec0897e18d83b69893b87e281511",
+    "charset-v2.json": "d6bda2e21b1b3a67146429301afbdcbd4c83b1dd6f09fc596c134cffb418bd87",
+    "replay-metadata.json": "7523dde4072d721bd1a24765e6912f41dce690c2eca5b883f296607733184307",
+    "replay.txt": "f4b80b75eb2fa22ef1d03781b1181e5991cec139e3a00dabe00a0bee3e2869fb"
+  },
+  "version": 1
+}

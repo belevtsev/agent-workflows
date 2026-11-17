@@ -4,11 +4,49 @@ Read the [completed report](benchmarks/codex-compact-pilot-report.md) for outcom
 confirmed additional defects, usage and recommendations. The captured solver
 counts are lower bounds; no pair has complete accounting in both conditions.
 
+## Separate selective canary
+
+The new [selective evaluation report](benchmarks/selective-compact-report.md) records offline
+replay, v2 charset reference rejection and the status of a separate four-run canary. It does
+not replace the completed study or its frozen reports, catalogs, grades, binaries or assets.
+Replay counts all expansions and retries; some workloads use more bytes. The old charset
+reference fails the expanded v2 contract and is rejected as v2 ground truth, rather than
+silently accepting a defective reference or changing historical grades.
+
+The canary plans two tasks with one attempt per arm: four total Sol/high runs, 480 seconds
+each, one controller and no retry. All coordinators and descendants use `gpt-6.1-sol`/`high`.
+Both arms use native short reads and scoped searches, original full worker instructions and
+the same managed prepare/finish bookkeeping. Only noisy declared-check output differs:
+ordinary logs versus bounded check results with retained-log expansion. This measures that
+component; it does not test every selective retrieval choice at once. The short Go checks
+use ordinary output in both arms, making that task a no-op observation selection.
+
+The frozen profile is `selective-canary-v1`. Across all four planned cells, captured input
+(including cached input) plus output is capped at 4,000,000 tokens. Stop at 3,250,000, leaving
+a 750,000-token reserve for delayed usage and shutdown; require sufficient reserve before
+another launch. Count every unique coordinator and descendant session once, including
+failed and interrupted work. Reasoning is an output subset and is not added again. Missing
+counters, incomplete tails and live/offline disagreements block further launches and remain
+unknown in reporting. Polling captured counters cannot impose a hard provider billing cap.
+
+Freeze this experiment under a new output directory. Report every planned cell, including
+unstarted, timed-out or incomplete cells, with its status and any captured lower bound.
+Do not infer a zero-token result, successful workflow or savings from an unstarted cell or
+missing final usage. The separate report is the source of live outcomes; this procedure
+alone makes no claim that the canary has run or demonstrated a benefit.
+
+The 17 November execution stopped its first ordinary-output run at 3,257,291
+captured tokens. Three cells stayed unstarted under the interrupted-tail stop
+policy. The retained candidate passed independent tests, but no complete workflow
+or on/off pair exists. See the separate report for the accounting and audit.
+
+## Completed 24-run study
+
 This experiment compares Kitsu compact observations and handoffs with ordinary
 observations, using the same Codex small-task workflow in both conditions. It
 does not compare a single agent with a team, or replace Codex's own compaction.
 
-The current design is 12 real historical bug fixes, one repetition per
+The completed design used 12 real historical bug fixes, one repetition per
 condition, and two conditions: **24 solver runs**, with an eight-minute limit.
 Every coordinator and worker uses `gpt-6.1-sol` with reasoning effort `high`.
 The user replaced the original 72-run Sol/max plan with a smaller budget;

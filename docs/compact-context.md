@@ -1,7 +1,7 @@
 # Smaller inputs for coding agents
 
-Kitsu's opt-in context engine batches repository exploration, prepares fresh worker briefs,
-and returns compact check results. It runs inside the existing Go binary: users need no Go
+Kitsu's opt-in context engine selects observations, batches noisy repository exploration,
+prepares fresh worker briefs, and returns compact check results. It runs inside the existing Go binary: users need no Go
 compiler, JavaScript runtime, generated program, or additional service.
 
 The agent host still coordinates and executes the task. Kitsu reduces what observations are
@@ -38,7 +38,12 @@ kitsu check run --help
 
 ## Collect only the evidence you need
 
-Start with native operands; Go builds the request:
+Prefer a native host read for a short whole file and a scoped native search when its output
+is small. Use typed collection for broad or noisy retrieval, and batches for independent
+operations. Narrow paths and ranges first. Do not route every read or command through the
+collector: its envelope and metadata can exceed a short source file's bytes.
+
+For typed collection, use native operands; Go builds the request:
 
 ```sh
 kitsu context read internal/server.go --start 10 --end 60
@@ -170,6 +175,8 @@ and hashes, allowed advisers, factual task state and source references. Codex re
 original role instructions exactly once. On Claude, start the named native role
 (`kitsu:<role>`); its definition supplies the role body once. Each worker still loads the
 selected original skills and reports what loaded; a selection receipt proves no loading.
+Keep those full original instructions and skill bodies uncompressed. Every fresh assignment
+carries the selective policy, including native short reads and retained-log expansion.
 
 Preparation orders the skill receipt **before** the saved baseline. One managed interval
 may be active in a worktree. A second preparation, including ordinary `task brief`, refuses
@@ -236,6 +243,8 @@ only when no worker or active interval needs them. Neither form proves task comp
 
 ## Keep check output compact
 
+For noisy declared checks, request bounded outcomes and recover relevant retained evidence:
+
 ```sh
 kitsu check run --compact
 kitsu check run test lint --json
@@ -263,6 +272,28 @@ log references instead of duplicating every full log into the context cache. A m
 is reported explicitly. A context artifact never becomes passing Git-gate evidence.
 
 ## Measure before claiming savings
+
+### Selective replay and follow-up canary
+
+The separate [selective evaluation](benchmarks/selective-compact-report.md) charges every
+needed page, rejected request and retry, parent dispatch envelope, worker brief and original
+skill read. It includes a failure diagnostic buried outside the check preview, a final search
+match, and a long UTF-8 line. Required facts agree in local replay; some compact workloads
+use more transport bytes. This establishes neither universal savings nor model quality.
+
+The expanded v2 charset probes reject the old reference as v2 ground truth. They retain both
+the extended-parameter override and legacy unquoted stray-quote regression families. This
+separate finding does not rewrite the historical frozen grades or make that case eligible
+for a new live comparison.
+
+The follow-up canary plans four Sol/high runs across two paired tasks, with 480 seconds per
+run and one controller. Both arms use native retrieval and identical prepare/finish
+bookkeeping; only noisy declared-check output differs. Its overall captured-token ceiling is
+4,000,000, with a stop at 3,250,000 and 750,000 reserved for delayed counters and shutdown.
+All coordinator and descendant usage counts. Failed, interrupted and unstarted cells stay
+visible; there is no retry. Live status and limitations belong in the separate report.
+The bounded execution stopped the first ordinary run at 3,257,291 captured tokens;
+the other three cells remained unstarted. No new paired savings result is available.
 
 ### Observed Codex pilot
 

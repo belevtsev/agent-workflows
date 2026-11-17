@@ -1,0 +1,15 @@
+arm,role,threads,known_threads,input_uncached,input_total,cache_read,cache_write,output,total,reasoning_output_subset,reasoning_observed,reasoning_known_units,units
+normal,coordinator,1,1,43192,1849144,1805952,0,7410,1856554,1048,1048,1,1
+normal,lookup,0,0,0,0,0,0,0,0,,0,0,0
+normal,tests,1,1,66998,758710,691712,0,5252,763962,1152,1152,1,1
+normal,code,1,1,36857,282105,245248,0,1771,283876,426,426,1,1
+normal,review,1,1,37876,350580,312704,0,2319,352899,754,754,1,1
+normal,commit,0,0,0,0,0,0,0,0,,0,0,0
+normal,worker-unassigned,0,0,0,0,0,0,0,0,,0,0,0
+compact,coordinator,0,0,0,0,0,0,0,0,,0,0,0
+compact,lookup,0,0,0,0,0,0,0,0,,0,0,0
+compact,tests,0,0,0,0,0,0,0,0,,0,0,0
+compact,code,0,0,0,0,0,0,0,0,,0,0,0
+compact,review,0,0,0,0,0,0,0,0,,0,0,0
+compact,commit,0,0,0,0,0,0,0,0,,0,0,0
+compact,worker-unassigned,0,0,0,0,0,0,0,0,,0,0,0
