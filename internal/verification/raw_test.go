@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/belevtsev/kitsu/v3/internal/gitx"
 )
@@ -29,13 +30,22 @@ func TestRawCleanFilterChild(t *testing.T) {
 func TestPlanSchedulesOriginalBytesHiddenByCleanFilter(t *testing.T) {
 	t.Setenv("GORACE", "atexit_sleep_ms=0")
 	dir, repo := plannerRepo(t, plannerDeclaration, true)
+	// Give Git a stable cached stat: adding attributes must not depend on
+	// the source still sharing the index's timestamp and being rechecked.
+	when := time.Now().Add(-time.Hour)
+	if err := os.Chtimes(filepath.Join(dir, "src", "old"), when, when); err != nil {
+		t.Fatal(err)
+	}
+	plannerGit(t, dir, "update-index", "--refresh")
 	program, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
 	filter := "'" + strings.ReplaceAll(filepath.ToSlash(program), "'", "'\\''") + "' -test.run=^TestRawCleanFilterChild$ -- raw-filter-child"
 	plannerGit(t, dir, "config", "filter.raw.clean", filter)
+	plannerGit(t, dir, "config", "filter.raw.required", "true")
 	plannerWrite(t, dir, ".gitattributes", "src/old filter=raw\n")
+	plannerGit(t, dir, "add", "--renormalize", "src/old")
 	plannerGit(t, dir, "add", "-A")
 	plannerGit(t, dir, "commit", "-qm", "pin normalized baseline")
 	plannerWrite(t, dir, "src/old", "changed original application bytes")

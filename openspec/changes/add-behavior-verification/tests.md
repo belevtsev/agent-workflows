@@ -43,6 +43,11 @@ probe is part of this validation.
 - `internal/repocheck/size_test.go`: give the new verification subsystem its own
   bounded 2,200-line budget while preserving the original gate and other subsystem
   limits (Coordinate source-bound attempts; Derive current readiness from local evidence).
+- `internal/verification/raw_test.go`: explicitly renormalize the tracked source
+  after installing the required clean filter. A stable cached stat reproduces
+  the native macOS fixture failure without timing assumptions; Git must normalize
+  the baseline before the original-byte change (Schedule original bytes hidden
+  by normalization).
 
 ## Validation
 
