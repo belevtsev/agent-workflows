@@ -1,6 +1,6 @@
 {
   "name": "kitsu",
-  "version": "3.0.0-beta.2",
+  "version": "0.0.1",
   "description": "Kitsu for Codex: workflow instructions for coordinating coding agents through specification, implementation, testing and review, with seven roles, shared task records and token reports. A Git check-evidence gate provides an additional safeguard. The role workflow has not been run on Codex.",
   "author": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
   "homepage": "https://github.com/belevtsev/kitsu",

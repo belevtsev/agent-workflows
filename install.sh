@@ -2,7 +2,7 @@
 # Install a verified release archive without a source checkout or Go.
 set -eu
 
-_kitsu_version=${KITSU_VERSION:-v3.0.0-beta.2}
+_kitsu_version=${KITSU_VERSION:-v0.0.1}
 _kitsu_install_dir=${KITSU_INSTALL_DIR:-}
 _kitsu_no_modify_path=${KITSU_NO_MODIFY_PATH:-0}
 _kitsu_archive_dir=${KITSU_ARCHIVE_DIR:-}
@@ -14,7 +14,7 @@ usage() {
 	printf '%s\n' \
 		'Usage: install.sh [--version TAG] [--install-dir DIR] [--no-modify-path] [--archive-dir DIR]' \
 		'' \
-		'Defaults: version v3.0.0-beta.2; install directory $HOME/.local/bin.' \
+		'Defaults: version v0.0.1; install directory $HOME/.local/bin.' \
 		'Environment: KITSU_VERSION, KITSU_INSTALL_DIR, KITSU_NO_MODIFY_PATH=1,' \
 		'             KITSU_ARCHIVE_DIR, KITSU_DOWNLOAD_BASE.' \
 		'An archive directory must contain the release archive and SHA256SUMS.'

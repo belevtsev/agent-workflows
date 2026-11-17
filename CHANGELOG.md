@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.0.1] - 2026-11-17
+
+Initial Kitsu release after the release reset. Versioning restarts at `0.0.1`;
+earlier `cw` releases remain documented below as historical source revisions.
+
 ### Breaking
 
 - `cw` and Agent Workflows become Kitsu: use `kitsu`, rename configurations, and replace the old hooks and plugins.
@@ -46,6 +51,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The [installation guide](docs/release-install.md) leads with one command for Linux/macOS and one for Windows;
+  installers and plugin manifests use `v0.0.1`, while CI artifacts remain a contributor option.
+
 - [Compact mode](docs/compact-context.md) now prefers native short reads and scoped searches, reserving collection for noisy retrieval
   and checks; a [separate evaluation](docs/benchmarks/selective-compact-report.md) counts expansions, retries and bounded canary usage.
 - [Role defaults](docs/roles.md#the-roles-at-a-glance) use different models and reasoning efforts for lookup,
@@ -54,8 +62,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- [Installation docs](docs/release-install.md) now lead with CI artifacts after the release reset;
-  historical changelog links use source commits, and the next release version remains undecided.
+- [Installation docs](docs/release-install.md) distinguish unpublished builds after the release reset;
+  historical changelog links use source commits instead of deleted tags and releases.
 
 - [Pilot validation](docs/codex-compact-pilot.md) accepts clean Windows rollout/copied-home paths and trusted repository aliases,
   retaining containment, attestation and candidate-tree checks while rejecting duplicate home destinations.
@@ -532,6 +540,7 @@ The first published v3 release candidate (`v3.0.0-rc.1` was never published): ev
 Historical final automatic `cw` release from main. Its tag and release assets were removed on
 17 November 2026; the version link retains its source commit.
 
-[Unreleased]: https://github.com/belevtsev/kitsu/compare/511ceb11c1946c4185c5a93c0c0a9e79613bdc3d...main
+[Unreleased]: https://github.com/belevtsev/kitsu/compare/v0.0.1...main
+[0.0.1]: https://github.com/belevtsev/kitsu/releases/tag/v0.0.1
 [3.0.0-beta.1]: https://github.com/belevtsev/kitsu/commit/511ceb11c1946c4185c5a93c0c0a9e79613bdc3d
 [2.0.96]: https://github.com/belevtsev/kitsu/commit/1f26165884e4f6047e6ca12da15fba7bc378b37e
