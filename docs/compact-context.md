@@ -143,6 +143,12 @@ publication. Recollect after a stale-artifact error.
 
 ## Prepare and finish a worker
 
+For Go-generated native launch instructions and bounded structured worker returns,
+see [coordinator handoffs](coordinator-overhead.md). The explicit
+`task prepare ... --dispatch` option adds a version 2 launch description; omitting
+it preserves the version 1 response described below. Native hosts still start
+fresh workers and all original quality requirements remain in force.
+
 The coordinator writes a specific assignment that names the task, authoritative requirements,
 files to inspect, expected return and relevant constraints. Keep reviewer assignments factual:
 primary requirements, source, diff and check results; exclude author opinions and adviser answers.

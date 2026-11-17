@@ -63,6 +63,11 @@ advanced version 1 request schema, exact byte limits, cursor expansion and fresh
 `task prepare` saves the full original brief and tracks a write-check interval; the host
 launches the worker. `task finish` validates the saved baseline and existing check evidence.
 Use `task brief --save --assignment <file|->` for a saved brief without a managed interval.
+Add `--dispatch` to `task prepare` for a generated native launch description.
+After the worker stops, `task return <dispatch-id> --request <file|->` can retain
+its bounded claims before the separate finish step. See
+[coordinator dispatch and returns](coordinator-overhead.md) for the schema,
+authority limits and examples. Neither command starts a model.
 Every command supports `--help`. `--json`
 also selects compact check output. Defaults stay unchanged; bare `kitsu context` and
 `kitsu context --host codex|claude` retain their session-hook protocol. They are the exception

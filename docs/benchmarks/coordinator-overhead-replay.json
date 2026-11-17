@@ -1,0 +1,50 @@
+{
+  "critical_scripted_facts_equal": true,
+  "go_version": "go1.27.4",
+  "limitations": [
+    "Temporary path lengths and generated identities affect exact payload bytes.",
+    "Commands, reads, dispatches, returns and recovery calls all count; these are not provider model turns.",
+    "The reference is disciplined v1 and is not inflated with redundant introspection.",
+    "Additional v2 metadata/return retention and log recovery can increase transport.",
+    "Historical published measurements and frozen studies remain unchanged."
+  ],
+  "model_quality": null,
+  "provider_usage": null,
+  "reference_contract": "Both arms use managed prepare/finish and the same worker-facing launch/return contract. v1 has no redundant role/skill introspection; v2 requests generated dispatch and retains structured returns.",
+  "runs": [
+    {
+      "arm": "v1_reference",
+      "calls": 69,
+      "checks_executed": 3,
+      "checks_reused": 2,
+      "expansions": 0,
+      "profile": "fake-sol-profile/high",
+      "rejected_calls": 0,
+      "request_bytes": 20659,
+      "response_bytes": 90508,
+      "retries": 0,
+      "source_receipt_sha256": "348e8cdf47d56965bdac243450344ba56a9163f267f3c5c730112638644af75a",
+      "worker_returns": 6
+    },
+    {
+      "arm": "managed_v2",
+      "calls": 77,
+      "checks_executed": 3,
+      "checks_reused": 2,
+      "expansions": 6,
+      "profile": "fake-sol-profile/high",
+      "rejected_calls": 1,
+      "request_bytes": 25175,
+      "response_bytes": 121038,
+      "retries": 1,
+      "source_receipt_sha256": "7417905ae16a29b7aa3772f6118eeb9c511b8c3effc31a44f540360b634547d1",
+      "worker_returns": 6
+    }
+  ],
+  "scope": "One deterministic local fake-host lifecycle with actual Kitsu commands; no model execution, provider tokens, coordinator model-turn count, quality-equivalence or savings claim.",
+  "serialization": {
+    "canonical_cli": "program + space + words separated by space + newline + exact stdin",
+    "fake_native": "exact serialized JSON envelopes recorded by the scripted adapter"
+  },
+  "version": 1
+}
