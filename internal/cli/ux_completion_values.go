@@ -47,7 +47,7 @@ func uxCompleteValue(ctx context.Context, state uxCompleteState, flag uxFlag, pr
 		return uxCompletionCheckpoints(ctx, state)
 	case "root":
 		return uxCompletionPaths(prefix, true)
-	case "request", "paths", "file", "path", "output":
+	case "request", "assignment", "paths", "file", "path", "output":
 		return uxCompletionPaths(prefix, false)
 	case "base", "from":
 		return []uxSuggestion{{"HEAD", "Current Git revision"}}

@@ -1,0 +1,17 @@
+{
+  "accounting": "Every CLI invocation, failed page request, pagination expansion, native fallback, saved parent envelope, worker saved-brief read and original selected-skill read is charged. CLI request bytes use words separated by one space, a final newline, and stdin. Native-read request bytes use literal read_file \u003cabsolute path\u003e followed by newline. Responses are actual returned UTF-8 bytes, including stderr. Native request lengths vary with temporary fixture paths.",
+  "cache": "cache-hits/op counts local rendered-artifact collection reuse only; no provider cache claim. These single-workflow rows start with fresh fixtures.",
+  "command": "GOWORK=off go test ./internal/cli -run '^$' -bench '^BenchmarkCompactSelectiveReplay$' -benchtime=1x -count=3 -benchmem",
+  "iterations_per_row": 1,
+  "limitations": [
+    "Three one-iteration rows are operation/byte receipts, not statistical timing evidence.",
+    "Adversarial complete recovery can cost more bytes than ordinary native output; these receipts do not establish savings.",
+    "Native host request serialization is an explicit offline representation, not a particular host JSON protocol or tokenizer."
+  ],
+  "receipt": "replay.txt",
+  "repetitions": 3,
+  "required_facts": "Both arms recover equal needed facts, including final omitted search match, complete long UTF-8 line and byte anchors, buried failure and actual failed:7/unverified outcomes, original assignment/role/skill bodies and authority metadata. Short source uses native reads in both arms.",
+  "scope": "Deterministic offline CLI/native-read transport replay; no model calls, provider token counts, solver quality claim, or statistically supported speed claim.",
+  "source_receipt_sha256": "f4b80b75eb2fa22ef1d03781b1181e5991cec139e3a00dabe00a0bee3e2869fb",
+  "version": 1
+}

@@ -600,6 +600,21 @@ describes them. The plugin's hooks gave `cw tokens record` the notices of the ho
 
 ## What is not measured
 
+The [Codex compact pilot](benchmarks/codex-compact-pilot-report.md) separately captured
+all coordinator and worker usage for 24 real-task attempts. Its 61,681,571 observed
+solver tokens are a lower bound: sixteen timeouts can truncate final usage.
+There are no complete on/off pairs, so a complete-task saving remains unknown.
+Both arms pass the frozen tests, but additional defects were confirmed on review.
+The report separates calibration, blind reviewers and the interrupted earlier phase.
+This is an interface comparison; the solo-agent comparison below remains unrun.
+
+The [compact context engine](compact-context.md) measures bytes, CLI calls, necessary page
+expansions, latency and local artifact reuse in offline fixtures. These are not host token
+counts, provider cache hits, money saved or avoided model requests. All fresh-worker skill
+reads, adviser usage and repeated attempts still count in a live task. The
+[research protocol](context-research.md#measurement-protocol) separates those measurements
+and preserves unknown usage rather than inventing a saving.
+
 The comparison with one agent working alone, on the same tasks, has not been run. It is defined in
 [the evaluation](evaluation.md#the-comparison-with-one-agent). Until it is, nothing here shows that
 the workflow saves tokens or gives better code. What it costs more than one agent is known for

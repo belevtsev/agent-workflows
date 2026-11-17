@@ -17,6 +17,14 @@ repositories, and it started roles in two of them; see
 [what is not known](roles.md#what-is-not-known). Whether the workflow gives better results than
 one agent working alone is not measured; see [the evaluation](evaluation.md).
 
+[Compact mode](compact-context.md) is an opt-in way to collect scoped repository evidence,
+prepare each fresh worker with `kitsu task prepare`, finalize its saved write-check interval
+with `kitsu task finish`, and inspect bounded declared-check results. Saved briefs go directly
+to the native host; the CLI starts no worker and certifies no review or task completion.
+It keeps both paths and their approval/review conditions. The coordinator loads the
+[on-demand instructions](../skills/task/references/compact.md) only when requested; byte and
+call comparisons do not establish a total task-token saving.
+
 Optional, experimental [advisers](advisers.md) answer a role's question through a native decision API or configured
 CLI. The coordinator brokers these calls and records how each answer was addressed. Required
 checkpoints can hold a stage until advice on its current content has been addressed. No adviser

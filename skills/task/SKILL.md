@@ -6,8 +6,8 @@ description: Takes one task from a request to a gated commit with the seven role
 
 # The task workflow of kitsu
 
-Coordinate roles, checks, records and developer decisions.
-Write no specification, design, test or code; approve no role's work.
+Coordinate roles and records. Write no spec, design, test or code; approve no work.
+Compact request: read the task skill's references/compact.md.
 
 ## The roles
 

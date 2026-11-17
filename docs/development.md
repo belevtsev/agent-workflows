@@ -62,6 +62,42 @@ its provider. Configured checks and adviser CLIs can use their own networks.
 
 ## Tests
 
+Compact context tests use local Git repositories and fake check executables; they invoke no
+paid host session. They cover source containment, raw-byte/cache freshness, exact budgets,
+UTF-8, cursor reconstruction, receipt-before-baseline ordering, unchanged check outcomes,
+large retained logs and concurrent evidence changes. The engine has a separate 2,000-line
+production-code budget; existing component and prompt limits stay unchanged.
+
+### Compact context benchmarks
+
+```sh
+GOWORK=off go test ./internal/cli -run '^TestCompactWorkflow' -count=1
+GOWORK=off go test ./internal/cli -run '^$' -bench '^BenchmarkCompactWorkflows$' -benchtime=1x -count=5
+```
+
+These compare normal and compact exploration, role handoffs and noisy checks on the same
+fixtures, charging request bytes and all required expansion responses. Report `calls/op`,
+`request-B/op`, `response-B/op`, `expansions/op`, `cache-hits/op` and latency; cache hits here
+are local artifacts. Include regressions and fixture limits, not only reductions. Repeated
+measurements describe local latency variability, not statistically established model savings.
+The [research protocol](context-research.md#measurement-protocol) defines separate opt-in live
+host comparisons. Automated acceptance starts no paid model run.
+
+The opt-in [Codex pilot harness](codex-compact-pilot.md) freezes real tasks, isolates
+solvers and independent graders, captures descendant usage and prepares blind review.
+Ordinary tests exercise fake processes only. The [completed pilot report](benchmarks/codex-compact-pilot-report.md)
+keeps frozen test outcomes, posthoc defects, protocol evidence and incomplete usage separate.
+
+Typed context and [saved worker handoffs](compact-context.md#prepare-and-finish-a-worker)
+have local regression tests for parser/schema repairs, instruction/assignment fidelity,
+private storage, receipt ordering, role-policy changes, write violations and current red/green
+check evidence. They use fake check programs and invoke no models. Worker dispatch and local
+stage bookkeeping have a separate 1,200-line production budget; the context engine's existing
+2,000-line budget is unchanged. This implementation is not another paid pilot and supplies
+no new token-saving result.
+
+### Other test coverage
+
 - Tests of a package sit beside it.
 - Tests under `scenarios/` build `kitsu` and drive it and git in temporary
   repositories. Each is written from a scenario of a specification under

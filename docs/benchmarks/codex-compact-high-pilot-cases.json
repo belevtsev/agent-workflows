@@ -1,0 +1,1024 @@
+{
+  "version": 1,
+  "curated_at": "2026-11-16",
+  "purpose": "Public reproducibility catalog for the 12-task, 1-repeat, two-arm Sol/high Codex compact-context pilot. Reference commits and audit metadata are report material and are withheld from solver prompts and workspaces. The earlier partial Sol/max phase is retained separately.",
+  "measurement_design": {
+    "tasks": 12,
+    "repeats": 1,
+    "arms": [
+      "normal",
+      "compact"
+    ],
+    "planned_cells": 24,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "per_run_timeout_seconds": 480,
+    "controllers": 6,
+    "frozen_manifest_sha256": "36e0158fe0add361e4b2c4d378f2347a2d7d3205af176d17c8481a195ae984ba",
+    "measured_outcomes_included": false
+  },
+  "eligibility_provenance": "Upstream revisions, functional prompts, original-suite eligibility evidence, independent acceptance and grading oracles are inherited unchanged from codex-compact-pilot-cases.json. Only the seven role effort settings in each prepared snapshot changed from max to high (+7 bytes per snapshot); the inherited eligibility receipts describe the original functional corpus. This phase changes reasoning effort, repeats and the per-run limit; its outcomes must remain separate from the earlier partial Sol/max phase.",
+  "selection_limits": [
+    "All cases are actual public historical fixes; recent public dates do not prove absence from model training or prior exposure.",
+    "The corpus contains seven repositories, including two Kitsu cases. Report Kitsu and external cases separately; repeated tasks from one repository are not independent repository samples.",
+    "This bounded pilot measures these fixes and declared relevant suites, not general coding capability. No task is claimed to be unseen, and no synthetic injected bug is labeled a real fix.",
+    "Original regression suites and issue-derived independent acceptance are separate checks. Updated reference tests alone are insufficient eligibility evidence.",
+    "Exact implementation matching is not an acceptance criterion. Visible prompts define behavior; arbitrary candidate edits to frozen original tests do not change the grading oracle."
+  ],
+  "toolchains": {
+    "go": "1.27.4",
+    "node": "24.11.1",
+    "npm": "11.6.2",
+    "cxx": "g++ 15.2.0",
+    "cxx_standard": "C++17",
+    "platform": "Linux x86-64; long-double precision case uses the native 80-bit extended long double"
+  },
+  "runtime_policy": {
+    "dependencies": "Offline read-only per-case selected module or Node dependency bundles; no full host module cache and no package installation during solving.",
+    "go_environment": {
+      "GOTOOLCHAIN": "local",
+      "GOMODCACHE": "/opt/gomod",
+      "GOPROXY": "off"
+    },
+    "dependency_sanitization": "Unused Node development-tool trees containing newer copies of the target package were excluded. Six minimatch >=10 tooling dependencies were replaced with a build of the pre-both-fixes base 73f0e1b1abcb97edf97b7c7a4b9132a141496338 (package version 11.0.4). The qs bundle contains no qs copy; its older minimatch 3.1.5 dependency is retained. Base and reference declared suites passed with these selected bundles.",
+    "minimatch_overlay_base_commit": "73f0e1b1abcb97edf97b7c7a4b9132a141496338",
+    "minimatch_overlay_instances": 6,
+    "selected_install_lock_sha256": {
+      "qs": "268266083bf9f4e27ddc54d8cc9e6ec224bc7fc9c87f53feff84d0a1699c2d71",
+      "minimatch": "4207accdc4de3308507e45360dfaca6bcda44ff5049a3b308ff584c927543912"
+    },
+    "node_distribution_sha256": "60e3b0a8500819514aca603487c254298cd776de0698d3cd08f11dba5b8289a8",
+    "source_visibility": "Individual prepared base snapshot only; no upstream .git, future history, gold archive, reference patch, hidden tests, grading data, sibling case snapshot, or host home directory is a solver input."
+  },
+  "shared_baseline_adaptations": [
+    {
+      "path": "kitsu.toml",
+      "action": "add or replace",
+      "purpose": "Freeze approved relevant test commands identically in both arms; no production source or original tests changed."
+    },
+    {
+      "path": "kitsu-roles.toml",
+      "action": "add or replace",
+      "purpose": "Pin all seven Codex specialist roles to gpt-6.1-sol/high and declare the case test globs."
+    },
+    {
+      "path": "node_modules/",
+      "action": "empty directory mountpoint",
+      "purpose": "Support the per-case read-only dependency mount; empty directories are not Git content."
+    }
+  ],
+  "snapshot_sha256_definition": "Walk regular files in recursive lexical directory-entry order; for each append slash-relative-path + NUL + decimal executable permission bits (mode & 0111) + NUL + lowercase SHA256(file bytes) + newline. Reject .git entries, symbolic links, and nonregular files. Empty directories do not affect this hash.",
+  "curation_audit_receipts": {
+    "original_suites_sha256": "1cfc02ddc7863515b3724b4b7e3762c7caf46d3252ccfafc4dcf35bd30223725",
+    "runtime_metadata_sha256": "171b237e6bd6b60eb8e41e5523c6c62caa037584958c019f69d4871710239968",
+    "curation_manifest_sha256": "c4fac52678737a2fcf8ea7031ed4baf9f46243cd334cc2b515af8212d0d43d39",
+    "independent_integrated_audit_sha256": "7dc6eed0560fd6c5fca224dba8cd6413dcb01aca5d764b1e1e7a383ec0f19920",
+    "pretrial_oracle_corrections_sha256": "5a953e7cc66b33a56bda32c057bf256010522468c314e65fa75af4239e573b7f"
+  },
+  "pretrial_scope_and_oracle_corrections": [
+    {
+      "case_id": "minimatch-split-budget",
+      "change": "Clarified the prompt to the total preprocessing-cell allocation budget. The separate braceExpandMax pattern-count cap retains its prior count/truncation behavior.",
+      "reason": "Reference behavior raises RangeError at total-cell exhaustion; demanding a new error at lower brace-expansion caps would exceed this fix."
+    },
+    {
+      "case_id": "kitsu-path-completion",
+      "change": "Removed an unsupported requirement for interactive Bash native-file fallback when the callback returns no candidates.",
+      "reason": "Independent real-shell PTY acceptance failed that behavior on both base and reference. The historical patch changes path callbacks, not generated shell scripts. Home-relative lookup, native separators, callback protocol, and non-home behavior remain in scope.",
+      "before_freeze": true
+    },
+    {
+      "case_id": "qs-empty-array-keys",
+      "change": "Independent test oracle removes a known =sentinel suffix rather than splitting a result at its first =.",
+      "reason": "encode:false permits an unescaped = inside a key. This is an oracle parsing correction; the visible task scope was unchanged."
+    }
+  ],
+  "rejected_candidates": [
+    {
+      "id": "gjson-integer-overflow",
+      "repository_url": "https://github.com/tidwall/gjson",
+      "base_commit": "6ac9851f5247bff94b0df2262ea60096fc0afb83",
+      "reference_commit": "eaae8c63338d6d71ea606b788243ca1c5b39a068",
+      "reference_url": "https://github.com/tidwall/gjson/commit/eaae8c63338d6d71ea606b788243ca1c5b39a068",
+      "reason": "The reference failed its own TestIntOverflow in a preliminary Go 1.26.4 eligibility audit. It was rejected rather than redefining overflow expectations. It was not re-audited after the pilot pinned Go 1.27.4; no claim of a Go 1.27.4 failure is made.",
+      "replacement": "chi-self-mount"
+    }
+  ],
+  "cases": [
+    {
+      "id": "pflag-unknown-flags",
+      "repository_url": "https://github.com/spf13/pflag",
+      "language": "go",
+      "base_commit": "f8a990678a6d44385313e9b19e40737f889f9b14",
+      "base_url": "https://github.com/spf13/pflag/tree/f8a990678a6d44385313e9b19e40737f889f9b14",
+      "reference_commit": "046b0d889369e6f70ae31483dffad578ffb10e2e",
+      "reference_url": "https://github.com/spf13/pflag/commit/046b0d889369e6f70ae31483dffad578ffb10e2e",
+      "reference_committed_at": "2026-11-07T21:20:54Z",
+      "behavior_sources": [
+        "https://github.com/spf13/pflag/issues/537",
+        "https://github.com/spf13/pflag/pull/540"
+      ],
+      "reference_changed_files": [
+        "flag.go",
+        "flag_test.go"
+      ],
+      "prompt_origin": "Paraphrased public issue/PR behavior, or public bug-fix contract where no standalone issue specifies the behavior. No solution code or reference identifiers are in the task prompt.",
+      "task_prompt": "Fix flag forwarding when non-interspersed parsing and unknown-flag passthrough are used together. With SetInterspersed(false) and PassUnknownFlagToArgs, parsing [\"--unknown\", \"--known\"] must leave the known boolean false and return both arguments unchanged in Args(), with no error. The same stop condition must apply to unknown short flags and the remaining characters of shorthand clusters, while known flags before the first unknown are still parsed. Keep Parse and ParseAll consistent, and preserve the existing interspersed behavior. Add regression coverage and run the relevant existing suite.\n",
+      "task_prompt_sha256": "a4966fb320b40a68b05ebe51ecd84161d2194667c2b86f7213b573e14dbb94d6",
+      "prepared_snapshot_sha256": "c14edb0e0bd7287065e01da7a762d3bdaced58395e4d4a78e0d0eced61aee1d6",
+      "prepared_file_count": 93,
+      "prepared_file_bytes": 406244,
+      "base_archive_sha256": "7ed4384acff7d9223dd066f46cb168b81804bf930e9f38462999c7ec3bb53d6f",
+      "reference_archive_sha256": "54765373dd89299d1d542e15328c377921994033daa4d5e24a71107bae720629",
+      "visible_test_commands": [
+        [
+          "go",
+          "test",
+          "./..."
+        ]
+      ],
+      "test_globs": [
+        "**/*_test.go"
+      ],
+      "toolchains": [
+        "Go 1.27.4"
+      ],
+      "original_suite_eligibility": {
+        "base_original_suite": "passed",
+        "reference_updated_relevant_suite": "passed",
+        "reference_with_frozen_original_tests": "passed unchanged",
+        "scope": "Complete original go test ./... suite",
+        "original_suite_argv": [
+          "go",
+          "test",
+          "./..."
+        ],
+        "base_log_sha256": "17923175349d3527f22a2016c6054876996bdeac2c18fc84009b231fae9a61c9",
+        "reference_original_suite_log_sha256": "460288f74b3b45ae636343052323624812876326a03c5792572f110559eed148",
+        "frozen_auxiliary_paths": [
+          "go.mod",
+          "go.sum"
+        ]
+      },
+      "independent_acceptance_eligibility": {
+        "status": "eligible within the declared suites and pinned Linux toolchains",
+        "base_behavior_acceptance": "failed as required",
+        "reference_behavior_acceptance": "passed",
+        "reference_frozen_original_regressions": "passed",
+        "integrated_base_infrastructure": "ok",
+        "integrated_reference_infrastructure": "ok",
+        "base_grading_regressions": true,
+        "note": "Original-suite and independent behavior checks are separate. These are pretrial eligibility results, not solver outcomes."
+      }
+    },
+    {
+      "id": "chi-quoted-charset",
+      "repository_url": "https://github.com/go-chi/chi",
+      "language": "go",
+      "base_commit": "46295d0582d9fe19194db1ab13ff74d01a02d7bb",
+      "base_url": "https://github.com/go-chi/chi/tree/46295d0582d9fe19194db1ab13ff74d01a02d7bb",
+      "reference_commit": "60755706125129a9f9dfb99ac22f7ba016a1b60c",
+      "reference_url": "https://github.com/go-chi/chi/commit/60755706125129a9f9dfb99ac22f7ba016a1b60c",
+      "reference_committed_at": "2026-10-13T23:23:36Z",
+      "behavior_sources": [
+        "https://github.com/go-chi/chi/pull/1218"
+      ],
+      "reference_changed_files": [
+        "middleware/content_charset.go",
+        "middleware/content_charset_test.go"
+      ],
+      "prompt_origin": "Paraphrased public issue/PR behavior, or public bug-fix contract where no standalone issue specifies the behavior. No solution code or reference identifiers are in the task prompt.",
+      "task_prompt": "Fix ContentCharset rejecting valid media-type charset parameters. For a middleware allowing UTF-8, a request with charset=\"UTF-8\" should be accepted case-insensitively. Quoted semicolons or text containing charset= inside another quoted parameter must not be mistaken for the charset parameter. Preserve existing behavior for absent charsets, bodyless requests, disallowed charsets, and legacy malformed headers the middleware already accepts. Cover the public HTTP behavior and parser edge cases without changing the middleware API. Add meaningful regression tests and run the relevant existing suite.\n",
+      "task_prompt_sha256": "b5eebdf78537522e798e165a182caaae87ebedd9736521a1070794f9f38943bf",
+      "prepared_snapshot_sha256": "14d4b2eb400efc9830d253d5ac01a333d8172aa4fecc03d97b4aa1da99f4a470",
+      "prepared_file_count": 110,
+      "prepared_file_bytes": 443864,
+      "base_archive_sha256": "0d3c9cd99800c00ff5a1779dcf49da6aae8105f6e60bff13950a5e130c1c9e18",
+      "reference_archive_sha256": "3cfacc25da1cf951ee1a45b3ed8b517edac7c5da688471d378ba0e5107d2ced2",
+      "visible_test_commands": [
+        [
+          "go",
+          "test",
+          "./..."
+        ]
+      ],
+      "test_globs": [
+        "**/*_test.go"
+      ],
+      "toolchains": [
+        "Go 1.27.4"
+      ],
+      "original_suite_eligibility": {
+        "base_original_suite": "passed",
+        "reference_updated_relevant_suite": "passed",
+        "reference_with_frozen_original_tests": "passed unchanged",
+        "scope": "Complete original go test ./... suite",
+        "original_suite_argv": [
+          "go",
+          "test",
+          "./..."
+        ],
+        "base_log_sha256": "a19195b8a555b3df4010e8e88f027352c359da4661a0b6e936bbed2ee6254d50",
+        "reference_original_suite_log_sha256": "badd8b9d22abd52d2303cd52d92d090db69ff0c31022340a7ae03b6e8d2c4332",
+        "frozen_auxiliary_paths": [
+          "go.mod"
+        ],
+        "execution_note": "Two concurrent host audits initially collided on the upstream fixed localhost port 7072. The exact original base and reference suites passed when serialized; per-run network namespaces isolate this port in the pilot."
+      },
+      "independent_acceptance_eligibility": {
+        "status": "eligible within the declared suites and pinned Linux toolchains",
+        "base_behavior_acceptance": "failed as required",
+        "reference_behavior_acceptance": "passed",
+        "reference_frozen_original_regressions": "passed",
+        "integrated_base_infrastructure": "ok",
+        "integrated_reference_infrastructure": "ok",
+        "base_grading_regressions": true,
+        "note": "Original-suite and independent behavior checks are separate. These are pretrial eligibility results, not solver outcomes."
+      }
+    },
+    {
+      "id": "semver-prerelease-groups",
+      "repository_url": "https://github.com/Masterminds/semver",
+      "language": "go",
+      "base_commit": "ebda872fa10e6cc730c5973bbdb512b9511eb65e",
+      "base_url": "https://github.com/Masterminds/semver/tree/ebda872fa10e6cc730c5973bbdb512b9511eb65e",
+      "reference_commit": "057c901b9979a2a6b8e06adfbf96349a641ba2e1",
+      "reference_url": "https://github.com/Masterminds/semver/commit/057c901b9979a2a6b8e06adfbf96349a641ba2e1",
+      "reference_committed_at": "2025-06-26T12:52:13Z",
+      "behavior_sources": [
+        "https://github.com/Masterminds/semver/issues/259",
+        "https://github.com/Masterminds/semver/pull/267"
+      ],
+      "reference_changed_files": [
+        "constraints.go",
+        "constraints_test.go"
+      ],
+      "prompt_origin": "Paraphrased public issue/PR behavior, or public bug-fix contract where no standalone issue specifies the behavior. No solution code or reference identifiers are in the task prompt.",
+      "task_prompt": "Fix inconsistent prerelease handling in version constraints. A version satisfying direct inclusive comparisons can currently fail the equivalent hyphen or comparator range: for example, 2.0.0-beta+build123 and 1.0.1-beta+build123 should satisfy \"1.0.0 - 2.0.0-beta+build123\" when within its bounds. A prerelease comparator should opt its entire AND group into prerelease comparisons, without opting unrelated OR groups in. Check and Validate must agree. Keep constraints containing no prerelease comparator excluding prereleases, and preserve stable-version ordering and build-metadata semantics. Add regression tests and run the existing suite.\n",
+      "task_prompt_sha256": "8f28cf64053283a911fa3ab387483a9bd19a6f40903ee925b800f3ae06e303c8",
+      "prepared_snapshot_sha256": "bb0a78487beda76cf7ec946845ee04d508f63d440ebd83d6cdaa5517db44a040",
+      "prepared_file_count": 22,
+      "prepared_file_bytes": 122250,
+      "base_archive_sha256": "0fbb32d1dd3014c0889a411014066661731e49f4499b79369f41cecd25bfed61",
+      "reference_archive_sha256": "629d0559830d1bbac3c7f47d5fa5f5b4e0333a619d1d4c8e4052bea68b469bf4",
+      "visible_test_commands": [
+        [
+          "go",
+          "test",
+          "./..."
+        ]
+      ],
+      "test_globs": [
+        "**/*_test.go"
+      ],
+      "toolchains": [
+        "Go 1.27.4"
+      ],
+      "original_suite_eligibility": {
+        "base_original_suite": "passed",
+        "reference_updated_relevant_suite": "passed",
+        "reference_with_frozen_original_tests": "passed with documented compatibility patch",
+        "scope": "Complete original go test ./... suite",
+        "original_suite_argv": [
+          "go",
+          "test",
+          "./..."
+        ],
+        "base_log_sha256": "ab180de15f7a1ff780d692c6117a06e845cabc8d47696c837945ae0db59c86c9",
+        "reference_original_suite_log_sha256": "226e8f44d83a0e4f9a37b973c242e17335d8ba932e0b0da377f4f92c07bdd557",
+        "frozen_auxiliary_paths": [
+          "go.mod"
+        ],
+        "compatibility": {
+          "patch_sha256": "64c21914556547dd3aa831a39c3e6eb65cbbeedf71a2b3c0a52e4a73e18b6647",
+          "reason": [
+            "Signature-neutral reflection invocation of the private comparator helper supports either one or two parameters while retaining all original test rows/assertions; public Check/Validate acceptance separately tests the fix."
+          ]
+        }
+      },
+      "independent_acceptance_eligibility": {
+        "status": "eligible within the declared suites and pinned Linux toolchains",
+        "base_behavior_acceptance": "failed as required",
+        "reference_behavior_acceptance": "passed",
+        "reference_frozen_original_regressions": "passed",
+        "integrated_base_infrastructure": "ok",
+        "integrated_reference_infrastructure": "ok",
+        "base_grading_regressions": true,
+        "note": "Original-suite and independent behavior checks are separate. These are pretrial eligibility results, not solver outcomes."
+      }
+    },
+    {
+      "id": "chi-self-mount",
+      "repository_url": "https://github.com/go-chi/chi",
+      "language": "go",
+      "base_commit": "735ae2b87f8c733d616e809ae86e0985c1bc3350",
+      "base_url": "https://github.com/go-chi/chi/tree/735ae2b87f8c733d616e809ae86e0985c1bc3350",
+      "reference_commit": "aba86186a27484f3cadc55b8d6448d2049af71bf",
+      "reference_url": "https://github.com/go-chi/chi/commit/aba86186a27484f3cadc55b8d6448d2049af71bf",
+      "reference_committed_at": "2026-08-27T13:49:06Z",
+      "behavior_sources": [
+        "https://github.com/go-chi/chi/issues/843",
+        "https://github.com/go-chi/chi/pull/1159"
+      ],
+      "reference_changed_files": [
+        "mux.go",
+        "mux_test.go"
+      ],
+      "prompt_origin": "Paraphrased public issue/PR behavior, or public bug-fix contract where no standalone issue specifies the behavior. No solution code or reference identifiers are in the task prompt.",
+      "task_prompt": "Prevent a router from being mounted onto itself, including a derived router that shares its routing tree through With or Group. Mounting such an alias at a route can make requests to undefined paths loop indefinitely. Reject this invalid registration immediately with a panic, consistently with Mount's other invalid-usage checks. Do not reject genuinely distinct subrouters, nil/invalid handlers should retain their documented behavior, and ordinary mounts and inline middleware must continue working. Add focused regression tests that do not hang on the buggy implementation and run the relevant existing suite.\n",
+      "task_prompt_sha256": "c0c479469728788c79ebcd8d9fd272ddfe036d6add38f7c18a72a1dd0874e377",
+      "prepared_snapshot_sha256": "7d91289ed1271994505c2ac6219ace635ef09ae20e9b2b9a22a650dc188edbb5",
+      "prepared_file_count": 101,
+      "prepared_file_bytes": 418062,
+      "base_archive_sha256": "b143e026355c4f845a13908a8152bf0bb3ee9d48f7f432c22738d41cd5d266f2",
+      "reference_archive_sha256": "5eb7d655d7ec977b1c080c91212c3cfbbf49fb15c2bd3f34f36fa510a84ea71e",
+      "visible_test_commands": [
+        [
+          "go",
+          "test",
+          "./..."
+        ]
+      ],
+      "test_globs": [
+        "**/*_test.go"
+      ],
+      "toolchains": [
+        "Go 1.27.4"
+      ],
+      "original_suite_eligibility": {
+        "base_original_suite": "passed",
+        "reference_updated_relevant_suite": "passed",
+        "reference_with_frozen_original_tests": "passed unchanged",
+        "scope": "Complete original go test ./... suite",
+        "original_suite_argv": [
+          "go",
+          "test",
+          "./..."
+        ],
+        "base_log_sha256": "c591ad95af640cbbfb1e2f5ac579ff6fbd22c87066e3df8e49a209e2d7419704",
+        "reference_original_suite_log_sha256": "7785b8f79c452ba043660995a3d39d36f6823d4c2b152613b9acef5fcac2bcbe",
+        "frozen_auxiliary_paths": [
+          "go.mod"
+        ]
+      },
+      "independent_acceptance_eligibility": {
+        "status": "eligible within the declared suites and pinned Linux toolchains",
+        "base_behavior_acceptance": "failed as required",
+        "reference_behavior_acceptance": "passed",
+        "reference_frozen_original_regressions": "passed",
+        "integrated_base_infrastructure": "ok",
+        "integrated_reference_infrastructure": "ok",
+        "base_grading_regressions": true,
+        "note": "Original-suite and independent behavior checks are separate. These are pretrial eligibility results, not solver outcomes."
+      }
+    },
+    {
+      "id": "qs-sparse-array-limit",
+      "repository_url": "https://github.com/ljharb/qs",
+      "language": "javascript",
+      "base_commit": "42eccf0f6292c502fb4bc175191f0812d5476769",
+      "base_url": "https://github.com/ljharb/qs/tree/42eccf0f6292c502fb4bc175191f0812d5476769",
+      "reference_commit": "101492a5c4d9cb72f6510ecc15483759ec8e45fa",
+      "reference_url": "https://github.com/ljharb/qs/commit/101492a5c4d9cb72f6510ecc15483759ec8e45fa",
+      "reference_committed_at": "2026-10-28T03:27:31Z",
+      "behavior_sources": [
+        "https://github.com/ljharb/qs/commit/101492a5c4d9cb72f6510ecc15483759ec8e45fa"
+      ],
+      "reference_changed_files": [
+        "lib/utils.js",
+        "test/parse.js"
+      ],
+      "prompt_origin": "Paraphrased public issue/PR behavior, or public bug-fix contract where no standalone issue specifies the behavior. No solution code or reference identifiers are in the task prompt.",
+      "task_prompt": "Fix arrayLimit being applied to holes in sparse arrays during parsing and merging. Inputs such as a[]=new&a[19]=19&a[0]=0 contain only three defined values and should remain arrays when under the configured element limit; a sparse index must not itself count all intervening holes as values. Appending an unindexed value to a sparse indexed array must behave consistently. Preserve actual overflow handling, including throwOnLimitExceeded, and the established order and compaction semantics. Add regression coverage for these option interactions and run the existing parser and utility suites.\n",
+      "task_prompt_sha256": "7798bd4671e2660ce6fb35e33008ca4d55545af406128d2cfe782d16b319fd11",
+      "prepared_snapshot_sha256": "32954f489c00961864bef8b3d3b53a10fa26b75b11412a4b888be0c433eccacc",
+      "prepared_file_count": 53,
+      "prepared_file_bytes": 12057485,
+      "base_archive_sha256": "d69b47611ab3449e625df16cf98c7d8031e6fdeedbaedfc08236c3c31b17d8d6",
+      "reference_archive_sha256": "b7927e08c329d54da2b962353de92d91b9bb97b2017bc4d53a6eeaeb940898fe",
+      "visible_test_commands": [
+        [
+          "node",
+          "node_modules/tape/bin/tape",
+          "test/parse.js",
+          "test/stringify.js",
+          "test/utils.js"
+        ]
+      ],
+      "test_globs": [
+        "test/**/*.js"
+      ],
+      "toolchains": [
+        "Node.js 24.11.1",
+        "npm 11.6.2"
+      ],
+      "original_suite_eligibility": {
+        "base_original_suite": "passed",
+        "reference_updated_relevant_suite": "passed",
+        "reference_with_frozen_original_tests": "passed unchanged",
+        "scope": "Complete existing parse/stringify/utils Tape suites",
+        "original_suite_argv": [
+          "node",
+          "node_modules/.bin/tape",
+          "test/parse.js",
+          "test/stringify.js",
+          "test/utils.js"
+        ],
+        "base_log_sha256": "93829d0658889102b87d5519d92a327f32cde43ae1bcb1acf0409f7c48b6555d",
+        "reference_original_suite_log_sha256": "93829d0658889102b87d5519d92a327f32cde43ae1bcb1acf0409f7c48b6555d",
+        "frozen_auxiliary_paths": [
+          "package.json"
+        ],
+        "scope_limit": "Runtime unit suites were audited; package lint, coverage thresholds, browser builds, package publication, and network audit commands were excluded."
+      },
+      "independent_acceptance_eligibility": {
+        "status": "eligible within the declared suites and pinned Linux toolchains",
+        "base_behavior_acceptance": "failed as required",
+        "reference_behavior_acceptance": "passed",
+        "reference_frozen_original_regressions": "passed",
+        "integrated_base_infrastructure": "ok",
+        "integrated_reference_infrastructure": "ok",
+        "base_grading_regressions": true,
+        "note": "Original-suite and independent behavior checks are separate. These are pretrial eligibility results, not solver outcomes."
+      }
+    },
+    {
+      "id": "qs-empty-array-keys",
+      "repository_url": "https://github.com/ljharb/qs",
+      "language": "javascript",
+      "base_commit": "d5780eb10e957636a8ab38d894958b0317ae5556",
+      "base_url": "https://github.com/ljharb/qs/tree/d5780eb10e957636a8ab38d894958b0317ae5556",
+      "reference_commit": "ad445aa23e4c3a97394c3b9a5f9d7a7159eb1f17",
+      "reference_url": "https://github.com/ljharb/qs/commit/ad445aa23e4c3a97394c3b9a5f9d7a7159eb1f17",
+      "reference_committed_at": "2026-10-27T18:02:43Z",
+      "behavior_sources": [
+        "https://github.com/ljharb/qs/commit/ad445aa23e4c3a97394c3b9a5f9d7a7159eb1f17"
+      ],
+      "reference_changed_files": [
+        "lib/stringify.js",
+        "test/stringify.js"
+      ],
+      "prompt_origin": "Paraphrased public issue/PR behavior, or public bug-fix contract where no standalone issue specifies the behavior. No solution code or reference identifiers are in the task prompt.",
+      "task_prompt": "Fix key encoding when stringify emits empty arrays with allowEmptyArrays enabled. Keys containing spaces, ampersands, equals signs, or nested bracket syntax must follow the same key-encoding and formatter options as nonempty values, while retaining the empty-array suffix. Round-tripping distinct encoded keys through parse must preserve their names. Respect RFC3986/RFC1738 formatting, custom encoders, encodeValuesOnly, encode:false, and existing nonempty-array behavior. Add regression coverage and run the existing stringify/parser suites.\n",
+      "task_prompt_sha256": "9e7721c86b73648ab7552a86a06faa8bcf14a63b188164f4d96c51b9ded8e67c",
+      "prepared_snapshot_sha256": "29c43a674a796101a91ccbb3ebb7a53e6de84e5c5e27c13a3aeb054f02567f3a",
+      "prepared_file_count": 53,
+      "prepared_file_bytes": 11950485,
+      "base_archive_sha256": "f2be67c4e948d5148ff454b5b7d63f9a52c7ec6786915818ad8f628ed0cee7ea",
+      "reference_archive_sha256": "65398c09e45f3c1f61d2c84adcd6c871a30de6d2451190af3e589ba482e03c98",
+      "visible_test_commands": [
+        [
+          "node",
+          "node_modules/tape/bin/tape",
+          "test/parse.js",
+          "test/stringify.js",
+          "test/utils.js"
+        ]
+      ],
+      "test_globs": [
+        "test/**/*.js"
+      ],
+      "toolchains": [
+        "Node.js 24.11.1",
+        "npm 11.6.2"
+      ],
+      "original_suite_eligibility": {
+        "base_original_suite": "passed",
+        "reference_updated_relevant_suite": "passed",
+        "reference_with_frozen_original_tests": "passed unchanged",
+        "scope": "Complete existing parse/stringify/utils Tape suites",
+        "original_suite_argv": [
+          "node",
+          "node_modules/.bin/tape",
+          "test/parse.js",
+          "test/stringify.js",
+          "test/utils.js"
+        ],
+        "base_log_sha256": "f640e3dbe113c382eeb930122ed98d5cc5f4a49cdf2ea2f7b851bd1f1c89039c",
+        "reference_original_suite_log_sha256": "f640e3dbe113c382eeb930122ed98d5cc5f4a49cdf2ea2f7b851bd1f1c89039c",
+        "frozen_auxiliary_paths": [
+          "package.json"
+        ],
+        "scope_limit": "Runtime unit suites were audited; package lint, coverage thresholds, browser builds, package publication, and network audit commands were excluded."
+      },
+      "independent_acceptance_eligibility": {
+        "status": "eligible within the declared suites and pinned Linux toolchains",
+        "base_behavior_acceptance": "failed as required",
+        "reference_behavior_acceptance": "passed",
+        "reference_frozen_original_regressions": "passed",
+        "integrated_base_infrastructure": "ok",
+        "integrated_reference_infrastructure": "ok",
+        "base_grading_regressions": true,
+        "note": "Original-suite and independent behavior checks are separate. These are pretrial eligibility results, not solver outcomes."
+      }
+    },
+    {
+      "id": "minimatch-split-budget",
+      "repository_url": "https://github.com/isaacs/minimatch",
+      "language": "typescript",
+      "base_commit": "73f0e1b1abcb97edf97b7c7a4b9132a141496338",
+      "base_url": "https://github.com/isaacs/minimatch/tree/73f0e1b1abcb97edf97b7c7a4b9132a141496338",
+      "reference_commit": "9c6ebb18f45ff2f06003aea084c39a92a6ff7dbd",
+      "reference_url": "https://github.com/isaacs/minimatch/commit/9c6ebb18f45ff2f06003aea084c39a92a6ff7dbd",
+      "reference_committed_at": "2026-11-05T16:26:10Z",
+      "behavior_sources": [
+        "https://github.com/isaacs/minimatch/commit/9c6ebb18f45ff2f06003aea084c39a92a6ff7dbd"
+      ],
+      "reference_changed_files": [
+        "README.md",
+        "src/index.ts",
+        "test/preprocess-cells-limit.ts",
+        "test/preprocess-limits.ts"
+      ],
+      "prompt_origin": "Paraphrased public issue/PR behavior, or public bug-fix contract where no standalone issue specifies the behavior. No solution code or reference identifiers are in the task prompt.",
+      "task_prompt": "Fix optimization level 2 silently returning incomplete glob alternatives when its total preprocessing-cell allocation budget is exhausted. For repeated ** and .. components, exceeding the existing total-cell budget must raise RangeError before oversized allocation instead of dropping alternatives and changing positive or negated matching results. Preserve matching and allocation behavior at and below that budget. Keep the separate braceExpandMax pattern-count cap and its existing count/truncation behavior unchanged. Document the total-cell-budget error, add focused regression coverage, and run the existing preprocessing/matching suites.\n",
+      "task_prompt_sha256": "94972f2b92d05572b36e9a27a63238e94e72716702c1d8dca1dc6046e006adf0",
+      "prepared_snapshot_sha256": "c1bd576f6b1766b2a473243c75db9899850324eb50e39fbf05726612e9a68764",
+      "prepared_file_count": 84,
+      "prepared_file_bytes": 135245978,
+      "base_archive_sha256": "7549dfbeb8a2cde4dcb347868016bc725a98bdec47d25ccff56e590884ef55ff",
+      "reference_archive_sha256": "77b50683b2e1141fa7060bbf8bccf059abb524ff6d49ceb534e5a42c154f55d5",
+      "visible_test_commands": [
+        [
+          "npm",
+          "test",
+          "--",
+          "--disable-coverage",
+          "--jobs=1"
+        ]
+      ],
+      "test_globs": [
+        "test/**",
+        "tap-snapshots/**"
+      ],
+      "toolchains": [
+        "Node.js 24.11.1",
+        "npm 11.6.2"
+      ],
+      "original_suite_eligibility": {
+        "base_original_suite": "passed",
+        "reference_updated_relevant_suite": "passed",
+        "reference_with_frozen_original_tests": "passed with documented compatibility patch",
+        "scope": "Complete original upstream test command (all tap suites)",
+        "original_suite_argv": [
+          "node",
+          "node_modules/.bin/tap",
+          "--disable-coverage",
+          "--jobs=1"
+        ],
+        "base_log_sha256": "782c7474559d41decf0ac196f99f660a35c9d8166135aa9efc9ee7f16acceda3",
+        "reference_original_suite_log_sha256": "4603640cba9edcdf19ea3b30dbfe87b23d0bc1fbc94c0f6188ee2f992e53fbab",
+        "setup_argv": [
+          "node",
+          "node_modules/.bin/tshy"
+        ],
+        "frozen_auxiliary_paths": [
+          "tsconfig.json",
+          "package.json",
+          "package-lock.json"
+        ],
+        "compatibility": {
+          "patch_sha256": "df13fd0307fbe7d0426f5c8a95ec411e90d97dbd54f4f8b139f902329021fdf0",
+          "reason": [
+            "Replace only original over-cell-budget truncation/no-throw assertions with task-required RangeError; retain below-budget and braceExpandMax tests."
+          ]
+        },
+        "scope_limit": "Runtime unit suites were audited; package lint, coverage thresholds, browser builds, package publication, and network audit commands were excluded."
+      },
+      "independent_acceptance_eligibility": {
+        "status": "eligible within the declared suites and pinned Linux toolchains",
+        "base_behavior_acceptance": "failed as required",
+        "reference_behavior_acceptance": "passed",
+        "reference_frozen_original_regressions": "passed",
+        "integrated_base_infrastructure": "ok",
+        "integrated_reference_infrastructure": "ok",
+        "base_grading_regressions": false,
+        "note": "The split-budget base fails deliberately adapted task-required RangeError expectations; its unadapted original suite passed in the separate curation audit."
+      }
+    },
+    {
+      "id": "minimatch-escaped-patterns",
+      "repository_url": "https://github.com/isaacs/minimatch",
+      "language": "typescript",
+      "base_commit": "d70a7bbc73140bd771daf5c30869b28dbc48929c",
+      "base_url": "https://github.com/isaacs/minimatch/tree/d70a7bbc73140bd771daf5c30869b28dbc48929c",
+      "reference_commit": "784603e09641970d2ba2caf8c73a95d1015cc67d",
+      "reference_url": "https://github.com/isaacs/minimatch/commit/784603e09641970d2ba2caf8c73a95d1015cc67d",
+      "reference_committed_at": "2026-11-11T09:08:01Z",
+      "behavior_sources": [
+        "https://github.com/isaacs/minimatch/commit/784603e09641970d2ba2caf8c73a95d1015cc67d"
+      ],
+      "reference_changed_files": [
+        "README.md",
+        "src/escape.ts",
+        "src/index.ts",
+        "src/unescape.ts",
+        "test/escape-has-magic.js",
+        "test/escape-literal.js"
+      ],
+      "prompt_origin": "Paraphrased public issue/PR behavior, or public bug-fix contract where no standalone issue specifies the behavior. No solution code or reference identifiers are in the task prompt.",
+      "task_prompt": "Fix literal escaping and unescaping of glob patterns. escape must prevent a leading ! or # in a literal name from turning the result into negation or a comment, in both ordinary and windowsPathsNoEscape modes. Escaped brace characters must survive escape/unescape and literal matching when magicalBraces is enabled; default brace-expansion behavior must stay compatible. Cover mixed magic characters, leading markers, Windows-style escaping and round trips. Keep escape, unescape and matching behavior consistent, add regression tests, and run the existing escape/magic suites.\n",
+      "task_prompt_sha256": "d18e71d293581e23b39fb0fa9b259840d2008b62e84579eefe70cddaff5b6e7b",
+      "prepared_snapshot_sha256": "c2d37cac369f52cc011e4e8368ab809e76941dc23335927ec2ea613b6a22b092",
+      "prepared_file_count": 87,
+      "prepared_file_bytes": 135277777,
+      "base_archive_sha256": "e16f78cd4ee5c9b1f3879aca262365336308365c25ffd860190f61c9a970aa98",
+      "reference_archive_sha256": "8ebc27ac2317b9a4ca4a01fcf8f35fb8f0efdaf0d09380553cd2103429aa97b3",
+      "visible_test_commands": [
+        [
+          "npm",
+          "test",
+          "--",
+          "--disable-coverage",
+          "--jobs=1"
+        ]
+      ],
+      "test_globs": [
+        "test/**",
+        "tap-snapshots/**"
+      ],
+      "toolchains": [
+        "Node.js 24.11.1",
+        "npm 11.6.2"
+      ],
+      "original_suite_eligibility": {
+        "base_original_suite": "passed",
+        "reference_updated_relevant_suite": "passed",
+        "reference_with_frozen_original_tests": "passed with documented compatibility patch",
+        "scope": "Complete original upstream test command (all tap suites)",
+        "original_suite_argv": [
+          "node",
+          "node_modules/.bin/tap",
+          "--disable-coverage",
+          "--jobs=1"
+        ],
+        "base_log_sha256": "3be716a8ddcd9d2ffda3e1af9cc8e2a32cb3ee8a023ccb6bc749c95a7a391cd9",
+        "reference_original_suite_log_sha256": "9bdde72b68932d4c5dd41f830de9c2082f90f29bd22a19162c037894967a656f",
+        "setup_argv": [
+          "node",
+          "node_modules/.bin/tshy"
+        ],
+        "frozen_auxiliary_paths": [
+          "tsconfig.json",
+          "package.json",
+          "package-lock.json"
+        ],
+        "compatibility": {
+          "patch_sha256": "e2c4e00dff91412edff949249e2ddcc1460734b8771cd41bb915196972935ab8",
+          "reason": [
+            "Exempt only Windows leading-! escaped representation from hasMagic=false assertion. Literal/non-negation acceptance remains independently graded; other original assertions retained."
+          ]
+        },
+        "scope_limit": "Runtime unit suites were audited; package lint, coverage thresholds, browser builds, package publication, and network audit commands were excluded."
+      },
+      "independent_acceptance_eligibility": {
+        "status": "eligible within the declared suites and pinned Linux toolchains",
+        "base_behavior_acceptance": "failed as required",
+        "reference_behavior_acceptance": "passed",
+        "reference_frozen_original_regressions": "passed",
+        "integrated_base_infrastructure": "ok",
+        "integrated_reference_infrastructure": "ok",
+        "base_grading_regressions": true,
+        "note": "Original-suite and independent behavior checks are separate. These are pretrial eligibility results, not solver outcomes."
+      }
+    },
+    {
+      "id": "fmt-long-double-precision",
+      "repository_url": "https://github.com/fmtlib/fmt",
+      "language": "cpp",
+      "base_commit": "d102a01edf998514a95ef1b1f24c79cfc22a8c87",
+      "base_url": "https://github.com/fmtlib/fmt/tree/d102a01edf998514a95ef1b1f24c79cfc22a8c87",
+      "reference_commit": "9c19ea466408e1872fb26cfc734eab9e5490d9d2",
+      "reference_url": "https://github.com/fmtlib/fmt/commit/9c19ea466408e1872fb26cfc734eab9e5490d9d2",
+      "reference_committed_at": "2026-11-08T03:25:38Z",
+      "behavior_sources": [
+        "https://github.com/fmtlib/fmt/pull/5010"
+      ],
+      "reference_changed_files": [
+        "include/fmt/format.h",
+        "test/format-test.cc"
+      ],
+      "prompt_origin": "Paraphrased public issue/PR behavior, or public bug-fix contract where no standalone issue specifies the behavior. No solution code or reference identifiers are in the task prompt.",
+      "task_prompt": "Fix precision formatting of extended-precision long double values immediately below powers of ten. On this x86-64 toolchain, ldexp((long double)0xe596b7b0c643c719ULL,79) formatted with {:.19e} should produce 9.9999999999999999997e+42; fixed notation must not acquire a spurious leading zero, and general notation must retain a normalized mantissa. Also cover a value just below 0.001. Preserve shortest-roundtrip formatting and normal rounding for other numbers. Add regression tests and run the existing formatting suite.\n",
+      "task_prompt_sha256": "a6fc033690fc5b432cca4064150fb7186a053434fc945235d3f3febc03e801e3",
+      "prepared_snapshot_sha256": "c9fa332208bd8c389d6c80445a0df481fbeb5bef88f409018eba34efc8d90df9",
+      "prepared_file_count": 147,
+      "prepared_file_bytes": 3179267,
+      "base_archive_sha256": "b424391c0ddede58fb2ac9aa49301a8c6b118e5a28f11300f4f76154cdd08224",
+      "reference_archive_sha256": "734ee0bc9bb10a23f41fedf0a1cfedbcb1445a67cce92cb30b851f707a5713de",
+      "visible_test_commands": [
+        [
+          "c++",
+          "-std=c++17",
+          "-O0",
+          "-pthread",
+          "-Iinclude",
+          "-Itest",
+          "-Itest/gtest",
+          "src/format.cc",
+          "src/os.cc",
+          "test/gtest/gmock-gtest-all.cc",
+          "test/test-main.cc",
+          "test/gtest-extra.cc",
+          "test/util.cc",
+          "test/format-test.cc",
+          "-o",
+          ".git/pilot-format-test"
+        ],
+        [
+          ".git/pilot-format-test"
+        ]
+      ],
+      "test_globs": [
+        "test/**"
+      ],
+      "toolchains": [
+        "g++ 15.2.0",
+        "C++17"
+      ],
+      "original_suite_eligibility": {
+        "base_original_suite": "passed",
+        "reference_updated_relevant_suite": "passed",
+        "reference_with_frozen_original_tests": "passed unchanged",
+        "scope": "Complete upstream format-test suite",
+        "original_suite_argv": [
+          "./.pilot-original-suite"
+        ],
+        "base_log_sha256": "01604e85ac40b784c83d8b3152593512a52e62e095dafa7883db1f4ac10d2541",
+        "reference_original_suite_log_sha256": "ec48fe510cb6a918e91791963e5ee72d5e53cb1c633c7f2ae6382ef10a3b124c",
+        "setup_argv": [
+          "c++",
+          "-std=c++17",
+          "-O0",
+          "-pthread",
+          "-Iinclude",
+          "-Itest",
+          "-Itest/gtest",
+          "src/format.cc",
+          "src/os.cc",
+          "test/gtest/gmock-gtest-all.cc",
+          "test/test-main.cc",
+          "test/gtest-extra.cc",
+          "test/util.cc",
+          "test/format-test.cc",
+          "-o",
+          ".pilot-original-suite"
+        ],
+        "scope_limit": "Only the declared complete upstream format-test or printf-test executable was audited, not every fmt test target."
+      },
+      "independent_acceptance_eligibility": {
+        "status": "eligible within the declared suites and pinned Linux toolchains",
+        "base_behavior_acceptance": "failed as required",
+        "reference_behavior_acceptance": "passed",
+        "reference_frozen_original_regressions": "passed",
+        "integrated_base_infrastructure": "ok",
+        "integrated_reference_infrastructure": "ok",
+        "base_grading_regressions": true,
+        "note": "Original-suite and independent behavior checks are separate. These are pretrial eligibility results, not solver outcomes."
+      }
+    },
+    {
+      "id": "fmt-null-printf-precision",
+      "repository_url": "https://github.com/fmtlib/fmt",
+      "language": "cpp",
+      "base_commit": "d93446e3dd996cb645f95ebe6cb17e3f5b0521d3",
+      "base_url": "https://github.com/fmtlib/fmt/tree/d93446e3dd996cb645f95ebe6cb17e3f5b0521d3",
+      "reference_commit": "3a52eb4f1d5623ccad94c9a0615d33429a4b7087",
+      "reference_url": "https://github.com/fmtlib/fmt/commit/3a52eb4f1d5623ccad94c9a0615d33429a4b7087",
+      "reference_committed_at": "2026-11-07T22:41:17Z",
+      "behavior_sources": [
+        "https://github.com/fmtlib/fmt/pull/5001"
+      ],
+      "reference_changed_files": [
+        "include/fmt/printf.h",
+        "test/printf-test.cc"
+      ],
+      "prompt_origin": "Paraphrased public issue/PR behavior, or public bug-fix contract where no standalone issue specifies the behavior. No solution code or reference identifiers are in the task prompt.",
+      "task_prompt": "Fix printf-style formatting of a null C-string when a precision is specified. fmt::sprintf(\"%.3s\",(const char*)nullptr) must avoid undefined pointer arithmetic or a crash. Match the existing glibc-compatible null convention: unspecified precision or precision of at least six emits (null), smaller nonnegative precision emits an empty string, and field-width padding still applies normally. Preserve valid-string precision behavior and ordinary %s behavior. Add regression coverage, including zero precision, and run the existing printf suite.\n",
+      "task_prompt_sha256": "e6d3262940175671a57138b3a537d155c341ec2671b65cf26618ff206035e1e5",
+      "prepared_snapshot_sha256": "0d2f673aee4da3252824d05db60a3e291ab2ed77cc83160ebfeec5a231187442",
+      "prepared_file_count": 147,
+      "prepared_file_bytes": 3179150,
+      "base_archive_sha256": "70c08239ff5713db1ccf11246532e746e3cd8cd9963991ae8a1ae61f3aee4faa",
+      "reference_archive_sha256": "d934593476c60d86ccc4970fd5eb970b9a563590c5e26fb1f4b9ef0d9c956698",
+      "visible_test_commands": [
+        [
+          "c++",
+          "-std=c++17",
+          "-O0",
+          "-pthread",
+          "-Iinclude",
+          "-Itest",
+          "-Itest/gtest",
+          "src/format.cc",
+          "src/os.cc",
+          "test/gtest/gmock-gtest-all.cc",
+          "test/test-main.cc",
+          "test/gtest-extra.cc",
+          "test/util.cc",
+          "test/printf-test.cc",
+          "-o",
+          ".git/pilot-printf-test"
+        ],
+        [
+          ".git/pilot-printf-test"
+        ]
+      ],
+      "test_globs": [
+        "test/**"
+      ],
+      "toolchains": [
+        "g++ 15.2.0",
+        "C++17"
+      ],
+      "original_suite_eligibility": {
+        "base_original_suite": "passed",
+        "reference_updated_relevant_suite": "passed",
+        "reference_with_frozen_original_tests": "passed unchanged",
+        "scope": "Complete upstream printf-test suite",
+        "original_suite_argv": [
+          "./.pilot-original-suite"
+        ],
+        "base_log_sha256": "ca599aa698562e910911746102d839bbbde15eb04a35f2f537741ce43cf7223c",
+        "reference_original_suite_log_sha256": "e8d00b4ce4cd0bf4c84c4fc23d57b6ef7339f908e7eb0e3281bde40e8fb1652e",
+        "setup_argv": [
+          "c++",
+          "-std=c++17",
+          "-O0",
+          "-pthread",
+          "-Iinclude",
+          "-Itest",
+          "-Itest/gtest",
+          "src/format.cc",
+          "src/os.cc",
+          "test/gtest/gmock-gtest-all.cc",
+          "test/test-main.cc",
+          "test/gtest-extra.cc",
+          "test/util.cc",
+          "test/printf-test.cc",
+          "-o",
+          ".pilot-original-suite"
+        ],
+        "scope_limit": "Only the declared complete upstream format-test or printf-test executable was audited, not every fmt test target."
+      },
+      "independent_acceptance_eligibility": {
+        "status": "eligible within the declared suites and pinned Linux toolchains",
+        "base_behavior_acceptance": "failed as required",
+        "reference_behavior_acceptance": "passed",
+        "reference_frozen_original_regressions": "passed",
+        "integrated_base_infrastructure": "ok",
+        "integrated_reference_infrastructure": "ok",
+        "base_grading_regressions": true,
+        "note": "Original-suite and independent behavior checks are separate. These are pretrial eligibility results, not solver outcomes."
+      }
+    },
+    {
+      "id": "kitsu-path-completion",
+      "repository_url": "https://github.com/belevtsev/kitsu",
+      "language": "go",
+      "base_commit": "d6e0dd2b006edd9bcda90c1c1eefc13d7fb9adf5",
+      "base_url": "https://github.com/belevtsev/kitsu/tree/d6e0dd2b006edd9bcda90c1c1eefc13d7fb9adf5",
+      "reference_commit": "5f6f23da3c39d0277e0ff92ab5a9ad5bc658db5b",
+      "reference_url": "https://github.com/belevtsev/kitsu/commit/5f6f23da3c39d0277e0ff92ab5a9ad5bc658db5b",
+      "reference_committed_at": "2026-11-15T22:05:19+02:00",
+      "behavior_sources": [
+        "https://github.com/belevtsev/kitsu/commit/5f6f23da3c39d0277e0ff92ab5a9ad5bc658db5b"
+      ],
+      "reference_changed_files": [
+        "CHANGELOG.md",
+        "docs/cli.md",
+        "internal/cli/ux_completion_paths_test.go",
+        "internal/cli/ux_completion_test.go",
+        "internal/cli/ux_completion_values.go",
+        "openspec/changes/improve-cli-ux/tests.md"
+      ],
+      "prompt_origin": "Paraphrased public issue/PR behavior, or public bug-fix contract where no standalone issue specifies the behavior. No solution code or reference identifiers are in the task prompt.",
+      "task_prompt": "Fix filesystem path completion for home-relative paths while preserving native path separators. File-valued options must complete files and directories under ~/ and nested home directories, keeping the ~/ spelling and paths containing spaces. Directory-only options must filter files. Prefixes ending in a directory separator and partially typed file/directory names must work. Preserve the existing completion callback protocol and non-home path behavior. Add regression coverage and run the existing completion tests.\n",
+      "task_prompt_sha256": "c90e103edf56b270e2a58e650e9bd8455cb2d00ce51e383e9ff9f5ee135db980",
+      "prepared_snapshot_sha256": "707cc800a7d6704cd9095038705028ffbd403ecb802cc8075f3887e9a33a36f7",
+      "prepared_file_count": 459,
+      "prepared_file_bytes": 5338556,
+      "base_archive_sha256": "3605684c6d069817c34e02a4bea9865c8231b773f37e828aaa80aacc37adb984",
+      "reference_archive_sha256": "9bbbc32444fd8c2977de8dbc22318a3b5bf6c78b9b8560555cc4c551c7d8f5e8",
+      "visible_test_commands": [
+        [
+          "go",
+          "test",
+          "./internal/cli",
+          "-run",
+          "TestUXCompletion",
+          "-count=1"
+        ]
+      ],
+      "test_globs": [
+        "**/*_test.go"
+      ],
+      "toolchains": [
+        "Go 1.27.4"
+      ],
+      "original_suite_eligibility": {
+        "base_original_suite": "passed",
+        "reference_updated_relevant_suite": "passed",
+        "reference_with_frozen_original_tests": "passed unchanged",
+        "scope": "Complete existing Go CLI completion tests",
+        "original_suite_argv": [
+          "go",
+          "test",
+          "./internal/cli",
+          "-run",
+          "TestUXCompletion",
+          "-count=1"
+        ],
+        "base_log_sha256": "f4fbf268017dee41b22a985cb22863be41b310a4d8ac21c474d5489230a1eaa8",
+        "reference_original_suite_log_sha256": "3838553e10fe54b77ab56c8c221f39cc4f8e1bd30c9fa4ba1b032c790d1a8186",
+        "frozen_auxiliary_paths": [
+          "go.mod",
+          "go.sum"
+        ],
+        "scope_limit": "Only the declared relevant completion or installer scenario suite was audited, not the entire Kitsu repository test suite."
+      },
+      "independent_acceptance_eligibility": {
+        "status": "eligible within the declared suites and pinned Linux toolchains",
+        "base_behavior_acceptance": "failed as required",
+        "reference_behavior_acceptance": "passed",
+        "reference_frozen_original_regressions": "passed",
+        "integrated_base_infrastructure": "ok",
+        "integrated_reference_infrastructure": "ok",
+        "base_grading_regressions": true,
+        "note": "Original-suite and independent behavior checks are separate. These are pretrial eligibility results, not solver outcomes."
+      }
+    },
+    {
+      "id": "kitsu-bash-login",
+      "repository_url": "https://github.com/belevtsev/kitsu",
+      "language": "shell",
+      "base_commit": "21e6d695af9df564d91365dbd4bfe8e8f6c69c96",
+      "base_url": "https://github.com/belevtsev/kitsu/tree/21e6d695af9df564d91365dbd4bfe8e8f6c69c96",
+      "reference_commit": "65aa4592b3f259ed167677de5ede79edcc098928",
+      "reference_url": "https://github.com/belevtsev/kitsu/commit/65aa4592b3f259ed167677de5ede79edcc098928",
+      "reference_committed_at": "2026-11-15T15:24:42+02:00",
+      "behavior_sources": [
+        "https://github.com/belevtsev/kitsu/commit/65aa4592b3f259ed167677de5ede79edcc098928"
+      ],
+      "reference_changed_files": [
+        "CHANGELOG.md",
+        "docs/release-install.md",
+        "install.sh",
+        "scenarios/installers/installers_test.go"
+      ],
+      "prompt_origin": "Paraphrased public issue/PR behavior, or public bug-fix contract where no standalone issue specifies the behavior. No solution code or reference identifiers are in the task prompt.",
+      "task_prompt": "Fix release installation PATH setup for a fresh Linux Bash user. After an ordinary install that is allowed to update PATH, both a new interactive Bash and a new Bash login shell must find the installed kitsu command even when no login startup file existed before installation. Respect Bash's precedence among existing login startup files, preserve their contents, keep setup idempotent, and preserve the macOS and opt-out behavior. Add an end-to-end installer regression test using isolated homes and run the existing installer tests.\n",
+      "task_prompt_sha256": "3dcf745a041dc29ce95d9ba1aac837b9eb92a551b814401b40116e29b37c9a90",
+      "prepared_snapshot_sha256": "01f06b5653ac59d7b540c4d7232fb29be8c9ec875495ee43a83b4803f9b26385",
+      "prepared_file_count": 351,
+      "prepared_file_bytes": 4551310,
+      "base_archive_sha256": "42c17e12a76c365bd1a650cd2e65399a7026324e200ea5e4da071e543ef399a5",
+      "reference_archive_sha256": "0a09adf8649aea6d7d3ee00bf6ea79d4d58939220db8d0012e7ec635d89d13bd",
+      "visible_test_commands": [
+        [
+          "go",
+          "test",
+          "./scenarios/installers",
+          "-count=1"
+        ]
+      ],
+      "test_globs": [
+        "**/*_test.go"
+      ],
+      "toolchains": [
+        "Go 1.27.4",
+        "POSIX sh",
+        "GNU Bash"
+      ],
+      "original_suite_eligibility": {
+        "base_original_suite": "passed",
+        "reference_updated_relevant_suite": "passed",
+        "reference_with_frozen_original_tests": "passed unchanged",
+        "scope": "Complete existing Go installer scenario tests",
+        "original_suite_argv": [
+          "go",
+          "test",
+          "./scenarios/installers",
+          "-count=1"
+        ],
+        "base_log_sha256": "7870e2123d5045d9e7b7621ae1988ff271ef795c8c30e0f9a8b8e0eaed138e89",
+        "reference_original_suite_log_sha256": "c7d923433e4fdf33eedfd591959075b9bff2558ce8a259d1af213963e2c5d526",
+        "frozen_auxiliary_paths": [
+          "go.mod",
+          "go.sum"
+        ],
+        "scope_limit": "Only the declared relevant completion or installer scenario suite was audited, not the entire Kitsu repository test suite."
+      },
+      "independent_acceptance_eligibility": {
+        "status": "eligible within the declared suites and pinned Linux toolchains",
+        "base_behavior_acceptance": "failed as required",
+        "reference_behavior_acceptance": "passed",
+        "reference_frozen_original_regressions": "passed",
+        "integrated_base_infrastructure": "ok",
+        "integrated_reference_infrastructure": "ok",
+        "base_grading_regressions": true,
+        "note": "Original-suite and independent behavior checks are separate. These are pretrial eligibility results, not solver outcomes."
+      }
+    }
+  ]
+}

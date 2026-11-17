@@ -12,8 +12,8 @@ import (
 )
 
 type onboardingArgs struct {
-	host, request string
-	json, print   bool
+	host, request        string
+	json, print, compact bool
 }
 
 func parseOnboardingArgs(args []string, start bool) (onboardingArgs, error) {
@@ -32,6 +32,7 @@ func parseOnboardingArgs(args []string, start bool) (onboardingArgs, error) {
 	flags.BoolVar(&options.json, "json", false, "")
 	if start {
 		flags.BoolVar(&options.print, "print", false, "")
+		flags.BoolVar(&options.compact, "compact", false, "")
 	}
 	p, err := parseArgs(flags, args)
 	if err != nil {
@@ -141,6 +142,10 @@ func runUXTaskStart(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	handoff := prepareTaskHandoff(report, options.request)
+	if options.compact {
+		handoff.Prompt += "\n\nKitsu compact mode (selective opt-in): read the task skill's references/compact.md before starting roles. Prefer native host reads for short whole files and scoped native search with small output. Use context read/search/collect for broad or noisy retrieval and check run --compact for noisy declared checks; expand retained logs when needed. Carry this selective policy into every fresh worker brief. Keep original full role instructions and selected skills uncompressed; preserve permissions, independent reviews and required evidence. Context artifacts cache local rendered text, not provider prompt cache; count all requests, responses and expansions when measuring."
+		handoff.Argv[1] = handoff.Prompt
+	}
 	if options.json {
 		return printJSON(cfg, handoff)
 	}

@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Compact context: the opt-in Go engine",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": ".archify/compact-context.html",
+    "legend": {"entries": {
+      "external": {"label": "Your agent host"},
+      "backend": {"label": "Kitsu commands"},
+      "database": {"label": "Private retained data"},
+      "frontend": {"label": "Repository declarations"}
+    }}
+  },
+  "layout": {"mode": "grid", "cols": 3, "cellW": 200, "cellH": 58, "gapX": 44, "gapY": 48, "origin": [40, 80]},
+  "components": [
+    {"id": "host", "type": "external", "label": "Agent host", "sublabel": "explicit compact mode", "row": 0, "col": 0, "size": [200, 58]},
+    {"id": "collect", "type": "backend", "label": "context read/search", "sublabel": "collect batches JSON", "row": 1, "col": 0, "size": [200, 58]},
+    {"id": "artifacts", "type": "database", "label": "Context artifacts", "sublabel": "private per worktree", "row": 2, "col": 0, "size": [200, 58]},
+    {"id": "show", "type": "backend", "label": "context show", "sublabel": "bounded expansion", "row": 3, "col": 0, "size": [200, 58]},
+    {"id": "coordinator", "type": "external", "label": "Coordinator", "sublabel": "Go prepare / finish", "row": 0, "col": 1, "size": [200, 58]},
+    {"id": "brief", "type": "backend", "label": "task brief", "sublabel": "saved canonical artifact", "row": 1, "col": 1, "size": [200, 58]},
+    {"id": "worker", "type": "external", "label": "Fresh worker", "sublabel": "model, skills, limits", "row": 2, "col": 1, "size": [200, 58]},
+    {"id": "review", "type": "external", "label": "Independent review", "sublabel": "approvals still required", "row": 3, "col": 1, "size": [200, 58]},
+    {"id": "declaration", "type": "frontend", "label": "Declared checks", "sublabel": "kitsu.toml", "row": 0, "col": 2, "size": [200, 58]},
+    {"id": "runner", "type": "backend", "label": "check run --compact", "sublabel": "same sequential runner", "row": 1, "col": 2, "size": [200, 58]},
+    {"id": "records", "type": "database", "label": "Check records", "sublabel": "retained logs + evidence", "row": 2, "col": 2, "size": [200, 58]},
+    {"id": "gate", "type": "backend", "label": "Supporting gate", "sublabel": "normal evidence rules", "row": 3, "col": 2, "size": [200, 58]}
+  ],
+  "boundaries": [
+    {"kind": "region", "label": "Explore and expand", "wraps": ["host", "collect", "artifacts", "show"], "pad": 20},
+    {"kind": "region", "label": "Local stage bookkeeping", "wraps": ["coordinator", "brief", "worker", "review"], "pad": 20},
+    {"kind": "region", "label": "Verify with normal evidence", "wraps": ["declaration", "runner", "records", "gate"], "pad": 20}
+  ],
+  "connections": [
+    {"id": "request", "from": "host", "to": "collect", "label": "named requests"},
+    {"id": "retain", "from": "collect", "to": "artifacts", "label": "retain"},
+    {"id": "expand", "from": "artifacts", "to": "show", "label": "inspect", "variant": "emphasis"},
+    {"id": "prepare", "from": "coordinator", "to": "brief", "label": "explicit stage"},
+    {"id": "handoff", "from": "brief", "to": "worker", "label": "saved constraints"},
+    {"id": "independent", "from": "worker", "to": "review", "label": "primary sources", "variant": "emphasis"},
+    {"id": "declared", "from": "declaration", "to": "runner", "label": "in order"},
+    {"id": "check-evidence", "from": "runner", "to": "records", "label": "record"},
+    {"id": "normal-gate", "from": "records", "to": "gate", "label": "content-bound", "variant": "emphasis"}
+  ]
+}

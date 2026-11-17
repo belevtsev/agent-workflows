@@ -18,6 +18,14 @@ The order of the work, the record of a task and `kitsu task` are in
 The preferred commands use singular `role`; existing `roles` commands remain supported.
 [CLI help and host preferences](cli.md) can supply a host once instead of repeating `--host`.
 
+With [compact context](compact-context.md), the coordinator prepares a fresh worker using
+`kitsu task prepare`. The saved brief includes current model/reasoning, original selected skills,
+write limits, factual task state and allowed advisers. Selection receipts precede its baseline;
+`task finish <dispatch-id>` checks the saved write interval and existing evidence. Use explicit
+`--expect-checks pass|fail` for required outcomes. The native host still launches the fresh worker.
+Codex receives role text; native Claude roles supply their own text once. Neither approach
+changes the role's tools, independence, approvals or after-role write check.
+
 ## The roles at a glance
 
 These are the defaults in a repository without `kitsu-roles.toml`. Reasoning is the effort requested

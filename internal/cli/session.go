@@ -14,9 +14,10 @@ import (
 
 // session is what a command needs to work in a repository.
 type session struct {
-	cfg   Config
-	repo  *gitx.Repo
-	store *store.Store
+	cfg     Config
+	repo    *gitx.Repo
+	store   *store.Store
+	compact *compactCheckCapture
 }
 
 // open finds the repository of the working directory. A command other than
@@ -50,6 +51,9 @@ func (s *session) judgeWorktree(ctx context.Context, base *evidence.Base) (*evid
 
 // warn prints the warnings of a verdict once each.
 func (s *session) warn(warnings []string) {
+	if s.compact != nil {
+		s.compact.Warnings = append(s.compact.Warnings, warnings...)
+	}
 	seen := map[string]bool{}
 	for _, w := range warnings {
 		if !seen[w] {

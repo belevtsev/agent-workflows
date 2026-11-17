@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Kitsu: roles, opt-in experimental advisers, usage and the Git gate",
+    "title": "Kitsu: roles, compact context, advisers, usage and the Git gate",
     "locale": "en",
     "quality_profile": "showcase",
     "output": ".archify/overview.html",
@@ -32,7 +32,11 @@
     {"id": "checks", "type": "frontend", "label": "kitsu.toml", "sublabel": "your checks", "row": 0, "col": 3, "size": [150, 58]},
     {"id": "run", "type": "backend", "label": "kitsu check run", "sublabel": "runs missing checks", "row": 1, "col": 3, "size": [150, 58]},
     {"id": "runs", "type": "database", "label": "kitsu/runs/", "sublabel": "content-bound evidence", "row": 2, "col": 3, "size": [150, 58]},
-    {"id": "hook", "type": "backend", "label": "kitsu hook", "sublabel": "commit / push decision", "row": 3, "col": 3, "size": [150, 58]}
+    {"id": "hook", "type": "backend", "label": "kitsu hook", "sublabel": "commit / push decision", "row": 3, "col": 3, "size": [150, 58]},
+    {"id": "context-collect", "type": "backend", "label": "context commands", "sublabel": "read / search / collect", "row": 4, "col": 0, "size": [150, 58]},
+    {"id": "context-artifacts", "type": "database", "label": "Context artifacts", "sublabel": "private per worktree", "row": 4, "col": 1, "size": [150, 58]},
+    {"id": "context-expand", "type": "backend", "label": "context show", "sublabel": "bounded expansion", "row": 4, "col": 2, "size": [150, 58]},
+    {"id": "context-brief", "type": "backend", "label": "task prepare", "sublabel": "saved brief + finish", "row": 4, "col": 3, "size": [150, 58]}
   ],
   "boundaries": [
     {"kind": "region", "label": "Role coordination", "wraps": ["roles", "agent", "change", "change-check"], "pad": 20},
@@ -52,6 +56,9 @@
     {"id": "advice-checked", "from": "answers", "to": "adviser-check", "label": "fresh + addressed", "variant": "emphasis"},
     {"id": "read", "from": "session", "to": "record", "label": "read"},
     {"id": "stores", "from": "record", "to": "counts", "label": "stores"},
-    {"id": "reports", "from": "counts", "to": "tokens", "label": "summed", "variant": "emphasis"}
+    {"id": "reports", "from": "counts", "to": "tokens", "label": "summed", "variant": "emphasis"},
+    {"id": "context-retain", "from": "context-collect", "to": "context-artifacts", "label": "retain"},
+    {"id": "context-inspect", "from": "context-artifacts", "to": "context-expand", "label": "expand"},
+    {"id": "context-handoff", "from": "context-expand", "to": "context-brief", "label": "prepare", "variant": "emphasis"}
   ]
 }

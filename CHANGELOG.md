@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Opt-in [typed context and worker handoffs](docs/compact-context.md) add native reads/searches, saved original briefs,
+  and ordered `task prepare`/`finish` write checks without launching models or replacing review and gate evidence.
+- An opt-in [Codex pilot harness](docs/codex-compact-pilot.md) freezes paired real-task experiments and accounts for every solver session;
+  ordinary tests skip paid execution, and independent grading separates functional results from workflow compliance.
+- Opt-in [Go context collection](docs/compact-context.md) batches source reads, prepares fresh worker briefs and bounds check output,
+  retaining expandable evidence; offline comparisons and source-linked research distinguish byte reductions from unmeasured token savings.
+
 - [Agent onboarding](docs/cli.md#check-setup-and-start-a-task) checks local host, plugin, skill, and hook setup;
   `kitsu task start` launches the selected host or prepares a handoff with explicit trust and runtime limits.
 - A grouped [CLI](docs/cli.md) adds complete help, private host preferences, explicit terminal editors,
@@ -33,11 +40,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- [Compact mode](docs/compact-context.md) now prefers native short reads and scoped searches, reserving collection for noisy retrieval
+  and checks; a [separate evaluation](docs/benchmarks/selective-compact-report.md) counts expansions, retries and bounded canary usage.
 - [Role defaults](docs/roles.md#the-roles-at-a-glance) use different models and reasoning efforts for lookup,
   specification, architecture, tests, implementation, review, and Git work on both supported hosts.
 - Lead with [coding-agent coordination](README.md#the-roles) in the documentation, plugin descriptions and CLI help; the Git gate supports that workflow.
 
 ### Fixed
+
+- [Pilot validation](docs/codex-compact-pilot.md) accepts clean Windows rollout/copied-home paths and trusted repository aliases,
+  retaining containment, attestation and candidate-tree checks while rejecting duplicate home destinations.
 
 - [Path completion](docs/cli.md#enable-shell-completion) follows `~/` and nested home directories correctly,
   with native directory separators and regression coverage on all supported platforms.

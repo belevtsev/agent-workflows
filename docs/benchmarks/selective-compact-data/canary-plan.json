@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "manifest_sha256": "9353db0a442853e04c15c29b0b0e63a4c8f737bba93e890bd2e16ce24836da55",
+  "runs": [
+    {
+      "id": "qs-sparse-array-limit-r1-normal",
+      "order": 1,
+      "case_id": "qs-sparse-array-limit",
+      "repeat": 1,
+      "arm": "normal",
+      "controller": 0
+    },
+    {
+      "id": "qs-sparse-array-limit-r1-compact",
+      "order": 2,
+      "case_id": "qs-sparse-array-limit",
+      "repeat": 1,
+      "arm": "compact",
+      "controller": 0
+    },
+    {
+      "id": "pflag-unknown-flags-r1-compact",
+      "order": 3,
+      "case_id": "pflag-unknown-flags",
+      "repeat": 1,
+      "arm": "compact",
+      "controller": 0
+    },
+    {
+      "id": "pflag-unknown-flags-r1-normal",
+      "order": 4,
+      "case_id": "pflag-unknown-flags",
+      "repeat": 1,
+      "arm": "normal",
+      "controller": 0
+    }
+  ]
+}

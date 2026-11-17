@@ -24,6 +24,7 @@ Seven specialist roles, shared task records, and token reporting, with a Git gat
 | **Shared task records** | Requirements, design decisions, tasks, tests, and review findings give the agents a common record to work from. `kitsu task` checks that record and reports the task's stage. |
 | **Existing skills** | Select skills from local repository, personal, and installed plugin sources for each role, while keeping their original files and references. |
 | **Token reporting** | `kitsu usage show` reports recorded token usage by task and role, including the coordination overhead. |
+| **Compact context (opt-in)** | Typed reads/searches, saved original worker briefs, ordered stage write checks and bounded output, with expandable evidence. |
 | **Advisers (experimental)** | Optional Jev, SubQ Snap, and CLI consultations, with recorded answers and decisions. None are enabled by default. |
 | **Git gate** | As a supporting check, Git hooks allow commits and pushes only when the checks declared in `kitsu.toml` have passing evidence for that content. |
 
@@ -102,6 +103,40 @@ For desktop use or incomplete CLI setup, run `kitsu task start "Add an order CSV
 and paste the printed handoff into your selected host. `--json` returns the prompt, proposed argv, and local diagnostics.
 Both modes execute nothing and create no task record. The [CLI guide](docs/cli.md#check-setup-and-start-a-task)
 explains ready, broken, and unknown setup evidence. The supporting Git gate can be configured separately.
+
+### Send smaller observations
+
+```sh
+kitsu task start "Fix login retries" --host codex --compact
+```
+
+Compact mode selects observations: native host reads for short whole files and scoped searches
+with small output, typed collection for broad or noisy retrieval, and bounded noisy check output.
+Agents expand retained evidence when needed and keep original role instructions and skills
+uncompressed. It ships in the existing binary, preserving reviews, approvals and check evidence.
+[How to use it](docs/compact-context.md), [research and tradeoffs](docs/context-research.md).
+The [24-run Codex pilot](docs/benchmarks/codex-compact-pilot-report.md) found passing frozen tests
+in both modes, additional defects on review, and less workflow completion with compact mode
+under an eight-minute limit. Complete-task token savings remain unestablished.
+The separate [selective evaluation](docs/benchmarks/selective-compact-report.md) includes offline
+replay overhead and a rejected v2 charset reference. Its bounded canary stopped the first ordinary
+run at 3.26M captured tokens; three runs stayed unstarted, leaving no new on/off savings evidence.
+
+For an opted-in coordinator, common reads need no request JSON:
+
+```sh
+kitsu context read README.md --start 1 --end 30
+kitsu context search 'retry' internal
+kitsu task prepare fix-login --role developer --stage code --round 1 \
+  --host codex --workflow small --assignment /absolute/path/assignment.txt
+kitsu task finish <dispatch-id> --expect-checks pass
+```
+
+`prepare` returns a saved brief's path/hash, model, reasoning and baseline. The host starts
+the fresh worker from that complete brief; `finish` checks its writes and existing evidence
+without running tests again. Finish the prior interval before preparing another worker.
+These commands launch no model and replace no review or approval. See the
+[worked handoff and recovery steps](docs/compact-context.md#prepare-and-finish-a-worker).
 
 ### Find a command
 
@@ -355,7 +390,7 @@ and what it does not, and [operations](docs/operations.md) lists every command a
 
 The workflow, adviser records, token reports, and gate share the same CLI:
 
-<img src="docs/diagrams/overview.svg" alt="Kitsu connects four parts. Role selection supplies models and effort to your agent host, which writes a shared task record. Experimental advisers are disabled by default: explicit definition and access enable API or CLI consultations, with recorded answers and decisions. Adviser checkpoints apply only if required by configuration. Host token records supply measured usage. The supporting Git gate runs declared checks and decides commits and pushes from content-bound evidence." width="100%">
+<img src="docs/diagrams/overview.svg" alt="Kitsu connects role coordination, optional advisers, usage reporting and the supporting Git gate. Opt-in Go context collection retains private worktree artifacts, supplies bounded expansion and prepares fresh worker briefs. Advisers are disabled by default, and normal check evidence retains gate authority." width="100%">
 
 The usage column shows host records. `kitsu usage show` also reports provider-supplied API adviser usage
 separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advisers.md) shows the opt-in steps.
@@ -376,10 +411,20 @@ separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advise
   and lint/vulnerability checks for all three targets. Editor PTY flows and all four completion shells were exercised;
   Windows PowerShell 5.1 runtime testing remains unavailable.
 - [Agent onboarding](openspec/changes/add-agent-onboarding/tests.md) passed Linux race tests, fake-host terminal launches,
-  and three-target lint/vulnerability checks. Darwin and Windows test binaries compiled; native runtime and live Kitsu host execution remain unverified.
+  and three-target lint/vulnerability checks. Darwin and Windows test binaries compiled; native runtime and interactive plugin/hook trust remain unverified.
 - Whether the workflow improves code quality or saves tokens compared with one agent is **not measured**.
   Historical scratch runs on two small tasks recorded workflow usage, without a comparative quality result:
   [benchmarks](docs/benchmarks.md). The planned [evaluation](docs/evaluation.md) has not been run.
+- [Compact context](openspec/changes/add-compact-context/tests.md) adds opt-in Go collection, worker briefs and bounded check results.
+  Local race/regression and three-target lint/vulnerability checks passed; offline comparisons include JSON/page overhead and no live token-saving claim.
+- [Typed context and saved handoffs](openspec/changes/streamline-compact-handoffs/tests.md) passed build, vet, full Linux race,
+  three-target lint/vulnerability and record checks. Native live dispatch and token savings remain unverified; no further paid pilot was run.
+- The [Codex-only compact pilot](docs/benchmarks/codex-compact-pilot-report.md) completed 24 real-task attempts with Sol/high.
+  Both modes passed frozen tests, but independent probes confirmed defects in both charset patches. Observable workflow mechanics
+  completed in 9/12 normal and 1/12 compact attempts; cutoffs left no complete token pairs. Compact mode remains opt-in.
+- [Selective compact evaluation](docs/benchmarks/selective-compact-report.md) counts needed expansions and retries offline;
+  some workloads use more bytes. Its Sol/high canary stopped at the budget reserve during the first ordinary run;
+  the candidate passed independent tests, but no workflow or on/off pair completed.
 - Advisers are optional and experimental, disabled by default. They are tested with local fake executables and
   HTTPS fixtures; CLI examples were checked against provider help.
   No live adviser quality evaluation was run. Native usage is provider-reported; CLI usage is unmeasured.

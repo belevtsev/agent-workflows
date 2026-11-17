@@ -1,0 +1,13 @@
+case_id,repeat,normal_run,compact_run,normal_functional,compact_functional,normal_protocol,compact_protocol,accounting_comparable,both_functional_success,both_verified_success,functional_loss,normal_tokens,compact_tokens,compact_minus_normal,compact_over_normal
+pflag-unknown-flags,1,pflag-unknown-flags-r1-normal,pflag-unknown-flags-r1-compact,passed,passed,unknown,violated,false,true,false,false,2007427,2186426,,
+chi-quoted-charset,1,chi-quoted-charset-r1-normal,chi-quoted-charset-r1-compact,passed,passed,violated,violated,false,true,false,false,2087482,2540010,,
+semver-prerelease-groups,1,semver-prerelease-groups-r1-normal,semver-prerelease-groups-r1-compact,passed,passed,unknown,violated,false,true,false,false,2559595,2753965,,
+chi-self-mount,1,chi-self-mount-r1-normal,chi-self-mount-r1-compact,passed,passed,unknown,violated,false,true,false,false,2398168,2369072,,
+qs-sparse-array-limit,1,qs-sparse-array-limit-r1-normal,qs-sparse-array-limit-r1-compact,passed,passed,unknown,unknown,false,true,false,false,2975314,3020885,,
+qs-empty-array-keys,1,qs-empty-array-keys-r1-normal,qs-empty-array-keys-r1-compact,passed,passed,unknown,violated,false,true,false,false,2705971,2443733,,
+minimatch-split-budget,1,minimatch-split-budget-r1-normal,minimatch-split-budget-r1-compact,passed,passed,unknown,violated,false,true,false,false,2748778,3581746,,
+minimatch-escaped-patterns,1,minimatch-escaped-patterns-r1-normal,minimatch-escaped-patterns-r1-compact,passed,passed,violated,violated,false,true,false,false,3049160,2705521,,
+fmt-long-double-precision,1,fmt-long-double-precision-r1-normal,fmt-long-double-precision-r1-compact,passed,passed,unknown,violated,false,true,false,false,2344988,1863857,,
+fmt-null-printf-precision,1,fmt-null-printf-precision-r1-normal,fmt-null-printf-precision-r1-compact,passed,passed,unknown,violated,false,true,false,false,2363704,2030747,,
+kitsu-path-completion,1,kitsu-path-completion-r1-normal,kitsu-path-completion-r1-compact,passed,passed,unknown,violated,false,true,false,false,2111632,2860854,,
+kitsu-bash-login,1,kitsu-bash-login-r1-normal,kitsu-bash-login-r1-compact,passed,passed,violated,violated,false,true,false,false,3382286,2590250,,

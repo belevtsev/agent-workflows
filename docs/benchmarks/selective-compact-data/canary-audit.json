@@ -1,0 +1,89 @@
+{
+  "actual_check_requests": 5,
+  "case_binding_verified": true,
+  "context_log_expansions": 0,
+  "executed_compact_checks": 0,
+  "executed_repository_compaction": 0,
+  "final_content_check_evidence": "Passing review-stage evidence exists; Git selection/preparation subsequently changes content. No passing declared check is recorded on the final exported candidate tree, no Git finish exists, and no clean final gate is demonstrated.",
+  "full_protocol_compliance": "unknown; actual encrypted native message equality and follow-up contents cannot be certified",
+  "functional_grade_is_separate": "Host frozen acceptance passes all18criteria; restored original suite and patch integrity pass. This does not certify completion, full review/protocol compliance, or compact-arm savings.",
+  "genuine_red_before_developer": {
+    "coordinator_independently_retrieved_failure_diagnostics": true,
+    "developer_spawn_at": "2026-11-17T05:29:19.935Z",
+    "fail": 48,
+    "last_red_run_id": "20261117T052818Z-c4cf0a52",
+    "pass": 1720,
+    "tests": 1768,
+    "verified": true
+  },
+  "git_packet_prepared_but_not_dispatched": true,
+  "grade_sha256": "ebfcd6b57b791b89a56df8d0455e4a63c97d0868497bd2bbe6ebd71128dab559",
+  "head_reflog_entries": 1,
+  "head_reflog_scope": "Only the initial frozen public baseline commit exists. Trusted host export commits are not solver task commits.",
+  "initial_mechanical_report": {
+    "audit_correction": "Three compact matches are string-scanning false positives, not executed compact checks. Overall workflow remains incomplete because Git/commit is missing.",
+    "false_positive_cells": [
+      {
+        "reason": "Allowed skill resolve --json combined with check run --help, which does not execute checks.",
+        "stage": "coordinator",
+        "trace_line": 40
+      },
+      {
+        "reason": "Assignment policy text names forbidden compact/json flag examples; the executed operation is task prepare.",
+        "stage": "coordinator",
+        "trace_line": 48
+      },
+      {
+        "reason": "Ordinary check run shares a cell with allowed gate status --json and skill resolve --json.",
+        "stage": "coordinator",
+        "trace_line": 328
+      }
+    ],
+    "file": "canary-audit-initial-method.json",
+    "raw_requested_compact": 3,
+    "raw_requested_native": 7,
+    "raw_status": "violated",
+    "sha256": "c4d378becd5741ee4e2bf067b887d01562f08756601f717df36c696fb7d9bd14"
+  },
+  "limitations": [
+    "Single normal-arm attempt only; all three other assigned identities remain unstarted. No paired comparison or savings/quality-preservation conclusion.",
+    "All observed workers are Sol/high with fork_turns=none; a fourth required worker was never spawned.",
+    "Native assignment messages and follow-ups are encrypted; saved plaintext neutral briefs and observed file reads are separate evidence, not proof of encrypted payload equality.",
+    "Display truncation and missing rg are observed, with subsequent native grep/sed/log retrieval. No absence is inferred from a truncated preview.",
+    "Reserve stop leaves tail usage unknown. All captured coordinator and descendant usage remains charged.",
+    "No historical frozen score, acceptance, manifest, result or initial mechanical method report was modified."
+  ],
+  "local_task_commit_exists": false,
+  "managed_write_bounds": {
+    "developer": true,
+    "git": null,
+    "quality-engineer": true,
+    "reviewer": true
+  },
+  "missing_required_worker": "git",
+  "native_log_read_cells": 11,
+  "new_declared_check_executions": 4,
+  "observed_check_mode": "ordinary native check output",
+  "observed_required_workers": [
+    "quality-engineer",
+    "developer",
+    "reviewer"
+  ],
+  "passing_check_reuse_requests": 1,
+  "profile": "selective-canary-v1",
+  "result_sha256": "402213b8432f81e4e479d478bfb9ecff3f4b0dba485b32b13442948f0f3cd223",
+  "review": {
+    "declared_checks_and_tap_outcome_audit_observed": true,
+    "full_canonical_packet_read_and_hashed": true,
+    "independent_node_probes_observed": true,
+    "independent_source_and_diff_inspection_observed": true,
+    "native_message_and_followup_contents": "opaque; full neutral-input equality remains unknown",
+    "original_role_intact": true,
+    "reported_findings": 0,
+    "saved_assignment_neutral": true,
+    "writes_observed": "none beyond permitted managed check records"
+  },
+  "run_id": "qs-sparse-array-limit-r1-normal",
+  "version": 1,
+  "workflow_outcome": "incomplete after shared captured-token reserve stop"
+}

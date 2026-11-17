@@ -46,6 +46,16 @@ func uxCommands() []uxCommand {
 		{path: "usage show", summary: "Report task tokens and workflow overhead; unknown usage stays unknown", flags: []uxFlag{task, json}, run: uxLegacy("tokens")},
 		{path: "usage record", summary: "Record a host token notice from standard input", flags: []uxFlag{uxOption("host", "codex|claude", "required notice format; explicit host avoids protocol guessing", "codex", "claude")}, run: runUXUsageRecord},
 	}
+	list = append(list, compactCommands()...)
+	list = append(list, workerCommands()...)
+	for i := range list {
+		if list[i].path == "check run" {
+			list[i].flags = append(list[i].flags, compactCheckFlags()...)
+		}
+		if list[i].path == "task start" {
+			list[i].flags = append(list[i].flags, uxOption("compact", "", "opt in to Go context collection, compact briefs and check results"))
+		}
+	}
 	return uxExtraCommands(list, []uxFlag{host, json, global, root, task, role, accessible})
 }
 

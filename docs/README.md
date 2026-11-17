@@ -6,6 +6,11 @@ Start with the task workflow and roles to coordinate coding agents. The Git gate
 | --- | --- |
 | [CLI guide](cli.md) | Check CLI/plugin/hook setup, start a coordinated task, save host preferences, use editors and completion. |
 | [CLI command reference](cli-reference.md) | Generated command help with operands, options, defaults, and examples. |
+| [Compact context](compact-context.md) | Opt into selective native reads, collection for noisy retrieval, original worker briefs and bounded checks; expand retained evidence. |
+| [Context and workflow research](context-research.md) | Primary-source comparisons, token/cost tradeoffs, priorities and a controlled evaluation protocol. |
+| [Codex compact pilot](codex-compact-pilot.md) | A controlled 24-run real-task comparison, independent quality checks and actual solver token accounting. |
+| [Codex pilot results](benchmarks/codex-compact-pilot-report.md) | Completed Sol/high comparison: frozen test passes, confirmed additional defects, workflow cutoffs and incomplete token pairs. |
+| [Selective compact evaluation](benchmarks/selective-compact-report.md) | Separate offline replay, v2 charset eligibility and the status of four planned budgeted Sol/high canary runs. |
 | [The task workflow](workflow.md) | Coordinate a task through specification, design, tests, implementation, review, and commit, using a shared task record. |
 | [Roles](roles.md) | The seven roles, their models, what each may write, and `kitsu-roles.toml`. |
 | [Skills](skills.md) | Discover existing skills, select them per role, and resolve original sources for a worker brief. |
