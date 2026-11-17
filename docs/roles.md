@@ -157,8 +157,14 @@ working tree.
 ### The coordinator
 
 The coordinator is the developer's own session, not a role. Its instructions are
-`kitsu role text coordinator`, shipped on Claude Code as the skill `/kitsu:task`. It
-chooses the path, writes each brief, starts each role on the model and effort `kitsu role list` prints,
+`kitsu role text coordinator`, shipped on Claude Code as the skill `/kitsu:task`. Run
+`kitsu agent check --host codex` or `--host claude` to inspect local setup, then
+`kitsu task start "<coding request>" --host <host>` to explicitly launch that host with the task
+skill. For an existing desktop session, add `--print` and paste its handoff. Print and JSON
+modes launch nothing and create no task record. A successful local check proves neither model
+availability nor live skill loading or hook trust; see [onboarding](cli.md#check-setup-and-start-a-task).
+
+The coordinator chooses the path, writes each brief, starts each role on the model and effort `kitsu role list` prints,
 runs `kitsu role check` after each role, keeps `reviews.md`, ticks the tasks in `tasks.md` after the
 review of the code, and asks the developer for the approvals. It writes no specification, design, test or code itself. When a
 host cannot run a role on its model, the instructions tell it to stop and tell the developer, not
@@ -470,6 +476,9 @@ and hooks. The coordinator's instructions start the roles as the agents
 `/kitsu:task`. The `tools` list of a role file is for Claude Code to apply; `kitsu` does
 not apply it.
 
+`kitsu task start "<request>" --host claude` opens an interactive Claude Code session with that
+skill instruction; the host still dispatches the `kitsu:<role>` workers.
+
 ### Codex
 
 What is stated, and nothing more:
@@ -479,6 +488,8 @@ What is stated, and nothing more:
 - The coordinator's instructions say: on a host other than Claude Code, give a new worker the
   text that `kitsu role text <role>` prints, on the model and effort `kitsu role list` prints for Codex.
 - The design states that a host without role files of its own gives this text to a new worker.
+- `kitsu task start "<request>" --host codex` opens the interactive host with an explicit request
+  to use Kitsu's installed task skill. It does not add a worker scheduler or verify role execution.
 - The proposal records that the Codex documentation does not say how a role is started on a given
   model; that question is open and is the owner's to settle.
 

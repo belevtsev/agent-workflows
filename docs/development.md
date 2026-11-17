@@ -56,8 +56,9 @@ go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
 
 `govulncheck` reads its database from the network, and installers download release artifacts.
 Explicitly enabled native advisers may contact provider APIs. Help, skill discovery, completion,
-and the first-party gate and token packages operate offline. Configured checks and adviser CLIs
-can use their own networks.
+agent diagnostics, task handoff preparation, and the first-party gate and token packages operate
+offline. Default `task start` explicitly opens the selected interactive host, which can contact
+its provider. Configured checks and adviser CLIs can use their own networks.
 
 ## Tests
 
@@ -75,6 +76,17 @@ can use their own networks.
   [a moved box or a rerouted arrow](../CONTRIBUTING.md#diagrams) is not found.
 
 A test is named after the behaviour it checks.
+
+Onboarding tests use isolated host configuration and fake executables to check installation,
+enablement, hook disable settings, truthful unknown runtime evidence, handoff-only modes, and
+literal interactive launch arguments. They do not authenticate or start live models. The
+[onboarding change record](../openspec/changes/add-agent-onboarding/tests.md) separates those
+checks from any observed real host behavior. Regenerate command documentation after metadata
+changes with:
+
+```sh
+GOWORK=off go test ./internal/cli -run TestUXCommandReferenceIsGenerated -update-cli-reference
+```
 
 ## Continuous integration
 

@@ -93,6 +93,12 @@ func uxPrintLeaf(cfg Config, c uxCommand) error {
 	if c.host {
 		fmt.Fprintln(cfg.Out, "\nHost: --host > KITSU_HOST > private checkout preference > personal preference.\nSet a preference with `kitsu config set host codex` (or add --global).")
 	}
+	if c.path == "agent check" || c.path == "task start" {
+		fmt.Fprintln(cfg.Out, "\nSetup: local inspection does not prove host authentication, model access, hook\ntrust or runtime execution. Follow the reported manual host checks.")
+	}
+	if c.path == "task start" {
+		fmt.Fprintln(cfg.Out, "\nStart: requires terminal input, stdout and stderr and no known local blockers.\nThe host remains the orchestrator and may request permissions. --print and\n--json prepare a handoff even when setup is incomplete; they execute nothing\nand create no task records. The two output options are mutually exclusive.\nA launched host's exit status is preserved; interruption exits 130.")
+	}
 	if strings.HasPrefix(c.path, "skill ") || strings.HasPrefix(c.path, "role ") {
 		fmt.Fprintln(cfg.Out, "\nRole settings: repository skills replace personal lists; clear pins none; reset\nrestores inheritance. Personal settings and coordinator accept only skills.\nSelections grant no extra permissions and do not prove host loading.")
 	}
@@ -118,7 +124,7 @@ func uxPrintRootHelp(cfg Config, all bool) error {
 	for _, group := range uxGroups {
 		fmt.Fprintf(cfg.Out, "  %-12s %s\n", group[0], group[1])
 	}
-	fmt.Fprintln(cfg.Out, "  version      Print build identity\n\nExamples:\n  kitsu config set host codex --global\n  kitsu role edit developer\n  kitsu task list\n\nHelp: kitsu <group> --help; kitsu help <group> <command>\nUse `kitsu help --all` for compatibility aliases and agent integrations.")
+	fmt.Fprintln(cfg.Out, "  version      Print build identity\n\nExamples:\n  kitsu agent check --host codex\n  kitsu task start \"Describe the change\" --host codex\n  kitsu config set host codex --global\n\nHelp: kitsu <group> --help; kitsu help <group> <command>\nUse `kitsu help --all` for compatibility aliases and agent integrations.")
 	if all {
 		fmt.Fprintln(cfg.Out, "\nCompatibility aliases and advanced integrations:")
 		for _, c := range commands() {

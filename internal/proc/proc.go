@@ -1,5 +1,6 @@
-// Package proc runs one external program directly, never through a shell, in
-// a process group of its own, and stops the whole group when the run ends.
+// Package proc runs external programs directly, never through a shell. Run
+// starts a process group of its own and stops the whole group when work ends.
+// RunForeground retains the caller's group for interactive host handoffs.
 //
 // One kill(-pgid, SIGKILL) is not enough on macOS: a member that is forking
 // when the signal is sent can produce a child that joins the group after the
@@ -66,9 +67,10 @@ type Spec struct {
 type Result struct {
 	// Stdout and Stderr are the output Run kept; see Spec.
 	Stdout, Stderr []byte
-	// Code is the exit status, or -1 when the program did not exit on its
-	// own: it never started, or a signal ended it, such as the kill when the
-	// run was stopped. A program that exited before the stop, while a
+	// Code is the OS-reported exit status, or -1 when no normal exit status
+	// is available, such as a start failure or a Unix signal. Windows reports
+	// 1 when os.Process.Kill terminates a process; Stopped and Cancelled identify
+	// interrupted runs. A program that exited before the stop, while a
 	// descendant held its output open, keeps its status.
 	Code int
 	// Stopped is set when ctx ended or Timeout passed, so the process group

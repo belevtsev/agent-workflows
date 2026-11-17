@@ -8,7 +8,8 @@ import (
 )
 
 var uxGroups = [][2]string{
-	{"task", "Inspect task stages and saved records"},
+	{"agent", "Check coding-agent setup"},
+	{"task", "Start a task or inspect task stages and saved records"},
 	{"role", "Choose models, reasoning, skills and role instructions"},
 	{"skill", "Discover original skills and select them per role"},
 	{"adviser", "Inspect and consult optional experimental advisers"},
@@ -86,7 +87,7 @@ func uxExecutePreferred(ctx context.Context, cfg Config, args []string) error {
 		if err == nil {
 			err = c.run(ctx, cfg, remaining)
 		}
-		if ExitCode(err) == ExitUsage {
+		if ExitCode(err) == ExitUsage && err.Error() != "" {
 			message, _, _ := strings.Cut(err.Error(), "usage:")
 			message = strings.TrimRight(strings.TrimSpace(message), ";, ")
 			if message == "" {

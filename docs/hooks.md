@@ -347,10 +347,38 @@ not in the hands of the plugin.
 | `SubagentStop` | `kitsu tokens record --host claude` | `kitsu tokens record --host codex` |
 | `SessionEnd` | `kitsu tokens record --host claude` | `kitsu tokens record --host codex` |
 
-- At the start of a session, when `kitsu` is not on `PATH` and the root of the
-  repository holds `kitsu.toml`, the command prints one line: that `kitsu` is not
-  installed, that every commit and push will be denied by the git hooks, and
-  where the install instruction is.
+### Verify plugin hook setup
+
+Run `kitsu agent check --host codex` or `--host claude` from your project. It reads local setup
+and reports CLI/PATH availability, plugin enablement, task skill, hook configuration, and known
+disable settings. A configured bundle does not prove that a session loaded, trusted, or ran it.
+The optional `git_gate` finding concerns separate Git hooks and does not block coordination.
+
+| Host | Inspect and recover |
+| --- | --- |
+| Codex | Confirm Kitsu is enabled in `/plugins`, then open `/hooks` and review and trust the exact current Kitsu definitions. A plugin update may require another review. |
+| Claude Code | Confirm Kitsu is enabled in `/plugin`, then use `/hooks` to inspect its four events and their source. Restart or run `/reload-plugins` after shell installation. |
+
+Codex's `features.plugins = false`, `features.hooks = false` (including the older `codex_hooks`
+alias), and managed-only policy can prevent plugin hooks from running. Claude Code's `disableAllHooks` or managed-only
+policy can do the same. Follow the diagnostic's source-specific step; the command edits none
+of these settings. Session flags, device management, remote execution, and trust decisions can
+still change actual behavior. See the official [Codex hook guide](https://learn.chatgpt.com/docs/hooks),
+[Claude Code hook reference](https://code.claude.com/docs/en/hooks), and
+[Claude Code plugin guide](https://code.claude.com/docs/en/discover-plugins).
+
+After local setup passes, start a fresh host session and inspect its loaded hooks and observed
+session context. `kitsu context --host ...` exercises Kitsu's command when given a notice; it
+does not prove the host dispatched that event. Authentication, model access, live skill loading,
+and token notices require their own session evidence. The
+[CLI onboarding guide](cli.md#check-setup-and-start-a-task) explains diagnostic exit statuses
+and task handoff modes. A session-start introduction never starts a task automatically.
+
+- At the start of a session, when `PATH` has usable absolute entries but no installed
+  `kitsu`, the command prints one install/PATH instruction. This also works
+  without `kitsu.toml`, from a subfolder, or outside Git; it claims no gate enforcement.
+  With an installed CLI, `kitsu context` introduces the task workflow in Git repositories,
+  including those without a declaration, and stays silent outside Git.
 - `kitsu guard` asks the user in Claude Code, and denies with the reason in Codex,
   before a shell command with a git call that skips git's hooks or a `kitsu` call
   that turns the gate off, and before an edit of `kitsu.toml`, `kitsu-roles.toml`,
@@ -370,9 +398,8 @@ not in the hands of the plugin.
   directory from the `cwd` of the host's notice. The command holds no double
   quote and ends with `exit /b 0`. At the start of a session it runs
   `kitsu context`; when `cmd.exe` finds no `kitsu` it can run (exit status 9009),
-  the command runs no other program and prints the line when the session's
-  directory itself holds `kitsu.toml`, so a session started in a subfolder gets
-  no line there. Two cases are not covered. An entry that names the session's
+  the command runs no other program and prints the install/PATH line regardless of
+  the session directory's declaration. Two cases are not covered. An entry that names the session's
   drive and no path from its root, such as `D:tools`, is read from the root
   of that drive when the Windows folder is on another drive: it leads into
   the repository when the repository is that root, or when the entry names

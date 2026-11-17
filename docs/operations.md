@@ -18,6 +18,8 @@ paths are shortened to `<repository>`.
 
 - [Preferred commands](#preferred-commands)
 - [Command line](#command-line)
+- [kitsu agent check](#kitsu-agent-check)
+- [kitsu task start](#kitsu-task-start)
 - [kitsu init](#kitsu-init)
 - [kitsu add](#kitsu-add)
 - [kitsu run](#kitsu-run)
@@ -46,6 +48,8 @@ The preferred surface is:
 
 | Path | Operands and purpose |
 | --- | --- |
+| `agent check` | Inspect local CLI, host, Kitsu plugin, task skill, and hook setup with evidence and recovery steps. |
+| `task start` | Launch the selected interactive host with `<request>`, or prepare the handoff with `--print` or `--json`. |
 | `task list`, `task show`, `task check` | List full and small histories, show `<task>`, or check `[<task>]` offline. Small histories keep their stage unknown. |
 | `role list`, `role show`, `role text` | List selections, inspect `<role>`, or print its original instructions. |
 | `role set`, `role edit`, `role reset`, `role check` | Change, explicitly edit, reset, or compare `<role>` with `--from <tree>`. |
@@ -70,10 +74,11 @@ order. Preferences currently hold only version 1 and the optional host. Default 
 and reset edit the worktree; `--global` edits the personal file. Shared role settings and
 personal skills stay in their existing files. Legacy ingress keeps its existing host behavior.
 
-Only `role edit` and `config edit` prompt. They require stdin/stderr terminals, reject JSON,
+Only `role edit` and `config edit` open configuration forms. They require stdin/stderr terminals, reject JSON,
 support F1 field help and `--accessible`, preview changes, and revalidate before saving. Cancel
-creates no configuration or lock files; concurrent edits abort the save. Other commands remain
-noninteractive. See [the editor guide](cli.md#open-an-editor-when-you-want-one).
+creates no configuration or lock files; concurrent edits abort the save. `task start` separately
+launches an interactive host unless `--print` or `--json` is given. See
+[the editor guide](cli.md#open-an-editor-when-you-want-one).
 For these new editors, explicit Cancel exits 0 and Ctrl+C/context cancellation exits 130;
 neither saves changes. Existing commands keep their exit-status behavior.
 
@@ -96,6 +101,58 @@ spellings and their underlying behavior.
   next word or after `=`: `--base main` or `--base=main`.
 - Everything after `--` in `kitsu check add` or its `kitsu add` alias is passed on unread.
 - An error is printed on standard error with the prefix `kitsu:`.
+
+## kitsu agent check
+
+```text
+kitsu agent check [--host codex|claude] [--json]
+```
+
+Inspects supported local host configuration without executing the host, model, hook, installer,
+or authentication flow. It checks Kitsu on absolute PATH entries, the selected host executable,
+Kitsu plugin installation and enablement for the scope, the task skill, the hook bundle, and
+known disable settings. Unsupported evidence remains unknown. Any optional Git-gate finding
+is separate from coordinator readiness: no kitsu.toml or installed Git hooks is required.
+
+Text gives each component's evidence and next steps. JSON returns `host`, `ready`,
+`host_executable`, and `checks`; each check has `id`, `status`, `summary`, `detail`, and `actions`.
+Status is `pass`, `fail`, or `warn`. A required installation that cannot be established from the
+supported inventory blocks readiness with an explanation, without proving the plugin absent.
+`ready` means no known blocking local failure. It does not prove authentication, model access,
+skill loading, hook trust, or actual hook execution. Use Codex `/hooks` to review and trust the
+current exact definitions; [plugin hooks](hooks.md#verify-plugin-hook-setup) explains recovery.
+
+Exit statuses: 0 no blocking local failure, including remaining runtime caveats; 5 local setup
+is blocked; 2 invalid usage or no effective supported host; 1 inspection could not complete.
+Host selection follows the preferred-command precedence above. The
+[CLI guide](cli.md#check-setup-and-start-a-task) shows the install/check/start flow.
+
+## kitsu task start
+
+```text
+kitsu task start <request> [--host codex|claude] [--print|--json]
+```
+
+Prepares a prompt that explicitly invokes Kitsu's task skill with the coding request. By default,
+it runs local preflight, requires terminal stdin/stdout/stderr, then starts the selected interactive
+`codex` or `claude` in the current directory. The prompt is a process argument, never a shell
+program. The host controls authentication, models, permissions, and role execution; local checks
+cannot prove its session behavior. Claude Code receives `/kitsu:task`; Codex is told to load the
+installed Kitsu task skill. No task folder, receipt, stage, or usage record is created by the handoff.
+
+`--print` and `--json` are mutually exclusive handoff-only modes. They require no terminals or
+installed host CLI, execute nothing, and return the prepared prompt and local diagnostics even
+when setup is blocked. Print mode is suitable for pasting into a desktop session. JSON adds
+`prompt` and `argv` to the diagnostic object; `argv` is the proposed executable and prompt.
+Inspect `ready` and `checks`; successful preparation is not verified workflow execution.
+
+Exit statuses: handoff-only modes return 0 after successful inspection, even when `ready` is
+false; default launch returns 5 for failed local preflight or 2 for missing terminals; invalid
+usage returns 2, inspection/process-start failure returns 1, and a launched host's status is
+preserved. No host is executed by command help.
+
+The direct launcher accepts native executables; `.cmd` and `.bat` host wrappers require a
+native installation or a manual `--print` handoff.
 
 ## kitsu init
 
@@ -437,10 +494,10 @@ be read; 2 an unknown option, a period that is not valid, or an argument.
 
 ## kitsu context
 
-Prints what a coding agent should know at the start of a session in a gated
-repository: that commits and pushes are gated, that `kitsu run` produces the
-evidence, that `kitsu status` shows what is missing, and whether the hooks are
-installed. The agent plugin runs it; see [Hooks](hooks.md#hooks-of-the-agent-plugin).
+Introduces Kitsu's task workflow at the start of a session in a Git repository, followed by
+the supporting gate's state when configured. The workflow introduction names the host's task
+skill, `kitsu agent check`, and `kitsu task start`; it does not start work. The agent plugin runs
+it; see [Hooks](hooks.md#hooks-of-the-agent-plugin).
 
 ```text
 kitsu context [--host claude|codex]
@@ -454,23 +511,28 @@ Without `--host`, `kitsu context` reads nothing and judges the working directory
 
 ```text
 $ kitsu context
+Kitsu coordinates coding tasks with specialist roles and shared records.
+To start, select Kitsu's task skill in your host.
+Setup: `kitsu agent check --host <host>`. Terminal: `kitsu task start "<request>" --host <host>`.
+
 This repository is gated by kitsu. git allows a commit or a push only when every check declared in kitsu.toml has a recorded passing run on exactly the content that is committed or pushed.
-- `kitsu run` executes the declared checks that have no passing run on the current content and records the results. Run it before you commit.
-- `kitsu status` says whether a commit would be allowed and which checks are missing.
-- A denied commit or push names what is missing. Produce the evidence with `kitsu run`; do not go around the hook.
+- `kitsu run` records missing checks on current content; run it before committing.
+- `kitsu status` shows missing evidence.
+- A denied commit or push needs passing evidence for the staged content; never bypass hooks.
 The hooks are installed.
 ```
 
 In observe mode the last line says that the gate only observes. When the hooks
-are not installed in this clone, the first line is this one, and the line
-about the hooks is left out:
+are not installed in this clone, the workflow introduction stays first, and the first gate
+paragraph is this one; the installed-hooks line is left out:
 
 ```text
 This repository declares checks for kitsu, but the hooks are not installed in this clone, so nothing is gated here yet; `kitsu init` installs them. Once they are installed, git allows a commit or a push only when every check declared in kitsu.toml has a recorded passing run on exactly the content that is committed or pushed.
 ```
 
-Outside a git repository, and where the root of the working tree holds no
-`kitsu.toml`, it prints nothing.
+Without `kitsu.toml`, a Git repository still gets the workflow introduction, followed by a line
+that no checks are declared and passing evidence has not been established. Context stays within
+1,000 characters. Outside a Git repository, it prints nothing.
 
 Exit statuses: 0 always, also outside a repository; 2 an argument.
 
@@ -864,7 +926,7 @@ an invalid declaration.
 
 ## Exit statuses
 
-Every command uses this one table.
+Kitsu uses these statuses for its own decisions.
 
 | Status | Meaning |
 | --- | --- |
@@ -873,8 +935,11 @@ Every command uses this one table.
 | 2 | Wrong command line: an unknown command, option or check id, or a missing argument. |
 | 3 | A hook denies the commit, the merge or the push. |
 | 4 | A hook of another tool is left for you to edit: `kitsu init` or `kitsu uninstall` printed the line to add or to remove. |
-| 5 | Not verified: a check did not pass, a role or change-record rule is broken, or required adviser checkpoints are unsatisfied. |
+| 5 | Not verified: a check did not pass, a role/change rule or adviser checkpoint is unsatisfied, or agent onboarding has a blocking local failure. |
 | 130 | A new explicit role/config editor was interrupted by Ctrl+C or context cancellation; nothing was saved. |
+
+An explicitly launched `task start` host retains its own exit status. Handoff-only task
+preparation returns 0 when its report is produced; inspect `ready` and component diagnostics.
 
 ## Where kitsu keeps its records
 

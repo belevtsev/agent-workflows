@@ -56,12 +56,12 @@ func TestOnlyTheCommandImportsTheCLI(t *testing.T) {
 
 var startsProgram = regexp.MustCompile(`\bexec\.Command(Context)?\(`)
 
-// Programs start in internal/proc. Git access, declared checks and explicitly
-// requested adviser commands are the three execution boundaries.
+// Programs start in internal/proc. Git access, declared checks, explicitly
+// requested advisers and interactive host handoff are the execution boundaries.
 func TestProgramsAreStartedInOnePlace(t *testing.T) {
 	t.Parallel()
 	const proc = "internal/proc"
-	allowed := []string{"internal/gitx", "internal/runner", "internal/advisers"}
+	allowed := []string{"internal/gitx", "internal/runner", "internal/advisers", "internal/onboarding"}
 	found := false
 	for name, imported := range imports(t, false) {
 		if !slices.Contains(imported, proc) {

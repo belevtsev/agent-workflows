@@ -2,11 +2,12 @@ package plugin_test
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // Requirement "Instruction text comes from kitsu", scenario "kitsu is upgraded".
@@ -35,39 +36,34 @@ func TestSessionContextWhenKitsuIsNotInstalled(t *testing.T) {
 	t.Parallel()
 	needShell(t)
 	repo := gatedDemo(t)
-	bin := t.TempDir()
-	for _, program := range []string{"git", "sh"} {
-		path, err := exec.LookPath(program)
-		if err != nil {
-			t.Skipf("%s is not on PATH: %v", program, err)
-		}
-		if err := os.Symlink(path, filepath.Join(bin, program)); err != nil {
-			t.Fatal(err)
-		}
-	}
+	plain := kitsutest.NewRepo(t)
+	plain.Write("nested/README.md", "# no gate\n")
+	bin := toolFolder(t, "sh") // Installation guidance must not depend on Git being available.
 	env := withPath(repo.Env(), bin)
 	goCommand := regexp.MustCompile(`\bgo (install|build|run|get)\b`)
 	for _, h := range hostFiles {
-		t.Run(h.host, func(t *testing.T) {
-			result := sessionStart(t, repo, env, h.file)
-			text := strings.TrimRight(result.Stdout, "\r\n")
-			lower := strings.ToLower(text)
-			if text == "" || strings.ContainsAny(text, "\r\n") {
-				t.Fatalf("the context (exit %d) is not one line:\n%s", result.Code, result.Output())
-			}
-			if !strings.Contains(lower, "kitsu is not installed") {
-				t.Errorf("the line does not say that kitsu is not installed:\n%s", text)
-			}
-			if !strings.Contains(lower, "commit") || !strings.Contains(lower, "denied") {
-				t.Errorf("the line does not say that commits will be denied:\n%s", text)
-			}
-			if !strings.Contains(lower, "install") || !regexp.MustCompile(`https?://\S+|\S+\.md\b`).MatchString(text) {
-				t.Errorf("the line does not say where the install instruction is:\n%s", text)
-			}
-			if goCommand.MatchString(text) {
-				t.Errorf("the line names a Go command:\n%s", text)
-			}
-		})
+		for name, dir := range map[string]*kitsutest.Repo{"gated": repo, "plain": plain, "subfolder": plain.In("nested"), "outside Git": plain.In(t.TempDir())} {
+			t.Run(h.host+"/"+name, func(t *testing.T) {
+				result := sessionStart(t, dir, env, h.file)
+				text := strings.TrimRight(result.Stdout, "\r\n")
+				lower := strings.ToLower(text)
+				if text == "" || strings.ContainsAny(text, "\r\n") {
+					t.Fatalf("the context (exit %d) is not one line:\n%s", result.Code, result.Output())
+				}
+				if !strings.Contains(lower, "kitsu is not installed") {
+					t.Errorf("the line does not say that kitsu is not installed:\n%s", text)
+				}
+				if strings.Contains(lower, "commit") || strings.Contains(lower, "denied") {
+					t.Errorf("installation guidance must not guess whether Git hooks enforce a gate:\n%s", text)
+				}
+				if !strings.Contains(lower, "install") || !regexp.MustCompile(`https?://\S+|\S+\.md\b`).MatchString(text) {
+					t.Errorf("the line does not say where the install instruction is:\n%s", text)
+				}
+				if goCommand.MatchString(text) {
+					t.Errorf("the line names a Go command:\n%s", text)
+				}
+			})
+		}
 	}
 }
 

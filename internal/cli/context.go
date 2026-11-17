@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,10 +17,8 @@ import (
 // MaxContext is the most characters `kitsu context` prints.
 const MaxContext = 1000
 
-// runContext prints what an agent should know at the start of a session in
-// a gated repository. It prints nothing where the root of the working tree
-// holds no declaration, and it never fails a session: outside a repository
-// it prints nothing and exits 0. For a host it reads the host's notice from
+// runContext introduces the workflow and reports the supporting gate's state.
+// Outside a repository it prints nothing and exits 0. For a host it reads the host's notice from
 // standard input, which says where the session works; that is not always the
 // directory the host starts a hook in.
 func runContext(ctx context.Context, cfg Config, args []string) error {
@@ -42,13 +41,34 @@ func runContext(ctx context.Context, cfg Config, args []string) error {
 	if err != nil || repo.Root == "" {
 		return nil
 	}
+	fmt.Fprint(cfg.Out, workflowContext(*host))
 	if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintln(cfg.Out, "This repository has no kitsu.toml declaration. Ask before declaring checks; passing check evidence has not been established.")
+		} else {
+			fmt.Fprintln(cfg.Out, "The repository's kitsu.toml declaration could not be inspected; gate readiness is unknown.")
+		}
 		return nil
 	}
 	mode, _ := store.Open(repo.CommonDir).Mode()
 	_, configured, _ := repo.HooksDir(ctx)
 	fmt.Fprint(cfg.Out, contextText(gate.State(ctx, repo), mode, configured))
 	return nil
+}
+
+func workflowContext(host string) string {
+	invocation := "select Kitsu's task skill in your host"
+	if host == "claude" {
+		invocation = "use /kitsu:task"
+	} else if host == "codex" {
+		invocation = "select the task skill from the Kitsu plugin"
+	}
+	if host == "" {
+		host = "<host>"
+	}
+	return "Kitsu coordinates coding tasks with specialist roles and shared records.\n" +
+		"To start, " + invocation + ".\n" +
+		"Setup: `kitsu agent check --host " + host + "`. Terminal: `kitsu task start \"<request>\" --host " + host + "`.\n\n"
 }
 
 // contextText is the text for one state of the gate. configured says that
@@ -65,7 +85,7 @@ func contextText(hooks, mode string, configured bool) string {
 		state = "The hooks are installed. The gate only observes here: it records what it would deny and allows the operation.\n"
 	}
 	return intro + " allows a commit or a push only when every check declared in kitsu.toml has a recorded passing run on exactly the content that is committed or pushed.\n" +
-		"- `kitsu run` executes the declared checks that have no passing run on the current content and records the results. Run it before you commit.\n" +
-		"- `kitsu status` says whether a commit would be allowed and which checks are missing.\n" +
-		"- A denied commit or push names what is missing. Produce the evidence with `kitsu run`; do not go around the hook.\n" + state
+		"- `kitsu run` records missing checks on current content; run it before committing.\n" +
+		"- `kitsu status` shows missing evidence.\n" +
+		"- A denied commit or push needs passing evidence for the staged content; never bypass hooks.\n" + state
 }

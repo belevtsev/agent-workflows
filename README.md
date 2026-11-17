@@ -75,12 +75,16 @@ Adviser answers replace no review or approval.
 ## Quick start
 
 1. [Install](#install) the CLI and [add the plugin](#for-a-coding-agent) to your coding-agent host.
-2. Run `kitsu role list --host codex` or `kitsu role list --host claude` to inspect models, reasoning, skills, and advisers.
+2. Run `kitsu agent check --host codex` or `kitsu agent check --host claude` and follow any setup steps.
+   On Codex, review and trust the current Kitsu hooks in `/hooks`; local diagnostics cannot prove that trust or hook execution.
+3. Run `kitsu role list --host codex` or `kitsu role list --host claude` to inspect models, reasoning, skills, and advisers.
    [Set a specialist's model or reasoning](docs/roles.md#changing-a-model) with `kitsu role set`; your host selects the coordinator.
    Optionally [select existing skills](#use-your-existing-skills) for a role.
-3. Give the `task` skill a coding task. On Claude Code, invoke `/kitsu:task`; on Codex, use the installed `task` skill.
-   The coordinator chooses the workflow, sets up the repository's checks and role paths, and delegates each stage.
-4. Review the proposed specification and design when the task changes behavior, then follow implementation,
+4. From a terminal, run `kitsu task start "Add an order CSV export" --host codex` (or `--host claude`).
+   This explicitly opens the selected interactive host with Kitsu's task skill and your request.
+   In an existing session, invoke `/kitsu:task` on Claude Code or ask Codex to use Kitsu's installed `task` skill.
+   The host's coordinator chooses the workflow and delegates each stage.
+5. Review the proposed specification and design when the task changes behavior, then follow implementation,
    tests, and review through the shared task record.
 
 You can inspect the role instructions and a recorded task from the terminal:
@@ -93,7 +97,11 @@ kitsu usage show --task <task>
 ```
 
 The [task workflow](docs/workflow.md) explains the full path and the shorter path for work whose behavior is already clear.
-Task records and token totals appear as the workflow runs; the commands above do not launch agents themselves.
+Task records and token totals appear as the host runs the workflow. The inspection commands above launch no agents.
+For desktop use or incomplete CLI setup, run `kitsu task start "Add an order CSV export" --host codex --print`
+and paste the printed handoff into your selected host. `--json` returns the prompt, proposed argv, and local diagnostics.
+Both modes execute nothing and create no task record. The [CLI guide](docs/cli.md#check-setup-and-start-a-task)
+explains ready, broken, and unknown setup evidence. The supporting Git gate can be configured separately.
 
 ### Find a command
 
@@ -281,7 +289,7 @@ The plugin also connects the workflow to supporting checks and token reporting:
 
 | It adds | What that does |
 | --- | --- |
-| Context | It tells a new session which repository checks support the workflow. |
+| Context | It introduces the task workflow in a Git repository, then describes any configured supporting gate. |
 | A guard | It stops a git call that skips the hooks, such as `git commit --no-verify`, a `kitsu` call that turns the gate off, and an edit of [workflow configuration](docs/operations.md#what-it-asks-about), a hook, the git configuration, or a Kitsu record. |
 | Token notices | It gives `kitsu usage record` the notices that a role or the session has ended. |
 
@@ -305,10 +313,24 @@ codex plugin marketplace add belevtsev/kitsu
 codex plugin add kitsu@kitsu
 ```
 
-Codex does not run the hooks of a plugin when it installs it. Its documentation says:
-"Installing or enabling a plugin doesn't automatically trust its hooks … Codex skips
-them until the user reviews and trusts the current hook definition." Until you review and trust them, the session
-gets no text from `kitsu context`, no guard and no token records. The git hooks still decide.
+Start a new session after installing or enabling the plugin. Codex requires manual review and
+trust of the exact current hooks: open `/hooks` and review the Kitsu entries, including after an
+update. Until trusted, its context, guard, and token hooks do not run. See the official
+[plugin](https://learn.chatgpt.com/docs/plugins) and [hook](https://learn.chatgpt.com/docs/hooks) guides.
+Claude Code's [plugin manager](https://code.claude.com/docs/en/discover-plugins) shows whether Kitsu is enabled;
+restart the session or use `/reload-plugins` after a shell installation.
+
+Then inspect local setup and start a task:
+
+```sh
+kitsu agent check --host codex
+kitsu task start "Add an order CSV export" --host codex
+```
+
+Use `--host claude` for Claude Code. A successful local check does not verify authentication,
+model access, hook trust, or live skill loading. Check those in the host session; the
+[onboarding guide](docs/cli.md#check-setup-and-start-a-task) gives recovery steps. Kitsu performs no
+automatic install or trust acceptance. The Git gate works independently of the plugin.
 
 ## How the gate decides
 
@@ -353,6 +375,8 @@ separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advise
 - The [grouped CLI, editors, and completion](openspec/changes/improve-cli-ux/tests.md) passed full Linux race tests
   and lint/vulnerability checks for all three targets. Editor PTY flows and all four completion shells were exercised;
   Windows PowerShell 5.1 runtime testing remains unavailable.
+- [Agent onboarding](openspec/changes/add-agent-onboarding/tests.md) passed Linux race tests, fake-host terminal launches,
+  and three-target lint/vulnerability checks. Darwin and Windows test binaries compiled; native runtime and live Kitsu host execution remain unverified.
 - Whether the workflow improves code quality or saves tokens compared with one agent is **not measured**.
   Historical scratch runs on two small tasks recorded workflow usage, without a comparative quality result:
   [benchmarks](docs/benchmarks.md). The planned [evaluation](docs/evaluation.md) has not been run.
@@ -378,7 +402,7 @@ More in [evidence](docs/evidence.md) and [hooks](docs/hooks.md).
 
 | Document | What it holds |
 | --- | --- |
-| [CLI guide](docs/cli.md) | Preferred command groups, complete help, host preferences, explicit editors, completion, and compatibility aliases. |
+| [CLI guide](docs/cli.md) | Check agent setup, start a task, find commands, save host preferences, use editors and completion. |
 | [CLI command reference](docs/cli-reference.md) | Generated help for command operands, options, defaults, and examples. |
 | [Quick start](docs/quickstart.md) | The five commands in a new repository. A test executes them. |
 | [Try it](docs/try-it.md) | Everything that can be tried by hand, with the output to expect, and what was never run. |
