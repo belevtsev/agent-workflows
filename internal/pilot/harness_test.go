@@ -72,7 +72,7 @@ func TestPilotFreezeDetectsDriftAndPreservesManifest(t *testing.T) {
 	}
 }
 
-func TestPilotRolloutPathRequiresCleanLocalPath(t *testing.T) {
+func TestPilotHomePathsRequireCleanLocalPath(t *testing.T) {
 	type rolloutPathCase struct {
 		name  string
 		path  string
@@ -99,14 +99,52 @@ func TestPilotRolloutPathRequiresCleanLocalPath(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			for _, field := range []string{"rollouts", "home files"} {
+				t.Run(field, func(t *testing.T) {
+					path, _ := unitManifest(t)
+					var m manifest
+					if err := readJSON(path, &m); err != nil {
+						t.Fatal(err)
+					}
+					if field == "rollouts" {
+						m.Host.Rollouts = tc.path
+					} else {
+						m.Host.HomeFiles = []homeFile{{Source: m.CoordinatorPrompt.Path, Destination: tc.path}}
+					}
+					if err := sealManifest(t.Context(), &m, filepath.Dir(path)); (err == nil) != tc.valid {
+						t.Fatalf("%s path %q: valid=%t: %v", field, tc.path, tc.valid, err)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestPilotHomeFilesRejectDuplicateDestinations(t *testing.T) {
+	type destinationCase struct {
+		name         string
+		destinations []string
+	}
+	cases := []destinationCase{
+		{name: "identical", destinations: []string{".codex/auth.json", ".codex/auth.json"}},
+		{name: "portable and native", destinations: []string{".codex/auth.json", filepath.Join(".codex", "auth.json")}},
+		{name: "home directory", destinations: []string{"."}},
+	}
+	if runtime.GOOS == "windows" {
+		cases = append(cases, destinationCase{name: "case alias", destinations: []string{".codex/auth.json", ".CODEX/AUTH.JSON"}})
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
 			path, _ := unitManifest(t)
 			var m manifest
 			if err := readJSON(path, &m); err != nil {
 				t.Fatal(err)
 			}
-			m.Host.Rollouts = tc.path
-			if err := sealManifest(t.Context(), &m, filepath.Dir(path)); (err == nil) != tc.valid {
-				t.Fatalf("rollout path %q: valid=%t: %v", tc.path, tc.valid, err)
+			for _, destination := range tc.destinations {
+				m.Host.HomeFiles = append(m.Host.HomeFiles, homeFile{Source: m.CoordinatorPrompt.Path, Destination: destination})
+			}
+			if err := sealManifest(t.Context(), &m, filepath.Dir(path)); err == nil {
+				t.Fatal("duplicate or directory home file destination accepted")
 			}
 		})
 	}

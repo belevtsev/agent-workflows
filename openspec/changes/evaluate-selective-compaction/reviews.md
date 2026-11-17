@@ -37,3 +37,10 @@ candidate containment and baseline/candidate tree checks. Linux collection-test
 diagnostics were strengthened; its intermittent empty result remains unproven.
 This follow-up runs local fixtures and CI only, with no new paid pilot or model
 calibration and no change to frozen study evidence.
+
+The first follow-up CI passed Linux/macOS and installation jobs. Windows exposed
+a second separator comparison in copied home files. Sol/high implementation and
+independent review then checked all cross-platform validators, shared the clean
+local-path rule between both home fields, and added duplicate destination
+protection. Remaining raw review-path comparisons are Linux-only. Negative
+regressions preserve traversal rejection and cover Windows separator/case aliases.

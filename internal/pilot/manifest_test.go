@@ -186,6 +186,10 @@ func sealAsset(a *asset, base string) error {
 	return nil
 }
 
+func cleanLocalPath(path string) bool {
+	return filepath.IsLocal(path) && filepath.ToSlash(filepath.Clean(path)) == filepath.ToSlash(path)
+}
+
 func sealManifest(ctx context.Context, m *manifest, base string) error {
 	if m.Controllers == 0 {
 		m.Controllers = 1
@@ -199,7 +203,7 @@ func sealManifest(ctx context.Context, m *manifest, base string) error {
 	if len(m.Host.Argv) == 0 || !filepath.IsAbs(m.Host.Argv[0]) || len(m.Grader.Argv) == 0 || !filepath.IsAbs(m.Grader.Argv[0]) {
 		return errors.New("host and grader argv require absolute executable paths")
 	}
-	if !filepath.IsLocal(m.Host.Rollouts) || filepath.ToSlash(filepath.Clean(m.Host.Rollouts)) != filepath.ToSlash(m.Host.Rollouts) {
+	if !cleanLocalPath(m.Host.Rollouts) {
 		return errors.New("host.rollouts must be a clean relative path under the fresh home")
 	}
 	if len(m.ObservationPrompts) != 2 {
@@ -239,11 +243,20 @@ func sealManifest(ctx context.Context, m *manifest, base string) error {
 			}
 		}
 	}
+	homeDestinations := map[string]bool{}
 	for i := range m.Host.HomeFiles {
 		f := &m.Host.HomeFiles[i]
-		if !filepath.IsLocal(f.Destination) || filepath.Clean(f.Destination) != f.Destination {
+		if !cleanLocalPath(f.Destination) || f.Destination == "." {
 			return fmt.Errorf("unsafe home file destination: %s", f.Destination)
 		}
+		destination := filepath.Clean(f.Destination)
+		if filepath.Separator == '\\' {
+			destination = strings.ToLower(destination)
+		}
+		if homeDestinations[destination] {
+			return fmt.Errorf("duplicate home file destination: %s", f.Destination)
+		}
+		homeDestinations[destination] = true
 		a := asset{f.Source, f.SHA256}
 		if err := sealAsset(&a, base); err != nil {
 			return err

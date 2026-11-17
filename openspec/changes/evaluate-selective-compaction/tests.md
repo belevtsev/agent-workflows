@@ -14,7 +14,8 @@ any authorized live results. A mapped test or planned cell alone proves no run.
 | Canary profile validation | internal/pilot/canary_budget_test.go | TestCanaryProfileDoesNotWeakenStudyValidation |
 | Captured budget stop | internal/pilot/canary_budget_test.go | TestCanaryBudgetStopsLocalDescendantsAndFurtherLaunches |
 | Incomplete planned cells | internal/pilot/canary_budget_test.go | TestCanaryLaunchReserveAndMissingResultFailClosed |
-| Portable rollout paths | internal/pilot/harness_test.go | TestPilotRolloutPathRequiresCleanLocalPath |
+| Portable home paths | internal/pilot/harness_test.go | TestPilotHomePathsRequireCleanLocalPath |
+| Duplicate home destinations | internal/pilot/harness_test.go | TestPilotHomeFilesRejectDuplicateDestinations |
 | Trusted repository aliases | internal/pilot/grading_test.go | TestGradeCandidateResolvesAttestedRepositoryAliases |
 
 Focused selective CLI and original-instruction regressions passed locally on
@@ -70,3 +71,15 @@ The combined source passed build, vet, full Linux race tests and pinned
 lint/vulnerability scans for Linux, Darwin and Windows in
 `20261117T060557Z-core-3588456946`. The final independent outside-root assertion
 also passed its focused race test after restoring a valid alias attestation.
+
+The first follow-up CI run passed Linux, macOS and all installation checks, but
+Windows exposed the same separator comparison in copied home-file destinations.
+A shared clean-local-path validator now covers both manifest fields. Expanded
+tests reject malformed paths, directory targets and normalized duplicate
+destinations, including Windows separator/case aliases. The local canary test
+uses a fake process and fake credential, not a model or real authorization.
+The shared-validator source passed the full Linux race suite (32.0 s), pinned
+three-platform lint/vulnerability scans, build and vet in
+`20261117T061946Z-core-1687567666`. Independent review found no remaining
+cross-platform raw separator comparison outside the intentionally Linux-only
+review helpers.

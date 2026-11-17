@@ -48,8 +48,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- [Pilot validation](docs/codex-compact-pilot.md) accepts clean Windows rollout paths and equivalent trusted repository aliases,
-  while retaining path-containment, attestation and candidate-tree checks.
+- [Pilot validation](docs/codex-compact-pilot.md) accepts clean Windows rollout/copied-home paths and trusted repository aliases,
+  retaining containment, attestation and candidate-tree checks while rejecting duplicate home destinations.
 
 - [Path completion](docs/cli.md#enable-shell-completion) follows `~/` and nested home directories correctly,
   with native directory separators and regression coverage on all supported platforms.

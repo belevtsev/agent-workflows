@@ -121,8 +121,10 @@ upstream revisions, prompts, dependencies and eligibility evidence. They are
 provenance exports; a runnable private manifest needs local toolchain, solver,
 grader, bridge and authorization paths.
 
-Rollout directories must be clean paths relative to the fresh solver home;
-portable slash paths and native Windows separators are accepted. Private grading
+Rollout directories and copied home-file destinations must be clean paths relative
+to the fresh solver home; portable slash paths and native Windows separators are
+accepted. Copied files cannot target the home directory itself or duplicate a
+destination, including Windows separator/case aliases. Private grading
 resolves directory aliases before comparing the attested repository identity.
 Aliases do not permit a different repository, a candidate outside the trusted
 root or a mismatch in baseline/candidate trees.
