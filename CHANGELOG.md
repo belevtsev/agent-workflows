@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Help for `check add` and `task test` now puts Kitsu options before `--`. The [verification example](docs/cli-reference.md#kitsu-check-add) shows how to save a required check.
 - Completed commits and publication confirmations remain historical after a branch moves. Formatter hooks that change a commit require fresh verification and preserve concurrent staging.
 - Daily tasks keep their opening check policy and require repair authority before testing a changed verify-only candidate after a failure.
+- Git commands allow output more time to drain on busy runners, including when reading the index.
 
 ## [0.0.2] - 2026-11-18
 

@@ -1,6 +1,7 @@
 package gitx
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"os/exec"
@@ -9,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 func open(t *testing.T, dir string) *Repo {
@@ -30,6 +32,42 @@ func committed(t *testing.T, files map[string]string) (string, *Repo) {
 	git(t, dir, "add", "-A")
 	git(t, dir, "commit", "-q", "-m", "first")
 	return dir, open(t, dir)
+}
+
+type delayedGitOutput struct {
+	delay time.Duration
+	data  bytes.Buffer
+}
+
+func (w *delayedGitOutput) Write(p []byte) (int, error) {
+	time.Sleep(w.delay)
+	return w.data.Write(p)
+}
+
+func TestGitDrainsDelayedIndexOutput(t *testing.T) {
+	dir, _ := committed(t, map[string]string{"tracked.txt": "fixture\n"})
+	out := &delayedGitOutput{delay: 250 * time.Millisecond}
+	_, err := run(t.Context(), call{dir: dir, stdout: out}, "ls-files", "-z")
+	if err != nil || out.data.String() != "tracked.txt\x00" {
+		t.Fatalf("git index output = %q, %v", out.data.String(), err)
+	}
+}
+
+func TestGitRejectsExpiredOutputWithoutReplayingAWrite(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a POSIX shell alias to leave the output pipe open")
+	}
+	dir := newRepo(t)
+	// After the local write the alias exits with a child holding its output.
+	result, err := run(t.Context(), call{dir: dir},
+		"-c", `alias.kitsu-mutate=!printf 'once\n' >>invocations && printf 'output\n'; sleep 5 &`, "kitsu-mutate")
+	if !errors.Is(err, exec.ErrWaitDelay) || result != nil {
+		t.Fatalf("got output %q and error %v, want incomplete output error", result, err)
+	}
+	writes, err := os.ReadFile(filepath.Join(dir, "invocations"))
+	if err != nil || string(writes) != "once\n" {
+		t.Fatalf("got writes %q and error %v, want one execution", writes, err)
+	}
 }
 
 func TestOpen(t *testing.T) {
