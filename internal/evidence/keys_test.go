@@ -1,6 +1,8 @@
 package evidence
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"strings"
 	"testing"
@@ -57,7 +59,19 @@ func TestKeysCountEverySubmoduleEntry(t *testing.T) {
 	first := e.git("rev-parse", "HEAD")
 	e.git("update-index", "--add", "--cacheinfo", "160000,"+first+",vendor/lib")
 	e.git("commit", "-q", "-m", "add vendor/lib")
-	before := e.keys(e.tree())
+	tree := e.tree()
+	before := e.keys(tree)
+	legacy := sha256.New()
+	if err := e.repo.Entries(t.Context(), tree, func(raw []byte, path string) {
+		if path == "unit.sh" || path == "vendor/lib" || strings.HasPrefix(path, "src/") {
+			legacy.Write(raw)
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if before["lint"] == tree || before["unit"] == hex.EncodeToString(legacy.Sum(nil)) {
+		t.Fatal("a candidate with a gitlink can reuse evidence recorded before submodule checkout validation")
+	}
 
 	second := e.git("commit-tree", "-m", "another", e.tree())
 	e.git("update-index", "--cacheinfo", "160000,"+second+",vendor/lib")

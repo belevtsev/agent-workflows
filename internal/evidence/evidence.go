@@ -106,6 +106,8 @@ func Declaration(ctx context.Context, repo *gitx.Repo, tree string) (*decl.File,
 // and of every submodule entry: a tree holds a submodule as one entry, which
 // no pattern for a file inside it matches. For the same reason a pattern that
 // names a folder matches nothing; it is refused as a mistake.
+// Keys for a tree with submodules use a fresh namespace because older runs
+// could have executed with some of those directories empty.
 func Keys(ctx context.Context, repo *gitx.Repo, tree string, checks []decl.Check) (map[string]string, error) {
 	keys := make(map[string]string, len(checks))
 	hashers := map[string]hash.Hash{}
@@ -116,12 +118,14 @@ func Keys(ctx context.Context, repo *gitx.Repo, tree string, checks []decl.Check
 			hashers[c.ID] = sha256.New()
 		}
 	}
-	if len(hashers) == 0 {
+	if len(checks) == 0 {
 		return keys, nil
 	}
 	var folders []decl.Problem
+	var hasSubmodules bool
 	err := repo.Entries(ctx, tree, func(raw []byte, path string) {
 		submodule := bytes.HasPrefix(raw, []byte("160000 "))
+		hasSubmodules = hasSubmodules || submodule
 		for _, c := range checks {
 			if h, ok := hashers[c.ID]; ok && (submodule || decl.MatchAny(c.Paths, path)) {
 				h.Write(raw)
@@ -141,6 +145,12 @@ func Keys(ctx context.Context, repo *gitx.Repo, tree string, checks []decl.Check
 	}
 	for id, h := range hashers {
 		keys[id] = hex.EncodeToString(h.Sum(nil))
+	}
+	if hasSubmodules {
+		for id, key := range keys {
+			digest := sha256.Sum256([]byte("initialized-submodules-v1\x00" + key))
+			keys[id] = hex.EncodeToString(digest[:])
+		}
 	}
 	return keys, nil
 }

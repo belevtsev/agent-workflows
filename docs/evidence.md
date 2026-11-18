@@ -61,8 +61,8 @@ filters still apply; neither the real index nor its marks are changed.
 The same holds for a file marked assume-unchanged that differs, a sparse
 checkout that keeps tracked files off the disk, a submodule or nested
 repository with uncommitted changes, a submodule that holds a path marked
-assume-unchanged or skip-worktree, a submodule that is not checked out but
-whose folder holds files, and any case in which `git add -A` fails, such as a
+assume-unchanged or skip-worktree, a submodule that remains in the candidate
+with an uninitialized checkout, and any case in which `git add -A` fails, such as a
 nested repository with no commit:
 
 ```text
@@ -76,7 +76,7 @@ fatal: adding files failed
 
 Each check has a content key for a tree:
 
-- A check without `paths` depends on every path. Its key is the id of the whole
+- A check without `paths` depends on every path. Its key represents the whole
   tree, so any change to any non-ignored file, `kitsu.toml` included, makes a new
   content that needs a new run.
 - A check with `paths` depends only on the entries whose path matches a
@@ -86,6 +86,10 @@ Each check has a content key for a tree:
   are the same. A tree holds a submodule as one entry, which no pattern for a
   file inside it matches, so a submodule entry counts in the key of every
   check that has `paths`: a new commit of any submodule needs a new run.
+
+An upgrade to this submodule validation requires new runs for trees that
+contain a submodule. Their previous check keys could describe a run on an
+empty checkout. Initialize the submodules before running checks.
 
 So for a check with `paths = ["src/**"]`:
 
