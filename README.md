@@ -24,15 +24,28 @@ curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.s
 
 ## Quick start
 
-Open your project in Codex and start a fresh conversation. On first use, open `/hooks` to review and trust the Kitsu hooks. Then paste this into **Codex chat**:
+Open a fresh chat in your project. Paste the example for your agent.
 
-> Use Kitsu’s task skill to trace how this project handles invalid input. Propose one regression test, stop after the plan, and give me the task ID.
+**Codex** — On first use, open `/hooks` to review and trust Kitsu’s hooks.
 
-Codex opens a local Kitsu task, inspects the project, and returns a plan you can review before any code changes. To pick up the work in a new chat, open the same Git worktree and ask:
+> Use Kitsu’s task skill to investigate the failing test. Reproduce the failure, explain the cause, and stop before editing. Give me the task ID.
 
-> Use Kitsu to find my invalid-input task and show me the saved plan and next step.
+**Claude Code**
 
-In **Claude Code**, enter `/kitsu:task` followed by your request. If the plugin is missing after installation, restart your agent and follow the [setup checks](docs/release-install.md#check-the-host-and-start-a-task).
+> /kitsu:task Investigate the failing test. Reproduce the failure, explain the cause, and stop before editing. Give me the task ID.
+
+When you’re ready for the fix, reply in the same chat with either agent:
+
+> Fix the cause, add a regression test, and verify the result. Leave the changes uncommitted.
+
+### Resume later
+
+Open a fresh chat in the **same Git worktree**. Replace `<task-id>` with the ID your agent gave you.
+
+- **Codex:** `Use Kitsu to resume task <task-id> and show me the next step.`
+- **Claude Code:** `/kitsu:task Resume task <task-id> and show me the next step.`
+
+Lost the ID? Ask your agent to list your saved Kitsu tasks.
 
 <a name="the-roles"></a>
 
