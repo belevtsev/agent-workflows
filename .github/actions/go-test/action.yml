@@ -39,9 +39,9 @@ runs:
       if: runner.os != 'Linux' && inputs.thorough != 'true'
       shell: bash
       env:
-        # The limit applies to an entire package. The Windows integration
-        # packages can each spend over 15 minutes launching native processes.
-        PACKAGE_TIMEOUT: ${{ runner.os == 'Windows' && '22m' || '15m' }}
+        # The limit applies to an entire package. The expanded handoff suite
+        # exceeded 22 minutes on the hosted Windows runner.
+        PACKAGE_TIMEOUT: ${{ runner.os == 'Windows' && '30m' || '15m' }}
       run: go test -count=1 -timeout="$PACKAGE_TIMEOUT" ./...
     # A thorough run is started by hand. It also covers the code written for
     # macOS and Windows with the race detector, which needs cgo, and runs the

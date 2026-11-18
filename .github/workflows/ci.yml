@@ -28,15 +28,13 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # The job names are the required checks of the branch protection:
-  # "Native Go / ubuntu-latest" and "Native Go / macos-latest". The Windows
-  # job is not required until the owner makes it so.
+  # Keep the matrix job names aligned with the required checks on main.
   go:
     name: Native Go / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     # Windows runs the full native suite and then the hook cost measurement.
     # The job also covers setup, package scheduling and the post-test benchmark.
-    timeout-minutes: ${{ inputs.thorough && 50 || matrix.os == 'windows-latest' && 35 || 20 }}
+    timeout-minutes: ${{ inputs.thorough && 50 || matrix.os == 'windows-latest' && 45 || 20 }}
     strategy:
       fail-fast: false
       matrix:
