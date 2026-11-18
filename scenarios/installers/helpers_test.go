@@ -300,7 +300,7 @@ func invokeInstaller(t *testing.T, host installer, dir string, env []string, scr
 	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 	var command *exec.Cmd
-	if runtime.GOOS == "windows" {
+	if host.script == "install.ps1" {
 		prefix := []string{"-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass"}
 		if piped {
 			env = append(env, "KITSU_TEST_INSTALLER_SCRIPT="+script)

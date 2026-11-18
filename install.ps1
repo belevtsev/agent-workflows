@@ -27,13 +27,12 @@ param(
     [string]$InstallDir = $env:KITSU_INSTALL_DIR,
     [switch]$NoModifyPath = ($env:KITSU_NO_MODIFY_PATH -eq '1'),
     [string]$ArchiveDir = $env:KITSU_ARCHIVE_DIR,
-    [ValidateSet('codex', 'claude')]
     [string]$AgentHost
 )
 
 # Keep preferences and helper functions out of an interactive irm | iex session.
 & {
-    param($ReleaseVersion, $DestinationDir, $LeavePath, $LocalArchives, $SelectedHost)
+    param($ReleaseVersion, $DestinationDir, $LeavePath, $LocalArchives, $SelectedHost, $HostSpecified)
     $ErrorActionPreference = 'Stop'
     Set-StrictMode -Version 2.0
 
@@ -223,6 +222,8 @@ param(
     }
 
     if ($PSVersionTable.PSVersion -lt [version]'5.1') { throw 'Kitsu requires PowerShell 5.1 or newer.' }
+    # Invoke-Expression applies parameter attributes even for omitted arguments.
+    if ($HostSpecified -and $SelectedHost -notin 'codex', 'claude') { throw '-AgentHost must be codex or claude.' }
     $isLocal = -not [string]::IsNullOrEmpty($LocalArchives)
     if ($SelectedHost -and -not $isLocal) { throw '-AgentHost requires -ArchiveDir.' }
     if (-not $isLocal -and -not $ReleaseVersion) { $ReleaseVersion = 'v0.0.1' }
@@ -372,4 +373,4 @@ param(
         if ($null -ne $stage) { Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue }
         Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
     }
-} $Version $InstallDir $NoModifyPath.IsPresent $ArchiveDir $AgentHost
+} $Version $InstallDir $NoModifyPath.IsPresent $ArchiveDir $AgentHost ($PSBoundParameters.ContainsKey('AgentHost'))

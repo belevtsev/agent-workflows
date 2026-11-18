@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -99,6 +100,40 @@ func TestRemoteInstallerUsesPinnedVersion(t *testing.T) {
 				t.Fatalf("expected no installation, got %v", err)
 			}
 		})
+	}
+}
+
+func TestPowerShellInstallerParameterValidation(t *testing.T) {
+	var shells []installer
+	if runtime.GOOS == "windows" {
+		shells = nativeInstallers(t)
+	} else {
+		program, err := exec.LookPath("pwsh")
+		if err != nil {
+			t.Skip("PowerShell is unavailable")
+		}
+		shells = []installer{{name: "pwsh", program: program, script: "install.ps1"}}
+	}
+	for _, shell := range shells {
+		for _, test := range []struct {
+			name, want string
+			piped      bool
+			args       []string
+		}{
+			{name: "piped without AgentHost", piped: true, want: "Version must be a v-prefixed release tag"},
+			{name: "unknown AgentHost", args: []string{"-AgentHost", "other"}, want: "-AgentHost must be codex or claude"},
+			{name: "empty AgentHost", args: []string{"-AgentHost", ""}, want: "-AgentHost must be codex or claude"},
+		} {
+			t.Run(shell.name+"/"+test.name, func(t *testing.T) {
+				// Use the validation guards before the Windows-only installation begins.
+				run := newInstallRun(t, shell, "http://127.0.0.1:1")
+				run.env["KITSU_VERSION"] = "invalid"
+				output, err := run.run(test.piped, test.args...)
+				if err == nil || !strings.Contains(output, test.want) {
+					t.Fatalf("expected %q from the installer: %v\n%s", test.want, err, output)
+				}
+			})
+		}
 	}
 }
 

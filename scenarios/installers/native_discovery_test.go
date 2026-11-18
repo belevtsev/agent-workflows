@@ -65,8 +65,12 @@ func (p nativeProfile) codexTaskSkill(name string) string {
 		t.Fatalf("start Codex app-server: %v", err)
 	}
 	defer func() {
-		cancel()
-		_ = cmd.Wait()
+		// EOF lets the stdio server shut down its helpers and release the
+		// disposable profile. The context still bounds an unresponsive server.
+		_ = input.Close()
+		if err := cmd.Wait(); err != nil {
+			t.Errorf("shut down Codex inventory server: %v", err)
+		}
 		if t.Failed() && stderr.Len() > 0 {
 			t.Logf("Codex app-server stderr: %s", stderr.Bytes())
 		}
