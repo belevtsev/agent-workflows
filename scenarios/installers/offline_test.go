@@ -149,7 +149,7 @@ func TestInstallerAgentHostValidation(t *testing.T) {
 			args []string
 			want string
 		}{
-			{name: "requires offline directory", args: []string{hostFlag, "codex"}, want: archiveFlag},
+			{name: "missing plugin", args: []string{hostFlag, "codex"}, want: "kitsu-plugin.zip"},
 			{name: "validates host", args: []string{archiveFlag, "nonexistent", hostFlag, "other"}, want: hostFlag},
 		} {
 			t.Run(host.name+"/"+test.name, func(t *testing.T) {

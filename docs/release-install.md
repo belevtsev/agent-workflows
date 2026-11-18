@@ -6,34 +6,27 @@ the executable. Linux, macOS, and Windows archives provide amd64 and arm64 build
 
 ## Install from a release
 
-Run one command. The installer downloads the right binary, checks its checksum, and sets up `PATH`.
-The current default is `v0.0.1`.
+With Git and Codex or Claude Code installed, run the command for your platform. Replace `codex` with `claude` for Claude Code.
 
-Linux and macOS:
+**macOS or Linux**
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh | sh -s -- --host codex
 ```
 
-Windows, in PowerShell 5.1 or 7:
+**Windows PowerShell**
 
 ```powershell
-irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 | iex
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1))) -AgentHost codex
 ```
 
-These are user installs, with no Go toolchain or administrator access required.
-The defaults are `$HOME/.local/bin/kitsu` on macOS/Linux and
-`%LOCALAPPDATA%\kitsu\kitsu.exe` on Windows. Open a new terminal, then run `kitsu version`.
+This installs the CLI and registers its matching plugin. While the latest release is CLI-only v0.0.1, the installer uses a signed-in GitHub CLI (`gh`) to fetch both from the latest successful build on `main`. Once a tagged release includes both assets, the same command downloads them directly without `gh`. For the current preview, run `gh auth login` if needed. The installer prints the selected CI run.
 
-Kitsu uses Git to work in a repository; Windows hooks use the shell supplied by Git for Windows.
-
-The installer adds its directory to user `PATH` unless you opt out. Rerunning it does not add
-duplicate entries. The release command installs the CLI. Add the [agent plugin](https://github.com/belevtsev/kitsu/blob/v0.0.1/README.md#for-a-coding-agent)
-through your host's marketplace. Provider CLIs and Git are installed separately.
+The default locations are `$HOME/.local/bin/kitsu` on macOS/Linux and `%LOCALAPPDATA%\kitsu\kitsu.exe` on Windows. Open a new terminal and run `kitsu version` for the installed tag and revision. Windows hooks use Git for Windows.
 
 ## Check the host and start a task
 
-For the daily harness, install a CLI and marketplace from the same preview build as described below. From your working repository, run:
+From your working repository, run:
 
 ```sh
 kitsu agent check --host codex
@@ -75,15 +68,15 @@ CI build, use the bundled installer and pass its artifact directory.
 
 | macOS/Linux flag | PowerShell parameter | Environment default | Purpose |
 | --- | --- | --- | --- |
-| `--version TAG` | `-Version TAG` | `KITSU_VERSION` | Select a tag. Downloads default to `v0.0.1`. Local bundles can supply the tag. |
-| `--host codex\|claude` | `-AgentHost codex\|claude` | — | Register the plugin from the same local artifact with the selected host. |
+| `--version TAG` | `-Version TAG` | `KITSU_VERSION` | Pin the requested tag. CLI-only remote installs default to `v0.0.1`. |
+| `--host codex\|claude` | `-AgentHost codex\|claude` | — | Install and register the plugin paired with the platform CLI. |
 | `--install-dir DIR` | `-InstallDir DIR` | `KITSU_INSTALL_DIR` | Choose the destination directory. |
 | `--no-modify-path` | `-NoModifyPath` | `KITSU_NO_MODIFY_PATH=1` | Install without changing user `PATH`. |
 | `--archive-dir DIR` | `-ArchiveDir DIR` | `KITSU_ARCHIVE_DIR` | Use local archives and `SHA256SUMS`, with no download. |
 
 Explicit arguments override environment defaults. Unix value options also accept `--flag=value`.
 For a mirror or test server, `KITSU_DOWNLOAD_BASE` overrides the complete version-specific asset
-directory URL; the installer appends only the archive name and `SHA256SUMS`. It has no command-line
+directory URL; the installer reads the CLI archive, `SHA256SUMS` and, for host installs, `kitsu-plugin.zip` from that directory. It has no command-line
 flag. Use HTTPS; HTTP is supported only for loopback test servers. A failed checksum leaves an
 already installed executable in place.
 
@@ -106,9 +99,7 @@ On macOS/Linux, if the installer cannot update startup configuration, it prints 
 `PATH` step. The verified executable remains installed; follow that step before opening a new
 terminal.
 
-Rerun the one-line command to reinstall or update to the installer's current default version.
-Defaults stay pinned until updated in source; the installer does not discover the latest tag.
-Reusing a saved installer keeps that script's default unless you override it.
+Rerun the host install command to update both components. An explicit version or mirror selects only that source. If host registration fails after the CLI is installed, fix the reported problem and rerun the same command.
 
 ## Install a CI artifact before publication
 
@@ -125,34 +116,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -ArchiveDir . 
 ```
 
 Omit the host option for a CLI-only install. With one matching platform archive in the manifest, the installer can discover a preview tag. When multiple tags match, select one with `--version TAG` or `-Version TAG`. Use scripts and archives from the same download. For an update, rerun the command from the new bundle. Check the revision from `kitsu version` against the CI run because two builds can share a version label.
-
-### Download and install from the terminal
-
-With Git and your host installed and the GitHub CLI (`gh`) signed in, these commands download the artifact from the latest successful push build on `main` and run its bundled installer. Replace `codex` with `claude` for Claude Code.
-
-**macOS or Linux**
-
-```sh
-bundle=$(mktemp -d) &&
-run=$(gh run list -R belevtsev/kitsu --workflow ci.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId') &&
-test -n "$run" &&
-gh run download "$run" -R belevtsev/kitsu -n kitsu-archives -D "$bundle" &&
-sh "$bundle/install.sh" --archive-dir "$bundle" --host codex
-```
-
-<details>
-<summary><strong>Windows (PowerShell)</strong></summary>
-
-```powershell
-$bundle = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
-$run = gh run list -R belevtsev/kitsu --workflow ci.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId'
-if (!$run) { throw "Could not find a successful Kitsu build." }
-gh run download $run -R belevtsev/kitsu -n kitsu-archives -D $bundle
-if ($LASTEXITCODE -ne 0) { throw "Could not download the Kitsu bundle." }
-powershell -NoProfile -ExecutionPolicy Bypass -File "$bundle/install.ps1" -ArchiveDir $bundle -AgentHost codex
-```
-
-</details>
 
 ### Register the matching marketplace
 

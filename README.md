@@ -6,24 +6,21 @@ Kitsu guides **Codex and Claude Code** through a coding task in your Git reposit
 
 ## Install
 
-Install Git and the coding agent you use. The daily workflow is available in the preview bundle. The published v0.0.1 release predates these commands.
-
-1. Open [Kitsu builds on main](https://github.com/belevtsev/kitsu/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush), select a recent run with a successful **Release archives** job, and download **kitsu-archives** under **Artifacts**. Sign in to GitHub to download it.
-2. Unzip the download and open a terminal in the extracted folder. Run the command for your platform below. Use `claude` in place of `codex` for Claude Code.
+With Git and Codex or Claude Code installed, run the command for your platform. Replace `codex` with `claude` for Claude Code.
 
 **macOS or Linux**
 
 ```sh
-sh ./install.sh --archive-dir . --host codex
+curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh | sh -s -- --host codex
 ```
 
 **Windows PowerShell**
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -ArchiveDir . -AgentHost codex
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1))) -AgentHost codex
 ```
 
-This installs the CLI and registers its matching plugin. [Download and install entirely from the terminal](docs/release-install.md#download-and-install-from-the-terminal)
+This installs the CLI and registers its matching plugin. While the latest release is CLI-only v0.0.1, the installer uses a signed-in GitHub CLI (`gh`) to fetch both from the latest successful build on `main`. [Versions and offline installs](docs/release-install.md)
 
 ## Quick start
 
