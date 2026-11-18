@@ -74,8 +74,8 @@
 | Resume and deliver the same ticket | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Repair a reproduced failure and verify the commit | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Withhold an unsupported receipt | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
-| Import a site-bound Jira ticket and reopen its Markdown offline | internal/tickets/jira_cloud_test.go | TestReadJiraCloudIssue |
+| Import a public ticket link and reopen its Markdown offline | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Deliver a ticket supplied by a host tracker | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
-| Read an authenticated GitHub issue | internal/tickets/source_test.go | TestGitHubTicketImport |
+| Fetch and validate public ticket content | internal/tickets/public_test.go | TestPublicTicket |
 
 Go, JavaScript and C++ fixture commands execute locally. Host judgments are scripted. Published release checks execute on native CI runners when a release is available. Interactive host quality, speed and token costs require separate observations.

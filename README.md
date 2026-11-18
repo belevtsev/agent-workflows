@@ -70,7 +70,7 @@ kitsu agent check --host codex
 kitsu task start "Review my CSV export change, repair confirmed issues, and test quoted fields" --until verify --host codex
 ```
 
-For a bug ticket, start a tracked local delivery and give the task to your host. Codex or Claude Code can read a ticket through your configured MCP server and pass its text to Kitsu with `--from SOURCE --stdin`. Kitsu also reads Markdown files, GitHub issues and Jira Cloud issues directly. Kitsu saves a private Markdown copy and prints its path.
+For a bug ticket, start a tracked local delivery and give the task to your host. Your host can read a ticket through a configured MCP server or plugin and pass its text to Kitsu with `--from SOURCE --stdin`. Kitsu also reads a public ticket URL or local Markdown file directly. Kitsu saves a private Markdown copy and prints its path.
 
 ```sh
 kitsu task bug csv-fix --from tickets/csv.md

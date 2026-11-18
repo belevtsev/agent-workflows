@@ -55,7 +55,7 @@ func linkedPackages(t *testing.T, goos string, targets ...string) []linkedPackag
 func TestCLINetworkImportBoundaries(t *testing.T) {
 	allowed := map[string][]string{
 		module + "internal/advisers":      {"net/http", "net/url"}, // Provider API clients.
-		module + "internal/tickets":       {"net/http", "net/url"}, // Explicit Jira import and ticket URLs.
+		module + "internal/tickets":       {"net/http", "net/url"}, // Public ticket links.
 		"github.com/charmbracelet/x/ansi": {"net/url"},             // Terminal hyperlink formatting.
 		"golang.org/x/sys/windows":        {"net"},                 // Windows address types.
 	}

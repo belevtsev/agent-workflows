@@ -2,6 +2,9 @@ package harness_test
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,7 +15,7 @@ import (
 )
 
 func TestTicketLinkedDelivery(t *testing.T) {
-	for _, kind := range []string{"markdown", "supplied"} {
+	for _, kind := range []string{"markdown", "supplied", "url"} {
 		t.Run(kind, func(t *testing.T) { checkTicketDelivery(t, kind) })
 	}
 }
@@ -27,7 +30,8 @@ func checkTicketDelivery(t *testing.T, kind string) {
 	refSuffix := "Export%20bug.md"
 	f := flow{t: t, repo: r, id: "ticket-fix"}
 	var args []string
-	if kind == "supplied" {
+	switch kind {
+	case "supplied":
 		source = "mcp://company-tracker/EXP-14"
 		refSuffix = source
 		args = []string{"bug", "--stdin", "--from", source}
@@ -35,7 +39,18 @@ func checkTicketDelivery(t *testing.T, kind string) {
 		if result.Code != 0 {
 			t.Fatal(result.Output())
 		}
-	} else {
+	case "url":
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "text/markdown")
+			_, _ = io.WriteString(w, body)
+		}))
+		t.Cleanup(server.Close)
+		source = server.URL + "/EXP-14"
+		refSuffix = source
+		args = []string{"bug", "--from", source}
+		f.call(0, args...)
+		server.Close()
+	default:
 		if err := os.WriteFile(source, []byte(body), 0600); err != nil {
 			t.Fatal(err)
 		}

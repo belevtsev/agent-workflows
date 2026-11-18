@@ -40,14 +40,14 @@ Choose the base you intend to compare. For a branch that diverged from main, use
 
 ## Deliver a bug ticket
 
-From the target repository, open a task from a connected tracker, a Markdown file, or a built-in GitHub or Jira Cloud reader. The command authorizes a local repair and commit on the current branch. Ticket text supplies the problem statement. Publishing a branch, posting to the tracker and closing the issue require separate developer action.
+From the target repository, open a task from a public link, a Markdown file, or a tracker connected through MCP or a plugin. The command authorizes a local repair and commit on the current branch. Ticket text supplies the problem statement. Publishing a branch, posting to the tracker and closing the issue require separate developer action.
 
 ```sh
-kitsu task bug wrapper-args --from https://github.com/spf13/pflag/issues/537
+kitsu task bug wrapper-args --from https://tracker.example.org/tickets/wrapper-args.md
 kitsu task start --resume wrapper-args --host codex
 ```
 
-For a tracker exposed through MCP, ask Codex or Claude Code to read the ticket with your configured server. For example, “Read EXP-14 from our support tracker and use Kitsu to reproduce, repair and verify it.” The host passes the returned title and description as Markdown on standard input. Use the ticket's stable browser link, or an `mcp://SERVER/TICKET-ID` reference when the server only returns an ID. A file exported by another tool works the same way:
+For a tracker exposed through MCP or a host plugin, ask Codex or Claude Code to read the ticket with your configured server. For example, “Read EXP-14 from our support tracker and use Kitsu to reproduce, repair and verify it.” The host passes the returned title and description as Markdown on standard input. Use the ticket's stable browser link, or an `mcp://SERVER/TICKET-ID` or `plugin://PLUGIN/TICKET-ID` reference when the server only returns an ID. A file exported by another tool works the same way:
 
 ```sh
 kitsu task bug export-14 --from mcp://support/EXP-14 --stdin < ticket.md
@@ -55,15 +55,11 @@ kitsu task bug export-14 --from mcp://support/EXP-14 --stdin < ticket.md
 
 The host handles tracker access. Kitsu records the supplied text and source reference. Use a permanent link without credentials or temporary access tokens. Resume offline with `kitsu task next export-14`.
 
-To read a Jira Cloud issue, paste its browser link. For private issues, set `KITSU_JIRA_SITE` to the HTTPS site origin (for example `https://acme.atlassian.net`), `KITSU_JIRA_EMAIL` to your account email, and `KITSU_JIRA_API_TOKEN` to a site-compatible API token through your shell or secret manager. Public issues can be imported anonymously. This uses the site's read-only issue endpoint and preserves Jira's description text. [Atlassian authentication guide](https://developer.atlassian.com/cloud/jira/platform/basic-auth-for-rest-apis/)
-
-```sh
-kitsu task bug acme-123 --from https://acme.atlassian.net/browse/ACME-123
-```
+For a direct HTTP(S) link, Kitsu makes an anonymous request and accepts UTF-8 Markdown, plain text, or a server-rendered HTML page with readable content in a main or article element. Review the imported snapshot at intake. For private or client-rendered tickets, let your configured MCP server or plugin supply the Markdown with `--stdin`.
 
 Opening any supported ticket prints the path to a private Markdown snapshot in the worktree's Git directory. JSON exposes it as `ticket_markdown`. It includes the canonical source link and saved request. Repeat the same open command to regenerate it offline. The delivery receipt always links to the original source.
 
-For a local ticket use `--from ./tickets/wrapper-args.md`. Use `--host claude` for Claude Code. GitHub import uses your installed `gh` CLI and its existing issue access. A Markdown import needs only a readable UTF-8 file. Kitsu saves the text and source digest once. Reopening the same task and source reuses the saved version, even offline. Choose a new task ID to use a revised ticket. `task next ID` shows the saved request, source and next action. Add `--require-review` when opening the task for an independent review. Repository review requirements still apply.
+For a local ticket use `--from ./tickets/wrapper-args.md`. Use `--host claude` for Claude Code. A Markdown import needs only a readable UTF-8 file. Kitsu saves the text and source digest once. Reopening the same task and source reuses the saved version, even offline. Choose a new task ID to use a revised ticket. `task next ID` shows the saved request, source and next action. Add `--require-review` when opening the task for an independent review. Repository review requirements still apply.
 
 1. Record intake with the observable bug. Run the reproduction through `task test ID --ticket TICKET --expect "expected behavior" -- PROGRAM ARGS`. If you add a reproducer to the checkout, refresh the verification ticket with `task next ID` before running it. Choose a command whose nonzero exit demonstrates the particular defect. Inspect its output. A missing program or a green first check leaves reproduction open.
 2. Repair the code, preserve existing edits, add regression coverage and stage the intended files. Record the changed candidate with `task record ID repair --actor SESSION --ticket TICKET --note "what changed"`. Follow independent review if required.

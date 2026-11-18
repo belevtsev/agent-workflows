@@ -367,12 +367,12 @@ Source: developer request for the first closed-loop delivery slice.
 - **WHEN** reproduction is missing, a different command is substituted, or the post-commit assertion fails
 - **THEN** Kitsu withholds a successful receipt. A saved successful receipt remains available after the checkout moves.
 
-#### Scenario: Import a site-bound Jira ticket and reopen its Markdown offline
+#### Scenario: Import a public ticket link and reopen its Markdown offline
 
-- **WHEN** a developer opens a Jira Cloud browse URL using credentials for that site, then reopens the same task offline
+- **WHEN** a developer opens a public link to a supported text document, then reopens the same task offline
 - **THEN** Kitsu captures the requested issue, writes a private Markdown copy with its canonical source link and regenerates it from the saved task. Failed intake creates no deliverable ticket.
 
 #### Scenario: Deliver a ticket supplied by a host tracker
 
-- **WHEN** the host reads a ticket through a configured MCP server and supplies its Markdown and stable tracker reference on standard input
+- **WHEN** the host reads a ticket through a configured MCP server or tracker plugin and supplies its Markdown and stable tracker reference on standard input
 - **THEN** Kitsu snapshots that text locally without contacting the source. Offline resume retains the original input and the verified delivery receipt identifies the same tracker reference.

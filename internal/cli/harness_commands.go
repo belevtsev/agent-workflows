@@ -698,7 +698,7 @@ func pinHarnessCommitTarget(ctx context.Context, s *session, task *harness.Task)
 }
 
 func (o *harnessOptions) matchesSavedScope(task *harness.Task) bool {
-	if o.from != "" && (task.Bug == nil || o.source.Kind != task.Bug.Source.Kind || o.source.URL != task.Bug.Source.URL) {
+	if o.from != "" && (task.Bug == nil || !tickets.SameSource(o.source, task.Bug.Source)) {
 		return false
 	}
 	scope := o.scope
