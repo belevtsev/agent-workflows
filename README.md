@@ -2,7 +2,7 @@
 
 <img src="docs/brand/kitsu-mascot.png" alt="Kitsu’s Pomeranian mascot in a red beanie" width="128" align="right">
 
-Kitsu is a plugin for **Codex** and **Claude Code**. In your usual coding session, ask your agent to plan a feature, review a diff, or fix a bug. The agent uses the Kitsu CLI to keep a local task record with your request, findings, and check results. You can pick up the work in a fresh conversation.
+Kitsu lets you start a coding task in **Codex** or **Claude Code** and pick it up in a fresh chat. Your agent uses the Kitsu CLI to save the request, findings, and check results in your Git worktree.
 
 ## Install
 
@@ -20,30 +20,28 @@ curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.s
 & ([scriptblock]::Create([Net.WebClient]::new().DownloadString('https://github.com/belevtsev/kitsu/releases/latest/download/install.ps1'))) -AgentHost codex
 ```
 
-[Other install options](docs/release-install.md)
+If Kitsu doesn’t appear, restart your agent and run `kitsu agent check --host codex` or `kitsu agent check --host claude` in your project’s terminal. [Installation guide](docs/release-install.md)
 
 ## Quick start
 
-Open a fresh chat in your project. Paste the example for your agent.
+Open a fresh chat in your project’s Git repository. Ask your agent for a test plan.
 
 **Codex** — On first use, open `/hooks` to review and trust Kitsu’s hooks.
 
-> Use Kitsu’s task skill to investigate the failing test. Reproduce the failure, explain the cause, and stop before editing. Give me the task ID.
+> Use Kitsu’s task skill to find how this repository runs its tests. Give me the command you found, one test worth adding, and the task ID. Stop after the plan.
 
 **Claude Code**
 
-> /kitsu:task Investigate the failing test. Reproduce the failure, explain the cause, and stop before editing. Give me the task ID.
+> /kitsu:task Find how this repository runs its tests. Give me the command you found, one test worth adding, and the task ID. Stop after the plan.
 
-When you’re ready for the fix, reply in the same chat with either agent:
-
-> Fix the cause, add a regression test, and verify the result. Leave the changes uncommitted.
+Save the task ID from the reply. If the project has no test command yet, the proposed test can be your starting point.
 
 ### Resume later
 
-Open a fresh chat in the **same Git worktree**. Replace `<task-id>` with the ID your agent gave you.
+Open a new chat in the **same Git worktree** and replace `<task-id>` with your saved ID.
 
-- **Codex:** `Use Kitsu to resume task <task-id> and show me the next step.`
-- **Claude Code:** `/kitsu:task Resume task <task-id> and show me the next step.`
+- **Codex:** `Use Kitsu to resume task <task-id>. Show me the saved test plan and the next step.`
+- **Claude Code:** `/kitsu:task Resume task <task-id>. Show me the saved test plan and the next step.`
 
 Lost the ID? Ask your agent to list your saved Kitsu tasks.
 
@@ -51,27 +49,37 @@ Lost the ID? Ask your agent to list your saved Kitsu tasks.
 
 ## Start at any stage
 
-Paste any example into Codex. In Claude Code, replace the opening “Use Kitsu’s task skill.” with `/kitsu:task`.
+Use the prompt for your stage. For Design through Implementation, replace “Use Kitsu’s task skill.” with `/kitsu:task` in Claude Code.
 
-**Bug fix**
+### Bug fix
 
-> Use Kitsu’s task skill. Exporting a customer named “Acme, Inc.” produces two CSV columns when I reopen the file. Reproduce it through the export command, add a failing round-trip test, and fix the cause. Show the test passing and leave the fix uncommitted.
+**Codex**
 
-**Design**
+> Use Kitsu’s task skill to investigate the failing test. Reproduce the failure, explain the cause, and stop before editing. Give me the task ID.
 
-> Use Kitsu’s task skill. Users want to choose which columns appear in an order export. Read the current CLI help and propose the flag syntax, default behavior, and error for an unknown column. Give me example commands with expected output so I can approve the behavior before implementation.
+**Claude Code**
 
-**Architecture**
+> /kitsu:task Investigate the failing test. Reproduce the failure, explain the cause, and stop before editing. Give me the task ID.
 
-> Use Kitsu’s task skill. Our export worker has 256 MiB of memory and must handle a million orders. Trace how rows move from storage to the CSV writer today. Compare one long-lived database cursor with fetching rows in bounded pages, recommend an approach, and explain how it handles cancellation and partial output. Stop at the recommendation.
+When you’re ready for the fix, reply in either chat:
 
-**Review**
+> Fix the cause, add a regression test, and verify the result. Leave the changes uncommitted.
 
-> Use Kitsu’s task skill. Independently review my staged patch for selecting export columns. Check whether existing callers still get the default columns and whether invalid input leaves a partial file. For each defect, give the file location and a reproducing command or test. Report findings only.
+### Design
 
-**Implementation**
+> Use Kitsu’s task skill. Design a flag for choosing order export columns. Show example commands and expected output for default, selected, and unknown columns. Stop at the proposal.
 
-> Use Kitsu’s task skill. Add `--columns` to the order export command. With `--columns id,total`, emit only those columns in that order. Keep the current output when the flag is omitted and reject unknown names before writing. Test all three cases through the CLI and leave the changes ready for review.
+### Architecture
+
+> Use Kitsu’s task skill. We need to export a million orders with 256 MiB of memory. Compare a database cursor with bounded pages. Recommend an approach and explain how it handles cancellation.
+
+### Review
+
+> Use Kitsu’s task skill. Independently review my staged CSV export patch. Check default columns and partial files after errors. Report each defect with its location and a reproducing test. Stop after review.
+
+### Implementation
+
+> Use Kitsu’s task skill. Add `--columns id,total` to the order export. Preserve the specified order and existing defaults. Reject unknown columns before writing. Test all three cases through the CLI.
 
 For ticket intake, verification, or delivery, use the same chat prefix:
 
