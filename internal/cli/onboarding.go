@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/belevtsev/kitsu/v3/internal/onboarding"
@@ -172,6 +173,29 @@ func prepareTaskHandoff(report onboarding.Report, request string) taskHandoff {
 	return taskHandoff{Report: report, Prompt: prompt, Argv: []string{program, prompt}}
 }
 
+// A preview has no pinned task. Give the host the flags that create its limits.
+func (o reviewLimits) handoffFlags() string {
+	var args []string
+	if o.limit > 0 {
+		args = append(args, "--time-limit", o.limit.String())
+	}
+	if o.reviews > 0 {
+		args = append(args, "--review-limit", strconv.Itoa(o.reviews))
+	}
+	if o.reserve > 0 {
+		args = append(args, "--finish-reserve", o.reserve.String())
+	}
+	return strings.Join(args, " ")
+}
+
+func (o onboardingArgs) resumeCommand(id, host string) string {
+	command := "kitsu task start --resume " + id + " --host " + host
+	if o.compact {
+		command += " --compact"
+	}
+	return command
+}
+
 func runUXTaskStart(ctx context.Context, cfg Config, args []string) error {
 	options, err := parseOnboardingArgs(args, true)
 	if err != nil {
@@ -189,7 +213,11 @@ func runUXTaskStart(ctx context.Context, cfg Config, args []string) error {
 		request = "Use the task harness. Requested stopping point: " + options.until + ".\n\n" + request
 	}
 	if options.reviewLimits != (reviewLimits{}) {
-		request = fmt.Sprintf("Task limits (zero means unspecified): time %s, review starts %d, finish reserve %s. Honor the saved limits when binding the task.\n\n%s", options.limit, options.reviews, options.reserve, request)
+		if options.print || options.json {
+			request = "Pass " + options.handoffFlags() + " to kitsu task open.\n\n" + request
+		} else {
+			request = "Startup applied " + options.handoffFlags() + ". Omit the limit flags when binding the saved task.\n\n" + request
+		}
 	}
 	handoff := prepareTaskHandoff(report, request)
 	if options.compact {
@@ -216,7 +244,7 @@ func runUXTaskStart(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	if id != "" {
-		fmt.Fprintf(cfg.Err, "Task %s. Resume with kitsu task start --resume %s --host %s.\n", id, id, report.Host)
+		fmt.Fprintf(cfg.Err, "Task %s. Resume with %s\n", id, options.resumeCommand(id, report.Host))
 		if options.resume == "" {
 			until := options.until
 			if until == "" {

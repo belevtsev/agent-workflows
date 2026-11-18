@@ -279,6 +279,32 @@ func TestOnboardingParsesOneLiteralRequest(t *testing.T) {
 	}
 }
 
+func TestTaskResumeCommandPreservesCompactOptIn(t *testing.T) {
+	for _, compact := range []bool{false, true} {
+		command := (onboardingArgs{compact: compact}).resumeCommand("fix-csv", "claude")
+		options, err := parseOnboardingArgs(strings.Fields(command)[3:], true)
+		if err != nil || options.resume != "fix-csv" || options.host != "claude" || options.compact != compact {
+			t.Fatalf("resume command %q gave %+v, %v", command, options, err)
+		}
+	}
+}
+
+func TestPreviewCarriesExecutableTaskLimits(t *testing.T) {
+	onboardingReadyFixture(t)
+	for _, mode := range []string{"--print", "--json"} {
+		t.Run(mode, func(t *testing.T) {
+			var out bytes.Buffer
+			args := []string{"task", "start", "Review the staged patch", "--host", "codex", mode, "--time-limit", "12m", "--review-limit", "2", "--finish-reserve", "1m"}
+			if err := Execute(t.Context(), args, Config{Out: &out, Err: io.Discard}); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(out.String(), "--time-limit 12m0s --review-limit 2 --finish-reserve 1m0s") || strings.Contains(out.String(), "saved limits") {
+				t.Fatalf("manual handoff must supply the limits for task open: %s", out.String())
+			}
+		})
+	}
+}
+
 func TestOnboardingHandoffKeepsTheHostAsOrchestrator(t *testing.T) {
 	t.Parallel()
 	request := "--dangerous 'literal' $HOME $(command)\nnext line"

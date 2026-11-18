@@ -19,8 +19,7 @@ Compact mode is opt-in for noisy observations. Honor the model, reasoning, skill
    tool interface. Pick the entry from plan, implement, review or verify and the finish
    from plan, implement, review, verify or deliver. For a read-only review of named commits,
    pin the requested comparison with --review-base BASE --review-head HEAD. For a requested independent review during implementation or delivery, or when repository instructions require one, bind --require-review. The CLI also enforces require_review in kitsu.toml. Ordinary implementation goes directly to executable verification. Pass --repair only for authorized
-   corrections, --commit only for explicitly requested local commit, and --time-limit
-   when a deadline was agreed. Honor agreed --review-limit (total starts) and --finish-reserve (time before deadline for finishing). For an explicitly requested push, pin --publish-to REMOTE/BRANCH. For a requested GitHub PR add --pr-base BASE. Use task extend only for newly authorized work.
+   corrections, --commit only for explicitly requested local commit, and the agreed --time-limit, --review-limit (total starts) and --finish-reserve when first setting limits. Omit limit flags already pinned by startup. For an explicitly requested push, pin --publish-to REMOTE/BRANCH. For a requested GitHub PR add --pr-base BASE. Use task extend only for newly authorized work.
 2. Follow the returned next action. Treat staged, unstaged and untracked content as
    existing developer work. Inspect before writing and clarify an overlapping edit of
    uncertain ownership. Preserve the index on planning and review. Do not stash,
