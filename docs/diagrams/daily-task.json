@@ -2,7 +2,7 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "How a daily Kitsu task runs and resumes",
+    "title": "A Kitsu task across Codex and Claude Code",
     "locale": "en",
     "quality_profile": "showcase",
     "output": ".archify/daily-task.html",
@@ -32,14 +32,14 @@
   },
   "nodes": [
     {"id": "ask", "lane": "chat", "col": 0, "type": "external", "icon": "person", "label": "Ask for work", "sublabel": "choose a finish"},
-    {"id": "resume", "lane": "chat", "col": 1, "type": "external", "icon": "person", "label": "Resume in chat", "sublabel": "give the task ID"},
-    {"id": "result", "lane": "chat", "col": 5, "type": "external", "icon": "person", "label": "Get the result", "sublabel": "result or blocker", "width": 106},
+    {"id": "resume", "lane": "chat", "col": 1, "type": "external", "icon": "person", "label": "Switch hosts", "sublabel": "reuse task ID"},
+    {"id": "result", "lane": "chat", "col": 5, "type": "external", "icon": "person", "label": "Get the result", "sublabel": "receipt on commit", "width": 106},
     {"id": "skill", "lane": "host", "col": 0, "type": "backend", "label": "Kitsu task skill", "sublabel": "Codex / Claude Code"},
     {"id": "work", "lane": "host", "col": 3, "type": "backend", "label": "Work on task", "sublabel": "reviewer if required", "width": 120},
     {"id": "saved", "lane": "local", "col": 0, "type": "database", "label": "Saved task", "sublabel": "request, scope, ID"},
     {"id": "next", "lane": "local", "col": 1, "type": "frontend", "icon": "backend", "label": "task next", "sublabel": "current action"},
     {"id": "record", "lane": "local", "col": 3, "type": "database", "label": "Record result", "sublabel": "notes or test logs", "width": 110},
-    {"id": "finish", "lane": "local", "col": 5, "type": "frontend", "icon": "backend", "label": "Check finish", "sublabel": "scope and proof"}
+    {"id": "finish", "lane": "local", "col": 5, "type": "frontend", "icon": "backend", "label": "Check finish", "sublabel": "match proof to Git"}
   ],
   "edges": [
     {"id": "ask-skill", "from": "ask", "to": "skill", "route": "drop", "fromSide": "bottom", "toSide": "top"},
