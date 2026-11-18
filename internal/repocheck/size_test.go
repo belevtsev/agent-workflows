@@ -91,7 +91,7 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	t.Logf("coordinator state: %d of %d lines", states, maxStateLines)
 	t.Logf("task verification: %d of %d lines", verificationLines, maxVerificationLines)
 	t.Logf("workflow insights: %d of %d lines", insightLines, maxInsightLines)
-	const maxHarnessLines = 2708 // Includes worktree-local resume preflight and versioned review routing.
+	const maxHarnessLines = 2760 // Includes binding checks to the staged tree and recovering a commit after restaging.
 	t.Logf("task harness: %d of %d lines", harnessLines, maxHarnessLines)
 	if harnessLines > maxHarnessLines {
 		t.Errorf("task harness holds %d lines of Go, want at most %d", harnessLines, maxHarnessLines)

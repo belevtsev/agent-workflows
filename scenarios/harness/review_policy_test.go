@@ -195,12 +195,15 @@ func TestVerifyFirstReportsCheckedTreeUntilReviewClearsDelivery(t *testing.T) {
 				if f.state.Delivery != "ready to commit" {
 					t.Fatal(f.state.Delivery)
 				}
+				ticket := f.state.Ticket
 				r.Git("reset", "-q", "HEAD", "--", "example.csv")
 				f.call(0, "next")
-				f.want("commit")
-				checkTree()
+				f.want("verify")
+				if f.state.Verified {
+					t.Fatal("unstaged patch retained its prior index verification")
+				}
 				r.Git("add", "example.csv")
-				f.call(0, "commit", "--ticket", f.state.Ticket, "--message", "Add verified example", "--include", "example.csv")
+				f.call(0, "commit", "--ticket", ticket, "--message", "Add verified example", "--include", "example.csv")
 				f.want("done")
 				if f.state.Delivery != "committed" || r.Git("show", "HEAD:example.csv") != "normal,field" {
 					t.Fatal(f.state)

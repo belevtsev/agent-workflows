@@ -77,41 +77,45 @@ func TestDeclaredRunRejectsChangedRawInputs(t *testing.T) {
 }
 
 func TestLegacyVerificationGetsFreshPerRunEvidence(t *testing.T) {
-	r := kitsutest.Demo(t)
-	f := flow{t: t, repo: r, id: "older-evidence"}
-	f.call(0, "open", "--request", "Verify app", "--until", "verify")
-	f.record("intake", "host", "Exercise app and lint")
-	run := func() { f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "app is ok", "--", "sh", "unit.sh") }
-	run()
-	first := f.state.Proof.Run
-	name := ".git/kitsu-stages/task-harness-older-evidence.json"
-	var task map[string]json.RawMessage
-	var proof map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(r.Read(name)), &task); err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(task["proof"], &proof); err != nil {
-		t.Fatal(err)
-	}
-	delete(proof, "per_run_inputs")
-	var err error
-	if task["proof"], err = json.Marshal(proof); err != nil {
-		t.Fatal(err)
-	}
-	data, err := json.Marshal(task)
-	if err != nil {
-		t.Fatal(err)
-	}
-	r.Write(name, string(data))
-	if got := r.Kitsu("task", "next", f.id, "--brief"); got.Code != 0 || !strings.Contains(got.Stdout, "fresh per-run evidence required") {
-		t.Fatal("missing recovery explanation", got.Output())
-	}
-	f.call(0, "next")
-	f.want("verify")
-	run()
-	f.want("done")
-	if first == f.state.Proof.Run || len(r.RecordFiles("unit")) != 2 || len(r.RecordFiles("lint")) != 2 {
-		t.Fatal("older receipts were reused without observing each command")
+	for _, missingField := range []string{"per_run_inputs", "index_checked"} {
+		t.Run(missingField, func(t *testing.T) {
+			r := kitsutest.Demo(t)
+			f := flow{t: t, repo: r, id: "older-evidence"}
+			f.call(0, "open", "--request", "Verify app", "--until", "verify")
+			f.record("intake", "host", "Exercise app and lint")
+			run := func() { f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "app is ok", "--", "sh", "unit.sh") }
+			run()
+			first := f.state.Proof.Run
+			name := ".git/kitsu-stages/task-harness-older-evidence.json"
+			var task map[string]json.RawMessage
+			var proof map[string]json.RawMessage
+			if err := json.Unmarshal([]byte(r.Read(name)), &task); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal(task["proof"], &proof); err != nil {
+				t.Fatal(err)
+			}
+			delete(proof, missingField)
+			var err error
+			if task["proof"], err = json.Marshal(proof); err != nil {
+				t.Fatal(err)
+			}
+			data, err := json.Marshal(task)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r.Write(name, string(data))
+			if got := r.Kitsu("task", "next", f.id, "--brief"); got.Code != 0 || !strings.Contains(got.Stdout, "fresh per-run evidence required") {
+				t.Fatal("missing recovery explanation", got.Output())
+			}
+			f.call(0, "next")
+			f.want("verify")
+			run()
+			f.want("done")
+			if first == f.state.Proof.Run || len(r.RecordFiles("unit")) != 2 || len(r.RecordFiles("lint")) != 2 {
+				t.Fatal("older receipts were reused without observing each command")
+			}
+		})
 	}
 }
 

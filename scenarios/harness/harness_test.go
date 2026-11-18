@@ -110,7 +110,11 @@ func TestNegative(t *testing.T){if Label(-2)!=2{t.Fatal("negative")}}
 	r.Git("add", "label.go")
 	f.call(0, "next")
 	f.call(1, "commit", "--message", "fix magnitude", "--ticket", f.state.Ticket)
-	// Simulate Git succeeding immediately before the host died.
+	// Restaging changed a verification input. Verify the staged tree before
+	// simulating Git succeeding immediately before the host died.
+	f.want("verify")
+	f.call(0, "test", "--ticket", f.state.Ticket, "--retry")
+	f.want("commit")
 	r.Git("commit", "-qm", "fix magnitude")
 	f.call(0, "next")
 	f.want("done")

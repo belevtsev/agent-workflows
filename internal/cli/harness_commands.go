@@ -13,6 +13,7 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/contextpack"
 	"github.com/belevtsev/kitsu/v3/internal/harness"
 	"github.com/belevtsev/kitsu/v3/internal/roles"
+	"github.com/belevtsev/kitsu/v3/internal/store"
 )
 
 func harnessCommands() []uxCommand {
@@ -294,6 +295,13 @@ func (s *session) checkHarnessInputs(want harness.Snapshot, target string) func(
 		if !actual.SameSource(want) || !actual.SameBase(want) {
 			return errors.New("working file bytes or commit parents changed")
 		}
+		index, err := s.repo.IndexTree(ctx, s.store.Tmp())
+		if err != nil {
+			return err
+		}
+		if index != want.Index {
+			return errors.New("staged contents changed")
+		}
 		return s.checkHarnessCommitTarget(ctx, target)
 	}
 }
@@ -340,6 +348,33 @@ func commitHarness(ctx context.Context, s *session, l *stageLedger, task *harnes
 	if view.Delivery == "committed" && task.Scope.Commit && (view.Next == "done" || view.Next == "publish") {
 		return replayHarnessCommit(ctx, s, task, view, o.ticket)
 	}
+	if recheckStagedCommit(task, o, view) {
+		if view.Candidate.Index != view.Candidate.Tree {
+			return failf("staged content differs from the verified candidate; inspect unrelated edits before staging")
+		}
+		if err := checkCommitIncludes(ctx, s, task, view.Candidate.Tree, o.includes); err != nil {
+			return err
+		}
+		p := task.Proof
+		verify := harnessOptions{id: task.ID, ticket: view.Ticket, argv: p.Argv, expect: p.Expect, brief: o.brief}
+		if err := runHarnessTest(ctx, s, l, task, verify, view); err != nil {
+			return err
+		}
+		updated, err := observeHarness(ctx, s, task, false)
+		if err != nil || updated.Next != "commit" {
+			// Leave any failure or required review in the task for the caller.
+			return err
+		}
+		task.Proof.PriorCommitTicket = o.ticket
+		if err := l.write(harnessFile(task.ID), task); err != nil {
+			return err
+		}
+		view, o.ticket = updated, updated.Ticket
+	}
+	return commitVerifiedHarness(ctx, s, l, task, o, view)
+}
+
+func commitVerifiedHarness(ctx context.Context, s *session, l *stageLedger, task *harness.Task, o harnessOptions, view harnessView) error {
 	if !task.Scope.Commit || view.Next != "commit" || strings.TrimSpace(o.note) == "" {
 		return failf("commit requires explicit delivery scope, a verified candidate, ticket and message")
 	}
@@ -370,6 +405,18 @@ func commitHarness(ctx context.Context, s *session, l *stageLedger, task *harnes
 	return nil
 }
 
+// A commit ticket survives staging the verified working tree. Its assertion
+// and declared checks may read the index, so rerun them on the staged contents.
+func recheckStagedCommit(t *harness.Task, o harnessOptions, v harnessView) bool {
+	p := t.Proof
+	if v.Next != "verify" || !t.Scope.Commit || p == nil || !p.IndexChecked || p.Outcome != store.Passed || strings.TrimSpace(o.note) == "" {
+		return false
+	}
+	c := v.Candidate
+	return c.Index != p.Candidate.Index && c.SameBase(p.Candidate) && c.SameSource(p.Candidate) &&
+		o.ticket == contextpack.Key([]string{actionTicket(t, "commit", p.Candidate), v.CommitTarget})
+}
+
 func replayHarnessCommit(ctx context.Context, s *session, task *harness.Task, view harnessView, ticket string) error {
 	candidate, proof := view.Candidate, task.Proof
 	target := task.AuthorizedCommitTarget()
@@ -379,7 +426,7 @@ func replayHarnessCommit(ctx context.Context, s *session, task *harness.Task, vi
 		assertion.Ticket == proof.Ticket && target != "" && candidate.Head != proof.Candidate.Head &&
 		(assertion.ObservedCommit == "" || assertion.ObservedCommit == candidate.Head) {
 		want := contextpack.Key([]string{actionTicket(task, "commit", proof.Candidate), target})
-		if ticket == want {
+		if ticket == want || proof.PriorCommitTicket != "" && ticket == proof.PriorCommitTicket {
 			assertion.ObservedCommit = candidate.Head
 			return nil
 		}
@@ -387,7 +434,7 @@ func replayHarnessCommit(ctx context.Context, s *session, task *harness.Task, vi
 	if view.Next == "done" {
 		return nil
 	}
-	if event := task.Latest("commit"); event != nil && ticket == event.Ticket &&
+	if event := task.Latest("commit"); event != nil && (ticket == event.Ticket || proof.PriorCommitTicket != "" && ticket == proof.PriorCommitTicket) &&
 		event.Candidate.Head != candidate.Head && event.Candidate.SameSource(candidate) {
 		tree, parents, err := s.repo.CommitContents(ctx, candidate.Head)
 		if err != nil {

@@ -17,13 +17,13 @@ func TestCommitTicketAfterCheckoutSwitch(t *testing.T) {
 			f := flow{t: t, repo: r, id: "verified-delivery"}
 			f.call(0, "open", "--entry", "review", "--until", "deliver", "--commit", "--request", "Review, verify and commit the change")
 			r.Write("answer.txt", "42\n")
+			r.Git("add", "answer.txt")
 			f.call(0, "next")
 			f.record("intake", "coordinator", "The answer must be 42")
 			f.review("reviewer", "Checked the output")
 			f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "answer is 42", "--", "git", "grep", "--no-index", "-e", "^42$", "--", "answer.txt")
 			f.want("commit")
 			ticket, proof := f.state.Ticket, f.state.Proof.Run
-			r.Git("add", "answer.txt")
 			target := "refs/heads/alternate"
 			if mode == "detached" {
 				r.Git("checkout", "-q", "--detach", "HEAD")
@@ -141,9 +141,9 @@ func TestResumeDoesNotOfferDuplicateCommitOnDifferentBranch(t *testing.T) {
 	f.call(0, "open", "--entry", "verify", "--until", "deliver", "--commit", "--request", "Verify and deliver the answer")
 	f.record("intake", "host", "Check the answer")
 	r.Write("answer.txt", "42\n")
+	r.Git("add", "answer.txt")
 	f.call(0, "next")
 	f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "answer is 42", "--", "git", "grep", "--no-index", "-e", "^42$", "--", "answer.txt")
-	r.Git("add", "answer.txt")
 	r.Git("commit", "-qm", "Delivered before coordinator interruption")
 	delivered := r.Git("rev-parse", "HEAD")
 	// As in a hook or interrupted checkout, HEAD changes but the verified

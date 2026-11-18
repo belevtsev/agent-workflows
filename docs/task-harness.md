@@ -104,6 +104,10 @@ Use `repair` for a repair result. The host starts the worker between the first t
 
 ### Retry verification
 
+A verification receipt identifies the staged tree as well as the working files and commit parents. If someone stages or unstages a file, use the verification ticket from `kitsu task next ID` and run `kitsu task test ID --ticket TICKET --retry` to check the new index. The saved command may itself inspect staged contents. Kitsu checks the index before and after each assertion and repository check. A change observed during a command leaves the task unverified.
+
+For commit-scoped work, stage the authorized files before running verification to run the checks once. If you stage the entire verified working tree afterward, the original commit ticket can run the saved checks against the new index and proceed when they pass. A failed assertion or declared check keeps the branch at its original commit. A partially staged tree still requires inspection.
+
 A check can exit successfully and still change the files it tested. When you see `source_changed`, the terminal and the JSON field `verification_log.detail` give a short explanation from the runner. Open the retained log for the full detail. In a new Python repository, for example, importing a module can create an untracked `__pycache__/`. Inspect the paths first. If they are generated artifacts, configure the project to ignore them or direct the output outside the checkout. If a tracked source file changed, inspect and resolve that edit. Rerun verification on the intended files before committing.
 
 If you lose the response from an unsuccessful check, run `kitsu task next ID --brief`. Its `verification_log` gives the check ID, run ID, outcome, exit status when available, log path and SHA-256. Use the returned ticket to retry a transient failure on the same candidate. A repair ticket can retry verification on that candidate until someone claims the repair. After a source repair and any required review, run the saved assertion with the new verification ticket.

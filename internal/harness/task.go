@@ -147,16 +147,18 @@ type Assertion struct {
 }
 
 type Proof struct {
-	CompletionTicket string     `json:"completion_ticket,omitempty"`
-	CommitTarget     string     `json:"commit_target,omitempty"` // Persisted before Git can advance the ref.
-	PriorFailure     *Assertion `json:"prior_failure,omitempty"`
-	PerRunInputs     bool       `json:"per_run_inputs,omitempty"`
-	GateFailure      *RunResult `json:"repository_failure,omitempty"`
-	Detail           string     `json:"detail,omitempty"`
-	ExitStatus       *int       `json:"exit_status,omitempty"`
-	CheckID          string     `json:"check_id"`
-	CheckedAt        time.Time  `json:"checked_at,omitzero"`
-	FailedCheck      string     `json:"failed_check,omitempty"`
+	PriorCommitTicket string     `json:"prior_commit_ticket,omitempty"`
+	IndexChecked      bool       `json:"index_checked,omitempty"`
+	CompletionTicket  string     `json:"completion_ticket,omitempty"`
+	CommitTarget      string     `json:"commit_target,omitempty"` // Persisted before Git can advance the ref.
+	PriorFailure      *Assertion `json:"prior_failure,omitempty"`
+	PerRunInputs      bool       `json:"per_run_inputs,omitempty"`
+	GateFailure       *RunResult `json:"repository_failure,omitempty"`
+	Detail            string     `json:"detail,omitempty"`
+	ExitStatus        *int       `json:"exit_status,omitempty"`
+	CheckID           string     `json:"check_id"`
+	CheckedAt         time.Time  `json:"checked_at,omitzero"`
+	FailedCheck       string     `json:"failed_check,omitempty"`
 
 	GateRuns  map[string]CheckRun `json:"repository_runs,omitempty"`
 	Ticket    string              `json:"ticket"`
@@ -382,8 +384,8 @@ func (t *Task) needsCorrection(candidate Snapshot) bool {
 	if p == nil || len(t.Events) == 0 || t.Events[len(t.Events)-1].Action != "test" {
 		return false
 	}
-	// Recheck unchanged source after its base moves before asking for edits.
-	return (p.Outcome == "failed" || p.FailedCheck != "") && (candidate.SameBase(p.Candidate) || !candidate.SameSource(p.Candidate))
+	// Recheck unchanged working files after staging or the base changes.
+	return (p.Outcome == "failed" || p.FailedCheck != "") && (!candidate.SameSource(p.Candidate) || candidate.SameBase(p.Candidate) && candidate.Index == p.Candidate.Index)
 }
 
 func (t *Task) requiresReview(state Readiness) bool {

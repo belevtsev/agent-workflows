@@ -198,8 +198,10 @@ def host(checkout, tag, *args):
                                    *args, tag=tag))
 
 
-def collect_run_logs(checkout, history):
-    assertion = history["harness"]["behavioral_assertion"]
+def collect_run_logs(checkout):
+    verification = next(item for item in checkout.trace if item["tag"] == "verification")
+    # A later commit can legitimately rerun verification after staging.
+    assertion = verification["decision"]["behavioral_assertion"]
     runs = {}
     store = checkout.repo / ".git" / "kitsu"
     run_ids = [assertion["run_id"], *(r["run_id"] for r in assertion.get("repository_runs", {}).values())]
@@ -207,7 +209,6 @@ def collect_run_logs(checkout, history):
         log = (store / "logs" / f"{run_id}.log").read_bytes()
         path, = (store / "runs").glob(f"*/*/{run_id}.json")
         runs[run_id] = dict(record=read_json(path), log=log.decode("utf-8"), sha256=hashlib.sha256(log).hexdigest())
-    verification = next(item for item in checkout.trace if item["tag"] == "verification")
     verification.update(assertion=assertion, runs=runs)
 
 
@@ -237,7 +238,7 @@ def drive(checkout, arm, route):
     command = (sys.executable, "-B", "check_csv.py", mode)
     if kitsu:
         ready = checkout.task("test", "--ticket", ready["ticket"], "--expect", EXPECT, "--", *command,
-                              exits=(0, 5), brief=True)
+                              exits=(0, 5))
         checkout.mark("verification", decision=ready)
         passed = ready["verified"]
     else:
@@ -347,7 +348,8 @@ def replay_csv(checkout_type, binary, pairs, evidence_path):
             checkout.phase = "grader"
             after = checkout.state()
             if arm == "kitsu":
-                collect_run_logs(checkout, checkout.task("show"))
+                checkout.task("show")
+                collect_run_logs(checkout)
             committed_paths = checkout.git("diff", "--name-only", checkout.start["head"], after["head"], "--",
                                            tag="committed-paths").splitlines()
             source = "index_tree" if case.endswith("divergent") else "tree"
