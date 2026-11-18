@@ -14,6 +14,8 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/decl"
 	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 	"github.com/belevtsev/kitsu/v3/internal/roles"
+	"github.com/belevtsev/kitsu/v3/internal/shellwords"
+	"github.com/belevtsev/kitsu/v3/internal/verification"
 )
 
 func uxRepo(t *testing.T) *kitsutest.Repo {
@@ -89,6 +91,62 @@ func TestCLIUXDefaultsAndSkillInheritance(t *testing.T) {
 	if shown := mustKitsu(t, repo, "task", "show", "help"); !strings.HasPrefix(shown, "help:") {
 		t.Fatalf("task named help was intercepted as a help command: %s", shown)
 	}
+}
+
+func TestCLIUXForwardedCommandUsage(t *testing.T) {
+	t.Parallel()
+	repo := uxRepo(t)
+	for _, tc := range []struct{ group, command, operands string }{
+		{"check", "add", "<id> [options] -- <program> [<argument>...]"},
+		{"task", "test", "<task> [options] [-- <program> [<argument>...]]"},
+	} {
+		help := mustKitsu(t, repo, tc.group, tc.command, "--help")
+		usage, _, _ := strings.Cut(help, "\n")
+		want := "usage: kitsu " + tc.group + " " + tc.command + " " + tc.operands
+		if usage != want {
+			t.Errorf("got %q, want %q", usage, want)
+		}
+	}
+}
+
+func TestCLIUXCheckAddHelpEnablesVerification(t *testing.T) {
+	t.Parallel()
+	repo := uxRepo(t)
+	repo.Write(decl.FileName, "version = 1\n")
+	help := mustKitsu(t, repo, "check", "add", "--help")
+	for line := range strings.Lines(help) {
+		if !strings.HasPrefix(line, "  kitsu check add ") {
+			continue
+		}
+		commands, ok := shellwords.Split(line)
+		if !ok || len(commands) != 1 {
+			t.Fatalf("expected a single copyable command in help: %q", line)
+		}
+		mustKitsu(t, repo, commands[0][1:]...)
+	}
+
+	file, err := decl.Parse([]byte(repo.Read(decl.FileName)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	check, found := file.Check("readme")
+	if !found || !check.Verify || check.Expect != "README.md is tracked" || !slices.Equal(check.When, []string{"README.md"}) {
+		t.Fatalf("help examples did not enable verification for README.md: %+v", check)
+	}
+	if want := []string{"git", "ls-files", "--error-unmatch", "--", "README.md"}; !slices.Equal(check.Run, want) {
+		t.Fatalf("saved child command %q, want %q", check.Run, want)
+	}
+
+	repo.Write("README.md", "# Project\n")
+	repo.Git("add", "README.md")
+	var plan verification.Plan
+	if err := json.Unmarshal([]byte(mustKitsu(t, repo, "check", "plan", "--json")), &plan); err != nil {
+		t.Fatal(err)
+	}
+	if required := plan.RequiredIDs(); !slices.Equal(required, []string{"readme"}) {
+		t.Fatalf("required verification checks for a README change: %v", required)
+	}
+	mustKitsu(t, repo, "check", "run", "readme")
 }
 
 func TestCLIUXHelpAndForwardedArguments(t *testing.T) {

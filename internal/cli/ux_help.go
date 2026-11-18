@@ -74,10 +74,16 @@ func uxPrintNestedHelp(cfg Config, name string) bool {
 
 func uxUsage(c uxCommand) string {
 	usage := strings.TrimSpace("kitsu " + c.path + " " + c.args)
-	if len(c.flags) > 0 {
-		usage += " [options]"
+	if len(c.flags) == 0 {
+		return usage
 	}
-	return usage
+	// Kitsu options precede the child's arguments, even when the child is optional.
+	for _, separator := range []string{" -- ", " [-- "} {
+		if before, after, ok := strings.Cut(usage, separator); ok {
+			return before + " [options]" + separator + after
+		}
+	}
+	return usage + " [options]"
 }
 
 var uxOperand = regexp.MustCompile(`<([a-z-]+)>`)

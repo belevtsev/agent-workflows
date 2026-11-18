@@ -39,7 +39,21 @@ func uxCommands() []uxCommand {
 		{path: "adviser ask", args: "<adviser> --task <task> --role <role> --stage <stage> --request <file>", summary: "Consult an explicitly enabled experimental adviser and record its answer", flags: []uxFlag{task, role, uxOption("stage", "stage", "required workflow stage of this request", "lookup", "spec", "design", "tests", "code", "review", "commit"), uxOption("request", "file|-", "required version 1 or 2 request JSON; use - for standard input"), uxOption("checkpoint", "id", "required checkpoint this request addresses"), json}, run: runUXAdviserAsk},
 		{path: "adviser resolve", args: "<id> --task <task> --disposition <disposition> --reason <text>", summary: "Legacy disposition spelling; prefer adviser accept, reject or defer", flags: []uxFlag{task, uxOption("disposition", "accept|reject|defer", "required disposition", "accept", "reject", "defer"), uxOption("reason", "text", "required reason"), uxOption("choice", "id", "selected choice from a decision request"), json}, run: uxLegacy("advisers", "resolve"), hidden: true},
 		{path: "check list", summary: "List this repository's declared checks", flags: []uxFlag{json}, run: runUXCheckList},
-		{path: "check add", args: "<id> -- <program> [<argument>...]", summary: "Declare a repository check without invoking a shell", flags: []uxFlag{uxOption("paths", "pattern", "dependent paths; repeatable; omitted means all content"), uxOption("timeout", "duration", "check timeout from 1s to 6h; default 10m"), uxOption("when", "pattern", "prioritize on changed paths; repeatable; never changes dependencies"), uxOption("expect", "text", "behavior asserted by the declared command"), uxOption("verify", "", "require applicable behavioral verification; requires --expect")}, run: uxLegacy("add"), guard: "policy"},
+		{
+			path: "check add", args: "<id> -- <program> [<argument>...]", summary: "Declare a repository check without invoking a shell",
+			flags: []uxFlag{
+				uxOption("paths", "pattern", "dependent paths; repeatable; omitted means all content"),
+				uxOption("timeout", "duration", "check timeout from 1s to 6h; default 10m"),
+				uxOption("when", "pattern", "prioritize on changed paths; repeatable; never changes dependencies"),
+				uxOption("expect", "text", "behavior asserted by the declared command"),
+				uxOption("verify", "", "require applicable behavioral verification; requires --expect"),
+			},
+			examples: []string{
+				"kitsu check add test -- go test ./...",
+				`kitsu check add readme --when README.md --expect "README.md is tracked" --verify -- git ls-files --error-unmatch -- README.md`,
+			},
+			run: uxLegacy("add"), guard: "policy",
+		},
 		{path: "check plan", summary: "Explain changed-path priorities while retaining every declared gate check", flags: []uxFlag{uxOption("from", "rev", "compare the whole working tree with this revision; default HEAD"), json}, examples: []string{"kitsu check plan --from HEAD", "kitsu check plan --from origin/main --json"}, run: runCheckPlan},
 		{path: "check run", args: "[<id>...]", summary: "Run declared checks that lack passing evidence for current content", flags: []uxFlag{uxOption("force", "", "run even when passing evidence exists"), uxOption("base", "rev", "reuse evidence only when checked content matches this revision")}, run: uxLegacy("run")},
 		{path: "check stats", summary: "Report recorded check runs and gate decisions", flags: []uxFlag{uxOption("since", "period", "reporting period such as 90m, 7d or 2w; default 30d"), json}, run: uxLegacy("stats")},
@@ -140,8 +154,6 @@ func uxExampleArgs(c uxCommand) string {
 		return " architect --host codex --model gpt-6.1-sol --reasoning max"
 	case "role check":
 		return " reviewer --from HEAD"
-	case "check add":
-		return " test -- go test ./..."
 	case "config set":
 		return " host codex --global"
 	case "config get", "config reset":

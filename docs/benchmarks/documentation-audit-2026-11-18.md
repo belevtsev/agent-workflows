@@ -8,6 +8,8 @@ Reviewed [published main](https://github.com/belevtsev/kitsu/tree/00f74f454b3e91
 
 The findings below describe the pinned revision. The updated [daily task walkthrough](../task-harness.md#how-a-daily-task-runs) and [ticket delivery diagram](../task-harness.md#deliver-a-bug-ticket) cover the two missing views. The [managed workflow](../workflow.md#the-flow) and [compact handoff](../compact-context.md) show the corrected paths.
 
+The [updated command reference](../cli-reference.md#kitsu-check-add) places Kitsu options before the child command. A regression test runs the verification example from terminal help and checks that a change to `README.md` makes the new check required.
+
 | Where a developer gets stuck | Observed behavior and correction |
 | --- | --- |
 | Declaring a verification check | The help synopsis places Kitsu options after the child command. Following it with `--verify`, `--expect` and `--when` returned success and saved all three as child arguments. The saved check had `Verify: false`. Move Kitsu options before `--` in the **help generator**, regenerate the reference, and test the resulting declaration. The same ordering problem appears in `task test`. [Check synopsis](https://github.com/belevtsev/kitsu/blob/00f74f454b3e910eccd80b14910ebb78548c796f/docs/cli-reference.md#L1526) · [Help generator](https://github.com/belevtsev/kitsu/blob/00f74f454b3e910eccd80b14910ebb78548c796f/internal/cli/ux_help.go#L75) |
