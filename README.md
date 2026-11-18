@@ -51,14 +51,33 @@ Lost the ID? Ask your agent to list your saved Kitsu tasks.
 
 ## Start at any stage
 
-Pick the row that matches your work. In Codex, start your message with “Use Kitsu’s task skill.” In Claude Code, start it with `/kitsu:task`.
+Paste any example into Codex. In Claude Code, replace the opening “Use Kitsu’s task skill.” with `/kitsu:task`.
 
-| Starting point | Chat prompt |
+**Bug fix**
+
+> Use Kitsu’s task skill. Exporting a customer named “Acme, Inc.” produces two CSV columns when I reopen the file. Reproduce it through the export command, add a failing round-trip test, and fix the cause. Show the test passing and leave the fix uncommitted.
+
+**Design**
+
+> Use Kitsu’s task skill. Users want to choose which columns appear in an order export. Read the current CLI help and propose the flag syntax, default behavior, and error for an unknown column. Give me example commands with expected output so I can approve the behavior before implementation.
+
+**Architecture**
+
+> Use Kitsu’s task skill. Our export worker has 256 MiB of memory and must handle a million orders. Trace how rows move from storage to the CSV writer today. Compare one long-lived database cursor with fetching rows in bounded pages, recommend an approach, and explain how it handles cancellation and partial output. Stop at the recommendation.
+
+**Review**
+
+> Use Kitsu’s task skill. Independently review my staged patch for selecting export columns. Check whether existing callers still get the default columns and whether invalid input leaves a partial file. For each defect, give the file location and a reproducing command or test. Report findings only.
+
+**Implementation**
+
+> Use Kitsu’s task skill. Add `--columns` to the order export command. With `--columns id,total`, emit only those columns in that order. Keep the current output when the flag is omitted and reject unknown names before writing. Test all three cases through the CLI and leave the changes ready for review.
+
+For ticket intake, verification, or delivery, use the same chat prefix:
+
+| Starting point | Request |
 | --- | --- |
 | Ticket | Read the issue I linked. Summarize the expected behavior and what we still need to learn. Stop before editing. |
-| Architecture | Compare streaming and buffering for our CSV export. Recommend one and explain the trade-off. Stop at the design. |
-| Implementation | Implement the approved streaming design. Add a test for an empty export and leave the changes uncommitted. |
-| Review | Independently review my staged CSV export patch. Report findings with file locations and stop before editing. |
 | Verification | Run the exporter on a field containing a comma. Check that the CSV round-trips and report the result. Leave the patch as it is. |
 | Delivery | Verify my staged export fix. If the checks pass, commit it locally, push this branch, and open a PR for review. |
 
