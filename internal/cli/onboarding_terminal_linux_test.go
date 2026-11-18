@@ -86,6 +86,7 @@ func TestInteractiveHarnessPinsScopeAndResumesOriginalTask(t *testing.T) {
 	}
 	data, err := os.ReadFile(capture)
 	if err != nil || !strings.Contains(string(data), "task open "+id+" --entry STAGE --until review --brief") ||
+		!strings.Contains(string(data), "Omit the limit flags") || !strings.Contains(string(data), "--time-limit 12m0s --review-limit 3 --finish-reserve 2m0s") ||
 		strings.Contains(string(data), "task next "+id) || strings.Contains(string(data), "task list") {
 		t.Fatal("fresh host needs the direct scope-binding command", err, string(data))
 	}
