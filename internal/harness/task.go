@@ -147,6 +147,7 @@ type Assertion struct {
 }
 
 type Proof struct {
+	RepositoryPolicy  string     `json:"repository_policy,omitempty"`
 	PriorCommitTicket string     `json:"prior_commit_ticket,omitempty"`
 	IndexChecked      bool       `json:"index_checked,omitempty"`
 	CompletionTicket  string     `json:"completion_ticket,omitempty"`
@@ -204,6 +205,8 @@ type DeveloperAssignment struct {
 }
 
 type Task struct {
+	RepositoryPolicy   string         `json:"repository_policy,omitempty"`
+	VerifyOnlyFailure  *Snapshot      `json:"verify_only_failure,omitempty"`
 	Bug                *BugDelivery   `json:"bug,omitempty"`
 	Completion         *Completion    `json:"completed_delivery,omitempty"`
 	CommitAttempt      *CommitAttempt `json:"commit_attempt,omitempty"`
@@ -256,7 +259,27 @@ func (t *Task) RecordAssertion(p *Proof, reason string) {
 		t.Bug.Reproduction = &red
 	}
 	t.Proof = p
+	t.PinVerifyOnlyFailure()
 	t.Events = append(t.Events, e)
+}
+
+// PinVerifyOnlyFailure preserves the failed candidate even after a transient
+// problem clears. A verify-only request can retry that exact candidate.
+func (t *Task) PinVerifyOnlyFailure() {
+	if t.VerifyOnlyFailure == nil && t.Scope.Entry == "verify" && !t.Scope.Repair && t.Proof != nil && (t.Proof.FailedAssertion() != nil || t.Proof.FailedCheck != "") {
+		t.VerifyOnlyFailure = &t.Proof.Candidate
+	}
+}
+
+func (t *Task) NeedsRepairAuthority(candidate Snapshot) bool {
+	if t.Scope.Entry != "verify" || t.Scope.Repair {
+		return false
+	}
+	if t.VerifyOnlyFailure != nil {
+		return candidate != *t.VerifyOnlyFailure
+	}
+	p := t.Proof // Older tasks can recover the most recent failure.
+	return p != nil && (p.FailedAssertion() != nil || p.FailedCheck != "") && candidate != p.Candidate
 }
 
 // ArchiveGateFailure moves a superseded repository result into the history of
@@ -352,6 +375,9 @@ func (t *Task) next(state Readiness) string {
 	}
 	if t.Scope.Until == "plan" {
 		return "done"
+	}
+	if !state.Committed && t.NeedsRepairAuthority(state.Candidate) {
+		return "blocked"
 	}
 	if action := t.bugAction(); action != "" {
 		return action

@@ -149,6 +149,10 @@ Use `repair` for a repair result. The host starts the worker between the first t
 
 ### Retry verification
 
+The task pins the exact `kitsu.toml` from its opening commit, or its opening tree before the first commit. The next-action view identifies that policy as `repository_policy`. If the candidate changes or removes it, restore the opening declaration to continue. To adopt a reviewed policy, open a new task from a commit that includes it.
+
+For a verify-only request such as “commit if it passes,” a failed assertion or declared check permits a retry on the same worktree, index and Git parents. Changing that candidate requires the developer to authorize repair with `kitsu task extend ID --repair`.
+
 A verification receipt identifies the staged tree as well as the working files and commit parents. If someone stages or unstages a file, use the verification ticket from `kitsu task next ID` and run `kitsu task test ID --ticket TICKET --retry` to check the new index. The saved command may itself inspect staged contents. Kitsu checks the index before and after each assertion and repository check. A change observed during a command leaves the task unverified.
 
 For commit-scoped work, stage the authorized files before running verification to run the checks once. If you stage the entire verified working tree afterward, the original commit ticket can run the saved checks against the new index and proceed when they pass. A failed assertion or declared check keeps the branch at its original commit. A partially staged tree still requires inspection.

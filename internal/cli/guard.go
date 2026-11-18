@@ -25,11 +25,8 @@ type toolCall struct {
 	} `json:"tool_input"`
 }
 
-// runGuard is the plugin's job before a tool call. It reads the host's notice
-// from standard input and speaks up in two cases only: a git call that skips
-// git's hooks, and an edit of kitsu.toml, of git's hooks or of kitsu's records. It
-// asks where the host can ask and denies with the reason where it cannot. It
-// never judges a commit or a push: the git hooks do that.
+// runGuard responds to the host before a tool call. It checks approval for
+// declared commands and warns about changes to the local workflow and gate.
 func runGuard(ctx context.Context, cfg Config, args []string) error {
 	flags := newFlags("guard")
 	host := flags.String("host", "claude", "")
@@ -44,12 +41,14 @@ func runGuard(ctx context.Context, cfg Config, args []string) error {
 	if json.NewDecoder(cfg.In).Decode(&call) != nil {
 		return nil // a notice the guard cannot read is one it does not act on
 	}
-	reason := guardReason(ctx, call)
+	reason, developerOnly := guardReason(ctx, call)
 	if reason == "" {
 		return nil
 	}
 	decision := "ask"
-	if *host == "codex" {
+	if developerOnly {
+		decision = "deny"
+	} else if *host == "codex" {
 		// Codex reads "ask" and does not support it yet, so the call would
 		// go through unasked.
 		decision = "deny"
@@ -67,18 +66,19 @@ func runGuard(ctx context.Context, cfg Config, args []string) error {
 	return nil
 }
 
-// guardReason is why the user should be asked, or nothing.
-func guardReason(ctx context.Context, call toolCall) string {
+// guardReason explains the decision and whether it requires the developer to
+// act in a terminal instead of responding to a host permission prompt.
+func guardReason(ctx context.Context, call toolCall) (string, bool) {
 	dir := call.Dir
 	if dir == "" {
 		dir, _ = os.Getwd()
 	}
 	repo, err := gitx.Open(ctx, dir)
 	if err != nil || repo.Root == "" {
-		return ""
+		return "", false
 	}
 	if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err != nil {
-		return "" // nothing is gated here
+		return "", false // nothing is gated here
 	}
 	// A host gives a command as one text; a list of words is read as one
 	// line and, for a word that is itself a command line, word by word.
@@ -91,19 +91,22 @@ func guardReason(ctx context.Context, call toolCall) string {
 	}
 	switch call.Tool {
 	case "Bash", "PowerShell":
+		if why := guardCheckTrust(ctx, repo, command); why != "" {
+			return why, true
+		}
 		if how := uxChangesPolicy(command); how != "" {
-			return "This command " + how + "."
+			return "This command " + how + ".", false
 		}
 		if how := shellwords.SkipsHooks(command); how != "" {
-			return "This command " + how + ", which skips the commit gate: the git hooks of kitsu would not deny the commit or the push."
+			return "This command " + how + ", which skips the commit gate: the git hooks of kitsu would not deny the commit or the push.", false
 		}
-		return editReason(ctx, repo, dir, patchPaths(command)) // a patch given to the shell
+		return editReason(ctx, repo, dir, patchPaths(command)), false
 	case "Edit", "Write", "MultiEdit":
-		return editReason(ctx, repo, dir, []string{call.Input.Path})
+		return editReason(ctx, repo, dir, []string{call.Input.Path}), false
 	case "apply_patch":
-		return editReason(ctx, repo, dir, patchPaths(command))
+		return editReason(ctx, repo, dir, patchPaths(command)), false
 	}
-	return ""
+	return "", false
 }
 
 // editReason says why an edit of paths, relative to dir or absolute, needs
@@ -111,6 +114,9 @@ func guardReason(ctx context.Context, call toolCall) string {
 // above it, so another spelling of a name, a link or a file that does not
 // exist yet is judged like the place it leads to.
 func editReason(ctx context.Context, repo *gitx.Repo, dir string, paths []string) string {
+	if len(paths) == 0 {
+		return ""
+	}
 	hooks, _, _ := repo.HooksDir(ctx)
 	const hook = "This edit changes a git hook of this clone, and the git hooks of kitsu judge each commit and push."
 	guarded := [][2]string{

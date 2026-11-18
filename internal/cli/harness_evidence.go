@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -32,6 +33,8 @@ type harnessView struct {
 	TicketSource      *harness.TicketSource `json:"ticket_source,omitempty"`
 	ActorSessions     []tokens.Session      `json:"actor_session_usage,omitempty"`
 	ReviewPolicyError string                `json:"review_policy_error,omitempty"`
+	RepositoryPolicy  string                `json:"repository_policy,omitempty"`
+	PolicyError       string                `json:"repository_policy_error,omitempty"`
 	RepositoryReview  bool                  `json:"repository_requires_review,omitempty"`
 	VerificationLog   *verificationLogRef   `json:"verification_log,omitempty"`
 	ManagedInterval   string                `json:"managed_interval,omitempty"`
@@ -80,6 +83,7 @@ type harnessView struct {
 func observeHarness(ctx context.Context, s *session, t *harness.Task, withUsage bool) (harnessView, error) {
 	v := harnessView{store: s.store, Claim: t.Claim, Request: t.Request, Task: t.ID, Scope: t.Scope, Behavior: "pending", Gate: "unchecked", Delivery: "working tree", Proof: t.Proof, Review: t.Latest("review"), Usage: []string{"kitsu", "usage", "show", "--task", t.ID, "--json"}}
 	v.Publication = lastPublication(t)
+	v.RepositoryPolicy = t.RepositoryPolicy
 	v.Deadline, v.FinishReserve, v.ReviewLimit, v.ReviewStarts = t.Deadline, t.FinishReserve, t.ReviewLimit, t.StartedReviews()
 	if completion := t.CompletedDelivery(); completion != nil {
 		v.Completion, v.Candidate, v.CommitTarget = completion, completion.Candidate, completion.Target
@@ -106,6 +110,10 @@ func (v *harnessView) observeCurrentHarness(ctx context.Context, s *session, t *
 		return err
 	}
 	v.Candidate = c
+	if err := pinHarnessPolicy(ctx, s, t); err != nil {
+		return err
+	}
+	v.RepositoryPolicy = t.RepositoryPolicy
 	if t.Scope.ReviewBase != "" {
 		v.Delivery = "committed range"
 	}
@@ -251,6 +259,19 @@ func (v *harnessView) routeAction(ctx context.Context, s *session, t *harness.Ta
 			return nil
 		}
 	}
+	if v.Delivery != "committed" && t.NeedsRepairAuthority(v.Candidate) {
+		v.Next, v.Pause, v.Verified = "blocked", nil, false
+		v.Delivery = fmt.Sprintf("candidate changed after failed verification. Restore the tested candidate or authorize repair with kitsu task extend %s --repair", t.ID)
+		return nil
+	}
+	if t.Scope.Until != "plan" && t.Scope.Until != "review" && slices.Contains([]string{"verify", "commit", "publish", "receipt", "done"}, v.Next) {
+		if err := checkHarnessPolicy(ctx, s, t, v.Candidate.Tree); err != nil {
+			v.Next, v.Pause, v.Verified = "blocked", nil, false
+			v.PolicyError, v.Gate, v.Delivery = err.Error(), "policy changed", "working tree"
+			v.CommitEvidence = ""
+			return nil
+		}
+	}
 	return v.setActionTicket(ctx, s, t)
 }
 
@@ -302,8 +323,8 @@ func printHarness(cfg Config, o harnessOptions, v harnessView) error {
 		return printJSON(cfg, v)
 	}
 	fmt.Fprintf(cfg.Out, "%s · goal %s · next %s\n", v.Task, v.Scope.Until, v.Next)
-	if v.ReviewPolicyError != "" {
-		fmt.Fprintln(cfg.Out, decl.Plain(v.ReviewPolicyError))
+	if problem := cmp.Or(v.ReviewPolicyError, v.PolicyError); problem != "" {
+		fmt.Fprintln(cfg.Out, decl.Plain(problem))
 	}
 	if v.TicketMarkdown != "" {
 		fmt.Fprintln(cfg.Out, "Ticket Markdown:", decl.Plain(v.TicketMarkdown))
@@ -418,6 +439,12 @@ func (v harnessView) brief() map[string]any {
 	if v.ReviewPolicyError != "" {
 		reply["review_policy_error"] = v.ReviewPolicyError
 	}
+	if v.RepositoryPolicy != "" {
+		reply["repository_policy"] = v.RepositoryPolicy
+	}
+	if v.PolicyError != "" {
+		reply["repository_policy_error"] = v.PolicyError
+	}
 	if v.ManagedInterval != "" {
 		reply["managed_interval"], reply["pending_daily_action"] = v.ManagedInterval, v.PendingDaily
 	}
@@ -494,6 +521,9 @@ func (v harnessView) addBriefClaim(reply map[string]any) {
 }
 
 func harnessProofValid(s *session, t *harness.Task) (bool, error) {
+	if t.Proof == nil || t.Proof.RepositoryPolicy != t.RepositoryPolicy {
+		return false, nil
+	}
 	return validAssertionRecord(s, t.Proof, store.Passed)
 }
 
@@ -541,10 +571,7 @@ func harnessGate(ctx context.Context, s *session, tree string, p *harness.Proof)
 }
 
 func runHarnessTest(ctx context.Context, s *session, l *stageLedger, t *harness.Task, o harnessOptions, v harnessView) error {
-	if err := pinHarnessCommitTarget(ctx, s, t); err != nil {
-		return err
-	}
-	if err := s.checkHarnessCommitTarget(ctx, t.CommitTarget); err != nil {
+	if err := prepareHarnessVerification(ctx, s, t, v.Candidate); err != nil {
 		return err
 	}
 	out := s.cfg.Err
@@ -622,6 +649,7 @@ func executeHarnessAssertion(ctx context.Context, s *session, t *harness.Task, o
 		return nil, err
 	}
 	p := &harness.Proof{IndexChecked: true, PerRunInputs: true, CheckID: check.ID, Ticket: o.ticket, Candidate: c, Key: key, Run: record.RunID, Outcome: record.Outcome, ExitStatus: record.ExitStatus, Detail: sourceChangeSummary(record), Expect: o.expect, Argv: o.argv}
+	p.RepositoryPolicy = t.RepositoryPolicy
 	p.LogDigest, err = taskVerificationLog(s, p.Run)
 	if err != nil {
 		return nil, err
@@ -808,6 +836,7 @@ func runHarnessGateCheck(ctx context.Context, s *session, t *harness.Task, id st
 	p.GateFailure = &harness.RunResult{CheckRun: run, CheckID: id, Outcome: record.Outcome, ExitStatus: record.ExitStatus, Detail: sourceChangeSummary(record)}
 	if record.Outcome == store.Failed && record.ExitStatus != nil {
 		p.FailedCheck = id
+		t.PinVerifyOnlyFailure()
 	}
 	return false, nil
 }

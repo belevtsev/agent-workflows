@@ -59,6 +59,9 @@ func pinHostTask(ctx context.Context, cfg Config, o onboardingArgs, repo *gitx.R
 		return "", err
 	}
 	task := harness.Task{Version: harness.CurrentVersion, ID: "task-" + strings.ToLower(rand.Text()), PendingScope: true, Request: o.request, Created: time.Now().UTC(), Start: c, Scope: harness.Scope{Until: o.until, RequireReview: o.requireReview}, CommitTarget: target}
+	if err := pinHarnessPolicy(ctx, s, &task); err != nil {
+		return "", err
+	}
 	if err := o.setLimits(&task); err != nil {
 		return "", err
 	}

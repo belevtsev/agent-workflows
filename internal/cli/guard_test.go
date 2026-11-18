@@ -60,14 +60,14 @@ func TestGuardRoleSettingCommands(t *testing.T) {
 	} {
 		call := toolCall{Tool: "Bash", Dir: root}
 		call.Input.Command = command
-		if got := guardReason(context.Background(), call); !strings.Contains(got, "role models or reasoning") {
+		if got, _ := guardReason(context.Background(), call); !strings.Contains(got, "role models or reasoning") {
 			t.Errorf("guard accepted %q: %q", command, got)
 		}
 	}
 	for _, command := range []string{"kitsu roles --host codex", "kitsu roles text developer", "echo kitsu roles set developer"} {
 		call := toolCall{Tool: "Bash", Dir: root}
 		call.Input.Command = command
-		if got := guardReason(context.Background(), call); got != "" {
+		if got, _ := guardReason(context.Background(), call); got != "" {
 			t.Errorf("guard rejected read-only command %q: %q", command, got)
 		}
 	}

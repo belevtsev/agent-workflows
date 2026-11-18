@@ -11,11 +11,11 @@ import (
 // Keep separate budgets for the gate and its supporting subsystems.
 // Test files and testdata do not count.
 const (
-	maxCoreLines         = 6290 // Includes checkout and index discovery shared with the task harness.
+	maxCoreLines         = 6292 // Includes index recovery and the host's check-execution guard.
 	maxRolesLines        = 4000
 	maxAdviserLines      = 4000 // CLI advisers plus native typed providers and usage records.
 	maxSkillLines        = 2000
-	maxUXLines           = 3500 // Shared routing, help, preferences, forms and completion.
+	maxUXLines           = 3576 // Shared routing, help, preferences, forms, completion and check approval.
 	maxOnboardingLines   = 2014 // Local setup diagnostics, verified plugin installation and explicit host handoff.
 	maxContextLines      = 2000 // Opt-in Go collection, briefs, compact checks and private artifacts.
 	maxWorkerLines       = 1400 // Saved dispatch, local intervals and bounded QE hints; no model execution.
@@ -91,7 +91,7 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	t.Logf("coordinator state: %d of %d lines", states, maxStateLines)
 	t.Logf("task verification: %d of %d lines", verificationLines, maxVerificationLines)
 	t.Logf("workflow insights: %d of %d lines", insightLines, maxInsightLines)
-	const maxHarnessLines = 3660 // Includes ticket intake, snapshots, durable delivery and index recovery.
+	const maxHarnessLines = 3785 // Includes pinned check policy and durable delivery evidence.
 	t.Logf("task harness: %d of %d lines", harnessLines, maxHarnessLines)
 	if harnessLines > maxHarnessLines {
 		t.Errorf("task harness holds %d lines of Go, want at most %d", harnessLines, maxHarnessLines)

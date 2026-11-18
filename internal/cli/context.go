@@ -85,7 +85,7 @@ func contextText(hooks, mode string, configured bool) string {
 		state = "The hooks are installed. The gate only observes here: it records what it would deny and allows the operation.\n"
 	}
 	return intro + " allows a commit or a push only when every check declared in kitsu.toml has a recorded passing run on exactly the content that is committed or pushed.\n" +
-		"- `kitsu run` records missing checks on current content; run it before committing.\n" +
+		"- `kitsu run` records missing checks. Ask the developer to run `kitsu check trust` if approval is needed.\n" +
 		"- `kitsu status` shows missing evidence.\n" +
 		"- A denied commit or push needs passing evidence for the staged content; never bypass hooks.\n" + state
 }

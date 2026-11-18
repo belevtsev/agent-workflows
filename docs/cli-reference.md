@@ -1520,6 +1520,23 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
 ```
 
+### kitsu check trust
+
+```text
+usage: kitsu check trust
+
+Inspect and approve the exact repository check declaration for agent sessions.
+
+Options:
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu check trust
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
 ### kitsu check add
 
 ```text
@@ -2185,10 +2202,10 @@ Decide for git: pre-commit, pre-merge-commit or pre-push.
 ```text
 usage: kitsu guard [--host claude|codex]
 
-For an agent host's hook: ask before a git call that skips the hooks, or an edit of kitsu.toml, a hook or a record.
+For an agent host's hook: enforce check approval and guard local workflow settings.
 
-  --host claude  the answer asks the user; this is the default
-  --host codex   the answer denies the call and gives the reason
+  --host claude  request permission for guarded edits; this is the default
+  --host codex   deny guarded edits and explain why
 ```
 
 ### kitsu uninstall

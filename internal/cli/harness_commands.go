@@ -670,6 +670,9 @@ func createHarness(ctx context.Context, s *session, l *stageLedger, o harnessOpt
 	if err := pinHarnessCommitTarget(ctx, s, &t); err != nil {
 		return t, err
 	}
+	if err := pinHarnessPolicy(ctx, s, &t); err != nil {
+		return t, err
+	}
 	if err := o.setLimits(&t); err != nil {
 		return t, err
 	}
@@ -883,6 +886,10 @@ func bindHarnessScope(ctx context.Context, s *session, l *stageLedger, task *har
 	task.Scope = o.scope
 	if rangeStart.Head != "" {
 		task.Start = rangeStart
+		task.RepositoryPolicy = ""
+	}
+	if err := pinHarnessPolicy(ctx, s, task); err != nil {
+		return err
 	}
 	if err := pinHarnessCommitTarget(ctx, s, task); err != nil {
 		return err
