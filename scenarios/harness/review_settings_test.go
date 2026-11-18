@@ -77,11 +77,23 @@ func TestBriefReviewCanProceedWithoutReadableUsageHistory(t *testing.T) {
 	r := kitsutest.Demo(t)
 	f := flow{t: t, repo: r, id: "brief-usage"}
 	f.call(0, "open", "--entry", "review", "--until", "review", "--request", "Review the change")
-	f.record("intake", "coordinator", "Inspect changes")
-	// A malformed optional usage archive should only affect views that request it.
 	r.Write(".git/kitsu/tokens", "not a directory")
-	if got := r.Kitsu("task", "next", f.id, "--json"); got.Code != 1 || !strings.Contains(got.Output(), "is not a directory") {
-		t.Fatalf("full usage view did not identify the malformed archive: exit %d\n%s", got.Code, got.Output())
+	record := r.Kitsu("task", "record", f.id, "intake", "--actor", "coordinator", "--ticket", f.state.Ticket, "--note", "Inspect changes", "--json")
+	for _, got := range []kitsutest.Result{record, r.Kitsu("task", "next", f.id, "--json")} {
+		var view struct {
+			Next, Ticket string
+			UsageError   string          `json:"usage_error"`
+			Coverage     string          `json:"token_coverage"`
+			Tokens       json.RawMessage `json:"captured_tokens"`
+		}
+		if got.Code != 0 || json.Unmarshal([]byte(got.Stdout), &view) != nil || view.Next != "review" || view.Ticket == "" ||
+			!strings.Contains(view.UsageError, "is not a directory") || view.Coverage != "unavailable" || string(view.Tokens) != "null" {
+			t.Fatalf("lost task state or misreported unavailable usage: %s", got.Output())
+		}
+		f.state.Ticket = view.Ticket
+	}
+	if got := r.Kitsu("usage", "show", "--task", f.id, "--json"); got.Code == 0 || !strings.Contains(got.Output(), "is not a directory") {
+		t.Fatalf("dedicated usage lookup did not report the damaged archive: %s", got.Output())
 	}
 	result := r.Kitsu("task", "claim", f.id, "--ticket", f.state.Ticket, "--actor", "coordinator", "--host", "codex", "--brief")
 	if result.Code != 0 {

@@ -241,7 +241,7 @@ These manual recipes do not change `PATH`. Add the target directory to user `PAT
 terminal, and run `kitsu version`. Building the CLI is a separate
 [contributor option](development.md#build-from-source).
 
-The preview supporting delegated coding and pinned commit ranges uses task-skill protocol 2. Update both the CLI and the registered marketplace when upgrading from the earlier daily preview. Existing task ledgers can still be resumed.
+The preview supporting delegated coding and pinned commit ranges used task-skill protocol 2. The source build with configurable daily review requires task-skill protocol 3. Update both the CLI and the registered marketplace when upgrading from the earlier daily preview. Existing task ledgers can still be resumed.
 
 ## What CI checks
 

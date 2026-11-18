@@ -138,7 +138,7 @@ func TestInputChangeDoesNotDispatchABehaviorRepair(t *testing.T) {
 func TestLosingVerificationAfterCommitKeepsIndependentReview(t *testing.T) {
 	r := kitsutest.Demo(t)
 	f := flow{t: t, repo: r, id: "recover-ready"}
-	f.call(0, "open", "--request", "Review the fix and deliver a verified commit", "--entry", "implement", "--until", "deliver", "--commit", "--review-limit", "1")
+	f.call(0, "open", "--require-review", "--request", "Review the fix and deliver a verified commit", "--entry", "implement", "--until", "deliver", "--commit", "--review-limit", "1")
 	f.record("intake", "host", "Verify and deliver the updated fixture")
 	r.Write("change.txt", "approved fix")
 	f.record("implement", "host", "Implemented the fix")

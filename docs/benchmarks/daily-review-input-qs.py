@@ -106,7 +106,10 @@ for repeat, (mode, binary) in product(range(1, args.repetitions + 1), arms):
                     assert view["prior_review"] == reviews[n-1]["note"]
                     assert view["reported_repair"] == work_event["note"]
                     assert view["reported_work_tree"] == tree
-                    assert view["review_changes"] == ["git", "diff", trees[n-1], tree, "--"]
+                    assert view["review_changes"] in (
+                        ["git", "diff", trees[n-1], tree, "--"],
+                        ["git", "--no-replace-objects", "diff", "--no-ext-diff", "--no-textconv", trees[n-1], tree, "--"],
+                    )
             else:
                 assert view["harness"]["candidate"] == review["candidate"]
                 assert view["events"][-1]["note"] == work_event["note"]

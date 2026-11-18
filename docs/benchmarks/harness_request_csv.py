@@ -217,7 +217,7 @@ def drive(checkout, arm, route):
     divergent = checkout.case.endswith("divergent")
     if kitsu:
         ready = checkout.task("open", "--entry", "implement" if delegated else "verify", "--until", "deliver",
-                              "--commit", "--request", checkout.request, brief=True)
+                              "--commit", *(["--require-review"] if delegated else []), "--request", checkout.request, brief=True)
         ready = checkout.task("record", "intake", "--actor", OWNER, "--ticket", ready["ticket"], "--note", EXPECT,
                               brief=True)
     checkout.git("diff", "--cached", "--", EXPORT, tag="staged-diff")

@@ -87,7 +87,7 @@ func (f fixture) install() {
 		f.inventory(2, "user", f.dir, f.pluginDir)
 	}
 	f.json(filepath.Join(f.pluginDir, "."+f.host+"-plugin", "plugin.json"), m)
-	f.write(filepath.Join(f.pluginDir, "skills", "task", "SKILL.md"), "---\nname: task\ndescription: Handle a Kitsu task.\n---\n<!-- kitsu-task-harness: 2 -->\nCoordinate the task.\n", 0o644)
+	f.write(filepath.Join(f.pluginDir, "skills", "task", "SKILL.md"), "---\nname: task\ndescription: Handle a Kitsu task.\n---\n<!-- kitsu-task-harness: 3 -->\nCoordinate the task.\n", 0o644)
 	f.hooks("", "", false)
 }
 
@@ -276,7 +276,7 @@ func TestInspectTaskSkillProblems(t *testing.T) {
 			case "malformed":
 				f.write(path, "---\nname: task\ndescription: [broken\n---", 0o644)
 			case "previous daily protocol":
-				f.write(path, "---\nname: task\ndescription: Previous daily preview.\n---\n<!-- kitsu-task-harness: 1 -->\nCoordinate the task.", 0o644)
+				f.write(path, "---\nname: task\ndescription: Previous daily preview.\n---\n<!-- kitsu-task-harness: 2 -->\nCoordinate the task.", 0o644)
 			case "older task protocol":
 				f.write(path, "---\nname: task\ndescription: Valid older task skill.\n---\nOriginal managed workflow.", 0o644)
 			case "user invocation disabled":

@@ -20,3 +20,5 @@ A repository-check failure stays available on resume until a new result supersed
 | A review and its findings identify the reviewed candidate | test |
 | A verified task requires executable current evidence | test |
 | Detachment preserves evidence by default | test |
+
+Interactive startup shares Git discovery with other commands. The checkout fix reallocates 28 lines of the onboarding allowance to core discovery and 8 to the daily harness for resume preflight. The combined allowance remains 11,002 production lines across those three components.

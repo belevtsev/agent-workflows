@@ -1,0 +1,64 @@
+{
+  "platform": "linux/amd64",
+  "revision": "local-worktree",
+  "model_calls": 0,
+  "source": "TestReleaseArtifactsInstallMatchedPlugin and TestMatchedPluginArtifact, local installation with released native clients in disposable profiles.",
+  "hosts": [
+    {
+      "host": "codex",
+      "version": "codex-cli 0.169.0",
+      "attempts": [
+        {
+          "name": "fresh install",
+          "exit": 0,
+          "agent_check_ready": true,
+          "task_skill_sha256": "6217869330ed103067cefffdffd3601473d2c3862974f322fd9b7828e6eb3260",
+          "binary_sha256": "9a64b3cee6a9684c8306a394da8ac83262f270b528d32a2bb216933675274537"
+        },
+        {
+          "name": "same-build reinstall",
+          "exit": 0,
+          "agent_check_ready": true,
+          "task_skill_sha256": "6217869330ed103067cefffdffd3601473d2c3862974f322fd9b7828e6eb3260",
+          "binary_sha256": "9a64b3cee6a9684c8306a394da8ac83262f270b528d32a2bb216933675274537"
+        }
+      ],
+      "after_resume": "done",
+      "verified": true,
+      "artifact_sha256": {
+        "SHA256SUMS": "566795e8cd477d120871a27987c8b19fea375043cc9f3a11c3640a1a0649fcde",
+        "install.sh": "e31bf0753349e0bfbe103ec820ae315eca9bc459d621e7bba279fda5208b566c",
+        "kitsu-plugin.zip": "0ec804f06cefa5db9bcd3b784c99f05358641791b28fd0e79a21fe57e54dd915",
+        "kitsu_v0.0.1-local-review_linux_amd64.tar.gz": "9acfbc8081a11805f02e49b2647845d079ddf4687829ea404193f44f41080835"
+      }
+    },
+    {
+      "host": "claude",
+      "version": "2.1.325 (Claude Code)",
+      "attempts": [
+        {
+          "name": "fresh install",
+          "exit": 0,
+          "agent_check_ready": true,
+          "task_skill_sha256": "6217869330ed103067cefffdffd3601473d2c3862974f322fd9b7828e6eb3260",
+          "binary_sha256": "9a64b3cee6a9684c8306a394da8ac83262f270b528d32a2bb216933675274537"
+        },
+        {
+          "name": "same-build reinstall",
+          "exit": 0,
+          "agent_check_ready": true,
+          "task_skill_sha256": "6217869330ed103067cefffdffd3601473d2c3862974f322fd9b7828e6eb3260",
+          "binary_sha256": "9a64b3cee6a9684c8306a394da8ac83262f270b528d32a2bb216933675274537"
+        }
+      ],
+      "after_resume": "done",
+      "verified": true,
+      "artifact_sha256": {
+        "SHA256SUMS": "566795e8cd477d120871a27987c8b19fea375043cc9f3a11c3640a1a0649fcde",
+        "install.sh": "e31bf0753349e0bfbe103ec820ae315eca9bc459d621e7bba279fda5208b566c",
+        "kitsu-plugin.zip": "0ec804f06cefa5db9bcd3b784c99f05358641791b28fd0e79a21fe57e54dd915",
+        "kitsu_v0.0.1-local-review_linux_amd64.tar.gz": "9acfbc8081a11805f02e49b2647845d079ddf4687829ea404193f44f41080835"
+      }
+    }
+  ]
+}

@@ -73,9 +73,10 @@ Options:
   --json                   print machine-readable JSON without prompts or
                            styling
   --resume <task>          launch a saved local task instead of creating another
-  --until <outcome>        stop at the requested outcome
+  --until <outcome>        finish at plan, implement, review, verify, deliver
   --compact                opt in to Go context collection, compact briefs and
                            check results
+  --require-review         require an independent review of the candidate
   --time-limit <duration>  time remaining before the task pauses
   --review-limit <count>   maximum total independent review starts, including
                            released reservations
@@ -96,8 +97,9 @@ and create no task records. The two output options are mutually exclusive.
 A launched host's exit status is preserved; interruption exits 130.
 
 Examples:
-  kitsu task start "Add a login screen" --host codex
+  kitsu task start "Plan a login screen" --host codex --until plan
   kitsu task start "Fix the failing test" --host claude --print
+  kitsu task start --resume fix-login --host codex
 
 Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
@@ -205,17 +207,18 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ### kitsu task open
 
 ```text
-usage: kitsu task open <task> [options]
+usage: kitsu task open <task> --until <outcome> [options]
 
 Pin a candidate and the developer's requested outcome.
 
 Arguments:
   <task>             task name: lowercase words joined by hyphens
+  <outcome>          requested finish for the task
 
 Options:
   --request <text>         original developer request
-  --entry <stage>          starting activity
-  --until <outcome>        requested finish line
+  --entry <stage>          start at plan, implement, review, verify
+  --until <outcome>        finish at plan, implement, review, verify, deliver
   --repair                 authorize source repairs after findings or failing
                            assertions
   --commit                 delivery includes a local commit
@@ -227,6 +230,7 @@ Options:
                            --review-head
   --review-head <revision> end commit of a read-only review range; requires
                            --review-base
+  --require-review         require an independent review of the candidate
   --brief                  return next action, ticket and evidence references as
                            JSON
   --json                   return structured task state
@@ -255,7 +259,7 @@ Arguments:
   <task>             task name: lowercase words joined by hyphens
 
 Options:
-  --until <outcome>        requested finish line
+  --until <outcome>        finish at plan, implement, review, verify, deliver
   --repair                 authorize source repairs after findings or failing
                            assertions
   --commit                 delivery includes a local commit
@@ -263,6 +267,7 @@ Options:
                                confirmed
   --pr-base <branch>       require confirmation of an open GitHub PR into this
                            branch
+  --require-review         require an independent review of the candidate
   --brief                  return next action, ticket and evidence references as
                            JSON
   --json                   return structured task state

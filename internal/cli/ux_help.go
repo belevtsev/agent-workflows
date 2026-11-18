@@ -90,6 +90,7 @@ func uxPrintLeaf(cfg Config, c uxCommand) error {
 	var seen []string
 	descriptions := map[string]string{"role": "specialist role id, or coordinator where supported", "task": "task name: lowercase words joined by hyphens", "skill": "catalog id, unique skill name, or original absolute path", "adviser": "name of an explicitly configured experimental adviser", "id": "check or consultation id, as appropriate", "tree": "starting Git tree or revision", "key": "CLI preference key; currently host", "value": "preference value; host accepts codex or claude", "program": "executable run directly without a shell", "argument": "argument passed unchanged to the check program", "text": "explicit explanation of this recorded decision", "workflow": "full for an existing task folder, or small for lightweight history", "stage": "stage of the role making this request", "file": "JSON request file, or - to read standard input", "disposition": "accept, reject or defer the consultation, with an explicit reason"}
 	descriptions["action"] = "next judgment action returned by task next"
+	descriptions["outcome"] = "requested finish for the task"
 	descriptions["host"] = "codex or claude; legacy aliases require explicit host selection"
 	descriptions["word"] = "literal command word; the final word is the current prefix, including an empty prefix"
 	for _, match := range uxOperand.FindAllStringSubmatch(c.args, -1) {

@@ -25,3 +25,9 @@ func (r *Repo) ReviewCommit(ctx context.Context, rev string) (string, string, er
 	}
 	return commit, tree, nil
 }
+
+// EmptyTreeID computes the empty tree ID in the repository's object format
+// without writing objects. Git can compare against it on an unborn branch.
+func (r *Repo) EmptyTreeID(ctx context.Context) (string, error) {
+	return r.git(ctx, nil, "hash-object", "-t", "tree", "--stdin")
+}

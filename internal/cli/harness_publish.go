@@ -86,3 +86,22 @@ func lastPublication(t *harness.Task) *publicationReceipt {
 
 // gh accepts HTTPS pull URLs for github.com and enterprise hosts.
 var harnessPRURL = regexp.MustCompile(`^https://[a-zA-Z0-9.-]+(:[0-9]+)?/[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+/pull/[1-9][0-9]*$`)
+
+func extendDeliveryScope(scope *harness.Scope, extension harness.Scope) error {
+	if extension.Publish != "" {
+		if scope.Publish != "" && scope.Publish != extension.Publish {
+			return usagef("publication destination already bound")
+		}
+		scope.Publish = extension.Publish
+	}
+	if extension.PRBase != "" {
+		if scope.PRBase != "" && scope.PRBase != extension.PRBase {
+			return usagef("PR base already bound")
+		}
+		scope.PRBase = extension.PRBase
+	}
+	if err := scope.Validate(); err != nil {
+		return usagef("%v", err)
+	}
+	return nil
+}

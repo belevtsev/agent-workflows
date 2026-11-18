@@ -2,6 +2,7 @@ package pilot
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -305,7 +306,7 @@ func collectUsage(home, rolloutDir, runDir, rootID string) (usageReport, []trace
 			report.Unknown = append(report.Unknown, "orphan thread in fresh home: "+id)
 		}
 		storeDir := filepath.Join(runDir, "usage-records")
-		if err := tokens.Record(storeDir, tokens.Codex, tokens.Notice{Session: id, Transcript: info.File.Path}); err != nil {
+		if err := tokens.Record(context.Background(), storeDir, tokens.Codex, tokens.Notice{Session: id, Transcript: info.File.Path}); err != nil {
 			report.Unknown = append(report.Unknown, id+": "+err.Error())
 		}
 		starts, damaged, err := tokens.Load(storeDir)
@@ -316,7 +317,7 @@ func collectUsage(home, rolloutDir, runDir, rootID string) (usageReport, []trace
 			if start.Session != id {
 				continue
 			}
-			info.Known, info.Why = start.Known, start.Why
+			info.Known, info.Why = start.Known && !start.Partial, start.Why
 			for _, counts := range start.Models {
 				addCounts(&info.Counts, counts)
 			}

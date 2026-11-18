@@ -28,10 +28,11 @@ type Options struct {
 // Report describes configuration evidence, not authenticated or tested orchestration.
 // Ready means no known blocking failure; warnings can still require host review.
 type Report struct {
-	Host           string  `json:"host"`
-	Ready          bool    `json:"ready"`
-	HostExecutable string  `json:"host_executable"`
-	Checks         []Check `json:"checks"`
+	Host           string     `json:"host"`
+	Ready          bool       `json:"ready"`
+	HostExecutable string     `json:"host_executable"`
+	Checks         []Check    `json:"checks"`
+	Repository     *gitx.Repo `json:"-"` // The inspected checkout for interactive startup.
 }
 
 // Check is one read-only observation and the actions a user can take next.
@@ -84,8 +85,13 @@ func inspect(ctx context.Context, options Options, system string) (Report, error
 	}
 	repo, repoErr := gitx.Open(ctx, dir)
 	root := dir
-	if repoErr == nil && repo.Root != "" {
-		root = repo.Root
+	switch {
+	case repoErr == nil && repo.Root != "":
+		root, report.Repository = repo.Root, repo
+	case repoErr == nil:
+		report.add(Check{ID: "checkout", Status: "fail", Summary: "This directory has no working tree", Actions: []string{"Use git worktree list and enter the intended checkout."}})
+	case !errors.Is(repoErr, gitx.ErrNotRepo):
+		report.add(Check{ID: "checkout", Status: "fail", Summary: "Cannot inspect the Git checkout", Detail: repoErr.Error(), Actions: []string{"Run git status here and resolve the reported error."}})
 	}
 	state := readSettings(options.Host, home, root, dir, system)
 	if state.problem != "" {

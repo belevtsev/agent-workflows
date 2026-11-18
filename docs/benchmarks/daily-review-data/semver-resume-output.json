@@ -1,0 +1,106 @@
+{
+  "model_calls": 0,
+  "compare_resume": true,
+  "go": "go version go1.27.4 linux/amd64",
+  "compact": false,
+  "assertion_sha256": "7d6ce30ba26ad0c20222964ff96464093a69bf28c23a083ffa55b2484afae6d4",
+  "binaries": {
+    "previous": "bae7981747b343a3d27d650114d16f54a0521db0c6d26f8b698b7fca7d29d6f1",
+    "current": "c414a9a63c391d3484dacc35ae7333ec5906f55975ab24c71eaae2efc2407442"
+  },
+  "runs": [
+    {
+      "round": 1,
+      "arm": "plain",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 0.9064408210106194
+    },
+    {
+      "round": 1,
+      "arm": "previous",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 1.2912408880074508,
+      "resume_bytes": 2607,
+      "resume_seconds": 0.016866279009263963,
+      "resume_response_o200k": 977,
+      "resume_response_sha256": "d9446bf7257c04d0cf17029a7c312a077998d4b150ebdfba319f5d70248bfb0e"
+    },
+    {
+      "round": 1,
+      "arm": "current",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 1.284207411983516,
+      "resume_bytes": 677,
+      "resume_seconds": 0.017012749973218888,
+      "resume_response_o200k": 158,
+      "resume_response_sha256": "cb039aa971812eb97366e3d074583f00e35a426a7cbdb7173eb87b3752b36dfa"
+    },
+    {
+      "round": 2,
+      "arm": "previous",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 1.285301611002069,
+      "resume_bytes": 2607,
+      "resume_seconds": 0.016675517021212727,
+      "resume_response_o200k": 959,
+      "resume_response_sha256": "6921cabbafdfdcfd06d39dbc9060c4f208f7342c049589c55d0f362270e3b2ac"
+    },
+    {
+      "round": 2,
+      "arm": "current",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 1.2789799830061384,
+      "resume_bytes": 677,
+      "resume_seconds": 0.0155228860094212,
+      "resume_response_o200k": 155,
+      "resume_response_sha256": "051dce22ce4fccb42f3d766f105aded3ca5f6646e19b43e322fc73fe7b24b973"
+    },
+    {
+      "round": 2,
+      "arm": "plain",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 0.9076265020412393
+    },
+    {
+      "round": 3,
+      "arm": "current",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 1.2864498929702677,
+      "resume_bytes": 677,
+      "resume_seconds": 0.01669943699380383,
+      "resume_response_o200k": 157,
+      "resume_response_sha256": "7d02e8fbdac0918274692e7e9c3a1b0eca814377a52b7286f589815489efe559"
+    },
+    {
+      "round": 3,
+      "arm": "plain",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 0.9068502549780533
+    },
+    {
+      "round": 3,
+      "arm": "previous",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 1.2881345079513267,
+      "resume_bytes": 2607,
+      "resume_seconds": 0.01712367101572454,
+      "resume_response_o200k": 972,
+      "resume_response_sha256": "0d85087c4f40eaf3ea954d132f184c67c81398e9a5ab24d4fb7a05583508d195"
+    }
+  ],
+  "median_seconds": {
+    "plain": 0.9068502549780533,
+    "previous": 1.2881345079513267,
+    "current": 1.284207411983516
+  },
+  "token_measurement": "Local o200k_base encoding of the resume response including its newline. No host prompt, model output or provider usage was measured."
+}

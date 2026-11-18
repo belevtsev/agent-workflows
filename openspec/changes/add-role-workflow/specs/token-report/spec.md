@@ -69,6 +69,11 @@ Source: review of the token report, 14 November 2026: Claude Code documentation,
 - **WHEN** the record of the first `developer` start lacks its last answer when its notice is given and holds it at the next notice, `S1` is recorded, and `kitsu tokens --task add-greeting --json` runs
 - **THEN** `total` is 655,000 and the entry of `stages` for `code`, round 1, has `total` 200,000
 
+#### Scenario: A repeated notice omits or cannot reread a transcript
+
+- **WHEN** a subsequent notice for a captured worker omits its transcript path or a later read of the same worker or coordinator transcript fails
+- **THEN** Kitsu reuses the saved worker path and counts each start once. A failed reread preserves the last measurement, marks coverage incomplete and can recover on a later notice even when the transcript size stays the same.
+
 #### Scenario: An internal agent of the host
 
 - **WHEN** `S1` is recorded, a notice that names the agent `aside01` with an empty `agent_type` and a record of 3,000 tokens is given to `kitsu tokens record`, and `kitsu tokens --json` runs
@@ -140,7 +145,7 @@ Source: Claude Code documentation, `hooks.md` (`transcript_path` is the main ses
 
 ### Requirement: Unknown is not zero
 
-When `kitsu` cannot read a count it expects in the host's record, it SHALL report the tokens of that start as `unknown`, name the record, and mark every sum that would hold them as incomplete. It SHALL print no sum that leaves a start out without saying so.
+When Kitsu cannot read a count it expects in the host's record, it SHALL name the record and mark the affected sums incomplete. It SHALL report an earlier measurement of the same source as a lower bound, or `unknown` if it has no measurement. It SHALL print no sum that leaves a start out without saying so.
 
 Source: review finding M11 (unknown usage was treated as none); Claude Code documentation, `claude-directory.md` (it says where the transcripts are and does not describe a line).
 

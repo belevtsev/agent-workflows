@@ -58,8 +58,8 @@ func taskCheck(p plugin, root, host string, s settings) Check {
 		return check
 	}
 	body, err := readFile(entry.Path)
-	if err != nil || !bytes.Contains(body, []byte("<!-- kitsu-task-harness: 2 -->")) {
-		check.Detail = "The installed task skill does not declare harness protocol 2. Update the Kitsu plugin to match this CLI."
+	if err != nil || !bytes.Contains(body, []byte("<!-- kitsu-task-harness: 3 -->")) {
+		check.Detail = "The installed task skill does not declare harness protocol 3. Update the Kitsu plugin to match this CLI."
 		return check
 	}
 	check.Status, check.Summary = "pass", "Installed Kitsu task skill is usable in configuration"

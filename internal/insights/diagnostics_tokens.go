@@ -99,7 +99,7 @@ func diagnosticUnknownSources(in DiagnosticInput, starts []tokens.Start) []strin
 		sources = diagnosticSource(sources, source)
 	}
 	for _, start := range starts {
-		if !start.Known {
+		if !start.Known || start.Partial {
 			sources = diagnosticSource(sources, start.Record)
 		}
 	}
@@ -181,7 +181,7 @@ func fillDiagnosticTotals(d *Diagnostics, in DiagnosticInput, a diagnosticAccoun
 		if s.Agent != tokens.SessionAgent && s.Task == "" {
 			d.UnlabelledStarts++
 		}
-		complete = complete && s.Known
+		complete = complete && s.Known && !s.Partial
 		if !s.Known {
 			continue
 		}

@@ -83,7 +83,7 @@ asynchronously, so at `SubagentStop` or `SessionEnd` the record may not yet hold
 messages. Codex runs `SubagentStop` at the end of every turn of a sub-agent, before it writes the
 record out. So at every notice `kitsu` also reads again the record of each start it already stored
 for that session, when the record still exists and its size has changed. The new counts replace
-the stored ones when they are known. The last notice of a session has no later one, so its last
+the stored ones when they are known. If a repeat notice omits the worker transcript path, Kitsu reuses the path saved for that worker. If a reread of the same transcript fails, the report retains the previous measurement as a lower bound. A later successful read updates the total, even if the repaired transcript has the same byte length. The last notice of a session has no later one, so its last
 turn can still be missing from the count.
 
 ### How a record is read
@@ -317,7 +317,7 @@ The fields of a task:
 | `flow_share` | `flow.total` as a share of `total`, in whole per cent; 0 when `total` is 0. |
 | `roles` | One entry for each role that started, in the order of the stages. |
 | `stages` | One entry for each stage and round, with `stage`, `round` and `role`. |
-| `unknown_records` | The records whose tokens are unknown and are, or may be, tokens of the task. Absent when there is none. |
+| `unknown_records` | Records whose final counts are unknown and may contribute to the task. Absent when there is none. |
 | `shared_sessions` | The sessions that also ran another task; their own tokens are in no task's total. Absent when there is none. |
 | `unlabelled` | With `--task`: the starts without a label of the sessions that ran the task. |
 | `sessions` | With `--task`: the sessions that ran the task. |
@@ -328,7 +328,8 @@ An entry of `roles` or `stages`, of `unlabelled` and of `sessions` holds:
 | --- | --- |
 | `role` | The role. In `unlabelled`, only when the host's notice named one of the seven. |
 | `starts` | The number of starts. |
-| `unknown_starts` | How many of them are unknown. Absent when none is. |
+| `unknown_starts` | Starts with no measured count. Absent when none is. |
+| `partial_starts` | Starts with an earlier measurement whose latest read failed. The total includes the earlier count. Absent when none is. |
 | `input`, `cache_write`, `cache_read`, `output` | The four kinds, summed over the known starts. |
 | `total` | Their sum, or the text `"unknown"` when no start of the entry is known. |
 | `models` | The model names the records give; an empty list when no start of the entry is known. |
@@ -353,14 +354,13 @@ hooks run it; a person runs it only to test.
 | 1 | The input is not a JSON object; the notice names no session or no record; or a file cannot be written. |
 | 2 | `--host` is neither `claude` nor `codex`, or the command line is wrong. |
 
-An unreadable record is not a failure: its tokens are stored as unknown.
+Recording an unreadable transcript succeeds. An earlier measurement from the same source remains available as a lower bound.
 
 ## Unknown is not zero
 
-When `kitsu` cannot read a count it expects, the tokens of that start are unknown. They are never
-taken as zero.
+When Kitsu has never measured a start, it reports unknown usage. If a later read of the same transcript fails, its earlier measurement still contributes to the total.
 
-The tokens of a start are unknown when its record:
+Kitsu cannot measure a transcript when its record:
 
 - does not exist or cannot be read;
 - has a line longer than 64 MiB;
@@ -379,12 +379,11 @@ it. A task is also incomplete when no stored file holds the record of its sessio
 What the report then says:
 
 - `complete` is `false`, and the record is listed under `unknown_records`.
-- `total` and every sum count only the known starts. In words: `the tokens of 1 start are unknown,
+- `total` includes all measured counts. The report says `the final token counts for 1 start are unknown,
   so every sum is at least the number shown:` followed by the records, and in the table without
   `--task`, `no: every sum is at least the number shown` under COMPLETE. When the unknown record
   is the session's own, the sentence names `the session itself`, not a start.
-- The first sentence of the report then counts `known tokens`: the share is a share of what is
-  known.
+- The heading says `at least`. The workflow percentage uses the captured total.
 - A stored file of `kitsu` that cannot be read is named under `damaged` and in a warning. Every task
   of its session is incomplete and names the file under `unknown_records`.
 - An entry with some starts unknown prints its total as `at least <n>`; an entry with all its starts
@@ -394,9 +393,9 @@ For example, with the record of the `architect` start replaced by an empty file 
 named `kitsu:architect`, the report of the worked example began:
 
 ```text
-add-greeting: 575,000 tokens in 12 starts of roles
-225,000 of 575,000 tokens, 39%, went to the workflow and not to the first writing of the specification, the design, the tests and the code
-the tokens of 1 start are unknown, so every sum is at least the number shown:
+add-greeting: at least 575,000 tokens in 12 starts of roles
+225,000 of 575,000 known tokens, 39%, went to the workflow and not to the first writing of the specification, the design, the tests and the code
+the final token counts for 1 start are unknown, so every sum is at least the number shown:
   <record>/subagents/agent-a5.jsonl
 ```
 
@@ -446,6 +445,10 @@ session s1: 40,000 tokens of its own, counted as the coordination of add-greetin
 a start in session s1 whose record gives no label and no count: it may belong to any task of that session (<record>/subagents/agent-a5.jsonl)
 `kitsu tokens --task <task>` prints the roles and the stages of one task
 ```
+
+### A daily task with one agent
+
+Run `kitsu usage show --task ID` after the host has supplied its session receipt. For a saved daily task without a labelled worker, Kitsu matches the native session IDs recorded with `task record --actor` to receipts. Its JSON shows `total: null`, `complete: false` and any matching receipts under `actor_session_usage`. The full `task next ID --json` view exposes the same session evidence. A missing receipt leaves the amount unknown. A second task in the same chat can show the same session count. Adding those amounts would count the session twice.
 
 ### Two tasks in one session
 
@@ -530,7 +533,7 @@ Host token files are not committed: they are inside the git directory, not the w
 - **The Codex `SessionEnd` hook has a timeout of 3 seconds**, because Codex gives that hook between
   1 and 3 seconds. A long record may not be read in time; the session's count then stays as the
   last role's notice left it.
-- **A notice without a role's record gives a start with unknown tokens.** The Codex documentation
+- **An initial notice without a role's record gives a start with unknown tokens.** The Codex documentation
   says `agent_transcript_path` may be null. The label is in that record, so the task of such a
   start is known only when its session ran one task and the notice named the role.
 - **`kitsu` trusts the notice.** It reads the files the notice names and stores the counts in the

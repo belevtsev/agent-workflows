@@ -1,0 +1,84 @@
+{
+  "model_calls": 0,
+  "compact": false,
+  "python": "3.14.4",
+  "binary_sha256": "ae2a6b67e3f02059c27a7b364c5f57d64510af08386e1dc8b00869ecd75db106",
+  "median_seconds": {
+    "plain": 0.1254855,
+    "kitsu": 0.38859750000000004
+  },
+  "runs": [
+    {
+      "pair": 1,
+      "arm": "kitsu",
+      "seconds": 0.388282,
+      "tree": "4b872f0099d412b9c4adead91a8b4728ead63d77",
+      "baseline_regression_failed": true,
+      "clean_root_commit": true,
+      "independent_case_passed": true
+    },
+    {
+      "pair": 1,
+      "arm": "plain",
+      "seconds": 0.125835,
+      "tree": "4b872f0099d412b9c4adead91a8b4728ead63d77",
+      "baseline_regression_failed": true,
+      "clean_root_commit": true,
+      "independent_case_passed": true
+    },
+    {
+      "pair": 2,
+      "arm": "plain",
+      "seconds": 0.127454,
+      "tree": "4b872f0099d412b9c4adead91a8b4728ead63d77",
+      "baseline_regression_failed": true,
+      "clean_root_commit": true,
+      "independent_case_passed": true
+    },
+    {
+      "pair": 2,
+      "arm": "kitsu",
+      "seconds": 0.387211,
+      "tree": "4b872f0099d412b9c4adead91a8b4728ead63d77",
+      "baseline_regression_failed": true,
+      "clean_root_commit": true,
+      "independent_case_passed": true
+    },
+    {
+      "pair": 3,
+      "arm": "kitsu",
+      "seconds": 0.39193,
+      "tree": "4b872f0099d412b9c4adead91a8b4728ead63d77",
+      "baseline_regression_failed": true,
+      "clean_root_commit": true,
+      "independent_case_passed": true
+    },
+    {
+      "pair": 3,
+      "arm": "plain",
+      "seconds": 0.125136,
+      "tree": "4b872f0099d412b9c4adead91a8b4728ead63d77",
+      "baseline_regression_failed": true,
+      "clean_root_commit": true,
+      "independent_case_passed": true
+    },
+    {
+      "pair": 4,
+      "arm": "plain",
+      "seconds": 0.124506,
+      "tree": "4b872f0099d412b9c4adead91a8b4728ead63d77",
+      "baseline_regression_failed": true,
+      "clean_root_commit": true,
+      "independent_case_passed": true
+    },
+    {
+      "pair": 4,
+      "arm": "kitsu",
+      "seconds": 0.388913,
+      "tree": "4b872f0099d412b9c4adead91a8b4728ead63d77",
+      "baseline_regression_failed": true,
+      "clean_root_commit": true,
+      "independent_case_passed": true
+    }
+  ]
+}

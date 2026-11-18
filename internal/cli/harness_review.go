@@ -75,12 +75,13 @@ func printReservedReview(ctx context.Context, cfg Config, id, ticket string) err
 		"task": id, "request": t.Request, "scope": t.Scope,
 		"reserved_candidate": c, "review_round": t.StartedReviews(),
 	}
-	if base, head := t.Scope.ReviewBase, t.Scope.ReviewHead; base != "" {
-		assignment += " Follow review_log and review_diff and read affected files from the reserved candidate tree."
-		input["review_log"] = []string{"git", "--no-replace-objects", "log", "--format=%H", "--no-notes", "--no-show-signature", base + ".." + head, "--"}
-		input["review_diff"] = []string{"git", "--no-replace-objects", "diff", "--no-ext-diff", "--no-textconv", base, head, "--"}
+	prior := t.Latest("review")
+	guidance, err := reservedReviewComparison(ctx, s, t.Scope, prior, c, input)
+	if err != nil {
+		return err
 	}
-	input["assignment"] = assignment
+
+	input["assignment"] = assignment + guidance
 	if t.Claim.Reviewer != nil {
 		input["reviewer"] = t.Claim.Reviewer
 	}
@@ -96,7 +97,7 @@ func printReservedReview(ctx context.Context, cfg Config, id, ticket string) err
 		input["reported_"+work.Action] = work.Note
 		input["reported_work_tree"] = work.Candidate.Tree
 	}
-	if prior := t.Latest("review"); prior != nil {
+	if prior != nil {
 		input["prior_review"], input["prior_findings"] = prior.Note, prior.Findings
 		addReviewChanges(input, prior, t.Scope.Until, c)
 	}
@@ -106,15 +107,46 @@ func printReservedReview(ctx context.Context, cfg Config, id, ticket string) err
 	return json.NewEncoder(cfg.Out).Encode(input)
 }
 
+// Supply a full comparison on first review or when an incremental comparison
+// alone cannot establish the new scope. All endpoints belong to the reservation.
+func reservedReviewComparison(ctx context.Context, s *session, scope harness.Scope, prior *harness.Event, c harness.Snapshot, input map[string]any) (string, error) {
+	if base, head := scope.ReviewBase, scope.ReviewHead; base != "" {
+		input["review_log"] = []string{"git", "--no-replace-objects", "log", "--format=%H", "--no-notes", "--no-show-signature", base + ".." + head, "--"}
+		input["review_diff"] = reservedDiff(base, head)
+		return " Follow review_log and review_diff and read affected files from the reserved candidate tree.", nil
+	}
+	if prior != nil && prior.Candidate.SameBase(c) && (!prior.ReviewIndex || scope.Until == "review") {
+		return "", nil
+	}
+	base := c.Head
+	if base == "" {
+		var err error
+		base, err = s.repo.EmptyTreeID(ctx)
+		if err != nil {
+			return "", err
+		}
+	}
+	input["review_diff"] = reservedDiff(base, c.Tree)
+	if scope.Until == "review" && c.Tree != c.Index {
+		input["review_staged_diff"] = reservedDiff(base, c.Index)
+		return " Use review_staged_diff for the staged patch or review_diff for the working tree, according to the request.", nil
+	}
+	return " Use review_diff for the reserved candidate.", nil
+}
+
+func reservedDiff(before, after string) []string {
+	return []string{"git", "--no-replace-objects", "diff", "--no-ext-diff", "--no-textconv", before, after, "--"}
+}
+
 func addReviewChanges(reply map[string]any, prior *harness.Event, until string, candidate harness.Snapshot) {
 	before, after := prior.Candidate.Tree, candidate.Tree
 	if prior.ReviewIndex && until != "review" {
 		before = prior.Candidate.Index
 	}
 	if until == "review" && prior.Candidate.Index != candidate.Index {
-		reply["review_index_changes"] = []string{"git", "diff", prior.Candidate.Index, candidate.Index, "--"}
+		reply["review_index_changes"] = reservedDiff(prior.Candidate.Index, candidate.Index)
 	}
-	reply["review_changes"] = []string{"git", "diff", before, after, "--"}
+	reply["review_changes"] = reservedDiff(before, after)
 	reply["review_scope_changed"] = prior.ReviewIndex && until != "review"
 	reply["review_base_changed"] = !prior.Candidate.SameBase(candidate)
 	if prior.Candidate.Tree == candidate.Tree && prior.Candidate.Raw != candidate.Raw {

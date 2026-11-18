@@ -286,7 +286,7 @@ snapshot again. A run ends with one outcome:
 | `passed` | The program exited 0 and the snapshot after it equals the snapshot before it. |
 | `failed` | The program exited with another status, could not be started, or was ended by something outside `kitsu`, such as a signal. The text of the run says which. |
 | `timed_out` | The timeout passed first. `kitsu` stopped the program and the processes it started. |
-| `source_changed` | The program exited 0, and the snapshot after the run differs from the one before it. Up to 20 changed paths are named, with the advice to list a file the check writes in `.gitignore` or to write it outside the working tree. |
+| `source_changed` | The source or another verified input changed during the run. The receipt retains the process exit status when available. For a changed tree, the log names up to 20 paths. Inspect tracked edits and keep generated output outside the verified files. |
 | `interrupted` | `kitsu` received SIGINT, SIGTERM or SIGHUP, or on Windows Ctrl+C, or the `kitsu` process died. |
 
 ```text
@@ -946,7 +946,7 @@ preparation returns 0 when its report is produced; inspect `ready` and component
 `kitsu` keeps local gate evidence and measured host usage under `kitsu/` in the common git directory. In a
 plain clone that is `.git/kitsu/`. All linked worktrees of a repository share the
 common git directory, so they share the records: a run made in one worktree
-counts in another for the same content.
+counts in another for the same content. Kitsu preserves embedded newlines in checkout and Git directory names when resolving these paths. If Git cannot read the repository configuration, Kitsu reports the Git error.
 
 Shared adviser bindings, prompts, answers, and dispositions live in the worktree instead:
 `openspec/changes/<task>/advisers/` on the full path or

@@ -115,29 +115,57 @@ func Open(ctx context.Context, dir string) (*Repo, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := run(ctx, call{dir: abs}, "rev-parse", "--absolute-git-dir", "--git-common-dir", "--show-toplevel")
-	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
-	if len(lines) < 2 || lines[0] == "" {
-		var gitErr *Error
-		if errors.As(err, &gitErr) {
-			return nil, fmt.Errorf("%w: %s", ErrNotRepo, abs)
-		}
-		if err == nil {
-			err = fmt.Errorf("%w: %s", ErrNotRepo, abs)
-		}
+	paths, err := repositoryPaths(ctx, abs)
+	if err != nil {
 		return nil, err
 	}
-	repo := &Repo{GitDir: filepath.Clean(lines[0]), CommonDir: lines[1], dir: filepath.Clean(lines[0])}
+	repo := &Repo{GitDir: filepath.Clean(paths[0]), CommonDir: paths[1], dir: filepath.Clean(paths[0])}
 	if !filepath.IsAbs(repo.CommonDir) {
 		repo.CommonDir = filepath.Join(abs, repo.CommonDir)
 	}
 	repo.CommonDir = filepath.Clean(repo.CommonDir)
-	// Without a working tree git prints the two directories and then fails.
-	if err == nil && len(lines) >= 3 {
-		repo.Root = filepath.FromSlash(lines[2])
+	if len(paths) == 3 {
+		repo.Root = filepath.FromSlash(paths[2])
 		repo.dir = repo.Root
 	}
 	return repo, nil
+}
+
+func repositoryPaths(ctx context.Context, dir string) ([]string, error) {
+	fields := []string{"--absolute-git-dir", "--git-common-dir", "--show-toplevel"}
+	c := call{dir: dir, env: []string{"LC_ALL=C"}}
+	out, err := run(ctx, c, append([]string{"rev-parse"}, fields...)...)
+	if err != nil {
+		// Git uses exit 128 for both ordinary discovery misses and broken repositories.
+		var gitErr *Error
+		if !errors.As(err, &gitErr) || gitErr.Code != 128 {
+			return nil, err
+		}
+		if strings.HasPrefix(gitErr.Stderr, "fatal: not a git repository (or any ") {
+			return nil, fmt.Errorf("%w: %s", ErrNotRepo, dir)
+		}
+		if strings.TrimSpace(gitErr.Stderr) != "fatal: this operation must be run in a work tree" {
+			return nil, err
+		}
+		fields = fields[:2] // Git printed the Git and common directories before the failing option.
+	}
+	paths := strings.Split(strings.TrimSuffix(string(out), "\n"), "\n")
+	if len(paths) > len(fields) {
+		// rev-parse emits raw path bytes. A path contains a newline; get each
+		// field separately so an embedded newline can never select another checkout.
+		paths = make([]string, len(fields))
+		for i, field := range fields {
+			data, err := run(ctx, c, "rev-parse", field)
+			if err != nil {
+				return nil, err
+			}
+			paths[i] = strings.TrimSuffix(string(data), "\n")
+		}
+	}
+	if len(paths) != len(fields) || slices.Contains(paths, "") {
+		return nil, errors.New("git rev-parse returned incomplete repository paths")
+	}
+	return paths, nil
 }
 
 // TreeOf is the tree a revision names, and false when it names none.

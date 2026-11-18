@@ -7,17 +7,15 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"slices"
 	"strings"
 
-	"github.com/belevtsev/kitsu/v3/internal/harness"
 	"github.com/belevtsev/kitsu/v3/internal/onboarding"
 )
 
 type onboardingArgs struct {
 	reviewLimits
-	host, request, until, resume string
-	json, print, compact         bool
+	host, request, until, resume        string
+	json, print, compact, requireReview bool
 }
 
 func parseOnboardingArgs(args []string, start bool) (onboardingArgs, error) {
@@ -27,8 +25,9 @@ func parseOnboardingArgs(args []string, start bool) (onboardingArgs, error) {
 	flags.BoolVar(&options.json, "json", false, "")
 	if start {
 		options.bindLimitFlags(flags)
+		flags.BoolVar(&options.requireReview, "require-review", false, "")
 		flags.StringVar(&options.resume, "resume", "", "")
-		flags.StringVar(&options.until, "until", "", "")
+		taskUntil.bindChoice(flags, &options.until)
 		flags.BoolVar(&options.print, "print", false, "")
 		flags.BoolVar(&options.compact, "compact", false, "")
 	}
@@ -50,6 +49,9 @@ func parseOnboardingArgs(args []string, start bool) (onboardingArgs, error) {
 	}
 	if options.reserve > 0 && options.limit == 0 {
 		return options, usagef("--finish-reserve requires --time-limit")
+	}
+	if options.resume != "" && options.requireReview {
+		return options, usagef("use task extend --require-review to add review to a saved task")
 	}
 	if options.resume != "" && options.reviewLimits != (reviewLimits{}) {
 		return options, usagef("use task extend to change a saved task limit")
@@ -76,18 +78,18 @@ func taskStartOptions(options onboardingArgs, args []string, p parsed) (onboardi
 		if !taskName.MatchString(options.resume) || len(options.resume) > 100 || len(requests) != 0 || uxFlagPresent(args, "until") {
 			return options, usagef("--resume requires one saved task name and no new request or outcome")
 		}
-		options.request = "Resume the saved Kitsu task " + options.resume + " with task next. Recover existing claims before starting workers."
+		options.request = "Resume with `kitsu task next " + options.resume + "`. Recover existing claims before starting workers."
 	} else {
 		if len(requests) != 1 || strings.TrimSpace(requests[0]) == "" || strings.ContainsRune(requests[0], 0) {
 			return options, usagef("task start requires one nonempty request; quote the complete request")
 		}
 		options.request = requests[0]
 	}
+	if options.requireReview && options.until == "plan" {
+		return options, usagef("--require-review requires a coding or review outcome")
+	}
 	if options.json && options.print {
 		return options, usagef("--print and --json are mutually exclusive")
-	}
-	if uxFlagPresent(args, "until") && !slices.Contains(harness.Outcomes, options.until) {
-		return options, usagef("invalid --until outcome")
 	}
 	return options, nil
 }
@@ -180,6 +182,9 @@ func runUXTaskStart(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	request := options.request
+	if options.requireReview {
+		request = "Require independent review. Use --require-review when binding the task.\n\n" + request
+	}
 	if options.until != "" {
 		request = "Use the task harness. Requested stopping point: " + options.until + ".\n\n" + request
 	}
@@ -206,14 +211,20 @@ func runUXTaskStart(ctx context.Context, cfg Config, args []string) error {
 	if !onboardingTerminal(cfg) {
 		return usagef("task start requires terminal input, stdout and stderr; use --print or --json to prepare a handoff")
 	}
-	id, err := pinHostTask(ctx, cfg, options)
+	id, err := pinHostTask(ctx, cfg, options, report.Repository)
 	if err != nil {
 		return err
 	}
 	if id != "" {
 		fmt.Fprintf(cfg.Err, "Task %s. Resume with kitsu task start --resume %s --host %s.\n", id, id, report.Host)
-		handoff.Prompt += "\n\nSaved task ID: " + id + ". Read kitsu task next " + id + " --json. If next is scope, bind this same task with task open " + id + " --entry STAGE --until OUTCOME using the original request. Preserve its starting snapshot."
-		handoff.Argv[1] = handoff.Prompt
+		if options.resume == "" {
+			until := options.until
+			if until == "" {
+				until = "OUTCOME"
+			}
+			handoff.Prompt += "\n\nFor this new daily task, bind the saved request with kitsu task open " + id + " --entry STAGE --until " + until + " --brief. Choose the stage and outcome from the request and add its authorized scope flags. The original request is already saved."
+			handoff.Argv[1] = handoff.Prompt
+		}
 	}
 	fmt.Fprintf(cfg.Err, "\nOpening %s with the Kitsu task skill. Complete any host permission prompts in that session.\n", report.Host)
 	return launchTaskHost(ctx, cfg, handoff.Argv)

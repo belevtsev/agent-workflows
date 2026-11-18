@@ -12,20 +12,27 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/roles"
 )
 
-var Outcomes = []string{"plan", "implement", "review", "verify", "deliver"}
+var Entries = []string{"plan", "implement", "review", "verify"}
+var Outcomes = append(slices.Clone(Entries), "deliver")
+
+const CurrentVersion = 2
 
 type Scope struct {
-	Publish    string `json:"publish_to,omitempty"`
-	PRBase     string `json:"pr_base,omitempty"`
-	ReviewBase string `json:"review_base,omitempty"`
-	ReviewHead string `json:"review_head,omitempty"`
-	Entry      string `json:"entry"`
-	Until      string `json:"until"`
-	Repair     bool   `json:"repair"`
-	Commit     bool   `json:"commit"`
+	RequireReview bool   `json:"require_review,omitempty"`
+	Publish       string `json:"publish_to,omitempty"`
+	PRBase        string `json:"pr_base,omitempty"`
+	ReviewBase    string `json:"review_base,omitempty"`
+	ReviewHead    string `json:"review_head,omitempty"`
+	Entry         string `json:"entry"`
+	Until         string `json:"until"`
+	Repair        bool   `json:"repair"`
+	Commit        bool   `json:"commit"`
 }
 
 func (s Scope) Validate() error {
+	if s.RequireReview && s.Until == "plan" {
+		return fmt.Errorf("--require-review requires a coding or review outcome")
+	}
 	if s.ReviewBase != "" || s.ReviewHead != "" {
 		return s.validateCommittedReview()
 	}
@@ -36,6 +43,10 @@ func (s Scope) Validate() error {
 	if s.Repair && end < slices.Index(Outcomes, "verify") {
 		return fmt.Errorf("--repair requires a verify or deliver outcome")
 	}
+	return s.validateDelivery()
+}
+
+func (s Scope) validateDelivery() error {
 	if s.PRBase != "" && s.Publish == "" {
 		return fmt.Errorf("--pr-base requires --publish-to REMOTE/BRANCH")
 	}
@@ -124,6 +135,7 @@ type RunResult struct {
 	CheckRun
 	CheckID    string `json:"check_id"`
 	Outcome    string `json:"outcome"`
+	Detail     string `json:"detail,omitempty"`
 	ExitStatus *int   `json:"exit_status,omitempty"`
 }
 
@@ -140,6 +152,7 @@ type Proof struct {
 	PriorFailure     *Assertion `json:"prior_failure,omitempty"`
 	PerRunInputs     bool       `json:"per_run_inputs,omitempty"`
 	GateFailure      *RunResult `json:"repository_failure,omitempty"`
+	Detail           string     `json:"detail,omitempty"`
 	ExitStatus       *int       `json:"exit_status,omitempty"`
 	CheckID          string     `json:"check_id"`
 	CheckedAt        time.Time  `json:"checked_at,omitzero"`
@@ -294,6 +307,7 @@ type Pause struct {
 }
 
 type Readiness struct {
+	RepositoryReview              bool
 	Candidate                     Snapshot
 	Reviewed, Verified, Committed bool
 }
@@ -334,16 +348,11 @@ func (t *Task) next(state Readiness) string {
 	if implement && t.Latest("implement") == nil {
 		return "implement"
 	}
-	if t.Scope.Until == "implement" {
-		if t.needsCorrection(state.Candidate) {
-			return "implement"
-		}
-		if !state.Verified {
-			return "verify"
-		}
-		return "done"
+	required := t.requiresReview(state)
+	if implement && (!required || !t.Scope.Repair) && t.needsCorrection(state.Candidate) {
+		return "implement"
 	}
-	if next := t.reviewAction(state); next != "" {
+	if next := t.reviewAction(state, required, implement); next != "" {
 		return next
 	}
 	if !state.Verified {
@@ -377,37 +386,53 @@ func (t *Task) needsCorrection(candidate Snapshot) bool {
 	return (p.Outcome == "failed" || p.FailedCheck != "") && (candidate.SameBase(p.Candidate) || !candidate.SameSource(p.Candidate))
 }
 
-func (t *Task) reviewAction(state Readiness) string {
+func (t *Task) requiresReview(state Readiness) bool {
+	if t.Scope.RequireReview || state.RepositoryReview {
+		// A verification entry tests the supplied candidate before involving a reviewer.
+		return t.Scope.Entry != "verify" || state.Verified || t.Latest("repair", "review") != nil
+	}
+	if t.Version == 1 {
+		return t.Scope.Until != "implement" && (t.Scope.Entry != "verify" || t.Latest("repair") != nil)
+	}
+	return t.Scope.Entry == "review" || t.Scope.Until == "review" || t.Latest("review") != nil
+}
+
+func (t *Task) reviewAction(state Readiness, required, implement bool) string {
 	review := t.Latest("review")
-	// Repair work always goes back to an independent reviewer.
+	// Repair authority and independent review are separate decisions.
 	if t.Scope.Repair && t.needsCorrection(state.Candidate) {
 		return "repair"
 	}
-	if t.Scope.Entry != "verify" || t.Latest("repair") != nil {
-		// An in-progress repair can change the source before its result is saved.
-		if review != nil && len(review.Findings) > 0 && t.Scope.Repair &&
-			t.Events[len(t.Events)-1].Action == "review" && review.Candidate.SameBase(state.Candidate) {
-			return "repair"
-		}
-		if review == nil || !state.Reviewed {
-			return "review"
-		}
-		if t.Scope.Until == "review" {
-			return "done"
-		}
-		if len(review.Findings) > 0 {
-			if t.Scope.Repair {
+	if !required {
+		return ""
+	}
+	if review != nil && len(review.Findings) > 0 && t.Scope.Until != "review" {
+		// Keep the coding ticket usable while the author edits the reviewed candidate.
+		sameWorkBase := t.Events[len(t.Events)-1].Action == "review" && review.Candidate.SameBase(state.Candidate) &&
+			(!review.ReviewIndex || review.Candidate.Index == review.Candidate.Tree)
+		if state.Reviewed || sameWorkBase {
+			switch {
+			case t.Scope.Repair:
 				return "repair"
+			case implement && t.Version != 1:
+				return "implement"
+			case state.Reviewed:
+				return "blocked"
 			}
-			return "blocked"
 		}
+	}
+	if !state.Reviewed || review == nil {
+		return "review"
+	}
+	if t.Scope.Until == "review" {
+		return "done"
 	}
 	return ""
 }
 
 // Valid checks the record identity before the task can affect a checkout.
 func (t *Task) Valid(id string) bool {
-	if t.ID != id || t.Version != 1 || t.ReviewLimit < 0 || t.ReviewStarts < 0 || t.DeveloperStarts < 0 || t.FinishReserve < 0 || (t.FinishReserve > 0 && t.Deadline.IsZero()) {
+	if t.ID != id || (t.Version != 1 && t.Version != CurrentVersion) || t.ReviewLimit < 0 || t.ReviewStarts < 0 || t.DeveloperStarts < 0 || t.FinishReserve < 0 || (t.FinishReserve > 0 && t.Deadline.IsZero()) {
 		return false
 	}
 	if t.PendingScope {

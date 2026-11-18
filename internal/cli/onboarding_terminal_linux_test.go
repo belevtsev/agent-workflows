@@ -71,7 +71,7 @@ func TestInteractiveHarnessPinsScopeAndResumesOriginalTask(t *testing.T) {
 	terminal := onboardingPTY(t)
 	cfg := Config{In: terminal, Out: terminal, Err: terminal}
 	t.Setenv("KITSU_TEST_ONBOARDING_TTY", "1")
-	if err := Execute(t.Context(), []string{"task", "start", "Review current patch", "--until", "review", "--host", "codex", "--review-limit", "3", "--time-limit", "12m", "--finish-reserve", "2m"}, cfg); err != nil {
+	if err := Execute(t.Context(), []string{"task", "start", "Review current patch", "--until", "review", "--host", "codex", "--require-review", "--review-limit", "3", "--time-limit", "12m", "--finish-reserve", "2m"}, cfg); err != nil {
 		t.Fatal(err)
 	}
 	files, err := filepath.Glob(repo.Path(".git/kitsu-stages/task-harness-*.json"))
@@ -81,12 +81,13 @@ func TestInteractiveHarnessPinsScopeAndResumesOriginalTask(t *testing.T) {
 	id := harnessRecordName(filepath.Base(files[0]))
 	pinned, err := os.ReadFile(files[0])
 	var task harness.Task
-	if err != nil || json.Unmarshal(pinned, &task) != nil || task.ReviewLimit != 3 || task.FinishReserve != 2*time.Minute || task.Deadline.IsZero() {
+	if err != nil || json.Unmarshal(pinned, &task) != nil || !task.Scope.RequireReview || task.ReviewLimit != 3 || task.FinishReserve != 2*time.Minute || task.Deadline.IsZero() {
 		t.Fatal("missing pinned limits", err, string(pinned))
 	}
 	data, err := os.ReadFile(capture)
-	if err != nil || !strings.Contains(string(data), id) {
-		t.Fatal("host did not receive pinned ID", err)
+	if err != nil || !strings.Contains(string(data), "task open "+id+" --entry STAGE --until review --brief") ||
+		strings.Contains(string(data), "task next "+id) || strings.Contains(string(data), "task list") {
+		t.Fatal("fresh host needs the direct scope-binding command", err, string(data))
 	}
 	var out bytes.Buffer
 	cfg2 := Config{Out: &out, Err: io.Discard}
@@ -105,8 +106,19 @@ func TestInteractiveHarnessPinsScopeAndResumesOriginalTask(t *testing.T) {
 	if err := Execute(t.Context(), []string{"task", "open", id, "--until", "review"}, cfg2); err != nil {
 		t.Fatal(err)
 	}
+	if err := Execute(t.Context(), []string{"task", "open", id, "--until", "review"}, cfg2); err != nil {
+		t.Fatal("replaying the same scope binding should preserve required review", err)
+	}
+	out.Reset()
+	if err := Execute(t.Context(), []string{"task", "next", id, "--json"}, cfg2); err != nil || !strings.Contains(out.String(), `"require_review": true`) {
+		t.Fatal("binding lost the pinned review requirement", err, out.String())
+	}
 	if err := Execute(t.Context(), []string{"task", "start", "--resume", id, "--host", "codex"}, cfg); err != nil {
 		t.Fatal(err)
+	}
+	data, err = os.ReadFile(capture)
+	if err != nil || strings.Count(string(data), "task next "+id+"`. Recover existing claims") != 1 || strings.Contains(string(data), "task open "+id) {
+		t.Fatal("resumed host must recover live state first", err, string(data))
 	}
 	files, err = filepath.Glob(repo.Path(".git/kitsu-stages/task-harness-*.json"))
 	if err != nil || len(files) != 1 {
@@ -230,7 +242,72 @@ func TestResumeDuringManagedIntervalDoesNotLaunchDailyHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(capture)
-	if err != nil || !strings.Contains(string(data), "task next daily --json") {
+	if err != nil || !strings.Contains(string(data), "task next daily`. Recover existing claims") {
 		t.Fatal("host did not receive the saved task", err)
+	}
+}
+
+func TestInteractiveResumeRequiresOriginalWorktree(t *testing.T) {
+	repo := kitsutest.Demo(t)
+	_, capture := onboardingReadyFixture(t)
+	terminal := onboardingPTY(t)
+	cfg := Config{In: terminal, Out: terminal, Err: terminal}
+	t.Setenv("KITSU_TEST_ONBOARDING_TTY", "1")
+	t.Chdir(repo.Dir)
+	const id = "csv-plan"
+	if err := Execute(t.Context(), []string{"task", "open", id, "--request", "Plan CSV support", "--until", "plan"}, Config{Out: io.Discard, Err: io.Discard}); err != nil {
+		t.Fatal(err)
+	}
+	other := filepath.Join(t.TempDir(), "linked checkout")
+	repo.Git("worktree", "add", "--detach", other, "HEAD")
+	resume := []string{"task", "start", "--resume", id, "--host", "codex"}
+	t.Run("Git metadata directory", func(t *testing.T) {
+		t.Chdir(repo.Path(".git"))
+		if err := Execute(t.Context(), resume, cfg); ExitCode(err) != ExitNotVerified {
+			t.Fatalf("resume from Git metadata: %v", err)
+		}
+		if _, err := os.Stat(capture); !os.IsNotExist(err) {
+			t.Fatalf("unexpected host launch: %v", err)
+		}
+	})
+	t.Run("other linked worktree", func(t *testing.T) {
+		t.Chdir(other)
+		dir := strings.TrimSpace(repo.Git("-C", other, "rev-parse", "--absolute-git-dir"))
+		if err := Execute(t.Context(), resume, cfg); err == nil || !strings.Contains(err.Error(), id) || !strings.Contains(err.Error(), "git worktree list") {
+			t.Fatalf("missing recovery guidance: %v", err)
+		}
+		for _, path := range []string{capture, filepath.Join(dir, "kitsu-stages"), filepath.Join(dir, "kitsu-stages.lock")} {
+			if _, err := os.Lstat(path); !os.IsNotExist(err) {
+				t.Errorf("unexpected side effect at %s: %v", path, err)
+			}
+		}
+	})
+	if err := Execute(t.Context(), resume, cfg); err != nil {
+		t.Fatal(err)
+	}
+	if data, err := os.ReadFile(capture); err != nil || !strings.Contains(string(data), "task next "+id+"`. Recover existing claims") {
+		t.Fatalf("expected resume from the original checkout: %v, %s", err, data)
+	}
+}
+
+func TestInteractiveStartReportsBrokenGitConfigBeforeHostLaunch(t *testing.T) {
+	repo := kitsutest.Demo(t)
+	_, capture := onboardingReadyFixture(t)
+	t.Setenv("KITSU_TEST_ONBOARDING_TTY", "1")
+	t.Chdir(repo.Dir)
+	repo.Write(".git/config", "[broken\n")
+	terminal := onboardingPTY(t)
+	cfg := Config{In: terminal, Out: terminal, Err: terminal}
+	err := Execute(t.Context(), []string{"task", "start", "Plan CSV support", "--host", "codex"}, cfg)
+	if ExitCode(err) != ExitNotVerified {
+		t.Fatalf("invalid checkout accepted: %v", err)
+	}
+	var report bytes.Buffer
+	err = Execute(t.Context(), []string{"agent", "check", "--host", "codex", "--json"}, Config{Out: &report, Err: io.Discard})
+	if ExitCode(err) != ExitNotVerified || !strings.Contains(report.String(), "bad config") || !strings.Contains(report.String(), `"id": "checkout"`) {
+		t.Fatalf("missing checkout diagnostic: %v, %s", err, &report)
+	}
+	if _, err := os.Stat(capture); !os.IsNotExist(err) {
+		t.Fatalf("unexpected host launch: %v", err)
 	}
 }

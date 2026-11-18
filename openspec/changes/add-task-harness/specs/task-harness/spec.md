@@ -8,6 +8,11 @@ The harness SHALL persist the requested outcome and working candidate and suppor
 
 Source: proposal.md and approved daily coding harness plan.
 
+#### Scenario: Preserve the opening inputs of an unfinished read-only plan
+
+- **WHEN** the observed sources, staged tree or Git parents of a plan-only task differ from its opening snapshot during intake or planning
+- **THEN** intake can record the observed facts, but the plan action is blocked and has no ticket. The harness preserves the checkout and its history. The original action can resume when those inputs match again. Subsequent edits leave a previously completed plan available.
+
 #### Scenario: Continue an approved design
 
 - **WHEN** a plan ends and the developer extends it to implementation and verification
@@ -18,10 +23,20 @@ Source: proposal.md and approved daily coding harness plan.
 - **WHEN** the developer requests implementation and the submitted work fails its behavior assertion or a declared check
 - **THEN** the next action permits an implementation correction within the original scope. A transient failure on the unchanged candidate can be retried before claiming the correction. The changed implementation must be recorded and verified before the task can finish.
 
+#### Scenario: A coding ticket survives edits on its original base
+
+- **WHEN** a coordinator records implementation or repair with the ticket received before editing
+- **THEN** edits and staging on the same Git parents preserve the ticket. A different HEAD or pending merge parent requires a fresh task observation. A linked developer with an older reservation may still return on its recorded base.
+
 #### Scenario: Recover a failed assertion after its base moves
 
 - **WHEN** a failed candidate keeps the same source bytes but its Git parents change
 - **THEN** the harness requires current verification or a fresh review as applicable before asking for a source correction. A previous correction ticket cannot authorize that verification.
+
+#### Scenario: Require independent review by request or repository policy
+
+- **WHEN** a developer starts a new implementation with a verified or committed finish
+- **THEN** the default route verifies the implemented behavior and declared checks without reserving a reviewer. A failed implementation is correctable and must pass verification before an authorized commit. A requested review stage, explicit independent review, or the repository's `require_review` declaration requires a current independent review. Removing a policy captured at intake cannot waive it. Earlier saved tasks retain their prior review semantics.
 
 #### Scenario: Review an existing candidate
 
@@ -79,6 +94,11 @@ Source: proposal.md and approved daily coding harness plan.
 - **WHEN** an agent requests a brief receipt for a completed review with findings
 - **THEN** it can identify the result and retrieve the actual findings from the full task.
 
+#### Scenario: Distinguish passing verification from commit readiness
+
+- **WHEN** a verification-first task passes on an uncommitted candidate and a required review is outstanding or blocked on findings
+- **THEN** the receipt reports the verified working tree. It reports commit readiness only when the next action has an eligible commit ticket and the staged tree matches the verified candidate. A verify-only finish can complete without commit scope.
+
 #### Scenario: Stage the verified tree for commit
 
 - **WHEN** the developer stages the entire verified tree after receiving its authorized commit ticket
@@ -117,7 +137,7 @@ Source: proposal.md and approved daily coding harness plan.
 #### Scenario: Pin limits before launching a host
 
 - **WHEN** a developer starts a task with review or time limits from a working tree
-- **THEN** the CLI persists the limits before host launch and binding the scope preserves them. The developer can explicitly extend the review allowance or time window, including before initial scope binding.
+- **THEN** the CLI persists the limits before host launch and binding the scope preserves them. A fresh host receives a direct scope-binding command for its pinned task. A resumed host reads the current next action and outstanding claims. The developer can explicitly extend the review allowance or time window, including before initial scope binding.
 
 #### Scenario: A commit has an unexpected merge parent
 
@@ -148,6 +168,21 @@ Source: proposal.md and approved daily coding harness plan.
 
 - **WHEN** the developer runs task verification with ordinary text or full JSON output
 - **THEN** assertion and declared-check diagnostics stream live and the JSON result remains parseable.
+
+#### Scenario: Inspect the original staged and working candidates
+
+- **WHEN** an independent reviewer opens the first reservation for an ordinary review
+- **THEN** it receives a read-only Git comparison from the reserved HEAD, or the empty tree before the first commit, to the reserved working tree. A review-only task with a different index also supplies a staged comparison. Later checkout edits and configured external diff tools cannot change which candidate the returned commands expose.
+
+#### Scenario: Inspect a daily task without a worker receipt
+
+- **WHEN** a saved daily task has no task-attributed start and a host session receipt matches a recorded actor ID
+- **THEN** the named usage report and full next-action view expose the whole-session measurement separately and leave task usage unknown. A shared actor may show the same receipt on several tasks. An unrelated session contributes no evidence. Looking up an unknown task does not create a task or a receipt.
+
+#### Scenario: Resume after an accounting read error
+
+- **WHEN** a daily action succeeds but its full receipt cannot read the optional usage archive
+- **THEN** the receipt and subsequent full next snapshot expose the authoritative task state, an unavailable token total and the accounting diagnostic. Explicit usage lookup reports the archive error.
 
 #### Scenario: Read a reserved reviewer input
 
@@ -258,9 +293,49 @@ Source: proposal.md and approved daily coding harness plan.
 #### Scenario: Identify and resume a daily task
 
 - **WHEN** a developer chooses among saved daily tasks after a session interruption
-- **THEN** the list identifies requests with bounded single-line excerpts and the last recorded action. The full next-action view recovers the request, scope, latest result, relevant earlier intake, plan and work notes, and whether the most recent review applies to the live candidate. The default terminal view identifies findings from an earlier candidate and directs the developer to the saved review. Routine brief responses omit those earlier notes.
+- **THEN** the list identifies requests with bounded single-line excerpts and the last recorded action. The full next-action view recovers the request, scope, latest result, relevant earlier intake, plan and work notes, and whether the most recent review applies to the live candidate. The default terminal view includes the request and the relevant earlier notes, identifies findings from an earlier candidate and directs the developer to the saved review. Routine brief responses omit those earlier notes.
+
+#### Scenario: Recover an unaffected task from an incomplete inventory
+
+- **WHEN** a daily task record is unreadable, or only one of the shared and daily catalogs can be read
+- **THEN** the list retains rows from readable sources, reports a nonzero exit status, and identifies an unreadable daily record on its row. A partial JSON result includes the list error. The developer can resume unaffected daily work by ID.
 
 #### Scenario: Resume while a managed worker owns the worktree
 
 - **WHEN** a daily task is unfinished and a managed interval is active in the same worktree
 - **THEN** task inspection identifies the interval, retains the pending daily action and withholds its ticket. An interactive daily resume refuses to launch the host until the managed interval is finished.
+
+#### Scenario: Start the host in the intended worktree
+
+- **WHEN** a developer resumes a daily task in a different linked worktree or from inside Git metadata, or starts a task in a checkout with an unreadable Git configuration
+- **THEN** interactive startup returns an error before launching the host. A missing ID in an unused worktree leaves its ledger uninitialized and directs the developer to the original checkout. Starting from that checkout recovers the task. Repository discovery preserves complete Git paths including embedded newlines.
+
+#### Scenario: Explain a source-changing check before the first commit
+
+- **WHEN** an assertion or declared repository check changes the tested inputs, even if its process exits successfully
+- **THEN** its verification receipt and resumed task expose a bounded runner diagnostic and the retained log reference. Once the intended candidate is verified, the developer can stage it and make the first commit without including generated files. A successful run omits the diagnostic.
+
+#### Scenario: Choose the starting activity and finish
+
+- **WHEN** a developer opens help for task start, open or extend
+- **THEN** it lists the supported outcomes, and task open also lists supported entry stages. An explicitly empty or unknown choice returns a usage error with the choices for that flag before repository access. Task open identifies a missing required outcome.
+
+#### Scenario: Correct an implementation after a reviewed candidate fails
+
+- **WHEN** an implementation task requires independent review and the accepted candidate subsequently fails its behavior assertion
+- **THEN** the task can resume implementation within the original scope. A corrected candidate must satisfy required review and verification before delivery. The original assertion is available for retry.
+
+#### Scenario: Correct findings on an implementation before testing
+
+- **WHEN** an independent reviewer identifies a blocking defect in a daily implementation whose requested finish includes verified working code
+- **THEN** the author can record a changed implementation within the original scope. The same candidate cannot be resubmitted as corrected. The new candidate must be independently reviewed and verified. An explicit review finish returns findings, and reviewing or verifying supplied work grants no edit authority by itself.
+
+#### Scenario: Reassess a staged finding before repair on a broader candidate
+
+- **WHEN** a completed staged review has unresolved findings, its index differs from the working tree, and the developer extends it to verification with repair authority
+- **THEN** the harness requests review of the working candidate before dispatching repairs for the staged finding. An already corrected working tree can proceed directly from its fresh review to verification.
+
+#### Scenario: Resume a host without reading unrelated usage
+
+- **WHEN** a developer resumes an interrupted task in Codex or Claude
+- **THEN** the host handoff directs it to the ordinary next-action view. That view exposes the saved scope, relevant work, review currency, worker recovery identity, applicable deadlines and ticket without a token archive read. Full JSON still includes the accounting result and exact candidate identities.

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -357,5 +358,43 @@ func TestErrorText(t *testing.T) {
 	err.Stderr = ""
 	if err.Error() != "git status: exit status 2" {
 		t.Errorf("Error() = %q", err.Error())
+	}
+}
+
+func TestOpenCheckoutWithNewlineInPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows paths cannot contain a newline")
+	}
+	parent := isolate(t)
+	for _, bare := range []bool{false, true} {
+		dir := filepath.Join(parent, "source\ncheckout")
+		args := []string{"init", "-q"}
+		if bare {
+			dir += ".git"
+			args = append(args, "--bare")
+		}
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		git(t, parent, append(args, dir)...)
+		wantRoot, wantGit := dir, filepath.Join(dir, ".git")
+		if bare {
+			wantRoot, wantGit = "", dir
+		}
+		repo := open(t, dir)
+		if repo.Root != wantRoot || repo.GitDir != wantGit || repo.CommonDir != wantGit {
+			t.Fatalf("worktree %q, git dir %q, common dir %q; expected %q and %q", repo.Root, repo.GitDir, repo.CommonDir, wantRoot, wantGit)
+		}
+	}
+}
+
+func TestOpenReportsBrokenRepository(t *testing.T) {
+	dir := isolate(t)
+	git(t, dir, "init", "-q")
+	write(t, dir, ".git/config", "[invalid\n")
+	repo, err := Open(t.Context(), dir)
+	var gitErr *Error
+	if repo != nil || errors.Is(err, ErrNotRepo) || !errors.As(err, &gitErr) {
+		t.Fatalf("Open returned repo=%v, error=%v; want the Git configuration error", repo, err)
 	}
 }

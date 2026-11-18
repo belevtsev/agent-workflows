@@ -14,7 +14,10 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("binary", type=Path)
 parser.add_argument("--review-settings", action="store_true", help="compare separate host lookups with a reviewer reservation")
 parser.add_argument("--claim-with-result", action="store_true", help="compare a separate reservation with one made while recording implementation")
+parser.add_argument("--review-policy", action="store_true", help="compare plain shell, default daily implementation, and explicitly reviewed implementation")
 options = parser.parse_args()
+if options.review_policy and (options.review_settings or options.claim_with_result):
+    parser.error("choose one comparison")
 if options.claim_with_result:
     options.review_settings = True
 BINARY = str(options.binary.resolve(strict=True))
@@ -57,7 +60,7 @@ def replay(root, mode):
 
     def task(verb, *args, next_action):
         nonlocal ticket
-        output = run(BINARY, "task", verb, "clean", "--brief" if mode in ("brief", "separate", "bundled", "combined") else "--json",
+        output = run(BINARY, "task", verb, "clean", "--brief" if mode in ("direct", "brief", "separate", "bundled", "combined") else "--json",
                      *(["--ticket", ticket] if verb != "open" else []), *args)
         state = json.loads(output)
         assert state["next"] == next_action, state
@@ -79,6 +82,7 @@ def replay(root, mode):
     start = time.perf_counter()
     if mode != "plain":
         task("open", "--entry", "implement", "--until", "deliver", "--commit",
+             *([] if mode == "direct" else ["--require-review"]),
              "--request", "Normalize spaces and Unicode case in labels", next_action="intake")
         task("record", "intake", "--actor", "host", "--note", "Trim and lower-case Unicode", next_action="implement")
     (root / "label_test.go").write_text(TEST)
@@ -92,7 +96,7 @@ def replay(root, mode):
         run("git", "commit", "-qm", "Normalize labels")
     else:
         result = task("record", "implement", "--actor", "host", "--note", "Apply requested normalization",
-                      *(["--claim-review", "codex"] if mode == "combined" else []), next_action="review")
+                      *(["--claim-review", "codex"] if mode == "combined" else []), next_action="verify" if mode == "direct" else "review")
         if mode == "separate":
             selected = json.loads(run(BINARY, "role", "show", "reviewer", "--host", "codex", "--json"))
             resolved = json.loads(run(BINARY, "skill", "resolve", "reviewer", "--host", "codex", "--json"))
@@ -100,7 +104,7 @@ def replay(root, mode):
         if mode == "combined":
             assert result.get("claim_created")
             reservation = result
-        else:
+        elif mode != "direct":
             reservation = task("claim", "--actor", "host", *(["--host", "codex"] if mode == "bundled" else []),
                                next_action="review")
         if mode in ("combined", "bundled"):
@@ -111,7 +115,8 @@ def replay(root, mode):
             assert len(skills) == 1 and Path(skills[0]["path"]) == skill
             assert hashlib.sha256(skill.read_bytes()).hexdigest() == skills[0]["sha256"]
 
-        task("record", "review", "--actor", "reviewer", "--note", "Inspected diff and regression case", next_action="verify")
+        if mode != "direct":
+            task("record", "review", "--actor", "reviewer", "--note", "Inspected diff and regression case", next_action="verify")
         task("test", "--expect", "Trim spaces and preserve Unicode lower-case", "--",
              "go", "test", "-count=1", "./...", next_action="commit")
         run("git", "add", "label.go", "label_test.go")
@@ -126,6 +131,8 @@ if __name__ == "__main__":
     writer = csv.writer(sys.stdout)
     writer.writerow(["repeat", "arm", "seconds", "commands", "response_bytes", "tree"])
     modes = ["plain", "separate", "bundled"] if options.review_settings else ["plain", "full", "brief"]
+    if options.review_policy:
+        modes = ["plain", "direct", "brief"]
     if options.claim_with_result:
         modes = ["plain", "bundled", "combined"]
     with tempfile.TemporaryDirectory() as directory:

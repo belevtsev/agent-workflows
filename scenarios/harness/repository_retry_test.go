@@ -118,7 +118,7 @@ func TestRepositoryCheckFailureSurvivesSourceRepair(t *testing.T) {
 	r := kitsutest.Demo(t)
 	r.Write("lint.sh", "echo temporary-check-failure\nexit 23\n")
 	f := flow{t: t, repo: r, id: "repair-gate"}
-	f.call(0, "open", "--request", "Verify behavior and repair lint", "--until", "verify", "--repair")
+	f.call(0, "open", "--require-review", "--request", "Verify behavior and repair lint", "--until", "verify", "--repair")
 	f.record("intake", "host", "The application should contain ok and pass lint")
 	f.call(5, "test", "--ticket", f.state.Ticket, "--expect", "app contains ok", "--", "git", "grep", "ok", "--", "src/app.txt")
 	f.want("repair")

@@ -4,6 +4,8 @@
 | --- | --- | --- |
 | Continue an approved design | scenarios/harness/harness_test.go | TestJavaScriptPlanThenImplement |
 | Review a named committed range | scenarios/harness/committed_review_test.go | TestCommittedReviewRange |
+| Require independent review by request or repository policy | scenarios/harness/review_policy_test.go | TestImplementationReviewPolicy |
+| A coding ticket survives edits on its original base | scenarios/harness/work_ticket_test.go | TestWorkTicketSurvivesEditsButNotANewBase |
 | Review an existing candidate | scenarios/harness/harness_test.go | TestCppReviewOnlyPreservesIndexAndWorkingTree |
 | Repair and recover | scenarios/harness/harness_test.go | TestGoExistingFixRepairVerificationAndRecovery |
 | Confirm publication | scenarios/harness/harness_test.go | TestPublishChecksActualBranchBeforeCompleting |
@@ -11,6 +13,7 @@
 | A staging-only change reopens review | scenarios/harness/harness_test.go | TestStagedReviewChangesWithIndexOnly |
 | Interrupted verification resumes | scenarios/harness/harness_test.go | TestInterruptedProofNeedsFinalObservation |
 | Follow a brief action receipt | scenarios/harness/harness_test.go | TestBriefRetainsDecisionAndExpandsFullFindings |
+| Distinguish passing verification from commit readiness | scenarios/harness/review_policy_test.go | TestVerifyFirstReportsCheckedTreeUntilReviewClearsDelivery |
 | Stage the verified tree for commit | scenarios/harness/harness_test.go | TestVerifiedCommitTicketSurvivesStagingExactlyTheVerifiedTree |
 | Recover a delegated implementation or repair | scenarios/harness/delegated_work_test.go | TestDelegatedWorkRecovery |
 | Recover a delegated implementation or repair | scenarios/harness/delegated_work_test.go | TestLinkedDeveloperCanReturnAfterDeadline |
@@ -26,6 +29,10 @@
 | Merge parents change during verification | scenarios/harness/commit_history_test.go | TestChangingMergeParentsDuringVerificationRequiresAnotherAssertion |
 | Brief verification names the executed check | scenarios/harness/verification_output_test.go | TestBriefVerificationPointsToExecutedLog |
 | Stream full verification output | scenarios/harness/verification_output_test.go | TestFullVerificationStillStreamsDiagnostics |
+| Inspect the original staged and working candidates | scenarios/harness/review_diff_test.go | TestReviewerCanInspectPinnedStagedAndWorkingCopies |
+| Inspect a daily task without a worker receipt | scenarios/tokens/daily_session_test.go | TestDailyTaskShowsWholeSessionEvidenceWithoutChargingItsTotal |
+| Preserve the opening inputs of an unfinished read-only plan | scenarios/harness/stage_outcomes_test.go | TestReadOnlyPlanKeepsOpeningCandidateAcrossResume |
+| Resume after an accounting read error | scenarios/harness/review_settings_test.go | TestBriefReviewCanProceedWithoutReadableUsageHistory |
 | Read a reserved reviewer input | scenarios/harness/reviewer_input_test.go | TestReviewerReadsReservedInputAcrossRepairs |
 | Recover an older reviewer reservation | scenarios/harness/reviewer_input_test.go | TestLegacyReviewReservationRemainsUsable |
 | Reject an assertion executed on changed raw files | scenarios/harness/verification_candidate_test.go | TestVerificationRejectsIntermediateRawChanges |
@@ -53,7 +60,15 @@
 | Conditional commit after a failed verification | scenarios/harness/commit_authority_test.go | TestConditionalCommitAuthorityPreservesFailedCandidate |
 | Recover a commit after a branch switch | scenarios/harness/commit_target_test.go | TestResumeDoesNotOfferDuplicateCommitOnDifferentBranch |
 | Identify and resume a daily task | scenarios/harness/resume_context_test.go | TestIdentifyAndResumeDailyTask |
+| Recover an unaffected task from an incomplete inventory | scenarios/harness/resume_context_test.go | TestTaskListKeepsHealthyRowsWhenADailyRecordIsUnreadable |
 | Resume while a managed worker owns the worktree | internal/cli/onboarding_terminal_linux_test.go | TestResumeDuringManagedIntervalDoesNotLaunchDailyHost |
+| Start the host in the intended worktree | internal/cli/onboarding_terminal_linux_test.go | TestInteractiveResumeRequiresOriginalWorktree |
+| Explain a source-changing check before the first commit | scenarios/harness/verification_output_test.go | TestFirstCommitRecoversWhenPassingAssertionCreatesBuildOutput |
+| Choose the starting activity and finish | internal/cli/ux_help_test.go | TestTaskScopeChoicesAreDiscoverableAndValidatedBeforeOpeningRepository |
+| Correct an implementation after a reviewed candidate fails | scenarios/harness/review_policy_test.go | TestReviewedImplementationRecoversAfterFailedBehavior |
+| Correct findings on an implementation before testing | scenarios/harness/review_finding_recovery_test.go | TestReviewFindingOnOwnImplementation |
+| Reassess a staged finding before repair on a broader candidate | scenarios/harness/review_finding_recovery_test.go | TestStagedReviewFindingNeedsWholeCandidateAfterExtension |
+| Resume a host without reading unrelated usage | scenarios/harness/resume_context_test.go | TestTerminalResumeCarriesScopeAndWorkerRecoveryWithoutUsage |
 | Incomplete detachment | scenarios/pushgate/removal_test.go | TestAnotherToolsHookStillCallsCw |
 
 Go, JavaScript and C++ fixture commands execute locally. Host judgments are scripted. Published release checks execute on native CI runners when a release is available. Interactive host quality, speed and token costs require separate observations.

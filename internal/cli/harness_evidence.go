@@ -18,6 +18,7 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/harness"
 	"github.com/belevtsev/kitsu/v3/internal/runner"
 	"github.com/belevtsev/kitsu/v3/internal/store"
+	"github.com/belevtsev/kitsu/v3/internal/tokens"
 	"github.com/belevtsev/kitsu/v3/internal/verification"
 )
 
@@ -27,25 +28,29 @@ type verificationLogRef struct {
 }
 
 type harnessView struct {
-	VerificationLog *verificationLogRef `json:"verification_log,omitempty"`
-	ManagedInterval string              `json:"managed_interval,omitempty"`
-	PendingDaily    string              `json:"pending_daily_action,omitempty"`
-	PriorNotes      map[string]string   `json:"prior_notes,omitempty"`
-	Publication     *publicationReceipt `json:"last_publication,omitempty"`
-	DeveloperLaunch string              `json:"developer_launch,omitempty"`
-	ReviewCurrent   bool                `json:"review_current"`
-	store           *store.Store
-	ClaimCreated    bool           `json:"claim_created,omitempty"`
-	Pause           *harness.Pause `json:"pause,omitempty"`
-	Deadline        time.Time      `json:"deadline,omitzero"`
-	ReviewLimit     int            `json:"review_limit,omitempty"`
-	ReviewStarts    int            `json:"review_starts,omitempty"`
-	FinishReserve   time.Duration  `json:"finish_reserve_ns,omitempty"`
-	Request         string         `json:"request"`
-	Claim           *harness.Claim `json:"claim,omitempty"`
-	Behavior        string         `json:"current_behavior"`
-	Coverage        string         `json:"token_coverage"`
-	Captured        *int64         `json:"captured_tokens"`
+	ActorSessions     []tokens.Session    `json:"actor_session_usage,omitempty"`
+	ReviewPolicyError string              `json:"review_policy_error,omitempty"`
+	RepositoryReview  bool                `json:"repository_requires_review,omitempty"`
+	VerificationLog   *verificationLogRef `json:"verification_log,omitempty"`
+	ManagedInterval   string              `json:"managed_interval,omitempty"`
+	PendingDaily      string              `json:"pending_daily_action,omitempty"`
+	PriorNotes        map[string]string   `json:"prior_notes,omitempty"`
+	Publication       *publicationReceipt `json:"last_publication,omitempty"`
+	DeveloperLaunch   string              `json:"developer_launch,omitempty"`
+	ReviewCurrent     bool                `json:"review_current"`
+	store             *store.Store
+	ClaimCreated      bool           `json:"claim_created,omitempty"`
+	Pause             *harness.Pause `json:"pause,omitempty"`
+	Deadline          time.Time      `json:"deadline,omitzero"`
+	ReviewLimit       int            `json:"review_limit,omitempty"`
+	ReviewStarts      int            `json:"review_starts,omitempty"`
+	FinishReserve     time.Duration  `json:"finish_reserve_ns,omitempty"`
+	Request           string         `json:"request"`
+	Claim             *harness.Claim `json:"claim,omitempty"`
+	Behavior          string         `json:"current_behavior"`
+	Coverage          string         `json:"token_coverage"`
+	Captured          *int64         `json:"captured_tokens"`
+	UsageError        string         `json:"usage_error,omitempty"`
 
 	CommitTarget        string           `json:"commit_target,omitempty"`
 	CurrentCommitTarget string           `json:"current_commit_target,omitempty"`
@@ -96,15 +101,14 @@ func observeHarness(ctx context.Context, s *session, t *harness.Task, withUsage 
 		return v, err
 	}
 	v.Deadline, v.FinishReserve, v.ReviewLimit, v.ReviewStarts = t.Deadline, t.FinishReserve, t.ReviewLimit, t.StartedReviews()
-	v.Next, v.Pause = t.Next(time.Now(), v.readiness())
-	if err := v.setActionTicket(ctx, s, t); err != nil {
+	if err := v.routeAction(ctx, s, t); err != nil {
 		return v, err
 	}
 	v.timing(t)
 	if withUsage {
-		err = v.loadUsage(s.repo)
+		v.loadUsage(s.repo, t.Events)
 	}
-	return v, err
+	return v, nil
 }
 
 func (v *harnessView) setActionTicket(ctx context.Context, s *session, t *harness.Task) error {
@@ -112,6 +116,11 @@ func (v *harnessView) setActionTicket(ctx context.Context, s *session, t *harnes
 	pending := v.Next
 	if v.Pause != nil {
 		pending = v.Pause.Pending
+	}
+	if t.Scope.Until == "plan" && pending == "plan" && c != t.Start {
+		v.Next, v.Pause = "blocked", nil
+		v.Delivery = planInputChange(t.Start, c)
+		return nil
 	}
 	ticket := actionTicket(t, pending, c)
 	claim := v.Claim
@@ -181,11 +190,62 @@ func (v *harnessView) checkManagedInterval(id string) {
 	}
 }
 
+func (v *harnessView) routeAction(ctx context.Context, s *session, t *harness.Task) error {
+	required, err := repositoryRequiresReview(ctx, s, t, v.Candidate)
+	var invalid *decl.Error
+	if err != nil && !errors.As(err, &invalid) {
+		return err
+	}
+	v.RepositoryReview = required
+	v.Next, v.Pause = t.Next(time.Now(), v.readiness())
+	if invalid != nil {
+		v.ReviewPolicyError = "Cannot determine independent-review policy: " + invalid.Error() + ". Correct kitsu.toml or explicitly require review with kitsu task extend " + t.ID + " --require-review."
+		switch v.Next {
+		case "review", "verify", "commit", "publish", "done":
+			v.Next = "blocked"
+			return nil
+		}
+	}
+	return v.setActionTicket(ctx, s, t)
+}
+
+// Retain the policy present at intake even when the candidate edits it.
+func repositoryRequiresReview(ctx context.Context, s *session, task *harness.Task, current harness.Snapshot) (bool, error) {
+	if task.Version == 1 || task.PendingScope || task.Scope.Until == "plan" || task.Scope.RequireReview || task.Scope.Entry == "review" || task.Scope.Until == "review" {
+		return false, nil
+	}
+	seen := map[string]bool{}
+	var invalidPolicy error
+	for _, tree := range []string{task.Start.Head, task.Start.Tree, current.Tree, current.Head} {
+		if tree == "" || seen[tree] {
+			continue
+		}
+		seen[tree] = true
+		cfg, err := evidence.Declaration(ctx, s.repo, tree)
+		if errors.Is(err, evidence.ErrNoDeclaration) {
+			continue
+		}
+		if err != nil {
+			var invalid *decl.Error
+			if errors.As(err, &invalid) {
+				invalidPolicy = err
+				continue
+			}
+			return false, err
+		}
+		if cfg.RequireReview {
+			return true, nil
+		}
+	}
+	return false, invalidPolicy
+}
+
 func (v harnessView) readiness() harness.Readiness {
-	return harness.Readiness{Candidate: v.Candidate, Reviewed: v.ReviewCurrent, Verified: v.Verified, Committed: v.Delivery == "committed"}
+	return harness.Readiness{RepositoryReview: v.RepositoryReview, Candidate: v.Candidate, Reviewed: v.ReviewCurrent, Verified: v.Verified, Committed: v.Delivery == "committed"}
 }
 
 func printHarness(cfg Config, o harnessOptions, v harnessView) error {
+	v.describeCommitReadiness()
 	if o.brief {
 		reply := v.brief()
 		if v.VerificationLog != nil {
@@ -197,6 +257,10 @@ func printHarness(cfg Config, o harnessOptions, v harnessView) error {
 		return printJSON(cfg, v)
 	}
 	fmt.Fprintf(cfg.Out, "%s · goal %s · next %s\n", v.Task, v.Scope.Until, v.Next)
+	if v.ReviewPolicyError != "" {
+		fmt.Fprintln(cfg.Out, decl.Plain(v.ReviewPolicyError))
+	}
+	v.printResumeNotes(cfg.Out)
 	if v.Scope.ReviewBase != "" {
 		fmt.Fprintf(cfg.Out, "Review range %s..%s\n", v.Scope.ReviewBase, v.Scope.ReviewHead)
 	}
@@ -213,16 +277,7 @@ func printHarness(cfg Config, o harnessOptions, v harnessView) error {
 		fmt.Fprintf(cfg.Out, "Finish managed interval %s to resume daily action %s.\n", v.ManagedInterval, v.PendingDaily)
 	}
 	v.printReview(cfg.Out)
-	if v.Proof != nil {
-		fmt.Fprintf(cfg.Out, "Behavior: %s (%s), run %s\n", decl.Plain(v.Proof.Expect), v.Behavior, v.Proof.Run)
-	}
-	if log := v.VerificationLog; log != nil {
-		fmt.Fprintf(cfg.Out, "Verification log for %s: %s\n", decl.Plain(log.CheckID), decl.Plain(log.Path))
-	}
-	fmt.Fprintf(cfg.Out, "Verified on current content: %t · repository checks: %s · %s\n", v.Verified, v.Gate, v.Delivery)
-	if v.CommitEvidence == "verified_existing_commit" {
-		fmt.Fprintln(cfg.Out, "The current verification ran with this commit already checked out.")
-	}
+	v.printVerification(cfg.Out)
 	if p := v.Publication; p != nil {
 		fmt.Fprintf(cfg.Out, "Last publication check: %s · %s · %s · %s\n", decl.Plain(p.Target), p.Commit, p.Outcome, p.ObservedAt.Format(time.RFC3339))
 	}
@@ -244,6 +299,9 @@ func (v harnessView) printReview(out io.Writer) {
 		return
 	}
 	label := "Review finding:"
+	if v.PriorNotes != nil && v.ReviewCurrent && v.Last != v.Review {
+		fmt.Fprintln(out, "Current review:", decl.Plain(v.Review.Note))
+	}
 	if !v.ReviewCurrent {
 		fmt.Fprintf(out, "The latest review covers an earlier candidate. See kitsu task show %s --json for that review.\n", v.Task)
 		label = "Earlier finding:"
@@ -283,7 +341,7 @@ func (v harnessView) verificationLog() *verificationLogRef {
 	if p == nil || p.FailedCheck != "" && p.GateFailure == nil {
 		return nil
 	}
-	log := harness.RunResult{CheckRun: harness.CheckRun{ID: p.Run, Digest: p.LogDigest}, CheckID: p.CheckID, Outcome: p.Outcome, ExitStatus: p.ExitStatus}
+	log := harness.RunResult{CheckRun: harness.CheckRun{ID: p.Run, Digest: p.LogDigest}, CheckID: p.CheckID, Outcome: p.Outcome, ExitStatus: p.ExitStatus, Detail: p.Detail}
 	if p.GateFailure != nil {
 		log = *p.GateFailure
 	}
@@ -297,6 +355,9 @@ func (v harnessView) verificationLog() *verificationLogRef {
 // Full results, findings and inputs stay in task show across interruptions.
 func (v harnessView) brief() map[string]any {
 	reply := map[string]any{"task": v.Task, "next": v.Next, "verified": v.Verified, "repository_checks": v.Gate, "delivery": v.Delivery, "details": []string{"kitsu", "task", "show", v.Task, "--json"}}
+	if v.ReviewPolicyError != "" {
+		reply["review_policy_error"] = v.ReviewPolicyError
+	}
 	if v.ManagedInterval != "" {
 		reply["managed_interval"], reply["pending_daily_action"] = v.ManagedInterval, v.PendingDaily
 	}
@@ -490,7 +551,7 @@ func executeHarnessAssertion(ctx context.Context, s *session, t *harness.Task, o
 	if err != nil {
 		return nil, err
 	}
-	p := &harness.Proof{PerRunInputs: true, CheckID: check.ID, Ticket: o.ticket, Candidate: c, Key: key, Run: record.RunID, Outcome: record.Outcome, ExitStatus: record.ExitStatus, Expect: o.expect, Argv: o.argv}
+	p := &harness.Proof{PerRunInputs: true, CheckID: check.ID, Ticket: o.ticket, Candidate: c, Key: key, Run: record.RunID, Outcome: record.Outcome, ExitStatus: record.ExitStatus, Detail: sourceChangeSummary(record), Expect: o.expect, Argv: o.argv}
 	p.LogDigest, err = taskVerificationLog(s, p.Run)
 	if err != nil {
 		return nil, err
@@ -572,7 +633,7 @@ func (v *harnessView) observeDelivery(ctx context.Context, s *session, t *harnes
 	if err != nil || !v.Verified {
 		return err
 	}
-	v.Delivery = "ready to commit"
+	v.Delivery = "verified working tree"
 	if p.Candidate.CommittedAs(c, headTree, parents) {
 		if target := t.AuthorizedCommitTarget(); target != "" {
 			delivered, err := s.repo.DeliveredAt(ctx, target, c.Head)
@@ -672,7 +733,7 @@ func runHarnessGateCheck(ctx context.Context, s *session, t *harness.Task, id st
 	}
 	t.ArchiveGateFailure()
 	delete(p.GateRuns, id)
-	p.GateFailure = &harness.RunResult{CheckRun: run, CheckID: id, Outcome: record.Outcome, ExitStatus: record.ExitStatus}
+	p.GateFailure = &harness.RunResult{CheckRun: run, CheckID: id, Outcome: record.Outcome, ExitStatus: record.ExitStatus, Detail: sourceChangeSummary(record)}
 	if record.Outcome == store.Failed && record.ExitStatus != nil {
 		p.FailedCheck = id
 	}

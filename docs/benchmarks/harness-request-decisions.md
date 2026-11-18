@@ -47,3 +47,13 @@ TMPDIR=/var/tmp python3 -B docs/benchmarks/harness-request-decisions.py prepare 
 Give the host `solver/request.txt` and `solver/repo/`. The checkout includes the Git history and any task records belonging to that starting state. Keep the optional starting evidence, the replay recipes and the grader outside the host’s inputs. Use `prepare --help` for the other starting states.
 
 To grade observed host work, collect its tool calls and results, checkpoint mutations, preserve ledger and logs, and independently run the public behavior against the submitted candidate. The replay bundle shows the normalized evidence consumed by `grade`. Native host transcript collection and normalization are separate from this offline replay.
+
+### Changing inputs during diagnosis
+
+From the repository root, run the command below with a local Kitsu binary and Node.js or Bun on PATH. Add `--previous /path/to/earlier/kitsu` to compare a second binary.
+
+```sh
+python3 docs/benchmarks/harness-request-decisions.py replay-plan --kitsu /path/to/kitsu
+```
+
+The fixture keeps separate staged and unstaged notes. A scripted actor reproduces the original defect. The unchanged case can finish its diagnosis. In the changed case the supplied implementation is corrected before the actor resumes. Plain shell reruns the behavior check. Kitsu uses the task's opening snapshot to decide whether it can accept the original diagnosis. The grader reruns the behavior and compares Git state and file contents in every checkout. [Recorded results](daily-review-data/plan-inputs.json)

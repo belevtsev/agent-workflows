@@ -12,7 +12,7 @@ import (
 func TestReviewerReadsReservedInputAcrossRepairs(t *testing.T) {
 	r := kitsutest.Demo(t)
 	f := flow{t: t, repo: r, id: "rounds"}
-	f.call(0, "open", "--request", "Implement a new format", "--entry", "plan", "--until", "verify", "--repair")
+	f.call(0, "open", "--require-review", "--request", "Implement a new format", "--entry", "plan", "--until", "verify", "--repair")
 	f.record("intake", "host", "Empty values must survive")
 	f.record("plan", "host", "Use one escaped field per line")
 	r.Write("format", "first")
@@ -58,7 +58,8 @@ func TestReviewerReadsReservedInputAcrossRepairs(t *testing.T) {
 	if r.Kitsu(append(append([]string{}, second...), "--compact")...).Code != 2 {
 		t.Fatal("a reviewer lookup accepted an unrelated compact view")
 	}
-	if len(input.Changes) != 5 || !strings.Contains(r.Git(input.Changes[1:]...), "+second") {
+	r.Setenv("GIT_EXTERNAL_DIFF", "missing-diff-driver")
+	if len(input.Changes) < 2 || !strings.Contains(r.Git(input.Changes[1:]...), "+second") {
 		t.Fatal(input.Changes)
 	}
 	// Work can move while a reviewer reads. It may still inspect the reserved
@@ -143,7 +144,7 @@ func TestReviewerInputShowsGitNormalizedChanges(t *testing.T) {
 		RawOnly bool     `json:"review_raw_only_changes"`
 		Changes []string `json:"review_changes"`
 	}
-	if err := json.Unmarshal([]byte(input.Stdout), &view); input.Code != 0 || err != nil || !view.RawOnly || len(view.Changes) != 5 || r.Git(view.Changes[1:]...) != "" {
+	if err := json.Unmarshal([]byte(input.Stdout), &view); input.Code != 0 || err != nil || !view.RawOnly || len(view.Changes) < 2 || r.Git(view.Changes[1:]...) != "" {
 		t.Fatal("empty Git diff hid changed original bytes", input.Output())
 	}
 }

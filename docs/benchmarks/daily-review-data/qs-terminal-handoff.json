@@ -1,0 +1,40 @@
+{
+  "task": "qs-sparse-array-limit",
+  "candidate": "5ac4dfb7110790669a239051ec07491f4fd9e862",
+  "ledger_sha256": "37da5c659648175cd88009c3e3a74cea7f9562c28baee562caefe9395c9d4d4a",
+  "kitsu_sha256": "dadbdbdf25ecd79cd4785921dd1bf9d8035951e8c876124d89244434e9475ac0",
+  "model_calls": 0,
+  "compact": false,
+  "saved_reviews": 4,
+  "additional_reviews": 0,
+  "median_wall_seconds": {
+    "plain": 1.068703,
+    "kitsu": 1.819563
+  },
+  "runs": [
+    {
+      "pair": 1,
+      "arm": "plain",
+      "seconds": 1.068703,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 1,
+      "coordinator_reads": {
+        "next_bytes": 4363,
+        "show_bytes": 13218,
+        "terminal_recovered_request_notes_review_pause_and_delivery": true,
+        "request_intake_repair_review_scope_and_pause_matched": true
+      },
+      "arm": "kitsu",
+      "seconds": 1.819563,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    }
+  ]
+}

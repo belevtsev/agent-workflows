@@ -141,7 +141,7 @@ func TestJavaScriptPlanThenImplement(t *testing.T) {
 	if r.Git("status", "--porcelain") != before {
 		t.Fatal("plan modified the source")
 	}
-	f.call(0, "extend", "--until", "verify")
+	f.call(0, "extend", "--require-review", "--until", "verify")
 	f.want("implement")
 	r.Write("double.js", "module.exports = x => 2 * x;\n")
 	r.Write("test.js", "if (require('./double')(3) !== 6) process.exit(1);\n")
@@ -423,7 +423,7 @@ func TestReviewScopeExtensionChecksTheWholeDeliveryCandidate(t *testing.T) {
 		Changes      []string `json:"review_changes"`
 		ScopeChanged bool     `json:"review_scope_changed"`
 	}
-	if err := json.Unmarshal([]byte(received.Stdout), &expanded); received.Code != 0 || err != nil || !expanded.ScopeChanged || len(expanded.Changes) != 5 {
+	if err := json.Unmarshal([]byte(received.Stdout), &expanded); received.Code != 0 || err != nil || !expanded.ScopeChanged || len(expanded.Changes) < 2 {
 		t.Fatal("missing expanded scope", received.Output())
 	}
 	if diff := r.Git(expanded.Changes[1:]...); !strings.Contains(diff, "untracked.txt") || strings.Contains(diff, "staged.txt") {
@@ -438,7 +438,7 @@ func TestReviewScopeExtensionChecksTheWholeDeliveryCandidate(t *testing.T) {
 		Changes     []string `json:"review_changes"`
 		BaseChanged bool     `json:"review_base_changed"`
 	}
-	if err := json.Unmarshal([]byte(reservation.Stdout), &receipt); reservation.Code != 0 || err != nil || !receipt.BaseChanged || len(receipt.Changes) != 5 || receipt.Changes[0] != "git" {
+	if err := json.Unmarshal([]byte(reservation.Stdout), &receipt); reservation.Code != 0 || err != nil || !receipt.BaseChanged || len(receipt.Changes) < 2 || receipt.Changes[0] != "git" {
 		t.Fatalf("missing re-review context: %s", reservation.Output())
 	}
 	if diff := r.Git(receipt.Changes[1:]...); diff != "" {

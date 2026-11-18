@@ -270,7 +270,7 @@ def repair(checkout, route):
         checkout.git("diff", "--", "double.js", tag="working-diff")
     checkout.probe()
     if route == "review-led":
-        state = checkout.open("verify", "verify", "--repair")
+        state = checkout.open("verify", "verify", "--repair", "--require-review")
         state = checkout.test(state, expected=5)
         checkout.write("double.js", INADEQUATE, observe=True)
         state = checkout.record(state, "repair", "Reject values other than strings and numbers.")
@@ -435,11 +435,55 @@ def summarize(runs):
     return 0 if all(row["matched"] for row in report) else 1
 
 
+def replay_plan_inputs(binary, previous, javascript):
+    """Exercise a mid-diagnosis fix and an unchanged control on identical checkouts."""
+    results = []
+    arms = [("plain", None), ("kitsu", binary)]
+    if previous:
+        arms.append(("previous", previous))
+    for changed in (False, True):
+        for arm, cli in arms:
+            with tempfile.TemporaryDirectory(prefix="kitsu-plan-inputs-") as tmp:
+                root = Path(tmp)
+                work = Checkout(root / "repo", root, cli, javascript, "diagnosis")
+                work.setup()
+                work.write("notes.txt", "Developer's staged note.\n")
+                work.git("add", "notes.txt")
+                work.write("notes.txt", "Developer's unstaged note.\n")
+                work.write("draft.txt", "User draft.\n")
+                if cli:
+                    work.open("plan", "plan")
+                first = work.probe()["actual"]
+                if changed:
+                    work.write("double.js", FIXED)
+                checkpoint = work.state()
+                if cli:
+                    state = work.task("next", brief=True)
+                    if state["next"] == "plan":
+                        state = work.record(state, "plan", 'double("3") returns 6 on this candidate.')
+                    outcome = state["next"]
+                else:
+                    outcome = "done" if work.probe()["actual"] == first else "changed"
+                current = work.probe()["actual"]
+                preserved = work.state() == checkpoint
+                if first != 6 or current != ("TypeError" if changed else 6) or not preserved:
+                    raise ValueError("invalid diagnostic fixture or modified developer work")
+                passed = outcome == (("changed" if arm == "plain" else "blocked") if changed else "done")
+                results.append(dict(arm=arm, changed=changed, original_behavior=first,
+                                    current_behavior=current, outcome=outcome, workspace_preserved=preserved,
+                                    correct=passed))
+    versions = {name: digest(path.read_bytes()) for name, path in arms if path}
+    print(json.dumps(dict(model_calls=0, cli_sha256=versions, results=results), indent=2))
+    return int(any(not row["correct"] for row in results if row["arm"] != "previous"))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     replay_parser = commands.add_parser("replay", help="run and grade the offline controls")
     replay_parser.add_argument("--evidence", type=Path, help="save command outputs, Git state, receipts and logs")
+    plan = commands.add_parser("replay-plan", help="compare plan-only diagnosis with changed or unchanged inputs")
+    plan.add_argument("--previous", type=Path, help="optional previous CLI for the same two cases")
     csv = commands.add_parser("replay-csv", help="compare scripted Kitsu and plain CSV request outcomes")
     csv.add_argument("--kitsu", required=True, type=Path, help="daily Kitsu CLI binary")
     csv.add_argument("--pairs", type=int, default=2, help="repetitions of the paired CSV cases")
@@ -448,8 +492,8 @@ def main():
     prepare.add_argument("case", choices=CASES)
     prepare.add_argument("destination", type=Path, help="new directory containing request.txt and repo/")
     prepare.add_argument("--starting-evidence", type=Path, help="optional private JSON output outside the solver directory")
-    for command in (replay_parser, prepare):
-        command.add_argument("--kitsu", required=command == replay_parser, type=Path, help="daily Kitsu CLI binary")
+    for command in (replay_parser, plan, prepare):
+        command.add_argument("--kitsu", required=command != prepare, type=Path, help="daily Kitsu CLI binary")
         command.add_argument("--javascript", default=shutil.which("node") or shutil.which("bun"),
                              help="Node.js or Bun executable on PATH")
     offline_grade = commands.add_parser("grade", help="grade a saved replay or one normalized evidence object")
@@ -475,12 +519,15 @@ def main():
             parser.error("--pairs must be positive")
         return replay_csv(Checkout, binary, args.pairs, args.evidence)
     javascript = None
-    if args.command == "replay" or args.case not in CSV_CASES:
+    if args.command in ("replay", "replay-plan") or args.case not in CSV_CASES:
         javascript = shutil.which(args.javascript) if args.javascript else None
         if not javascript or not shutil.which(Path(javascript).name):
             parser.error("Node.js or Bun must be on PATH, including by its executable name")
         if not binary:
             parser.error("--kitsu is required for the JavaScript request fixtures")
+    if args.command == "replay-plan":
+        previous = args.previous.resolve(strict=True) if args.previous else None
+        return replay_plan_inputs(binary, previous, javascript)
     if args.command == "replay":
         help_result = subprocess.run([binary, "task", "open", "--help"], capture_output=True, text=True, timeout=15)
         help_text = help_result.stdout + help_result.stderr

@@ -5,8 +5,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/fs"
+	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -72,13 +74,34 @@ func TestMatchedPluginArtifact(t *testing.T) {
 	if len(archive.File) != len(files) {
 		t.Fatalf("archive has %d entries, want %d", len(archive.File), len(files))
 	}
-	for _, path := range files {
-		member, err := fs.ReadFile(&archive.Reader, "kitsu-marketplace/"+path)
+	for _, name := range files {
+		entry := "kitsu-marketplace/" + name
+		member, err := fs.ReadFile(&archive.Reader, entry)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !bytes.Equal(member, readFile(t, filepath.Join(root, filepath.FromSlash(path)))) {
-			t.Errorf("%s differs between marketplace and CLI source revision", path)
+		if !bytes.Equal(member, readFile(t, filepath.Join(root, filepath.FromSlash(name)))) {
+			t.Errorf("%s differs between marketplace and CLI source revision", name)
+		}
+		if strings.HasSuffix(name, ".md") {
+			checkLocalLinks(t, &archive.Reader, entry, member)
+		}
+	}
+}
+
+func checkLocalLinks(t *testing.T, archive fs.FS, entry string, doc []byte) {
+	t.Helper()
+	for _, match := range regexp.MustCompile(`\]\(([^ )]+)\)`).FindAllSubmatch(doc, -1) {
+		u, err := url.Parse(string(match[1]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if u.IsAbs() || u.Host != "" || u.Path == "" {
+			continue
+		}
+		target := path.Join(path.Dir(entry), u.Path)
+		if _, err := fs.Stat(archive, target); err != nil {
+			t.Errorf("installed guide %s links to missing file %s", entry, target)
 		}
 	}
 }

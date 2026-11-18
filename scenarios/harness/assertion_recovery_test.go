@@ -14,7 +14,7 @@ func TestRepairCannotSilentlyReplaceItsFailingAssertion(t *testing.T) {
 	r.Git("add", "app.sh")
 	r.Git("commit", "-qm", "Pin the failing public command")
 	f := flow{t: t, repo: r, id: "public-output"}
-	f.call(0, "open", "--request", "Repair and deliver the public command so it prints ready", "--entry", "verify", "--until", "deliver", "--repair", "--commit")
+	f.call(0, "open", "--require-review", "--request", "Repair and deliver the public command so it prints ready", "--entry", "verify", "--until", "deliver", "--repair", "--commit")
 	f.record("intake", "host", "Exercise the user-visible output and the required suite")
 	test := []string{"test", "--ticket", f.state.Ticket, "--expect", "the public command prints ready", "--", "sh", "-c", "test \"$(sh app.sh)\" = ready"}
 	f.call(5, test...)

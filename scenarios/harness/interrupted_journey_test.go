@@ -182,7 +182,7 @@ func (j *interruptedJourney) run() journeyDelivery {
 		j.t.Fatal("the original repository check should miss the seeded defect", result.Output())
 	}
 	base := j.repo.Git("rev-parse", "HEAD")
-	initial := j.call(0, "open", "--request", journeyRequest, "--entry", "verify", "--until", "deliver", "--repair", "--commit", "--review-limit", "2")
+	initial := j.call(0, "open", "--require-review", "--request", journeyRequest, "--entry", "verify", "--until", "deliver", "--repair", "--commit", "--review-limit", "2")
 	if decoy := j.repo.Kitsu("task", "open", "another-task", "--until", "plan", "--request", "Plan the next export format"); decoy.Code != 0 {
 		j.t.Fatal(decoy.Output())
 	}

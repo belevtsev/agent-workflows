@@ -1,0 +1,1021 @@
+{
+  "go": "go version go1.27.4 linux/amd64",
+  "new_model_calls": 0,
+  "production_control": "7852017cabbc7d192b397884b3096be6ead51374",
+  "acceptance_grader_sha256": "32ddc28eda2ce8d734260ab8aedd2321adde337a1e8aed06c23cbc939e924526",
+  "attempts": [
+    {
+      "cohort": "kitsu-vs-codex-20261117",
+      "manifest": "3c2f174ad4694bbefcc179626bb8e4d694e09d341d036dea9f32709c012308de",
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "run": "pflag-unknown-flags-r1-kitsu",
+      "case": "pflag-unknown-flags",
+      "arm": "kitsu",
+      "baseline": "c2a8cddf63fa68ad512e963ac41da1067506761d",
+      "candidate": "bcf2c94af36194385aea0ff9c3607417a1b417e1",
+      "status": "completed",
+      "completion_raw": true,
+      "application": "0a30f1b5b6e225ceaed1962b8f5ead7667125549e9da88e9e3f27be2543a23a1",
+      "common_prompt": "9cb84a4ea89e48d6f1326d847754bfc8cbad3f19592782aec2aad7301924d323",
+      "acceptance_passed": 2,
+      "acceptance_total": 2,
+      "original_suite": true,
+      "patch_integrity": true,
+      "method": "unknown",
+      "tokens": 1987618,
+      "usage_complete": true,
+      "sessions": 5,
+      "seconds": 527.285,
+      "completion": true,
+      "completion_source": "original probe"
+    },
+    {
+      "cohort": "kitsu-vs-codex-20261117",
+      "manifest": "3c2f174ad4694bbefcc179626bb8e4d694e09d341d036dea9f32709c012308de",
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "run": "pflag-unknown-flags-r1-codex",
+      "case": "pflag-unknown-flags",
+      "arm": "codex",
+      "baseline": "c497f3c2979f21702f8f5d456e567623b0d1e1ab",
+      "candidate": "96b3859f47e16e153639ff4bd02cd1fc75af4b85",
+      "status": "completed",
+      "completion_raw": true,
+      "application": "0a30f1b5b6e225ceaed1962b8f5ead7667125549e9da88e9e3f27be2543a23a1",
+      "common_prompt": "9cb84a4ea89e48d6f1326d847754bfc8cbad3f19592782aec2aad7301924d323",
+      "acceptance_passed": 2,
+      "acceptance_total": 2,
+      "original_suite": true,
+      "patch_integrity": true,
+      "method": "not_applicable",
+      "tokens": 309806,
+      "usage_complete": true,
+      "sessions": 1,
+      "seconds": 184.255,
+      "completion": true,
+      "completion_source": "original probe"
+    },
+    {
+      "cohort": "kitsu-vs-codex-20261117",
+      "manifest": "3c2f174ad4694bbefcc179626bb8e4d694e09d341d036dea9f32709c012308de",
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "run": "qs-sparse-array-limit-r1-codex",
+      "case": "qs-sparse-array-limit",
+      "arm": "codex",
+      "baseline": "cfdfaa733eff22d0cd544d427f9f8732b19c7d86",
+      "candidate": "df264cdf55d46e9fa71ac21dfe6df5e6c07b31c2",
+      "status": "completed",
+      "completion_raw": true,
+      "application": "7192524ac173e38683ea412736aac6b5da7f76d1c1348e5d31fbed97edd05b92",
+      "common_prompt": "9cb84a4ea89e48d6f1326d847754bfc8cbad3f19592782aec2aad7301924d323",
+      "acceptance_passed": 18,
+      "acceptance_total": 18,
+      "original_suite": true,
+      "patch_integrity": true,
+      "method": "not_applicable",
+      "tokens": 744020,
+      "usage_complete": true,
+      "sessions": 1,
+      "seconds": 253.806,
+      "completion": true,
+      "completion_source": "original probe"
+    },
+    {
+      "cohort": "kitsu-vs-codex-20261117",
+      "manifest": "3c2f174ad4694bbefcc179626bb8e4d694e09d341d036dea9f32709c012308de",
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "run": "qs-sparse-array-limit-r1-kitsu",
+      "case": "qs-sparse-array-limit",
+      "arm": "kitsu",
+      "baseline": "6a4275d109dc69e645ae69301bc109fb14174d4f",
+      "candidate": "a16a76bde7e3b1b0711234381f2acbe01ae2ef44",
+      "status": "stopped",
+      "completion_raw": false,
+      "application": "7192524ac173e38683ea412736aac6b5da7f76d1c1348e5d31fbed97edd05b92",
+      "common_prompt": "9cb84a4ea89e48d6f1326d847754bfc8cbad3f19592782aec2aad7301924d323",
+      "acceptance_passed": 18,
+      "acceptance_total": 18,
+      "original_suite": true,
+      "patch_integrity": true,
+      "method": "violated",
+      "tokens": 4258254,
+      "usage_complete": false,
+      "sessions": 5,
+      "seconds": 720.008,
+      "completion": false,
+      "completion_source": "original probe"
+    },
+    {
+      "cohort": "pflag-sol62-three",
+      "manifest": "60270f9aadff9ca383cceb24b859e55d3d94c9b0e3b640adf600c1df1f2673a9",
+      "model": "gpt-6.2-sol",
+      "effort": "high",
+      "run": "pflag-codex",
+      "case": "pflag-unknown-flags",
+      "arm": "codex",
+      "baseline": "c497f3c2979f21702f8f5d456e567623b0d1e1ab",
+      "candidate": "f548d3e3c00e374f73f7f309d408cb2c1a36a7f6",
+      "status": "completed",
+      "completion_raw": true,
+      "application": "0a30f1b5b6e225ceaed1962b8f5ead7667125549e9da88e9e3f27be2543a23a1",
+      "common_prompt": "88fbaac5a1798b87ad4628cd60d7267c121c921c2bf00c35b7297b6789c02231",
+      "acceptance_passed": 2,
+      "acceptance_total": 2,
+      "original_suite": true,
+      "patch_integrity": true,
+      "method": "not_applicable",
+      "tokens": 300723,
+      "usage_complete": true,
+      "sessions": 1,
+      "seconds": 113.1,
+      "completion": true,
+      "completion_source": "original probe"
+    },
+    {
+      "cohort": "pflag-sol62-three",
+      "manifest": "60270f9aadff9ca383cceb24b859e55d3d94c9b0e3b640adf600c1df1f2673a9",
+      "model": "gpt-6.2-sol",
+      "effort": "high",
+      "run": "pflag-before",
+      "case": "pflag-unknown-flags",
+      "arm": "before",
+      "baseline": "0092e6750ce0d2b1448396d527c74dee8696295d",
+      "candidate": "ca1ff10db2e76868c6e5cbc5d28ca28579f7b727",
+      "status": "completed",
+      "completion_raw": false,
+      "application": "0a30f1b5b6e225ceaed1962b8f5ead7667125549e9da88e9e3f27be2543a23a1",
+      "common_prompt": "88fbaac5a1798b87ad4628cd60d7267c121c921c2bf00c35b7297b6789c02231",
+      "acceptance_passed": 2,
+      "acceptance_total": 2,
+      "original_suite": true,
+      "patch_integrity": true,
+      "method": "unknown",
+      "tokens": 2053717,
+      "usage_complete": true,
+      "sessions": 5,
+      "seconds": 369.085,
+      "completion": true,
+      "completion_source": "same offline completion probe with recognized managed arm label"
+    },
+    {
+      "cohort": "pflag-sol62-three",
+      "manifest": "60270f9aadff9ca383cceb24b859e55d3d94c9b0e3b640adf600c1df1f2673a9",
+      "model": "gpt-6.2-sol",
+      "effort": "high",
+      "run": "pflag-kitsu",
+      "case": "pflag-unknown-flags",
+      "arm": "kitsu",
+      "baseline": "0092e6750ce0d2b1448396d527c74dee8696295d",
+      "candidate": "48596905593895b24ca90b2a68239264e6db30ef",
+      "status": "stopped",
+      "completion_raw": false,
+      "application": "0a30f1b5b6e225ceaed1962b8f5ead7667125549e9da88e9e3f27be2543a23a1",
+      "common_prompt": "88fbaac5a1798b87ad4628cd60d7267c121c921c2bf00c35b7297b6789c02231",
+      "acceptance_passed": 2,
+      "acceptance_total": 2,
+      "original_suite": true,
+      "patch_integrity": true,
+      "method": "unknown",
+      "tokens": 4193946,
+      "usage_complete": false,
+      "sessions": 8,
+      "seconds": 720.008,
+      "completion": false,
+      "completion_source": "original probe"
+    },
+    {
+      "cohort": "daily-audit-pair-nov18",
+      "manifest": "7d811a15a580722d84a8ffa32eb5ae40a9afaabf4ea440cc5e8355ef4ea35365",
+      "model": "gpt-6.2-sol",
+      "effort": "high",
+      "run": "pflag-codex",
+      "case": "pflag-unknown-flags",
+      "arm": "codex",
+      "baseline": "c497f3c2979f21702f8f5d456e567623b0d1e1ab",
+      "candidate": "7852017cabbc7d192b397884b3096be6ead51374",
+      "status": "completed",
+      "completion_raw": true,
+      "application": "0a30f1b5b6e225ceaed1962b8f5ead7667125549e9da88e9e3f27be2543a23a1",
+      "common_prompt": "88fbaac5a1798b87ad4628cd60d7267c121c921c2bf00c35b7297b6789c02231",
+      "acceptance_passed": 2,
+      "acceptance_total": 2,
+      "original_suite": true,
+      "patch_integrity": true,
+      "method": "not_applicable",
+      "tokens": 394607,
+      "usage_complete": true,
+      "sessions": 1,
+      "seconds": 154.007,
+      "completion": true,
+      "completion_source": "original probe"
+    },
+    {
+      "cohort": "daily-audit-pair-nov18",
+      "manifest": "7d811a15a580722d84a8ffa32eb5ae40a9afaabf4ea440cc5e8355ef4ea35365",
+      "model": "gpt-6.2-sol",
+      "effort": "high",
+      "run": "pflag-kitsu",
+      "case": "pflag-unknown-flags",
+      "arm": "kitsu",
+      "baseline": "0092e6750ce0d2b1448396d527c74dee8696295d",
+      "candidate": "6c602f6ee830267ed161d15387e299e932b02950",
+      "status": "completed",
+      "completion_raw": true,
+      "application": "0a30f1b5b6e225ceaed1962b8f5ead7667125549e9da88e9e3f27be2543a23a1",
+      "common_prompt": "88fbaac5a1798b87ad4628cd60d7267c121c921c2bf00c35b7297b6789c02231",
+      "acceptance_passed": 2,
+      "acceptance_total": 2,
+      "original_suite": true,
+      "patch_integrity": true,
+      "method": "unknown",
+      "tokens": 841548,
+      "usage_complete": true,
+      "sessions": 2,
+      "seconds": 186.537,
+      "completion": true,
+      "completion_source": "original probe"
+    },
+    {
+      "cohort": "daily-qs-review-pair-nov18",
+      "manifest": "116dfddc2d233e7bffe72bf87e520dbf10710ce577f3aaca55778f7676bd74ce",
+      "model": "gpt-6.2-sol",
+      "effort": "high",
+      "run": "qs-kitsu",
+      "case": "qs-sparse-array-limit",
+      "arm": "kitsu",
+      "baseline": "c7c6a280f857d51dc2aee013a69437217085630b",
+      "candidate": "5ac4dfb7110790669a239051ec07491f4fd9e862",
+      "status": "stopped",
+      "completion_raw": false,
+      "application": "3af894db539ccf52dd7c9363e26ed1e1adb1f26e08da2c633648fb9b6a8afd2d",
+      "common_prompt": "01c9fb2ae882128cda480d147c9cd1353d6c3580caa951ccbfd5e14f5e4f4280",
+      "acceptance_passed": 19,
+      "acceptance_total": 19,
+      "original_suite": true,
+      "patch_integrity": true,
+      "method": "unknown",
+      "tokens": 5063787,
+      "usage_complete": false,
+      "sessions": 5,
+      "seconds": 658.508,
+      "completion": false,
+      "completion_source": "original probe"
+    }
+  ],
+  "unstarted": [
+    [
+      "kitsu-vs-codex-20261117",
+      "pflag-unknown-flags-r2-codex"
+    ],
+    [
+      "kitsu-vs-codex-20261117",
+      "pflag-unknown-flags-r2-kitsu"
+    ],
+    [
+      "kitsu-vs-codex-20261117",
+      "qs-sparse-array-limit-r2-kitsu"
+    ],
+    [
+      "kitsu-vs-codex-20261117",
+      "qs-sparse-array-limit-r2-codex"
+    ],
+    [
+      "daily-qs-review-pair-nov18",
+      "qs-codex"
+    ]
+  ],
+  "suite_controls": [
+    {
+      "suite": "original",
+      "control": "correct",
+      "failing_cases": []
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-kitsu",
+      "control": "correct",
+      "failing_cases": []
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-codex",
+      "control": "correct",
+      "failing_cases": []
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-codex",
+      "control": "correct",
+      "failing_cases": []
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-before",
+      "control": "correct",
+      "failing_cases": []
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-kitsu",
+      "control": "correct",
+      "failing_cases": [
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/disabling_at_end_of_cluster",
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/unknown_after_disabling_within_cluster"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-codex",
+      "control": "correct",
+      "failing_cases": []
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-kitsu",
+      "control": "correct",
+      "failing_cases": []
+    },
+    {
+      "suite": "original",
+      "control": "discard_trailing_arguments",
+      "failing_cases": []
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-kitsu",
+      "control": "discard_trailing_arguments",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_known_prefix_and_suffix",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_suffix_with_attached_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_suffix_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_suffix_with_separate_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/known_before_long",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/long_before_known",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/long_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/long_with_separate_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/short_before_known",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/terminator_after_unknown_is_forwarded",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_known_prefix_and_suffix",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_with_attached_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_with_separate_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/known_before_long",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/long_before_known",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/long_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/long_with_separate_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/short_before_known",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/terminator_after_unknown_is_forwarded"
+      ]
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-codex",
+      "control": "discard_trailing_arguments",
+      "failing_cases": [
+        "TestPassUnknownFlagsInterspersed/cluster_attached_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_attached_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_following_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_following_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_known_prefix/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_known_prefix/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_first/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_first/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/known_before_long/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/known_before_long/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/known_before_short/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/known_before_short/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/long/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/long/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/long_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/long_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/short/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/short/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/short_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/short_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/unprocessed_terminator/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/unprocessed_terminator/interspersed=false/ParseAll=true"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-codex",
+      "control": "discard_trailing_arguments",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsNoInterspersed/Parse/long",
+        "TestPassUnknownFlagToArgsNoInterspersed/Parse/short_after_known_flag",
+        "TestPassUnknownFlagToArgsNoInterspersed/Parse/unknown_after_known_shorthand",
+        "TestPassUnknownFlagToArgsNoInterspersed/Parse/unknown_at_start_of_cluster",
+        "TestPassUnknownFlagToArgsNoInterspersed/Parse/unknown_shorthand_with_attached_value",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/long",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/short_after_known_flag",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/unknown_after_known_shorthand",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/unknown_at_start_of_cluster",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/unknown_shorthand_with_attached_value"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-before",
+      "control": "discard_trailing_arguments",
+      "failing_cases": [
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/Parse/unknown_in_shorthand_cluster",
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/Parse/unknown_long_flag",
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/Parse/unknown_short_flag",
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/ParseAll/unknown_in_shorthand_cluster",
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/ParseAll/unknown_long_flag",
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/ParseAll/unknown_short_flag"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-kitsu",
+      "control": "discard_trailing_arguments",
+      "failing_cases": [
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/disabling_at_end_of_cluster",
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/unknown_after_disabling_within_cluster",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/long",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/short",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/unknown_after_known_in_cluster",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/long",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/short",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/unknown_after_known_in_cluster"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-codex",
+      "control": "discard_trailing_arguments",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsNonInterspersed/Parse/long_flag",
+        "TestPassUnknownFlagToArgsNonInterspersed/Parse/long_flag_with_value_and_forwarded_terminator",
+        "TestPassUnknownFlagToArgsNonInterspersed/Parse/short_flag",
+        "TestPassUnknownFlagToArgsNonInterspersed/Parse/short_flag_with_value",
+        "TestPassUnknownFlagToArgsNonInterspersed/Parse/shorthand_cluster",
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/long_flag",
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/long_flag_with_value_and_forwarded_terminator",
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/short_flag",
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/short_flag_with_value",
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/shorthand_cluster"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-kitsu",
+      "control": "discard_trailing_arguments",
+      "failing_cases": [
+        "TestUnknownFlagPassthrough/long_flag/Parse",
+        "TestUnknownFlagPassthrough/long_flag/ParseAll",
+        "TestUnknownFlagPassthrough/short_flag_after_known_flag/Parse",
+        "TestUnknownFlagPassthrough/short_flag_after_known_flag/ParseAll",
+        "TestUnknownFlagPassthrough/unknown_after_known_shorthand/Parse",
+        "TestUnknownFlagPassthrough/unknown_after_known_shorthand/ParseAll",
+        "TestUnknownFlagPassthrough/unknown_at_start_of_cluster/Parse",
+        "TestUnknownFlagPassthrough/unknown_at_start_of_cluster/ParseAll",
+        "TestUnknownFlagPassthrough/unknown_shorthand_with_attached_value/Parse",
+        "TestUnknownFlagPassthrough/unknown_shorthand_with_attached_value/ParseAll"
+      ]
+    },
+    {
+      "suite": "original",
+      "control": "continue_after_unknown",
+      "failing_cases": []
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-kitsu",
+      "control": "continue_after_unknown",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_known_prefix_and_suffix",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_suffix_with_attached_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_suffix_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/known_before_long",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/long_before_known",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/long_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/short_before_known",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/terminator_after_unknown_is_forwarded",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_known_prefix_and_suffix",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_with_attached_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/known_before_long",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/long_before_known",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/long_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/short_before_known",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/terminator_after_unknown_is_forwarded"
+      ]
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-codex",
+      "control": "continue_after_unknown",
+      "failing_cases": [
+        "TestPassUnknownFlagsInterspersed/cluster_attached_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_attached_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_known_prefix/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_known_prefix/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_first/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_first/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/known_before_long/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/known_before_long/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/known_before_short/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/known_before_short/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/long/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/long/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/long_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/long_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/short/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/short/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/short_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/short_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/unprocessed_terminator/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/unprocessed_terminator/interspersed=false/ParseAll=true"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-codex",
+      "control": "continue_after_unknown",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsNoInterspersed/Parse/long",
+        "TestPassUnknownFlagToArgsNoInterspersed/Parse/short_after_known_flag",
+        "TestPassUnknownFlagToArgsNoInterspersed/Parse/unknown_after_known_shorthand",
+        "TestPassUnknownFlagToArgsNoInterspersed/Parse/unknown_at_start_of_cluster",
+        "TestPassUnknownFlagToArgsNoInterspersed/Parse/unknown_shorthand_with_attached_value",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/long",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/short_after_known_flag",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/unknown_after_known_shorthand",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/unknown_at_start_of_cluster",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/unknown_shorthand_with_attached_value"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-before",
+      "control": "continue_after_unknown",
+      "failing_cases": [
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/Parse/unknown_long_flag",
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/Parse/unknown_short_flag",
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/ParseAll/unknown_long_flag",
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/ParseAll/unknown_short_flag"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-kitsu",
+      "control": "continue_after_unknown",
+      "failing_cases": [
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/disabling_at_end_of_cluster",
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/unknown_after_disabling_within_cluster",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/long",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/short",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/unknown_after_known_in_cluster",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/long",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/short",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/unknown_after_known_in_cluster"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-codex",
+      "control": "continue_after_unknown",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsNonInterspersed/Parse/long_flag",
+        "TestPassUnknownFlagToArgsNonInterspersed/Parse/long_flag_with_value_and_forwarded_terminator",
+        "TestPassUnknownFlagToArgsNonInterspersed/Parse/short_flag",
+        "TestPassUnknownFlagToArgsNonInterspersed/Parse/short_flag_with_value",
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/long_flag",
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/long_flag_with_value_and_forwarded_terminator",
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/short_flag",
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/short_flag_with_value"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-kitsu",
+      "control": "continue_after_unknown",
+      "failing_cases": [
+        "TestUnknownFlagPassthrough/long_flag/Parse",
+        "TestUnknownFlagPassthrough/long_flag/ParseAll",
+        "TestUnknownFlagPassthrough/short_flag_after_known_flag/Parse",
+        "TestUnknownFlagPassthrough/short_flag_after_known_flag/ParseAll",
+        "TestUnknownFlagPassthrough/unknown_after_known_shorthand/Parse",
+        "TestUnknownFlagPassthrough/unknown_after_known_shorthand/ParseAll",
+        "TestUnknownFlagPassthrough/unknown_at_start_of_cluster/Parse",
+        "TestUnknownFlagPassthrough/unknown_at_start_of_cluster/ParseAll",
+        "TestUnknownFlagPassthrough/unknown_shorthand_with_attached_value/Parse",
+        "TestUnknownFlagPassthrough/unknown_shorthand_with_attached_value/ParseAll"
+      ]
+    },
+    {
+      "suite": "original",
+      "control": "parse_known_suffix_after_unknown",
+      "failing_cases": []
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-kitsu",
+      "control": "parse_known_suffix_after_unknown",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_known_prefix_and_suffix",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_suffix_missing_value_is_forwarded",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_suffix_with_attached_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_suffix_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_suffix_with_separate_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_unknown_first",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_known_prefix_and_suffix",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_missing_value_is_forwarded",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_with_attached_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_with_separate_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_unknown_first"
+      ]
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-codex",
+      "control": "parse_known_suffix_after_unknown",
+      "failing_cases": [
+        "TestPassUnknownFlagsInterspersed/cluster_attached_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_attached_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_following_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_following_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_known_prefix/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_known_prefix/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_first/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_first/interspersed=false/ParseAll=true"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-codex",
+      "control": "parse_known_suffix_after_unknown",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsNoInterspersed/Parse/unknown_after_known_shorthand",
+        "TestPassUnknownFlagToArgsNoInterspersed/Parse/unknown_at_start_of_cluster",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/unknown_after_known_shorthand",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/unknown_at_start_of_cluster"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-before",
+      "control": "parse_known_suffix_after_unknown",
+      "failing_cases": [
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/Parse/unknown_in_shorthand_cluster",
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/ParseAll/unknown_in_shorthand_cluster"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-kitsu",
+      "control": "parse_known_suffix_after_unknown",
+      "failing_cases": [
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/disabling_at_end_of_cluster",
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/unknown_after_disabling_within_cluster",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/leading_unknown_in_cluster",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/unknown_after_known_in_cluster",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/leading_unknown_in_cluster",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/unknown_after_known_in_cluster"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-codex",
+      "control": "parse_known_suffix_after_unknown",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsNonInterspersed/Parse/shorthand_cluster",
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/shorthand_cluster"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-kitsu",
+      "control": "parse_known_suffix_after_unknown",
+      "failing_cases": [
+        "TestUnknownFlagPassthrough/unknown_after_known_shorthand/Parse",
+        "TestUnknownFlagPassthrough/unknown_after_known_shorthand/ParseAll",
+        "TestUnknownFlagPassthrough/unknown_at_start_of_cluster/Parse",
+        "TestUnknownFlagPassthrough/unknown_at_start_of_cluster/ParseAll"
+      ]
+    },
+    {
+      "suite": "original",
+      "control": "forward_known_suffix_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat"
+      ]
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-kitsu",
+      "control": "forward_known_suffix_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/cluster_known_prefix_and_suffix",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/cluster_suffix_with_attached_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/cluster_suffix_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/cluster_suffix_with_separate_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/cluster_unknown_first",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/cluster_known_prefix_and_suffix",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/cluster_suffix_with_attached_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/cluster_suffix_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/cluster_suffix_with_separate_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/cluster_unknown_first"
+      ]
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-codex",
+      "control": "forward_known_suffix_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat",
+        "TestPassUnknownFlagsInterspersed/cluster_attached_value/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_attached_value/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_following_value/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_following_value/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_known_prefix/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_known_prefix/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_first/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_first/interspersed=true/ParseAll=true"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-codex",
+      "control": "forward_known_suffix_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-before",
+      "control": "forward_known_suffix_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-kitsu",
+      "control": "forward_known_suffix_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat",
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/disabling_at_end_of_cluster",
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/unknown_after_disabling_within_cluster",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-codex",
+      "control": "forward_known_suffix_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-kitsu",
+      "control": "forward_known_suffix_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat",
+        "TestUnknownFlagPassthrough/interspersed_cluster_and_long_flag/Parse",
+        "TestUnknownFlagPassthrough/interspersed_cluster_and_long_flag/ParseAll"
+      ]
+    },
+    {
+      "suite": "original",
+      "control": "stop_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat"
+      ]
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-kitsu",
+      "control": "stop_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/cluster_known_prefix_and_suffix",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/cluster_suffix_with_attached_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/cluster_suffix_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/cluster_suffix_with_separate_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/known_before_long",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/long_before_known",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/long_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/long_with_separate_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/short_before_known",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed/terminator_after_unknown_is_forwarded",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/cluster_known_prefix_and_suffix",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/cluster_suffix_with_attached_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/cluster_suffix_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/cluster_suffix_with_separate_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/known_before_long",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/long_before_known",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/long_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/long_with_separate_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/short_before_known",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed/terminator_after_unknown_is_forwarded"
+      ]
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-codex",
+      "control": "stop_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat",
+        "TestPassUnknownFlagsInterspersed/cluster_attached_value/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_attached_value/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_following_value/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_following_value/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_known_prefix/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_known_prefix/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_first/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_first/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_value/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_value/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/known_before_long/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/known_before_long/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/known_before_short/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/known_before_short/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/long/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/long/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/long_value/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/long_value/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/short/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/short/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/short_value/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/short_value/interspersed=true/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/unprocessed_terminator/interspersed=true/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/unprocessed_terminator/interspersed=true/ParseAll=true"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-codex",
+      "control": "stop_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-before",
+      "control": "stop_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-kitsu",
+      "control": "stop_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat",
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/disabling_at_end_of_cluster",
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/unknown_after_disabling_within_cluster",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/interspersed",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/interspersed"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-codex",
+      "control": "stop_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-kitsu",
+      "control": "stop_in_interspersed_mode",
+      "failing_cases": [
+        "TestIgnoreUnknownFlagsAndPassToArgs",
+        "TestIgnoreUnknownFlagsAndPassToArgsBackwardsCompat",
+        "TestUnknownFlagPassthrough/interspersed_cluster_and_long_flag/Parse",
+        "TestUnknownFlagPassthrough/interspersed_cluster_and_long_flag/ParseAll"
+      ]
+    },
+    {
+      "suite": "original",
+      "control": "drop_attached_unknown_value",
+      "failing_cases": []
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-kitsu",
+      "control": "drop_attached_unknown_value",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/cluster_suffix_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/Parse/non_interspersed/long_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/long_with_equals_value"
+      ]
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-codex",
+      "control": "drop_attached_unknown_value",
+      "failing_cases": [
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/long_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/long_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/short_value/interspersed=false/ParseAll=false",
+        "TestPassUnknownFlagsInterspersed/short_value/interspersed=false/ParseAll=true"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-codex",
+      "control": "drop_attached_unknown_value",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsNoInterspersed/Parse/unknown_shorthand_with_attached_value",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/unknown_shorthand_with_attached_value"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-before",
+      "control": "drop_attached_unknown_value",
+      "failing_cases": []
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-kitsu",
+      "control": "drop_attached_unknown_value",
+      "failing_cases": [
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/disabling_at_end_of_cluster",
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/unknown_after_disabling_within_cluster"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-codex",
+      "control": "drop_attached_unknown_value",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsNonInterspersed/Parse/long_flag_with_value_and_forwarded_terminator",
+        "TestPassUnknownFlagToArgsNonInterspersed/Parse/short_flag_with_value",
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/long_flag_with_value_and_forwarded_terminator",
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/short_flag_with_value"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-kitsu",
+      "control": "drop_attached_unknown_value",
+      "failing_cases": [
+        "TestUnknownFlagPassthrough/unknown_shorthand_with_attached_value/Parse",
+        "TestUnknownFlagPassthrough/unknown_shorthand_with_attached_value/ParseAll"
+      ]
+    },
+    {
+      "suite": "original",
+      "control": "skip_parseall_callback_in_passthrough",
+      "failing_cases": []
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-kitsu",
+      "control": "skip_parseall_callback_in_passthrough",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_known_prefix_and_suffix",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_missing_value_is_forwarded",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_with_attached_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_with_equals_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/cluster_suffix_with_separate_value",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/non_interspersed/known_before_long"
+      ]
+    },
+    {
+      "suite": "kitsu-vs-codex-20261117/pflag-unknown-flags-r1-codex",
+      "control": "skip_parseall_callback_in_passthrough",
+      "failing_cases": [
+        "TestPassUnknownFlagsInterspersed/cluster_attached_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_following_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_known_prefix/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/cluster_unknown_value/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/known_before_long/interspersed=false/ParseAll=true",
+        "TestPassUnknownFlagsInterspersed/known_before_short/interspersed=false/ParseAll=true"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-codex",
+      "control": "skip_parseall_callback_in_passthrough",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/short_after_known_flag",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/unknown_after_known_shorthand",
+        "TestPassUnknownFlagToArgsNoInterspersed/ParseAll/unknown_shorthand_with_attached_value"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-before",
+      "control": "skip_parseall_callback_in_passthrough",
+      "failing_cases": [
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/ParseAll/unknown_in_shorthand_cluster",
+        "TestPassUnknownFlagsToArgsWithoutInterspersed/ParseAll/unknown_short_flag"
+      ]
+    },
+    {
+      "suite": "pflag-sol62-three/pflag-kitsu",
+      "control": "skip_parseall_callback_in_passthrough",
+      "failing_cases": [
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/disabling_at_end_of_cluster",
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges/unknown_after_disabling_within_cluster",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/short",
+        "TestPassUnknownFlagToArgsInterspersed/ParseAll/unknown_after_known_in_cluster"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-codex",
+      "control": "skip_parseall_callback_in_passthrough",
+      "failing_cases": [
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/long_flag_with_value_and_forwarded_terminator",
+        "TestPassUnknownFlagToArgsNonInterspersed/ParseAll/shorthand_cluster"
+      ]
+    },
+    {
+      "suite": "daily-audit-pair-nov18/pflag-kitsu",
+      "control": "skip_parseall_callback_in_passthrough",
+      "failing_cases": [
+        "TestUnknownFlagPassthrough/short_flag_after_known_flag/ParseAll",
+        "TestUnknownFlagPassthrough/unknown_after_known_shorthand/ParseAll",
+        "TestUnknownFlagPassthrough/unknown_shorthand_with_attached_value/ParseAll"
+      ]
+    }
+  ]
+}

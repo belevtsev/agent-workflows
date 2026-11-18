@@ -1,0 +1,299 @@
+{
+  "source": "Archived paid pflag daily pair. Counted event_msg token_count payloads with info once. Sums of last_token_usage must equal the final cumulative counters and the recorded session total.",
+  "sessions": [
+    {
+      "arm": "codex",
+      "role": "coordinator",
+      "trace_sha256": "532ed3672450fd429141aa39c7b254e474e79f0ace6b620554a1c14e8ed14ff1",
+      "accounted_responses": 14,
+      "totals": {
+        "input_tokens": 389045,
+        "cached_input_tokens": 358912,
+        "output_tokens": 5562,
+        "total_tokens": 394607
+      },
+      "usage_per_response": [
+        {
+          "input_tokens": 12811,
+          "cached_input_tokens": 10880,
+          "output_tokens": 190,
+          "total_tokens": 13001
+        },
+        {
+          "input_tokens": 13603,
+          "cached_input_tokens": 12672,
+          "output_tokens": 179,
+          "total_tokens": 13782
+        },
+        {
+          "input_tokens": 15921,
+          "cached_input_tokens": 10880,
+          "output_tokens": 213,
+          "total_tokens": 16134
+        },
+        {
+          "input_tokens": 25500,
+          "cached_input_tokens": 15744,
+          "output_tokens": 1278,
+          "total_tokens": 26778
+        },
+        {
+          "input_tokens": 27849,
+          "cached_input_tokens": 25472,
+          "output_tokens": 1294,
+          "total_tokens": 29143
+        },
+        {
+          "input_tokens": 29167,
+          "cached_input_tokens": 27776,
+          "output_tokens": 77,
+          "total_tokens": 29244
+        },
+        {
+          "input_tokens": 29302,
+          "cached_input_tokens": 29056,
+          "output_tokens": 264,
+          "total_tokens": 29566
+        },
+        {
+          "input_tokens": 30595,
+          "cached_input_tokens": 29056,
+          "output_tokens": 569,
+          "total_tokens": 31164
+        },
+        {
+          "input_tokens": 31188,
+          "cached_input_tokens": 30336,
+          "output_tokens": 46,
+          "total_tokens": 31234
+        },
+        {
+          "input_tokens": 31291,
+          "cached_input_tokens": 31104,
+          "output_tokens": 191,
+          "total_tokens": 31482
+        },
+        {
+          "input_tokens": 33426,
+          "cached_input_tokens": 31104,
+          "output_tokens": 313,
+          "total_tokens": 33739
+        },
+        {
+          "input_tokens": 35579,
+          "cached_input_tokens": 33408,
+          "output_tokens": 554,
+          "total_tokens": 36133
+        },
+        {
+          "input_tokens": 36228,
+          "cached_input_tokens": 35456,
+          "output_tokens": 162,
+          "total_tokens": 36390
+        },
+        {
+          "input_tokens": 36585,
+          "cached_input_tokens": 35968,
+          "output_tokens": 232,
+          "total_tokens": 36817
+        }
+      ]
+    },
+    {
+      "arm": "kitsu",
+      "role": "coordinator",
+      "trace_sha256": "d9a4c93cac09cf314406c839f77db71501c57dbc43ce0184af0b36fcab95a6fb",
+      "accounted_responses": 23,
+      "totals": {
+        "input_tokens": 738544,
+        "cached_input_tokens": 699264,
+        "output_tokens": 6544,
+        "total_tokens": 745088
+      },
+      "usage_per_response": [
+        {
+          "input_tokens": 12813,
+          "cached_input_tokens": 5504,
+          "output_tokens": 158,
+          "total_tokens": 12971
+        },
+        {
+          "input_tokens": 14221,
+          "cached_input_tokens": 12672,
+          "output_tokens": 168,
+          "total_tokens": 14389
+        },
+        {
+          "input_tokens": 18356,
+          "cached_input_tokens": 14208,
+          "output_tokens": 229,
+          "total_tokens": 18585
+        },
+        {
+          "input_tokens": 25066,
+          "cached_input_tokens": 18304,
+          "output_tokens": 178,
+          "total_tokens": 25244
+        },
+        {
+          "input_tokens": 26114,
+          "cached_input_tokens": 24960,
+          "output_tokens": 1474,
+          "total_tokens": 27588
+        },
+        {
+          "input_tokens": 27612,
+          "cached_input_tokens": 25984,
+          "output_tokens": 77,
+          "total_tokens": 27689
+        },
+        {
+          "input_tokens": 27747,
+          "cached_input_tokens": 27520,
+          "output_tokens": 405,
+          "total_tokens": 28152
+        },
+        {
+          "input_tokens": 29795,
+          "cached_input_tokens": 27520,
+          "output_tokens": 731,
+          "total_tokens": 30526
+        },
+        {
+          "input_tokens": 30550,
+          "cached_input_tokens": 29568,
+          "output_tokens": 141,
+          "total_tokens": 30691
+        },
+        {
+          "input_tokens": 31480,
+          "cached_input_tokens": 30336,
+          "output_tokens": 78,
+          "total_tokens": 31558
+        },
+        {
+          "input_tokens": 32432,
+          "cached_input_tokens": 31360,
+          "output_tokens": 190,
+          "total_tokens": 32622
+        },
+        {
+          "input_tokens": 33526,
+          "cached_input_tokens": 32384,
+          "output_tokens": 85,
+          "total_tokens": 33611
+        },
+        {
+          "input_tokens": 34595,
+          "cached_input_tokens": 33408,
+          "output_tokens": 314,
+          "total_tokens": 34909
+        },
+        {
+          "input_tokens": 34935,
+          "cached_input_tokens": 34432,
+          "output_tokens": 310,
+          "total_tokens": 35245
+        },
+        {
+          "input_tokens": 35549,
+          "cached_input_tokens": 34688,
+          "output_tokens": 576,
+          "total_tokens": 36125
+        },
+        {
+          "input_tokens": 37635,
+          "cached_input_tokens": 35456,
+          "output_tokens": 217,
+          "total_tokens": 37852
+        },
+        {
+          "input_tokens": 38079,
+          "cached_input_tokens": 37504,
+          "output_tokens": 196,
+          "total_tokens": 38275
+        },
+        {
+          "input_tokens": 40696,
+          "cached_input_tokens": 38016,
+          "output_tokens": 58,
+          "total_tokens": 40754
+        },
+        {
+          "input_tokens": 40874,
+          "cached_input_tokens": 40576,
+          "output_tokens": 206,
+          "total_tokens": 41080
+        },
+        {
+          "input_tokens": 41155,
+          "cached_input_tokens": 40832,
+          "output_tokens": 111,
+          "total_tokens": 41266
+        },
+        {
+          "input_tokens": 41481,
+          "cached_input_tokens": 41088,
+          "output_tokens": 205,
+          "total_tokens": 41686
+        },
+        {
+          "input_tokens": 41768,
+          "cached_input_tokens": 41344,
+          "output_tokens": 116,
+          "total_tokens": 41884
+        },
+        {
+          "input_tokens": 42065,
+          "cached_input_tokens": 41600,
+          "output_tokens": 321,
+          "total_tokens": 42386
+        }
+      ]
+    },
+    {
+      "arm": "kitsu",
+      "role": "reviewer",
+      "trace_sha256": "744fbfcdf07872a12717e4ce6850a788e012977faae1c00957884540bbc5219e",
+      "accounted_responses": 5,
+      "totals": {
+        "input_tokens": 95621,
+        "cached_input_tokens": 52480,
+        "output_tokens": 839,
+        "total_tokens": 96460
+      },
+      "usage_per_response": [
+        {
+          "input_tokens": 12371,
+          "cached_input_tokens": 0,
+          "output_tokens": 141,
+          "total_tokens": 12512
+        },
+        {
+          "input_tokens": 14711,
+          "cached_input_tokens": 12160,
+          "output_tokens": 131,
+          "total_tokens": 14842
+        },
+        {
+          "input_tokens": 20783,
+          "cached_input_tokens": 14464,
+          "output_tokens": 157,
+          "total_tokens": 20940
+        },
+        {
+          "input_tokens": 23716,
+          "cached_input_tokens": 20608,
+          "output_tokens": 312,
+          "total_tokens": 24028
+        },
+        {
+          "input_tokens": 24040,
+          "cached_input_tokens": 5248,
+          "output_tokens": 98,
+          "total_tokens": 24138
+        }
+      ]
+    }
+  ]
+}

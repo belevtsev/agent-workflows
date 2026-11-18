@@ -21,12 +21,16 @@ parser.add_argument("--switch-at-commit", action="store_true",
                     help="Switch branches at the same revision after verification and recover the intended commit")
 parser.add_argument("--coordinator-recovery", action="store_true",
                     help="Check whether task list and next recover the saved coordinator context before resuming")
+parser.add_argument("--unreadable-neighbor", action="store_true",
+                    help="Check coordinator recovery with a truncated unrelated daily record")
 parser.add_argument("--retry-repository-check", action="store_true",
                     help="Inject a single declared-suite failure, resume, and replay a lost Kitsu success response")
 parser.add_argument("--previous-cli", type=Path, help="Compare coordinator reads with an earlier Kitsu executable in the same frozen checkout")
 args = parser.parse_args()
 if args.previous_cli and not args.coordinator_recovery:
     parser.error("--previous-cli requires --coordinator-recovery")
+if args.unreadable_neighbor and not args.coordinator_recovery:
+    parser.error("--unreadable-neighbor requires --coordinator-recovery")
 if args.pairs < 1:
     parser.error("--pairs must be positive")
 
@@ -115,7 +119,12 @@ def check_coordinator_reads(run, previous):
         out = run("kitsu", "task", *args, "--json").stdout
         return json.loads(out), len(out.encode())
 
-    index, _ = read("list")
+    if args.unreadable_neighbor:
+        index = json.loads(run("kitsu", "task", "list", "--json", status=1).stdout)
+        other = next(row for row in index["tasks"] if row["task"] == "unrelated")
+        assert index["list_error"] and other["stage"] == "unreadable" and other["daily_error"]
+    else:
+        index, _ = read("list")
     saved = next(row["daily"] for row in index["tasks"] if row["task"] == task)
     assert saved["last_action"] == "review" and record["request"].startswith(saved["request"].rstrip("…"))
     view, next_bytes = read("next", task)
@@ -127,7 +136,12 @@ def check_coordinator_reads(run, previous):
         assert view["prior_notes"][action] == expected
     assert view["review_current"] and view["latest_review"] == reviews[-1] and view["request"] == record["request"]
     assert view["scope"] == record["scope"] and view["pause"]["pending_action"] == "verify"
+    terminal = run("kitsu", "task", "next", task).stdout
+    for fact in (record["request"], *view["prior_notes"].values(), reviews[-1]["note"],
+                 "Paused before verify", "repository checks: unchecked", "working tree"):
+        assert fact in terminal, f"Missing from terminal handoff: {fact}"
     result = {"next_bytes": next_bytes, "show_bytes": show_bytes,
+              "terminal_recovered_request_notes_review_pause_and_delivery": True,
               "request_intake_repair_review_scope_and_pause_matched": True}
     if previous:
         prev_next = previous("kitsu", "task", "next", task, "--json").stdout
@@ -161,6 +175,9 @@ def finish(root, arm):
     if arm == "kitsu":
         (work / ledger_path).parent.mkdir()
         (work / ledger_path).write_bytes(ledger)
+        neighbor = (work / ledger_path).with_name("task-harness-unrelated.json")
+        if args.unreadable_neighbor:
+            neighbor.write_bytes(b"{")
 
     def command(*argv, status=0):
         return json.loads(run("kitsu", "task", argv[0], task, "--brief", *argv[1:], status=status).stdout)
@@ -240,6 +257,9 @@ def finish(root, arm):
     publication = {"publication": publish_and_recover(run, command, arm)} if args.local_publication else {}
     if coordinator_reads is not None:
         publication["coordinator_reads"] = coordinator_reads
+        if args.unreadable_neighbor:
+            assert neighbor.read_bytes() == b"{"
+            coordinator_reads["unreadable_neighbor_reported_and_preserved"] = True
     if args.retry_repository_check:
         launches = (root / "tmp/declared-launches").read_text().splitlines()
         assert launches == ["launch", "launch"]

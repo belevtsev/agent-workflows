@@ -59,7 +59,7 @@ func TestDelegatedWorkRecovery(t *testing.T) {
 			const worker = "native-implementer"
 			const repairer = "native-repairer"
 			f := flow{t: t, repo: r, id: "delegated-response"}
-			f.call(0, "open", "--entry", "implement", "--until", "verify", "--repair", "--request", "Have a developer agent finish this partial fix and verify the exact ready response.")
+			f.call(0, "open", "--require-review", "--entry", "implement", "--until", "verify", "--repair", "--request", "Have a developer agent finish this partial fix and verify the exact ready response.")
 			f.record("intake", owner, "Finish app.txt and preserve both sets of notes.")
 			f.want("implement")
 			prior := stageNext(&f).Candidate
@@ -140,7 +140,7 @@ func TestLinkedDeveloperCanReturnAfterDeadline(t *testing.T) {
 	r.Git("add", "app.txt")
 	r.Git("commit", "-qm", "Starting response")
 	f := flow{t: t, repo: r, id: "late-developer"}
-	f.call(0, "open", "--entry", "implement", "--until", "verify", "--request", "Finish the exact response.", "--time-limit", "1h")
+	f.call(0, "open", "--require-review", "--entry", "implement", "--until", "verify", "--request", "Finish the exact response.", "--time-limit", "1h")
 	f.record("intake", "coordinator", "App responds with ready.")
 	claim := reserveDeveloperWork(&f, "coordinator", "codex")
 	if claim.Deadline.IsZero() {

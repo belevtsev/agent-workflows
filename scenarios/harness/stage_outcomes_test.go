@@ -497,7 +497,7 @@ func TestStageOutcomePartialRepair(t *testing.T) {
 
 	f := flow{t: t, repo: r, id: "partial-label-fix"}
 	f.call(0, "open",
-		"--entry", "verify", "--until", "verify", "--repair",
+		"--require-review", "--entry", "verify", "--until", "verify", "--repair",
 		"--request", "Verify the partial magnitude fix, review any repair, and stop after verification.",
 	)
 	f.record("intake", "coordinator", "The public Label function returns the magnitude for the agreed input range.")
@@ -770,4 +770,99 @@ func TestStageOutcomeExplicitPublication(t *testing.T) {
 	stageHistory(f, "intake", "test", "publish")
 	before.check(t, r)
 	t.Logf("start %s, prior commit rejected with exit 1, exact commit confirmed at %s with exit 0", before.head, target)
+}
+
+func TestReadOnlyPlanKeepsOpeningCandidateAcrossResume(t *testing.T) {
+	for _, phase := range []string{"intake", "plan"} {
+		for _, change := range []string{"worktree", "filtered", "untracked", "index", "parent"} {
+			t.Run(phase+"/"+change, func(t *testing.T) {
+				r := newStageRepo(t)
+				r.Write(".gitattributes", "idea.txt text eol=lf\n")
+				r.Write(".gitignore", "scratch/\n")
+				r.Write("idea.txt", "original idea\n")
+				r.Git("add", ".gitattributes", ".gitignore", "idea.txt")
+				r.Git("commit", "-qm", "original")
+				head := r.Git("rev-parse", "HEAD")
+				r.Write("idea.txt", "user staged idea\n")
+				r.Git("add", "idea.txt")
+				r.Write("idea.txt", "user working idea\n")
+				r.Write("notes.txt", "user draft\n")
+				f := flow{t: t, repo: r, id: "plan-scope"}
+				f.call(0, "open", "--entry", "plan", "--until", "plan", "--request", "Diagnose only, leave my edits intact")
+				if phase == "plan" {
+					f.record("intake", "host", "Inspect the current idea")
+				}
+				ticket := f.state.Ticket
+				r.Write("scratch/probe.log", "ignored diagnostic output\n")
+				switch change {
+				case "worktree":
+					r.Write("idea.txt", "different working idea\n")
+				case "filtered":
+					before := r.Git("hash-object", "--path=idea.txt", "idea.txt")
+					r.Write("idea.txt", "user working idea\r\n")
+					if after := r.Git("hash-object", "--path=idea.txt", "idea.txt"); before != after {
+						t.Fatal("fixture should have an unchanged filtered blob")
+					}
+				case "untracked":
+					r.Write("extra.txt", "concurrent draft\n")
+				case "index":
+					r.Git("add", "idea.txt")
+				case "parent":
+					// Advance HEAD while preserving the user's distinct working and staged bytes.
+					newHead := r.Git("commit-tree", head+"^{tree}", "-p", head, "-m", "concurrent commit")
+					r.Git("update-ref", "HEAD", newHead, head)
+				}
+				changed := freezeStageWorkspace(r, "idea.txt", "notes.txt")
+				f.call(1, "record", phase, "--actor", "host", "--ticket", ticket, "--note", "Unconfirmed result")
+				if phase == "intake" {
+					// Intake may describe changed facts. It cannot certify a completed plan.
+					f.call(0, "next")
+					f.record("intake", "host", "The inputs changed since opening")
+					f.want("blocked")
+				}
+				reported := "working files"
+				switch change {
+				case "index":
+					reported = "staged files"
+				case "parent":
+					reported = "Git parents"
+				}
+				for _, flag := range []string{"--brief", "--json"} {
+					receipt := stageJSON[stageReceipt](t, r.Kitsu("task", "next", f.id, flag))
+					if receipt.Next != "blocked" || receipt.Ticket != "" || !strings.Contains(receipt.Delivery, "("+reported+")") {
+						t.Fatalf("issued a new ticket for changed read-only inputs: %+v", receipt)
+					}
+				}
+				if out := r.Kitsu("task", "next", f.id); out.Code != 0 || !strings.Contains(out.Stdout, "planning") {
+					t.Fatal(out.Output())
+				}
+				changed.check(t, r)
+				// The developer restores this fixture deliberately. Kitsu only observes it.
+				switch change {
+				case "worktree", "filtered":
+					r.Write("idea.txt", "user working idea\n")
+				case "untracked":
+					if err := os.Remove(r.Path("extra.txt")); err != nil {
+						t.Fatal(err)
+					}
+				case "index":
+					r.Write("idea.txt", "user staged idea\n")
+					r.Git("add", "idea.txt")
+					r.Write("idea.txt", "user working idea\n")
+				case "parent":
+					r.Git("update-ref", "HEAD", head)
+				}
+				f.call(0, "next")
+				if phase == "plan" && f.state.Ticket != ticket {
+					t.Fatal("lost original planning ticket on recovery")
+				}
+				f.record("plan", "host", "Keep the numeric-string question open")
+				f.want("done")
+				r.Write("notes.txt", "later developer work\n")
+				f.call(0, "next")
+				f.want("done")
+				stageHistory(&f, "intake", "plan")
+			})
+		}
+	}
 }

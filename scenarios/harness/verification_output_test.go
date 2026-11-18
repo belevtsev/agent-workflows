@@ -107,11 +107,11 @@ func TestBriefGateRetainsSourceChangedRunAcrossRetry(t *testing.T) {
 		Verified bool
 		Run      string `json:"run_id"`
 		Log      struct {
-			Run           string `json:"run_id"`
-			Outcome, Path string
+			Run                   string `json:"run_id"`
+			Outcome, Path, Detail string
 		} `json:"verification_log"`
 	}
-	if err := json.Unmarshal([]byte(failed.Stdout), &receipt); err != nil || failed.Code != 5 || receipt.Verified || receipt.Log.Outcome != "source_changed" || receipt.Log.Run == receipt.Run {
+	if err := json.Unmarshal([]byte(failed.Stdout), &receipt); err != nil || failed.Code != 5 || receipt.Verified || receipt.Log.Outcome != "source_changed" || receipt.Log.Run == receipt.Run || !strings.Contains(receipt.Log.Detail, "README.md") {
 		t.Fatal("source-changing check inherited other evidence", failed.Output(), err)
 	}
 	detail, err := os.ReadFile(receipt.Log.Path)
@@ -126,5 +126,56 @@ func TestBriefGateRetainsSourceChangedRunAcrossRetry(t *testing.T) {
 	retry := try()
 	if err := json.Unmarshal([]byte(retry.Stdout), &receipt); err != nil || retry.Code != 0 || !receipt.Verified || receipt.Log.Outcome != "passed" || receipt.Log.Run != run {
 		t.Fatal("retry did not recover the valid assertion and recheck the gate", err, retry.Output())
+	}
+}
+
+func TestFirstCommitRecoversWhenPassingAssertionCreatesBuildOutput(t *testing.T) {
+	r := kitsutest.NewRepo(t)
+	f := flow{t: t, repo: r, id: "first"}
+	f.call(0, "open", "--request", "Create the greeting and commit it", "--until", "deliver", "--entry", "implement", "--commit")
+	f.record("intake", "host", "The greeting must be hello")
+	r.Write("hello.txt", "hello\n")
+	f.record("implement", "host", "Added the greeting")
+	verify := func() kitsutest.Result {
+		return r.Kitsu("task", "test", f.id, "--brief", "--ticket", f.state.Ticket, "--expect", "the greeting is hello", "--",
+			"sh", "-c", "test \"$(cat hello.txt)\" = hello && mkdir -p build-cache && echo ok > 'build-cache/test  result'")
+	}
+	bad := verify()
+	type receipt struct {
+		Next, Ticket string
+		Verified     bool
+		Log          struct {
+			Outcome, Detail string
+			Status          *int `json:"exit_status"`
+		} `json:"verification_log"`
+	}
+	for _, result := range []kitsutest.Result{bad, r.Kitsu("task", "next", f.id, "--json")} {
+		var report receipt
+		if err := json.Unmarshal([]byte(result.Stdout), &report); err != nil || report.Verified || report.Next != "verify" ||
+			report.Log.Status == nil || *report.Log.Status != 0 || report.Log.Outcome != "source_changed" ||
+			!strings.Contains(report.Log.Detail, "build-cache/test  result") {
+			t.Fatalf("missing changed input diagnostic: %v %s", err, result.Output())
+		}
+	}
+	if bad.Code != 5 || !strings.Contains(r.Kitsu("task", "next", f.id).Stdout, "build-cache/test  result") {
+		t.Fatal("terminal recovery should identify the generated file")
+	}
+	r.Write(".gitignore", "/build-cache/\n")
+	f.call(0, "next")
+	good := verify()
+	var verified struct {
+		Ticket   string
+		Verified bool
+		Log      map[string]any `json:"verification_log"`
+	}
+	if good.Code != 0 || json.Unmarshal([]byte(good.Stdout), &verified) != nil || !verified.Verified || verified.Log["detail"] != nil {
+		t.Fatal("unexpected success receipt", good.Output())
+	}
+	r.Git("add", "--", ".gitignore", "hello.txt")
+	f.call(0, "commit", "--ticket", verified.Ticket, "--message", "Add greeting")
+	f.call(0, "next")
+	f.want("done")
+	if r.Git("rev-list", "--count", "HEAD") != "1" || r.Git("ls-tree", "--name-only", "HEAD") != ".gitignore\nhello.txt" || r.Git("status", "--porcelain") != "" {
+		t.Fatal("expected exactly one clean initial commit without the generated cache")
 	}
 }

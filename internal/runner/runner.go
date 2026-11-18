@@ -159,7 +159,7 @@ func classify(ctx context.Context, repo *gitx.Repo, st *store.Store, job Job, en
 	}
 	// A file the check itself wrote is the usual cause, and the next run
 	// would pass only because the file is then already there.
-	end.detail += "; when the check writes these files, list them in .gitignore or write them outside the working tree"
+	end.detail += "; inspect tracked edits; for generated outputs, use an ignored directory or write outside the working tree"
 	return end
 }
 

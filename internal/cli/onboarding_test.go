@@ -116,7 +116,7 @@ func onboardingReadyFixture(t *testing.T) (program, capture string) {
 	}
 	write(filepath.Join(dir, "config.toml"), "[plugins.\"kitsu@kitsu\"]\nenabled = true\n")
 	write(filepath.Join(plugin, ".codex-plugin", "plugin.json"), `{"name":"kitsu","version":"1","skills":"./skills","hooks":"./hooks.json"}`)
-	write(filepath.Join(plugin, "skills", "task", "SKILL.md"), "---\nname: task\ndescription: Coordinate a Kitsu task.\n---\n<!-- kitsu-task-harness: 2 -->\nUse the host workflow.\n")
+	write(filepath.Join(plugin, "skills", "task", "SKILL.md"), "---\nname: task\ndescription: Coordinate a Kitsu task.\n---\n<!-- kitsu-task-harness: 3 -->\nUse the host workflow.\n")
 	events := map[string]any{}
 	for _, event := range []string{"SessionStart", "PreToolUse", "SubagentStop", "SessionEnd"} {
 		command := "tokens record"

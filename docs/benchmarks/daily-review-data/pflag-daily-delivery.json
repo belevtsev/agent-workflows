@@ -1,0 +1,315 @@
+{
+  "base": "4672a8345aca54a159fe9c95dc89d9e306a275ac",
+  "tree": "6c602f6ee830267ed161d15387e299e932b02950",
+  "grader_sha256": "32ddc28eda2ce8d734260ab8aedd2321adde337a1e8aed06c23cbc939e924526",
+  "binary_sha256": "b3d28e64a28c88b4e4a1aa1ca395d66574e5d54ea4a64a2464a5e0a01e2b521f",
+  "go": "go version go1.26.4 linux/amd64",
+  "model_calls": 0,
+  "compact": false,
+  "baseline_acceptance": {
+    "TestPilotUnknownFlagStopsNonInterspersed": "fail",
+    "TestPilotInterspersedPassthroughStillParsesKnown": "pass"
+  },
+  "median_seconds": {
+    "plain": 1.3354685000000002,
+    "kitsu": 1.699004
+  },
+  "runs": [
+    {
+      "pair": 1,
+      "arm": "kitsu",
+      "seconds": 1.697994,
+      "commands": 8,
+      "actions": [
+        {
+          "action": "task open",
+          "seconds": 0.048921
+        },
+        {
+          "action": "task record",
+          "seconds": 0.050816
+        },
+        {
+          "action": "regression on baseline",
+          "seconds": 0.660753
+        },
+        {
+          "action": "check diff whitespace",
+          "seconds": 0.004066
+        },
+        {
+          "action": "task record",
+          "seconds": 0.057788
+        },
+        {
+          "action": "task test",
+          "seconds": 0.795337
+        },
+        {
+          "action": "stage",
+          "seconds": 0.003384
+        },
+        {
+          "action": "task commit",
+          "seconds": 0.076306
+        }
+      ],
+      "clean_commit": true,
+      "acceptance_passed": 2,
+      "regression_failed_on_base": true
+    },
+    {
+      "pair": 1,
+      "arm": "plain",
+      "seconds": 1.335757,
+      "commands": 5,
+      "actions": [
+        {
+          "action": "regression on baseline",
+          "seconds": 0.670669
+        },
+        {
+          "action": "check diff whitespace",
+          "seconds": 0.00408
+        },
+        {
+          "action": "verify",
+          "seconds": 0.65278
+        },
+        {
+          "action": "stage",
+          "seconds": 0.003402
+        },
+        {
+          "action": "commit",
+          "seconds": 0.004363
+        }
+      ],
+      "clean_commit": true,
+      "acceptance_passed": 2,
+      "regression_failed_on_base": true
+    },
+    {
+      "pair": 2,
+      "arm": "plain",
+      "seconds": 1.345718,
+      "commands": 5,
+      "actions": [
+        {
+          "action": "regression on baseline",
+          "seconds": 0.660531
+        },
+        {
+          "action": "check diff whitespace",
+          "seconds": 0.004305
+        },
+        {
+          "action": "verify",
+          "seconds": 0.672067
+        },
+        {
+          "action": "stage",
+          "seconds": 0.003572
+        },
+        {
+          "action": "commit",
+          "seconds": 0.004756
+        }
+      ],
+      "clean_commit": true,
+      "acceptance_passed": 2,
+      "regression_failed_on_base": true
+    },
+    {
+      "pair": 2,
+      "arm": "kitsu",
+      "seconds": 1.700014,
+      "commands": 8,
+      "actions": [
+        {
+          "action": "task open",
+          "seconds": 0.050459
+        },
+        {
+          "action": "task record",
+          "seconds": 0.055155
+        },
+        {
+          "action": "regression on baseline",
+          "seconds": 0.658429
+        },
+        {
+          "action": "check diff whitespace",
+          "seconds": 0.004088
+        },
+        {
+          "action": "task record",
+          "seconds": 0.061443
+        },
+        {
+          "action": "task test",
+          "seconds": 0.788456
+        },
+        {
+          "action": "stage",
+          "seconds": 0.003111
+        },
+        {
+          "action": "task commit",
+          "seconds": 0.078235
+        }
+      ],
+      "clean_commit": true,
+      "acceptance_passed": 2,
+      "regression_failed_on_base": true
+    },
+    {
+      "pair": 3,
+      "arm": "kitsu",
+      "seconds": 1.67642,
+      "commands": 8,
+      "actions": [
+        {
+          "action": "task open",
+          "seconds": 0.049779
+        },
+        {
+          "action": "task record",
+          "seconds": 0.054134
+        },
+        {
+          "action": "regression on baseline",
+          "seconds": 0.650134
+        },
+        {
+          "action": "check diff whitespace",
+          "seconds": 0.003915
+        },
+        {
+          "action": "task record",
+          "seconds": 0.060603
+        },
+        {
+          "action": "task test",
+          "seconds": 0.777426
+        },
+        {
+          "action": "stage",
+          "seconds": 0.003137
+        },
+        {
+          "action": "task commit",
+          "seconds": 0.076666
+        }
+      ],
+      "clean_commit": true,
+      "acceptance_passed": 2,
+      "regression_failed_on_base": true
+    },
+    {
+      "pair": 3,
+      "arm": "plain",
+      "seconds": 1.333213,
+      "commands": 5,
+      "actions": [
+        {
+          "action": "regression on baseline",
+          "seconds": 0.653864
+        },
+        {
+          "action": "check diff whitespace",
+          "seconds": 0.004141
+        },
+        {
+          "action": "verify",
+          "seconds": 0.666685
+        },
+        {
+          "action": "stage",
+          "seconds": 0.003508
+        },
+        {
+          "action": "commit",
+          "seconds": 0.004538
+        }
+      ],
+      "clean_commit": true,
+      "acceptance_passed": 2,
+      "regression_failed_on_base": true
+    },
+    {
+      "pair": 4,
+      "arm": "plain",
+      "seconds": 1.33518,
+      "commands": 5,
+      "actions": [
+        {
+          "action": "regression on baseline",
+          "seconds": 0.653763
+        },
+        {
+          "action": "check diff whitespace",
+          "seconds": 0.004137
+        },
+        {
+          "action": "verify",
+          "seconds": 0.668158
+        },
+        {
+          "action": "stage",
+          "seconds": 0.003485
+        },
+        {
+          "action": "commit",
+          "seconds": 0.004833
+        }
+      ],
+      "clean_commit": true,
+      "acceptance_passed": 2,
+      "regression_failed_on_base": true
+    },
+    {
+      "pair": 4,
+      "arm": "kitsu",
+      "seconds": 1.702575,
+      "commands": 8,
+      "actions": [
+        {
+          "action": "task open",
+          "seconds": 0.050729
+        },
+        {
+          "action": "task record",
+          "seconds": 0.053598
+        },
+        {
+          "action": "regression on baseline",
+          "seconds": 0.659219
+        },
+        {
+          "action": "check diff whitespace",
+          "seconds": 0.004214
+        },
+        {
+          "action": "task record",
+          "seconds": 0.057121
+        },
+        {
+          "action": "task test",
+          "seconds": 0.794672
+        },
+        {
+          "action": "stage",
+          "seconds": 0.003252
+        },
+        {
+          "action": "task commit",
+          "seconds": 0.07901
+        }
+      ],
+      "clean_commit": true,
+      "acceptance_passed": 2,
+      "regression_failed_on_base": true
+    }
+  ]
+}

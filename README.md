@@ -74,12 +74,15 @@ Tell the agent **what it may change and where to stop**. Choose a finish that ma
 
 | If you want to… | Ask for… | Finish |
 | --- | --- | --- |
-| Understand a bug or shape a feature | A reproduction or design, with acceptance examples | `--until plan` |
+| Understand a bug or shape a feature | A reproduction or design with acceptance examples. Kitsu flags changed inputs before the plan can finish. | `--until plan` |
+| Implement an approved design | A working change with the requested behavior tested and repository checks run | `--until implement` |
 | Get a second opinion on an existing diff | Independent review and findings on those files | `--until review` |
 | Check a partial fix | An actual test of the reported behavior. Explicitly request repair if the agent may edit failing code. | `--until verify` |
 | Deliver a change | Verification plus the precise Git action you authorize, such as a local commit on the current branch | `--until deliver` |
 
-**After an interruption**, run `kitsu task list`, then `kitsu task next ID` to see the current action, evidence and findings. Replace `ID` with the listed task ID. Continue the existing task with `kitsu task start --resume ID --host codex`. When you request a developer agent, Kitsu records the worker so a replacement coordinator can recover its assignment. [Delegate coding](docs/task-harness.md#delegate-implementation-or-repair)
+**Independent review is optional for new daily implementation tasks.** An implementation goes to behavioral verification and repository checks, then to a commit if you requested one. Ask for an independent review in your request or pass `--require-review`. A repository can require it with top-level `require_review = true` in `kitsu.toml`. [Daily review policy](docs/task-harness.md#choose-independent-review)
+
+**After an interruption**, run `kitsu task list`, then `kitsu task next ID` to see the request, authorized scope, outstanding findings and next action. If a worker is already assigned, its recovery details appear there too. Replace `ID` with the listed task ID. Continue the existing task with `kitsu task start --resume ID --host codex`. When you request a developer agent, Kitsu records the worker so a replacement coordinator can recover its assignment. [Delegate coding](docs/task-harness.md#delegate-implementation-or-repair)
 
 The daily guide covers bounded reviews, retained logs, retrying the original failed assertion, and confirming delivery. For a committed PR or a partly staged change, choose the exact revision range or files to inspect. [Daily harness how-to](docs/task-harness.md) · [Review a committed change](docs/task-harness.md#review-a-committed-change) · [Deliver selected staged files](docs/task-harness.md#deliver-selected-staged-files) · [CLI help](docs/cli-reference.md)
 
@@ -99,10 +102,11 @@ In the managed role workflow, your agent host runs the coordinator and delegates
 role definitions, record checks, and usage reports. The Git gate supports that workflow and can also be used on its own.
 
 > [!NOTE]
-> Kitsu is in early development. [Install](#install) with one command;
-> [State](#state) covers validation and current limits.
+> Kitsu is in early development. See [installation](#install) for the matching CLI and plugin bundle and [project state](#state) for validation and current limits.
 
 ## The roles
+
+Choose the managed workflow shown below when you want separate role handoffs. A daily implementation task uses one coordinator unless you or your repository require independent review. A blocking finding in the implementation or a subsequent failing test returns the work to its author. The corrected change goes through review and verification before delivery.
 
 <img src="docs/diagrams/task-workflow.svg" alt="The task workflow. Full tasks start with specification and design, each independently reviewed and approved by you. Both paths continue through tests, code, review and a gated commit. Repository opt-in behavioral verification follows finished worker intervals: plan targets and gaps, verify targets, publish a summary, then satisfy full checks using local evidence. Experimental advisers remain off by default; explicit access and binding allow consultation and recorded decisions without replacing approval." width="100%">
 
@@ -149,7 +153,7 @@ kitsu task start "Fix login retries" --host codex --compact
 
 Compact mode is opt-in. Use it when a broad search or a noisy check would otherwise bury the relevant evidence. Workers can expand the saved output. Ordinary short reads stay on the native host path. Review and verification use the same evidence requirements. [Compact how-to](docs/compact-context.md)
 
-To manage cost during a task, inspect `kitsu usage show --task <id> --json`. The daily harness can limit reviewer starts and reserve time for verification and delivery. Its task record shows the outcome, handoffs and available usage. A missing coordinator or worker counter leaves the cost incomplete. [Limits and recovery](docs/task-harness.md#delivery-and-limits)
+To manage cost during a task, inspect `kitsu usage show --task <id> --json`. The daily harness can limit reviewer starts and reserve time for verification and delivery. Its task record shows the outcome, handoffs and available usage. For solo work, the usage report can show the recorded actor’s whole-session count. A session shared across tasks can establish its own cost while each task’s share remains unknown. [Limits and recovery](docs/task-harness.md#delivery-and-limits)
 
 For managed workflows, saved worker briefs, bounded state views and deltas reduce repeated output. Their effect on total model usage varies by task. [Worker handoffs](docs/compact-response-cycles.md) · [Coordinator state](docs/coordinator-state.md) · [Measured outcomes](docs/benchmarks/kitsu-product-audit-2026-11-18.md)
 
@@ -394,7 +398,7 @@ separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advise
   Windows PowerShell 5.1 runtime testing remains unavailable.
 - [Agent onboarding](openspec/changes/add-agent-onboarding/tests.md) passed Linux race tests, fake-host terminal launches,
   and three-target lint/vulnerability checks. Darwin and Windows test binaries compiled; native runtime and interactive plugin/hook trust remain unverified.
-- In the completed pflag comparison, plain Codex and daily Kitsu both delivered a verified commit. On qs, Kitsu’s reviewers caught defects in successive repairs, and the run reached its budget stop before committing. The audit reports quality, elapsed time, total captured tokens and unfinished work together. [Product audit](docs/benchmarks/kitsu-product-audit-2026-11-18.md)
+- In the daily pflag trial, plain Codex and Kitsu both delivered a clean commit and their regression suites caught all seven seeded defects. Kitsu used 841,548 tokens versus 394,607 for plain Codex. In the daily qs trial, reviewers caught defects in successive repairs and the run reached its budget stop before committing. [Cross-trial results](docs/benchmarks/archived-delivery-comparison.md) · [Product audit](docs/benchmarks/kitsu-product-audit-2026-11-18.md)
 
 - [Compact context](openspec/changes/add-compact-context/tests.md) adds opt-in Go collection, worker briefs and bounded check results.
   Local race/regression and three-target lint/vulnerability checks passed; offline comparisons include JSON/page overhead and no live token-saving claim.
