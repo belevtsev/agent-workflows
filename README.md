@@ -1,18 +1,27 @@
+<p align="center">
+  <img src="docs/brand/kitsu-banner.png" width="400" alt="Kitsu. Coding agents, working together. A Pomeranian in a red beanie holds a checked code-change card.">
+</p>
+
 # Kitsu
 
-<img src="docs/brand/kitsu-mascot.png" alt="Kitsu’s Pomeranian mascot in a red beanie" width="128" align="right">
-
-Kitsu lets you start a coding task in **Codex** or **Claude Code** and pick it up in a fresh chat. Your agent uses the Kitsu CLI to save the request, findings, and check results in your Git worktree.
+Kitsu is a plugin for **Codex** and **Claude Code**. Ask your agent to plan a change, fix a bug, or review a patch. Kitsu saves the request, findings, and check results in your Git worktree so you can resume by task ID in a fresh chat.
 
 ## Install
 
-Choose **[Codex](#codex)** or **[Claude Code](#claude-code)**. Run the installer once for each agent you use. It downloads the CLI and matching plugin from the latest public release and registers the plugin with that agent. On Windows, use Git for Windows. [Pinned versions and offline installation](docs/release-install.md)
+Run one installer per agent you use. It downloads the Kitsu CLI and matching plugin from the public release and registers the plugin with that agent. On Windows, use Git for Windows.
+
+| Your agent | First time | Use in chat |
+| --- | --- | --- |
+| **Codex** | [Install for Codex](#install-for-codex) | [Start](#quick-start) · [Resume](#resume-later) · [Prompt examples](#codex-chat-examples) |
+| **Claude Code** | [Install for Claude Code](#install-for-claude-code) | [Start](#first-task-in-claude-code) · [Resume](#resume-in-claude-code) · [Prompt examples](#claude-code-chat-examples) |
+
+[Latest release](https://github.com/belevtsev/kitsu/releases/latest) · [Pinned and offline installation](docs/release-install.md)
 
 ## Codex
 
 ### Install for Codex
 
-With Git and the `codex` command installed, run the command for your platform in a terminal. [Set up Codex CLI](https://developers.openai.com/codex/cli/)
+With Git and the `codex` command installed, run one command in your terminal. [Set up Codex CLI](https://developers.openai.com/codex/cli/)
 
 **macOS or Linux**
 
@@ -26,7 +35,14 @@ curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.s
 & ([scriptblock]::Create([Net.WebClient]::new().DownloadString('https://github.com/belevtsev/kitsu/releases/latest/download/install.ps1'))) -AgentHost codex
 ```
 
-Restart Codex and open your project’s Git worktree. On first use, open `/hooks` to review and trust Kitsu’s hooks. If Kitsu is missing, run `kitsu agent check --host codex` in a new terminal in the project.
+Restart Codex in your project’s Git worktree. On first use, open `/hooks` to review and trust Kitsu’s hooks.
+
+<details>
+<summary>Codex can’t find Kitsu</summary>
+
+Run `kitsu agent check --host codex` in a new terminal in the project and follow the setup instructions it prints.
+
+</details>
 
 ### Quick start
 
@@ -36,7 +52,7 @@ Paste this into a fresh Codex chat. Save the task ID from the reply.
 
 ### Resume later
 
-In a new Codex chat in the **same Git worktree**, replace `<task-id>` with the saved ID. If you lost it, ask Codex to list your saved Kitsu tasks.
+Open a new Codex chat in the **same Git worktree** and use the ID from the first reply. If you lost it, ask Codex to list your saved Kitsu tasks.
 
 ```text
 Use Kitsu to resume task <task-id>. Show me the saved test plan and the next step.
@@ -46,7 +62,8 @@ Use Kitsu to resume task <task-id>. Show me the saved test plan and the next ste
 
 ### Codex chat examples
 
-#### Bug fix
+<details>
+<summary><a name="bug-fix"></a><strong>Bug fix</strong> · Diagnose a failing test and verify the repair</summary>
 
 > Use Kitsu’s task skill to investigate the failing test. Reproduce the failure, explain the cause, and stop before editing. Give me the task ID.
 
@@ -54,35 +71,58 @@ When you’re ready for the fix, reply in the same chat.
 
 > Fix the cause, add a regression test, and verify the result. Leave the changes uncommitted.
 
-#### Design
+</details>
+
+<details>
+<summary><a name="design"></a><strong>Design</strong> · Specify how an export flag should behave</summary>
 
 > Use Kitsu’s task skill. Design a flag for choosing order export columns. Show example commands and expected output for default, selected, and unknown columns. Stop at the proposal.
 
-#### Architecture
+</details>
+
+<details>
+<summary><a name="architecture"></a><strong>Architecture</strong> · Choose how to export a million orders</summary>
 
 > Use Kitsu’s task skill. We need to export a million orders with 256 MiB of memory. Compare a database cursor with bounded pages. Recommend an approach and explain how it handles cancellation.
 
-#### Review
+</details>
+
+<details>
+<summary><a name="review"></a><strong>Review</strong> · Find defects in a staged patch</summary>
 
 > Use Kitsu’s task skill. Independently review my staged CSV export patch. Check default columns and partial files after errors. Report each defect with its location and a reproducing test. Stop after review.
 
-#### Implementation
+</details>
+
+<details>
+<summary><a name="implementation"></a><strong>Implementation</strong> · Build and test an export flag</summary>
 
 > Use Kitsu’s task skill. Add `--columns id,total` to the order export. Preserve the specified order and existing defaults. Reject unknown columns before writing. Test all three cases through the CLI.
 
-#### Ticket intake, verification, and delivery
+</details>
 
-| Task | Chat prompt |
-| --- | --- |
-| Ticket intake | Use Kitsu’s task skill. Read the issue I linked. Summarize the expected behavior and open questions before editing. |
-| Verification | Use Kitsu’s task skill. Run the exporter on a field containing a comma. Check that the CSV round-trips and report the result. Leave the patch as it is. |
-| Delivery | Use Kitsu’s task skill. Verify my staged export fix. If the checks pass, commit it locally, push this branch, and open a PR for review. |
+<details>
+<summary><a name="ticket-intake-verification-and-delivery"></a>Ticket intake, verification, and delivery</summary>
+
+**Ticket intake**
+
+> Use Kitsu’s task skill. Read the issue I linked. Summarize the expected behavior and open questions before editing.
+
+**Verification**
+
+> Use Kitsu’s task skill. Run the exporter on a field containing a comma. Check that the CSV round-trips and report the result. Leave the patch as it is.
+
+**Delivery**
+
+> Use Kitsu’s task skill. Verify my staged export fix. If the checks pass, commit it locally, push this branch, and open a PR for review.
+
+</details>
 
 ## Claude Code
 
 ### Install for Claude Code
 
-With Git and the `claude` command installed, run the command for your platform in a terminal. [Set up Claude Code](https://code.claude.com/docs/en/quickstart)
+With Git and the `claude` command installed, run one command in your terminal. [Set up Claude Code](https://code.claude.com/docs/en/quickstart)
 
 **macOS or Linux**
 
@@ -96,7 +136,14 @@ curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.s
 & ([scriptblock]::Create([Net.WebClient]::new().DownloadString('https://github.com/belevtsev/kitsu/releases/latest/download/install.ps1'))) -AgentHost claude
 ```
 
-Open a new terminal in your project’s Git worktree and start `claude`. You can check that Kitsu is enabled in `/plugin`. If it is missing, run `kitsu agent check --host claude` in the project’s terminal.
+Open a new terminal in your project’s Git worktree and start `claude`. Open `/plugin` to check that Kitsu is enabled.
+
+<details>
+<summary>Claude Code can’t find Kitsu</summary>
+
+Run `kitsu agent check --host claude` in the project’s terminal and follow the setup instructions it prints.
+
+</details>
 
 ### First task in Claude Code
 
@@ -106,7 +153,7 @@ Paste this into a fresh Claude Code chat. Save the task ID from the reply.
 
 ### Resume in Claude Code
 
-In a new Claude Code chat in the **same Git worktree**, replace `<task-id>` with the saved ID. If you lost it, ask Claude Code to list your saved Kitsu tasks.
+Open a new Claude Code chat in the **same Git worktree** and use the ID from the first reply. If you lost it, ask Claude Code to list your saved Kitsu tasks.
 
 ```text
 /kitsu:task Resume task <task-id>. Show me the saved test plan and the next step.
@@ -114,7 +161,8 @@ In a new Claude Code chat in the **same Git worktree**, replace `<task-id>` with
 
 ### Claude Code chat examples
 
-#### Bug fix
+<details>
+<summary><a name="bug-fix-1"></a><strong>Bug fix</strong> · Diagnose a failing test and verify the repair</summary>
 
 > /kitsu:task Investigate the failing test. Reproduce the failure, explain the cause, and stop before editing. Give me the task ID.
 
@@ -122,34 +170,59 @@ When you’re ready for the fix, reply in the same chat.
 
 > Fix the cause, add a regression test, and verify the result. Leave the changes uncommitted.
 
-#### Design
+</details>
+
+<details>
+<summary><a name="design-1"></a><strong>Design</strong> · Specify how an export flag should behave</summary>
 
 > /kitsu:task Design a flag for choosing order export columns. Show example commands and expected output for default, selected, and unknown columns. Stop at the proposal.
 
-#### Architecture
+</details>
+
+<details>
+<summary><a name="architecture-1"></a><strong>Architecture</strong> · Choose how to export a million orders</summary>
 
 > /kitsu:task We need to export a million orders with 256 MiB of memory. Compare a database cursor with bounded pages. Recommend an approach and explain how it handles cancellation.
 
-#### Review
+</details>
+
+<details>
+<summary><a name="review-1"></a><strong>Review</strong> · Find defects in a staged patch</summary>
 
 > /kitsu:task Independently review my staged CSV export patch. Check default columns and partial files after errors. Report each defect with its location and a reproducing test. Stop after review.
 
-#### Implementation
+</details>
+
+<details>
+<summary><a name="implementation-1"></a><strong>Implementation</strong> · Build and test an export flag</summary>
 
 > /kitsu:task Add `--columns id,total` to the order export. Preserve the specified order and existing defaults. Reject unknown columns before writing. Test all three cases through the CLI.
 
-#### Ticket intake, verification, and delivery
+</details>
 
-| Task | Chat prompt |
-| --- | --- |
-| Ticket intake | /kitsu:task Read the issue I linked. Summarize the expected behavior and open questions before editing. |
-| Verification | /kitsu:task Run the exporter on a field containing a comma. Check that the CSV round-trips and report the result. Leave the patch as it is. |
-| Delivery | /kitsu:task Verify my staged export fix. If the checks pass, commit it locally, push this branch, and open a PR for review. |
+<details>
+<summary><a name="ticket-intake-verification-and-delivery-1"></a>Ticket intake, verification, and delivery</summary>
+
+**Ticket intake**
+
+> /kitsu:task Read the issue I linked. Summarize the expected behavior and open questions before editing.
+
+**Verification**
+
+> /kitsu:task Run the exporter on a field containing a comma. Check that the CSV round-trips and report the result. Leave the patch as it is.
+
+**Delivery**
+
+> /kitsu:task Verify my staged export fix. If the checks pass, commit it locally, push this branch, and open a PR for review.
+
+</details>
 
 <a name="the-roles"></a>
 
 ## Guides
 
-[Daily tasks and delivery receipts](docs/task-harness.md) · [Specialist roles and handoffs](docs/workflow.md) · [Choose role models](docs/roles.md) · [Reuse existing skills](docs/skills.md) · [Start a task from the terminal](docs/cli.md#check-setup-and-start-a-task)
+- **Daily workflow** · [Task records and delivery receipts](docs/task-harness.md) · [Start from a terminal](docs/cli.md#check-setup-and-start-a-task)
+- **Agent coordination** · [Specialist roles and handoffs](docs/workflow.md) · [Choose role models](docs/roles.md) · [Reuse existing skills](docs/skills.md)
+- **Reference** · [All guides](docs/README.md) · [CLI commands](docs/cli-reference.md)
 
-[All guides](docs/README.md) · [CLI reference](docs/cli-reference.md) · [Report a problem](https://github.com/belevtsev/kitsu/issues) · [Contribute](CONTRIBUTING.md) · [License](LICENSE)
+[Report a problem](https://github.com/belevtsev/kitsu/issues) · [Contribute](CONTRIBUTING.md) · [License](LICENSE)
