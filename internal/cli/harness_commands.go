@@ -31,7 +31,7 @@ func harnessCommands() []uxCommand {
 	ticket := uxOption("ticket", "id", "action ticket returned by task next")
 	return []uxCommand{
 		{path: "task bug", args: "<task> --from SOURCE", summary: "Open a ticket for reproduction, repair and verified local commit delivery", flags: []uxFlag{uxOption("from", "source", "ticket source URL or Markdown file"), uxOption("stdin", "", "read ticket Markdown from standard input and retain its source link"), requireReviewFlag(), brief, json}, examples: []string{"kitsu task bug csv-fix --from tickets/csv.md"}, run: harnessCommand("bug")},
-		{path: "task receipt", args: "<task>", summary: "Verify the delivered bug fix on its commit and print the saved ticket-linked receipt", flags: []uxFlag{json}, run: harnessCommand("receipt")},
+		{path: "task receipt", args: "<task>", summary: "Print a ticket-linked bug receipt or export saved verification as shareable Markdown", flags: []uxFlag{uxOption("json", "", "return the local ticket-linked bug receipt as JSON"), uxOption("markdown", "", "export saved verification without running checks")}, examples: []string{"kitsu task receipt export-quoting --markdown", "kitsu task receipt csv-fix --json"}, run: harnessCommand("receipt")},
 
 		{path: "task open", args: "<task> --until <outcome>", summary: "Pin a candidate and the developer's requested outcome", flags: append([]uxFlag{request, taskEntry, taskUntil, repair, commit, publish, base, reviewBase, reviewHead, requireReviewFlag(), brief, json}, reviewLimitFlags()...), examples: []string{`kitsu task open export-quoting --entry review --until verify --repair --request "Verify CSV quoting"`, `kitsu task open review-pr --until review --review-base main --review-head topic --request "Review the committed change"`}, run: harnessCommand("open")},
 		{path: "task extend", args: "<task>", summary: "Explicitly extend a saved outcome or renew its time limit", flags: append([]uxFlag{taskUntil, repair, commit, publish, base, requireReviewFlag(), brief, json}, reviewLimitFlags()...), run: harnessCommand("extend")},
@@ -70,7 +70,7 @@ type harnessOptions struct {
 	findings, includes                                                            stringList
 	argv                                                                          []string
 	reviewLimits
-	json, brief, retry, defaultDeliveryEntry, stdin, observedReview bool
+	json, brief, retry, defaultDeliveryEntry, stdin, observedReview, markdown bool
 }
 
 func parseHarness(verb string, args []string) (harnessOptions, error) {
@@ -79,6 +79,8 @@ func parseHarness(verb string, args []string) (harnessOptions, error) {
 	f.BoolVar(&o.json, "json", false, "")
 	f.BoolVar(&o.brief, "brief", false, "")
 	switch verb {
+	case "receipt":
+		f.BoolVar(&o.markdown, "markdown", false, "")
 	case "bug":
 		f.StringVar(&o.from, "from", "", "")
 		f.BoolVar(&o.stdin, "stdin", false, "")
@@ -166,6 +168,10 @@ func validateHarnessOptions(verb string, p parsed, o harnessOptions) (harnessOpt
 	}
 	o.id = p.pos[0]
 	switch verb {
+	case "receipt":
+		if o.markdown && (o.json || o.brief) {
+			return o, usagef("--markdown is a separate receipt format")
+		}
 	case "bug":
 		return o.withTicketSource()
 
@@ -218,6 +224,9 @@ func harnessCommand(verb string) func(context.Context, Config, []string) error {
 		s, err := open(ctx, cfg, true)
 		if err != nil {
 			return err
+		}
+		if o.markdown {
+			return printMarkdownReceipt(ctx, s, o.id)
 		}
 		l, err := openStageLedger(ctx, s)
 		if err != nil {

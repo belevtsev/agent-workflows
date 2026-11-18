@@ -116,7 +116,19 @@ If a managed worker interval is active in the same worktree, an unfinished daily
 
 From a repository, interactive daily startup pins the working tree and prints the task ID before opening the host. A newly launched host receives the scope-binding command with the saved ID and requested finish. On an interrupted task, the host reads the current state before acting. A launch failure leaves the ID resumable. Previewing the handoff creates no task. If you pass limits with `--print` or `--json`, the prompt includes the limit flags for `task open`. An interactive launch saves those limits before the host opens. Its printed resume command includes `--compact` when you selected it. From an already open host, the task skill chooses a short ID at intake. The next-action view shows the latest result, claim, assertion and delivery state. The full view retains the request and earlier results. These records live in the worktree's private Git directory. Run `git worktree list` to locate the original checkout, enter its working directory, then run `kitsu task list` to confirm the ID. Both `kitsu agent check` and interactive startup report a Git metadata directory or an unreadable Git configuration before opening the host. Existing shared OpenSpec changes still use the [managed workflow](workflow.md).
 
-When reporting a delivered commit, read `commit_evidence` from `kitsu task next ID --json`. `verified_existing_commit` means the commit was already checked out when the current proof ran. `commit_matches_verified_tree` means Kitsu subsequently observed the committed tree on the verified parents. For a delivered bug ticket, `kitsu task receipt ID --json` gives the source, commit and three check observations. Report the order the evidence shows.
+### Share a verification receipt
+
+```sh
+kitsu task receipt export-quoting --markdown > verification.md
+```
+
+Paste the receipt into a PR or ticket after verifying a working patch or commit. It identifies the saved tree, exact commit when known, verification order, repository checks, review and ticket. Later checkout changes leave that observation intact. Recognized GitHub issue links are canonical. For other sources, the task name, source type and content digest identify the saved ticket. Full source references, raw logs, arguments, notes, action tickets, session IDs and local paths stay in the local record.
+
+The declaration fingerprint identifies the bytes pinned at intake. The review row distinguishes a saved host-observed review from an agent report and applies only to the verified candidate. Older records may have a verified tree with no exact commit ID or declaration pin.
+
+Markdown reads saved evidence without running checks. For a ticket-linked bug, use `kitsu task receipt ID --json` on the delivered commit to run the final behavior check and save the complete local receipt. A later Markdown export includes that result.
+
+Use `commit_evidence` in `kitsu task next ID --json` for the programmatic verification order. `verified_existing_commit` means the commit was already checked out when the proof ran. `commit_matches_verified_tree` means Kitsu later observed the matching tree on the verified parents.
 
 ## Drive the harness without opening a host
 

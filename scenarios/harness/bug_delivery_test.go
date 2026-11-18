@@ -16,7 +16,7 @@ import (
 )
 
 func TestTicketLinkedDelivery(t *testing.T) {
-	for _, kind := range []string{"markdown", "supplied", "url"} {
+	for _, kind := range []string{"markdown", "supplied", "url", "github"} {
 		t.Run(kind, func(t *testing.T) { checkTicketDelivery(t, kind, false) })
 	}
 }
@@ -36,11 +36,16 @@ func checkTicketDelivery(t *testing.T, kind string, formatter bool) {
 	const body = "# Export is broken\nReturn ready.\n"
 	source := filepath.Join(t.TempDir(), "Export bug.md")
 	refSuffix := "Export%20bug.md"
+	sourceKind := kind
 	f := flow{t: t, repo: r, id: "ticket-fix"}
 	var args []string
 	switch kind {
-	case "supplied":
-		source = "mcp://company-tracker/EXP-14"
+	case "supplied", "github":
+		sourceKind = "supplied"
+		source = "mcp://company-tracker/private-route/EXP-14?access_token=private-query#private-fragment"
+		if kind == "github" {
+			source = "https://github.com/example/project/issues/42?access_token=private-query#private-fragment"
+		}
 		refSuffix = source
 		args = []string{"bug", "--stdin", "--from", source}
 		result := r.Run(body, filepath.Join(kitsutest.Binary(t), "kitsu"), "task", "bug", f.id, "--stdin", "--from", source)
@@ -115,6 +120,9 @@ func checkTicketDelivery(t *testing.T, kind string, formatter bool) {
 	f.want("receipt")
 	delivered := r.Git("rev-parse", "HEAD")
 	r.Write(".git/refuse-receipt", "injected post-commit failure")
+	draft := readReceiptMarkdown(f)
+	markdownContains(t, draft, "Verified commit `"+delivered+"`", "Bug reproduction · Failed as expected", "Ticket delivery receipt pending")
+	markdownOmits(t, draft, r.Path(""), "injected post-commit failure")
 	f.call(1, "receipt")
 	f.call(0, "next")
 	f.want("receipt")
@@ -126,11 +134,24 @@ func checkTicketDelivery(t *testing.T, kind string, formatter bool) {
 	if err := json.Unmarshal([]byte(result.Stdout), &receipt); err != nil || result.Code != 0 {
 		t.Fatal(result.Output(), err)
 	}
-	if receipt.Commit != delivered || receipt.Source.Kind != kind || !strings.HasSuffix(receipt.Source.URL, refSuffix) || len(receipt.Source.SHA256) != 64 || receipt.Reproduction.ID != red || receipt.BeforeCommit.ID == receipt.OnCommit.ID || len(receipt.OnCommit.Digest) != 64 {
+	if receipt.Commit != delivered || receipt.Source.Kind != sourceKind || !strings.HasSuffix(receipt.Source.URL, refSuffix) || len(receipt.Source.SHA256) != 64 || receipt.Reproduction.ID != red || receipt.BeforeCommit.ID == receipt.OnCommit.ID || len(receipt.OnCommit.Digest) != 64 {
 		t.Fatalf("incorrect receipt: %+v", receipt)
 	}
 	if formatter && (receipt.BeforeCommitTree != beforeTree || receipt.Tree == beforeTree || receipt.BeforeCommit.ID != beforeRun || receipt.OnCommit.ID == f.state.Proof.Run) {
 		t.Fatalf("did not distinguish pre-hook, post-hook and receipt runs: %+v", receipt)
+	}
+	shareable := readReceiptMarkdown(f)
+	markdownContains(t, shareable, "Behavior on the delivered commit · Passed", receipt.Source.SHA256)
+	markdownOmits(t, shareable, receipt.OnCommit.ID, receipt.Reproduction.ID, "refuse-receipt", "private-query", "private-fragment")
+	if kind == "markdown" {
+		markdownContains(t, shareable, "Ticket came from a local Markdown file")
+		markdownOmits(t, shareable, "file:", source, "Export%20bug.md")
+	}
+	if kind == "supplied" || kind == "url" {
+		markdownOmits(t, shareable, source, "company-tracker", "private-route")
+	}
+	if kind == "github" {
+		markdownContains(t, shareable, "<https://github.com/example/project/issues/42>")
 	}
 	f.call(0, "next")
 	f.want("done")

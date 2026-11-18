@@ -83,5 +83,11 @@
 | Import a public ticket link and reopen its Markdown offline | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Deliver a ticket supplied by a host tracker | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Fetch and validate public ticket content | internal/tickets/public_test.go | TestPublicTicket |
+| Share a verified patch or exact commit | scenarios/harness/shareable_receipt_test.go | TestMarkdownReceiptExportsOnlyTheSavedVerifiedPatch |
+| Share a verified patch or exact commit | scenarios/harness/shareable_receipt_test.go | TestMarkdownReceiptDistinguishesVerificationOrderAndLegacyCommit |
+| Share a verified patch or exact commit | scenarios/harness/native_review_test.go | TestRequiredReviewNeedsNativeWorkerOnCurrentCandidate |
+| Share a ticket-linked result without private details | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
+| Withhold Markdown before verification succeeds | scenarios/harness/shareable_receipt_test.go | TestMarkdownReceiptRequiresSavedSuccessfulVerification |
+| Withhold Markdown before verification succeeds | scenarios/harness/shareable_receipt_test.go | TestMarkdownReceiptRejectsFailedRepositoryCheck |
 
 Go, JavaScript and C++ fixture commands execute locally. Host judgments are scripted. Published release checks execute on native CI runners when a release is available. Interactive host quality, speed and token costs require separate observations.

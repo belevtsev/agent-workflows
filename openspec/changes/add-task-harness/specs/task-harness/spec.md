@@ -396,3 +396,24 @@ Source: developer request for the first closed-loop delivery slice.
 
 - **WHEN** the host reads a ticket through a configured MCP server or tracker plugin and supplies its Markdown and stable tracker reference on standard input
 - **THEN** Kitsu snapshots that text locally without contacting the source. Offline resume retains the original input and the verified delivery receipt identifies the same tracker reference.
+
+### Requirement: Export a shareable verification receipt
+
+`kitsu task receipt ID --markdown` SHALL render a saved daily verification result without changing repository or task state, running checks, contacting a ticket provider or producing a bug receipt. It SHALL limit portable output to the candidate, applicable review and declaration authority, safe check verdicts and ticket identity.
+
+Source: approved verified handoff plan.
+
+#### Scenario: Share a verified patch or exact commit
+
+- **WHEN** a daily task has verified a patch or a commit
+- **THEN** Markdown identifies the saved tree and explains whether the proof ran on an existing commit or Git subsequently committed the verified tree. An unavailable commit ID, local log or policy pin is identified as such. Later checkout changes are outside the saved observation.
+
+#### Scenario: Share a ticket-linked result without private details
+
+- **WHEN** a developer exports a task verified against a saved ticket
+- **THEN** the report contains the ticket source type and content digest when available. A recognized GitHub issue link is canonicalized and opaque source paths stay local. It identifies whether the on-commit receipt exists. Request text, check arguments and output, session IDs, local paths and URL credentials are omitted.
+
+#### Scenario: Withhold Markdown before verification succeeds
+
+- **WHEN** a task has no successful saved verification or a developer requests both Markdown and a different receipt format
+- **THEN** the command fails without rendering a success report or executing a check.

@@ -236,17 +236,19 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ```text
 usage: kitsu task receipt <task> [options]
 
-Verify the delivered bug fix on its commit and print the saved ticket-linked receipt.
+Print a ticket-linked bug receipt or export saved verification as shareable Markdown.
 
 Arguments:
   <task>             task name: lowercase words joined by hyphens
 
 Options:
-  --json                   return structured task state
+  --json                   return the local ticket-linked bug receipt as JSON
+  --markdown               export saved verification without running checks
   --help, -h               show this command's help without executing it
 
 Examples:
-  kitsu task receipt add-login
+  kitsu task receipt export-quoting --markdown
+  kitsu task receipt csv-fix --json
 
 Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.

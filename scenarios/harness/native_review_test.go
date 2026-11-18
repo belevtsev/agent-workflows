@@ -130,6 +130,10 @@ func TestRequiredReviewNeedsNativeWorkerOnCurrentCandidate(t *testing.T) {
 			f.want("commit")
 			f.call(0, "commit", "--ticket", f.state.Ticket, "--message", "Add README")
 			f.want("done")
+			receipt := readReceiptMarkdown(f)
+			provider := map[string]string{"codex": "Codex", "claude": "Claude Code"}[host]
+			markdownContains(t, receipt, "Host-observed review ("+provider+")", "Undeclared on the verified tree, as pinned at intake")
+			markdownOmits(t, receipt, report.Note, "coordinator", "worker")
 		})
 	}
 }

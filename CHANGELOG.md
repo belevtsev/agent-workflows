@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Follow a task from chat to its saved state and a bug ticket to its verified commit in the [illustrated task guide](docs/task-harness.md#how-a-daily-task-runs).
 - Review and approve repository check commands for agent sessions with [`kitsu check trust`](docs/cli.md#approve-repository-checks).
 - Required daily reviews record the native Codex or Claude Code worker and the exact candidate it inspected.
+- Share saved patch or commit verification with [`kitsu task receipt ID --markdown`](docs/task-harness.md#share-a-verification-receipt).
 
 ### Fixed
 
