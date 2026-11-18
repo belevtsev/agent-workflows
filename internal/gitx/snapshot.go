@@ -218,15 +218,12 @@ func (r *Repo) checkEntries(ctx context.Context, env []string) error {
 
 // checkNested refuses a submodule or nested repository whose folder holds
 // other content than its commit: uncommitted changes, a file that git is
-// told to overlook, or files although it is not checked out. The snapshot
+// told to overlook, or a missing checkout. The snapshot
 // records it as one commit, so a check would otherwise run on content that
 // no tree records.
 func (r *Repo) checkNested(ctx context.Context, path, full string) error {
 	if _, err := os.Lstat(filepath.Join(full, ".git")); err != nil {
-		if files, _ := os.ReadDir(full); len(files) > 0 {
-			return &WorktreeError{Path: path, Cause: "is a submodule that is not checked out, yet its folder holds files; remove them or check the submodule out"}
-		}
-		return nil // not checked out and empty: nothing on disk can differ
+		return &WorktreeError{Path: path, Cause: "is a submodule that is not checked out. Initialize the submodule before recording evidence"}
 	}
 	nested := call{dir: full, foreign: true}
 	out, err := run(ctx, nested, "status", "--porcelain", "--untracked-files=normal", "--ignore-submodules=none")

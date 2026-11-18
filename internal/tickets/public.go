@@ -8,24 +8,20 @@ import (
 	"mime"
 	"net/http"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"golang.org/x/net/html"
 )
 
-func readPublicLink(ctx context.Context, link string) (string, error) {
+func readPublicTicket(ctx context.Context, link string, client *http.Client) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
 	if err != nil {
 		return "", err
 	}
+	if !validPublicTicketURL(req.URL) {
+		return "", fmt.Errorf("public tickets need a credential-free HTTP(S) URL")
+	}
 	req.Header.Set("Accept", "text/markdown, text/plain, text/html;q=0.9")
-	client := http.Client{Timeout: 30 * time.Second, CheckRedirect: func(r *http.Request, via []*http.Request) error {
-		if len(via) >= 5 || r.URL.User != nil || !isWebLink(r.URL) || (via[len(via)-1].URL.Scheme == "https" && r.URL.Scheme != "https") {
-			return http.ErrUseLastResponse
-		}
-		return nil
-	}}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("read public ticket: %w", err)

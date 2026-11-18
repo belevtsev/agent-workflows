@@ -70,7 +70,7 @@ kitsu task bug export-14 --from mcp://support/EXP-14 --stdin < ticket.md
 
 The host handles tracker access. Kitsu records the supplied text and source reference. Use a permanent link without credentials or temporary access tokens. Resume offline with `kitsu task next export-14`.
 
-For a direct HTTP(S) link, Kitsu makes an anonymous request and accepts UTF-8 Markdown, plain text, or a server-rendered HTML page with readable content in a main or article element. Review the imported snapshot at intake. For private or client-rendered tickets, let your configured MCP server or plugin supply the Markdown with `--stdin`.
+For a direct HTTP(S) link, Kitsu makes an anonymous connection to a public IP address. Each redirect gets the same destination check, and direct imports ignore HTTP proxy settings. The reader accepts UTF-8 Markdown, plain text, or server-rendered HTML with readable content in a main or article element. Review the imported snapshot at intake. For an internal, authenticated, proxy-only, or client-rendered ticket, let your configured host connector supply the Markdown with `--stdin`. You can keep the private URL as the source reference in that command.
 
 Opening any supported ticket prints the path to a private Markdown snapshot in the worktree's Git directory. JSON exposes it as `ticket_markdown`. It includes the canonical source link and saved request. Repeat the same open command to regenerate it offline. The delivery receipt always links to the original source.
 

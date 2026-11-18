@@ -13,8 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Required daily reviews record the native Codex or Claude Code worker and the exact candidate it inspected.
 - Share saved patch or commit verification with [`kitsu task receipt ID --markdown`](docs/task-harness.md#share-a-verification-receipt).
 - A shorter task skill supports the [same-worktree handoff preview](docs/verified-handoff-preview.md) across Codex and Claude Code.
+- Direct ticket imports connect only to public addresses. Use a host connector to [supply a private ticket](docs/task-harness.md#deliver-a-bug-ticket).
 
 ### Fixed
+
+- Require initialized submodules for new [check evidence](docs/evidence.md#the-same-content). Rerun checks once on trees that contain submodules after upgrading.
 
 - Help for `check add` and `task test` now puts Kitsu options before `--`. The [verification example](docs/cli-reference.md#kitsu-check-add) shows how to save a required check.
 - Completed commits and publication confirmations remain historical after a branch moves. Formatter hooks that change a commit require fresh verification and preserve concurrent staging.

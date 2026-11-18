@@ -1,9 +1,11 @@
 package tickets
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 
@@ -28,7 +30,7 @@ func TestPublicTicket(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != "GET" || r.Header.Get("Authorization") != "" || r.Header.Get("Cookie") != "" {
+				if r.Host != "tickets.example" || r.Method != "GET" || r.Header.Get("Authorization") != "" || r.Header.Get("Cookie") != "" {
 					t.Error("unexpected non-anonymous GET")
 				}
 				if r.URL.Path == "/ticket" {
@@ -40,20 +42,21 @@ func TestPublicTicket(t *testing.T) {
 				_, _ = fmt.Fprint(w, tc.body)
 			}))
 			defer srv.Close()
-			ref := srv.URL + "/ticket"
-			src, err := Location(ref, false)
-			if err != nil {
-				t.Fatal(err)
-			}
-			got, text, err := Read(t.Context(), ref, src, nil)
+			read := fixturePublicTicket(t, srv, func(ctx context.Context, network, host string) ([]netip.Addr, error) {
+				if network != "ip" || host != "tickets.example" {
+					t.Errorf("unexpected lookup %s %s", network, host)
+				}
+				return []netip.Addr{publicFixtureIP}, nil
+			})
+			text, err := read("http://tickets.example/ticket")
 			if tc.want == "" {
 				if err == nil {
 					t.Fatal("accepted unsupported content")
 				}
 				return
 			}
-			if err != nil || text != tc.want || got.URL != ref || got.Kind != "url" || got.SHA256 == "" {
-				t.Fatalf("got %v, %q, %v", got, text, err)
+			if err != nil || text != tc.want {
+				t.Fatalf("got %q, %v", text, err)
 			}
 		})
 	}

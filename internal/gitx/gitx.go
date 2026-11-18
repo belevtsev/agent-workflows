@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/belevtsev/kitsu/v3/internal/proc"
 )
@@ -75,10 +77,11 @@ func environment(foreign bool, extra ...string) []string {
 
 // call is one git command.
 type call struct {
-	dir     string
-	env     []string
-	stdout  io.Writer // nil keeps the output for the caller
-	foreign bool      // runs in another repository, such as a submodule
+	dir       string
+	env       []string
+	stdout    io.Writer // nil keeps the output for the caller
+	foreign   bool      // runs in another repository, such as a submodule
+	waitDelay time.Duration
 }
 
 // run starts git without its file system monitor: a daemon that git started
@@ -87,6 +90,7 @@ func run(ctx context.Context, c call, args ...string) ([]byte, error) {
 	result := proc.Run(ctx, proc.Spec{
 		Path: "git", Args: append([]string{"-c", "core.fsmonitor=false"}, args...), Dir: c.dir, Env: environment(c.foreign, c.env...),
 		Stdout: c.stdout, StdoutLimit: 1 << 30, StderrLimit: 1 << 16,
+		WaitDelay: c.waitDelay,
 	})
 	if result.Stopped {
 		return nil, ctx.Err()
@@ -100,6 +104,9 @@ func run(ctx context.Context, c call, args ...string) ([]byte, error) {
 			stderr = result.Err.Error()
 		}
 		return result.Stdout, &Error{Args: args, Code: result.Code, Stderr: stderr}
+	}
+	if result.Err != nil {
+		return nil, fmt.Errorf("git %s output is incomplete: %w", args[0], result.Err)
 	}
 	return result.Stdout, nil
 }
@@ -134,7 +141,13 @@ func Open(ctx context.Context, dir string) (*Repo, error) {
 func repositoryPaths(ctx context.Context, dir string) ([]string, error) {
 	fields := []string{"--absolute-git-dir", "--git-common-dir", "--show-toplevel"}
 	c := call{dir: dir, env: []string{"LC_ALL=C"}}
-	out, err := run(ctx, c, append([]string{"rev-parse"}, fields...)...)
+	args := append([]string{"rev-parse"}, fields...)
+	out, err := run(ctx, c, args...)
+	if errors.Is(err, exec.ErrWaitDelay) {
+		// Discovery is read-only. Give a busy host one longer output drain.
+		c.waitDelay = time.Second
+		out, err = run(ctx, c, args...)
+	}
 	if err != nil {
 		// Git uses exit 128 for both ordinary discovery misses and broken repositories.
 		var gitErr *Error

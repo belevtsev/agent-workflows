@@ -25,7 +25,7 @@ None of these is a vulnerability. Running the same checks in CI catches a commit
 
 ## Network access and local records
 
-The gate checks repository content locally. Kitsu sets `GIT_NO_LAZY_FETCH=1` on Git commands and reports missing objects in partial clones. Explicit publication confirmation uses Git to read the configured push destination and uses the authenticated GitHub CLI when a PR is requested. An explicit public ticket import makes an anonymous HTTP(S) request. Starting an interactive coding host, consulting an enabled adviser or running a repository check can also contact external services.
+The gate checks repository content locally. Kitsu sets `GIT_NO_LAZY_FETCH=1` on Git commands and reports missing objects in partial clones. Explicit publication confirmation uses Git to read the configured push destination and uses the authenticated GitHub CLI when a PR is requested. An explicit public ticket import resolves each HTTP(S) connection destination and uses only public IP addresses. Private ticket access belongs to the host connector, which can supply Markdown with `--stdin`. Starting an interactive coding host, consulting an enabled adviser or running a repository check can also contact external services.
 
 Daily task records in the private Git directory include the developer's request, recorded results and review findings. Token records contain counts and names. Kitsu creates logs, records and decision files with mode `0600` and gate store directories with mode `0700`.
 

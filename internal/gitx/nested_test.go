@@ -42,24 +42,31 @@ func TestSnapshotRefusesAMarkedPathInANestedRepository(t *testing.T) {
 	}
 }
 
-func TestSnapshotRefusesFilesInASubmoduleThatIsNotCheckedOut(t *testing.T) {
+func TestSnapshotRefusesASubmoduleThatIsNotCheckedOut(t *testing.T) {
 	dir, repo := demo(t)
 	head := git(t, dir, "rev-parse", "HEAD")
 	git(t, dir, "update-index", "--add", "--cacheinfo", "160000,"+head+",vendor/lib")
 	git(t, dir, "commit", "-q", "-m", "add vendor/lib")
 
-	// Not checked out, with no folder or an empty one: nothing can differ.
-	snapshot(t, repo)
-	if err := os.MkdirAll(filepath.Join(dir, "vendor", "lib"), 0o755); err != nil {
-		t.Fatal(err)
+	// When the entire path is gone, git add -A records a deletion. Its
+	// result cannot identify a candidate that still contains the gitlink.
+	if got := git(t, dir, "ls-tree", snapshot(t, repo), "--", "vendor/lib"); got != "" {
+		t.Fatalf("snapshot recorded a gitlink without its checkout: %s", got)
 	}
-	snapshot(t, repo)
-
-	write(t, dir, "vendor/lib/plain.txt", "a file of no tree\n")
-	_, err := repo.Snapshot(t.Context(), tmpOf(repo))
-	var wtErr *WorktreeError
-	if !errors.As(err, &wtErr) || wtErr.Path != "vendor/lib" || !strings.Contains(err.Error(), "is a submodule that is not checked out, yet its folder holds files") {
-		t.Errorf("error = %v, want a WorktreeError that vendor/lib is not checked out and holds files", err)
+	for _, content := range []string{"empty", "unrelated files"} {
+		switch content {
+		case "empty":
+			if err := os.MkdirAll(filepath.Join(dir, "vendor", "lib"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		case "unrelated files":
+			write(t, dir, "vendor/lib/plain.txt", "a file of no tree\n")
+		}
+		_, err := repo.Snapshot(t.Context(), tmpOf(repo))
+		var wtErr *WorktreeError
+		if !errors.As(err, &wtErr) || wtErr.Path != "vendor/lib" || !strings.Contains(err.Error(), "is a submodule that is not checked out") {
+			t.Errorf("%s checkout: error = %v, want a WorktreeError for vendor/lib", content, err)
+		}
+		checkNoTmp(t, repo)
 	}
-	checkNoTmp(t, repo)
 }

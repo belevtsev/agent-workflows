@@ -3,6 +3,7 @@ package gitx
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -396,5 +397,38 @@ func TestOpenReportsBrokenRepository(t *testing.T) {
 	var gitErr *Error
 	if repo != nil || errors.Is(err, ErrNotRepo) || !errors.As(err, &gitErr) {
 		t.Fatalf("Open returned repo=%v, error=%v; want the Git configuration error", repo, err)
+	}
+}
+
+func TestOpenRecoversFromInterruptedGitOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a POSIX Git shim")
+	}
+	dir := newRepo(t)
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bin := t.TempDir()
+	shim := `#!/bin/sh
+if [ ! -e "$KITSU_TEST_DRAIN_MARKER" ]; then
+  : > "$KITSU_TEST_DRAIN_MARKER"
+  printf '%s\n' "$PWD/.git"
+  sleep 5 &
+  exit 0
+fi
+exec "$KITSU_TEST_REAL_GIT" "$@"
+`
+	if err := os.WriteFile(filepath.Join(bin, "git"), []byte(shim), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("KITSU_TEST_DRAIN_MARKER", filepath.Join(bin, "started"))
+	t.Setenv("KITSU_TEST_REAL_GIT", realGit)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	// The first invocation exits cleanly without closing its output pipe.
+	repo := open(t, dir)
+	if repo.Root != dir || repo.GitDir != filepath.Join(dir, ".git") || repo.CommonDir != repo.GitDir {
+		t.Fatalf("incomplete discovery recovered the wrong repository: %+v", repo)
 	}
 }

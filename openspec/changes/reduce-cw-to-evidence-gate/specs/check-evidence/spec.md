@@ -50,7 +50,7 @@ Source: review findings H1 (untracked files were left out of the commit check), 
 
 ### Requirement: Working tree that cannot be recorded
 
-When git cannot record the working tree as it is on disk, `kitsu run` and `kitsu status` SHALL exit 1, name the path and the cause, and record nothing. This covers a tracked file marked skip-worktree or assume-unchanged that is absent from disk or differs from the index, a working tree on which `git add -A` fails, and a submodule or nested repository that holds changes it has not committed, holds a file that git is told to overlook, or is not checked out yet holds files.
+When git cannot record the working tree as it is on disk, `kitsu run` and `kitsu status` SHALL exit 1, name the path and the cause, and record nothing. This covers missing or changed marked files, failed `git add -A`, and a submodule or nested repository with an absent checkout, uncommitted changes, or a file that git is told to overlook. Removing a submodule from the candidate changes its tree.
 
 For marked paths the comparison SHALL include the complete Git entry: type, executable mode and object. Git's `core.filemode`, `core.symlinks` and clean filters SHALL apply. An unchanged symbolic link SHALL compare by its link text and be accepted. The comparison SHALL preserve the real index and its marks, including when both marks are set.
 
@@ -91,10 +91,15 @@ Source: independent review of this draft, finding 2; proposal, Sources (the tree
 - **WHEN** `vendor/lib` is a submodule, `git update-index --assume-unchanged lib.txt` or `git update-index --skip-worktree lib.txt` has run inside it, `lib.txt` is then edited, and `kitsu run` or `kitsu status` runs
 - **THEN** it exits 1, names `vendor/lib/lib.txt` and the mark, says to clear the mark there first, and records nothing
 
-#### Scenario: A submodule that is not checked out but holds files
+#### Scenario: A submodule that is not checked out
 
-- **WHEN** `git submodule deinit -f vendor/lib` has run, a file is then written into the empty folder `vendor/lib/`, and `kitsu run` or `kitsu status` runs
-- **THEN** it exits 1, names `vendor/lib`, says that it is a submodule that is not checked out yet its folder holds files, and records nothing
+- **WHEN** `git submodule deinit -f vendor/lib` has run and `kitsu run` or `kitsu status` runs with an empty folder or unrelated files beneath the gitlink
+- **THEN** it exits 1, names `vendor/lib`, asks for an initialized checkout, and records nothing
+
+#### Scenario: Evidence predates initialized submodule checks
+
+- **WHEN** an older Kitsu produced a passing key for a tree containing a submodule
+- **THEN** the current version computes a fresh key for each check on that tree and asks for current evidence
 
 ### Requirement: Running checks
 
