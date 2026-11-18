@@ -2,12 +2,15 @@ package installers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"os/exec"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
+	"testing"
 	"time"
+
+	"github.com/belevtsev/kitsu/v3/internal/proc"
 )
 
 // These inventory commands load the installed plugin in the host without
@@ -46,37 +49,80 @@ func (p nativeProfile) discoverTaskSkill(want []byte) string {
 func (p nativeProfile) codexTaskSkill(name string) string {
 	t := p.t
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, p.host.program, p.hostArgs("app-server")...)
-	cmd.Dir, cmd.Env = p.repo, p.env
-	cmd.WaitDelay = 3 * time.Second
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	input, err := cmd.StdinPipe()
+	var path string
+	runInventoryProcess(t, proc.Spec{
+		Path: p.host.program, Args: p.hostArgs("app-server"), Dir: p.repo, Env: p.env, Timeout: 30 * time.Second,
+	}, func(stdout io.Reader, stdin io.WriteCloser) {
+		path = p.readCodexInventory(stdout, stdin, name)
+	})
+	return path
+}
+
+func runInventoryProcess(t *testing.T, spec proc.Spec, inspect func(io.Reader, io.WriteCloser)) {
+	t.Helper()
+	childIn, input, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	output, err := cmd.StdoutPipe()
+	defer childIn.Close()
+	defer input.Close()
+	output, childOut, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("start Codex app-server: %v", err)
+	defer output.Close()
+	defer childOut.Close()
+	stderr, err := os.CreateTemp(t.TempDir(), "inventory-stderr-*.log")
+	if err != nil {
+		t.Fatal(err)
 	}
-	defer func() {
-		// EOF lets the stdio server shut down its helpers and release the
-		// disposable profile. The context still bounds an unresponsive server.
-		_ = input.Close()
-		if err := cmd.Wait(); err != nil {
-			t.Errorf("shut down Codex inventory server: %v", err)
+	defer stderr.Close()
+
+	// Direct file handles let proc.Run observe the server's exit before a
+	// helper releases inherited streams. It then reaps the group or Windows
+	// job object before the caller removes the disposable profile.
+	spec.Stdin, spec.Stdout, spec.Stderr = childIn, childOut, stderr
+	done := make(chan proc.Result, 1)
+	go func() {
+		result := proc.Run(t.Context(), spec)
+		_ = childIn.Close()
+		_ = childOut.Close()
+		if result.Cleanup != nil {
+			_ = output.Close()
 		}
-		if t.Failed() && stderr.Len() > 0 {
-			t.Logf("Codex app-server stderr: %s", stderr.Bytes())
+		done <- result
+	}()
+	defer func() {
+		// EOF permits a clean server exit. proc.Run also bounds hangs and
+		// waits for the descendants before delivering the result.
+		_ = input.Close()
+		result := <-done
+		if result.Err != nil || result.Cleanup != nil || result.Stopped || result.Code != 0 {
+			t.Errorf("run Codex inventory server: exit=%d stopped=%t error=%v cleanup=%v", result.Code, result.Stopped, result.Err, result.Cleanup)
+		}
+		if t.Failed() {
+			logInventoryStderr(t, stderr)
 		}
 	}()
+	inspect(output, input)
+}
 
-	writer, reader := json.NewEncoder(input), json.NewDecoder(output)
+func logInventoryStderr(t *testing.T, stderr *os.File) {
+	t.Helper()
+	const maxBytes = 8192
+	info, err := stderr.Stat()
+	if err == nil && info.Size() > 0 {
+		data, err := io.ReadAll(io.NewSectionReader(stderr, max(0, info.Size()-maxBytes), maxBytes))
+		if err == nil {
+			t.Logf("Codex app-server stderr: %s", data)
+		}
+	}
+}
+
+func (p nativeProfile) readCodexInventory(stdout io.Reader, stdin io.Writer, name string) string {
+	t := p.t
+	t.Helper()
+	writer, reader := json.NewEncoder(stdin), json.NewDecoder(stdout)
 	send := func(message map[string]any) {
 		t.Helper()
 		if err := writer.Encode(message); err != nil {
@@ -91,7 +137,7 @@ func (p nativeProfile) codexTaskSkill(name string) string {
 				Result, Error json.RawMessage
 			}
 			if err := reader.Decode(&reply); err != nil {
-				t.Fatalf("read Codex inventory response %d: %v (context: %v)", id, err, ctx.Err())
+				t.Fatalf("read Codex inventory response %d: %v", id, err)
 			}
 			if reply.ID == id {
 				if len(reply.Result) == 0 || len(reply.Error) != 0 {

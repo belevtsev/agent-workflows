@@ -35,8 +35,8 @@ jobs:
     name: Native Go / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     # Windows runs the full native suite and then the hook cost measurement.
-    # The suite alone took 17 minutes on the harness preview.
-    timeout-minutes: ${{ inputs.thorough && 50 || matrix.os == 'windows-latest' && 30 || 20 }}
+    # The job also covers setup, package scheduling and the post-test benchmark.
+    timeout-minutes: ${{ inputs.thorough && 50 || matrix.os == 'windows-latest' && 35 || 20 }}
     strategy:
       fail-fast: false
       matrix:

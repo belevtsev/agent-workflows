@@ -25,6 +25,13 @@ const preparedVersion = "v0.0.1"
 
 // The archived test executable acts as a native release binary on every OS.
 func TestMain(m *testing.M) {
+	if len(os.Args) == 4 && os.Args[1] == inventoryProcessFixture {
+		if err := inventoryFixture(os.Args[2], os.Args[3]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 	if len(os.Args) == 2 && os.Args[1] == "version" {
 		version := os.Getenv("KITSU_INSTALL_TEST_VERSION")
 		if version == "" {
