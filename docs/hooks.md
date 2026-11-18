@@ -347,6 +347,8 @@ not in the hands of the plugin.
 | `SubagentStop` | `kitsu tokens record --host claude` | `kitsu tokens record --host codex` |
 | `SessionEnd` | `kitsu tokens record --host claude` | `kitsu tokens record --host codex` |
 
+Before an agent runs declared checks through Kitsu, the loaded `PreToolUse` hook requires approval for the exact declaration in the repository. Use `kitsu check list` to inspect checks, then run `kitsu check trust` in your own terminal to review and approve their commands. Each developer's approval is stored outside the checkout, keyed to its common Git directory and the declaration's SHA-256. Both plugins deny an agent's attempt to approve the checks. Commands you invoke directly in a terminal or CI execute as before.
+
 ### Verify plugin hook setup
 
 Run `kitsu agent check --host codex` or `--host claude` from your project. It reads local setup

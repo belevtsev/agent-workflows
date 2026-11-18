@@ -9,10 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Follow a task from chat to its saved state and a bug ticket to its verified commit in the [illustrated task guide](docs/task-harness.md#how-a-daily-task-runs).
+- Review and approve repository check commands for agent sessions with [`kitsu check trust`](docs/cli.md#approve-repository-checks).
 
 ### Fixed
 
 - Help for `check add` and `task test` now puts Kitsu options before `--`. The [verification example](docs/cli-reference.md#kitsu-check-add) shows how to save a required check.
+- Daily tasks keep their opening check policy and require repair authority before testing a changed verify-only candidate after a failure.
 
 ## [0.0.2] - 2026-11-18
 

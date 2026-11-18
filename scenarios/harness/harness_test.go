@@ -194,17 +194,19 @@ func TestCppReviewOnlyPreservesIndexAndWorkingTree(t *testing.T) {
 
 func TestDeclaredChecksAndEvidenceRecovery(t *testing.T) {
 	r := kitsutest.Demo(t)
+	r.Write("lint.sh", "test ! -e .git/BAD\n")
+	r.Git("commit", "-qam", "Set up a temporary environmental failure")
 	f := flow{t: t, repo: r, id: "verify-gate"}
 	f.call(0, "open", "--request", "Verify repository behavior", "--until", "verify")
 	f.record("intake", "host", "Original unit and lint requirements also apply")
-	r.Write("BAD", "force full-suite failure")
+	r.Write(".git/BAD", "force full-suite failure without changing the candidate")
 	f.call(0, "next")
 	f.call(5, "test", "--ticket", f.state.Ticket, "--expect", "fixture unit behavior", "--", "sh", "unit.sh")
 	f.want("verify")
 	if f.state.Verified {
 		t.Fatal("passing targeted assertion masked failing gate")
 	}
-	r.Remove("BAD")
+	r.Remove(".git/BAD")
 	f.call(0, "next")
 	f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "fixture unit behavior", "--", "sh", "unit.sh")
 	f.want("done")

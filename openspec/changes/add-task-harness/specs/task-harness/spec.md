@@ -59,6 +59,21 @@ Source: proposal.md and approved daily coding harness plan.
 - **WHEN** a reviewer identifies a defect in an existing fix
 - **THEN** authorized repair leads to a fresh review and a real behavioral check, and a matching committed candidate can be recovered after interruption.
 
+#### Scenario: Keep the opening check policy through delivery
+
+- **WHEN** a daily task opens on a candidate with a committed repository declaration, or on a repository awaiting its first commit
+- **THEN** the task pins the committed declaration or the opening tree's declaration, respectively. A removed or changed declaration blocks verification and commit until the opening policy is restored. The task can retain an older verification result when its recorded tree proves the same policy.
+
+#### Scenario: Require permission to change a failed verify-only candidate
+
+- **WHEN** verification fails on a supplied patch and the developer has yet to authorize a repair
+- **THEN** Kitsu preserves the failed candidate. It can retry the unchanged candidate. A changed candidate requires an explicit repair scope extension before Kitsu can verify or deliver it.
+
+#### Scenario: Approve declared checks from the developer's terminal
+
+- **WHEN** the Kitsu plugin recognizes a command that would run declared repository checks
+- **THEN** the plugin checks approval for the exact current declaration and common Git directory. `check trust` displays the commands and records approval interactively after confirming the declaration still matches. Direct CLI and CI execution remain available.
+
 #### Scenario: Incomplete detachment
 
 - **WHEN** a foreign hook still invokes Kitsu during an explicit purge

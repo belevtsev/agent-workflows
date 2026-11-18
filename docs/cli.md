@@ -275,6 +275,12 @@ kitsu adviser check add-order-export
 inspection, help, and completion make no provider request. Advice replaces no review or human
 approval. [Advisers](advisers.md) covers opt-in, request JSON, checkpoints, and usage limits.
 
+## Approve repository checks
+
+In a repository that declares checks, run `kitsu check trust` in your own terminal before the Codex or Claude Code plugin runs them. Review the commands and type `yes` to approve the exact `kitsu.toml` declaration. Linked worktrees share this approval for matching declarations. Review a changed declaration before approving it again.
+
+`kitsu check list` and `kitsu check plan` inspect checks without approval. Direct terminal and CI calls to `kitsu check run` execute the declared commands as before. See [the plugin hook setup](hooks.md#hooks-of-the-agent-plugin).
+
 ## Add the Git gate
 
 ```sh

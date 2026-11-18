@@ -25,6 +25,8 @@ func TestBriefVerificationPointsToExecutedLog(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := kitsutest.Demo(t)
 			r.Write("kitsu.toml", strings.Replace(kitsutest.DemoDeclaration, `"sh", "lint.sh"`, fmt.Sprintf("%q, \"lint.sh\"", tc.gate), 1))
+			r.Git("add", "kitsu.toml")
+			r.Git("commit", "--allow-empty", "-qm", "Configure the repository check fixture")
 			lint := "echo lint-marker >&2\n"
 			if tc.exit == 19 {
 				lint += "exit 19\n"

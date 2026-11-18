@@ -8,6 +8,9 @@
 | A coding ticket survives edits on its original base | scenarios/harness/work_ticket_test.go | TestWorkTicketSurvivesEditsButNotANewBase |
 | Review an existing candidate | scenarios/harness/harness_test.go | TestCppReviewOnlyPreservesIndexAndWorkingTree |
 | Repair and recover | scenarios/harness/harness_test.go | TestGoExistingFixRepairVerificationAndRecovery |
+| Keep the opening check policy through delivery | scenarios/harness/verified_policy_test.go | TestChangedDeclarationBlocksVerificationAndCommit |
+| Require permission to change a failed verify-only candidate | scenarios/harness/verified_policy_test.go | TestChangedVerifyOnlyCandidateNeedsRepairAuthority |
+| Approve declared checks from the developer's terminal | internal/cli/ux_check_trust_test.go | TestReviewExactCheckDeclarationBeforeAgentExecution |
 | Confirm publication | scenarios/harness/harness_test.go | TestPublishChecksActualBranchBeforeCompleting |
 | Identify when the verified commit already existed | scenarios/harness/commit_history_test.go | TestDeliveryDistinguishesTheCommitAlreadyPresentAtVerification |
 | A staging-only change reopens review | scenarios/harness/harness_test.go | TestStagedReviewChangesWithIndexOnly |
