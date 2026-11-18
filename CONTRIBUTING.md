@@ -54,7 +54,7 @@ archify is the only diagram tool; do not add diagram sources in any other format
 - Update docs when commands or install behaviour change.
 - Run the build, vet, test, lint and vulnerability commands above before requesting review.
 
-Releases are published when a `v*` tag is pushed. Maintainers create tags; contributors do not need to.
+Maintainers publish from protected `main` using the [release workflow](docs/development.md#releases).
 
 ## Built with itself
 

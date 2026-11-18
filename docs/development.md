@@ -152,35 +152,47 @@ no other run showed.
 Kitsu versioning starts at `v0.0.1` after the 17 November 2026 reset. The installer defaults,
 plugin manifests, CI archive labels and tagged install examples must agree on the version being released.
 
-A release is made when the owner pushes a `v*` tag. `.github/workflows/release.yml`
-then does four things, each only when the one before it passed:
+The **Release** workflow accepts a semantic version tag on protected `main`. It requires
+a successful CI run on `main` for the exact dispatch commit and confirms that the shell and
+PowerShell examples use the supplied tag.
 
-1. It refuses a tag whose commit is not on `main`, or for which no run of CI
-   started by a push or by hand has passed (`.github/scripts/release-guard.sh`),
-   and a tag that `docs/release-install.md` does not name.
-2. It runs the tests with the race detector, the lint and the vulnerability
-   check.
-3. It builds with `.goreleaser.yaml` the archives for linux, darwin and windows
-   on amd64 and arm64, an SBOM for each, the matching plugin, both installer scripts, and `SHA256SUMS`, uploads them to a
-   draft release on GitHub, attests the build of each archive, and only then
-   makes the release public. A tag with a
-   hyphen, such as `v0.0.2-beta.1`, becomes a pre-release. The text of the
-   release is the section of `CHANGELOG.md` for that version, or the section
-   `Unreleased` while the changelog has none
-   (`.github/scripts/release-notes.sh`).
-4. It tests the published installer assets on Linux, macOS, and Windows through
-   `scenarios/installers`, with Go and Git absent from the install environment's `PATH`, and
-   verifies the installed version and revision. Windows covers PowerShell 5.1 and 7.
+1. Read-only jobs test, lint and check vulnerabilities with caches disabled. GoReleaser builds six
+   platform archives and their SBOMs locally. A single artifact holds the matching plugin, both
+   installer scripts, release notes and a checksum manifest for the archives, SBOMs, plugin and installers.
+2. Linux, macOS, and Windows on amd64 and arm64 install the exact artifact with Go and Git absent
+   from the installer's PATH. The tests check the CLI tag and revision and the matching plugin.
+   Windows covers PowerShell 5.1 and 7.
+3. A job with attestation permissions signs the archives, plugin, installer scripts and
+   checksum manifest. The protected publisher creates a tag at the tested commit, uploads the
+   files to a draft, and compares GitHub's asset digests against the bundle before publishing.
+   A tag such as `v0.1.0-rc.1` produces a pre-release and leaves the latest stable download on
+   the previous release. The release notes come from that version's section of `CHANGELOG.md`,
+   or from `Unreleased` when the section is absent.
 
-The former `cw` release pipeline ran for `v3.0.0-beta.1` on 15 November 2026; all four steps
-passed using that version's instructions. Its tag, release and assets were removed on
-17 November. The [historical changelog](../CHANGELOG.md#300-beta1---2026-11-15) links to the
-original source commit. Those results do not verify a future Kitsu publication.
+See the [release bundle tool](../internal/releasecmd/README.md) for assembly and draft verification.
 
-CI runs the commands of step 2 on every commit. Its job `Release archives`
-builds the six archives in the same way, and the same text, from the commit,
-and its jobs `Install without Go` install from them. The release workflow rebuilds from the
-tag and tests the published downloads separately; CI artifacts are not published releases.
+The CI workflow also produces preview archives and tests the installers. The release workflow
+rebuilds the publication bundle from the exact dispatch commit. Preparing either bundle requires
+only read access to the repository.
+
+### Configure release protection
+
+A repository admin sets up these controls before the first release using this workflow.
+
+- Protect `main` and require CI before merge. Create a `release` environment that allows
+  deployments only from the branch `main`, requires a release reviewer, and disables admin
+  bypass of protection. Enable self-review prevention when there are two release maintainers.
+  [GitHub deployment environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
+- Create a dedicated GitHub App installed only on `belevtsev/kitsu` with repository permissions
+  Contents write and Administration read. Store its client ID as the environment variable
+  `KITSU_RELEASE_APP_CLIENT_ID` and its private key as the environment secret
+  `KITSU_RELEASE_APP_PRIVATE_KEY`. The job uses these to mint a short-lived installation token.
+  [GitHub App authentication in workflows](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow)
+- Create an active tag ruleset for `refs/tags/v*` that restricts creation. Add the release App as
+  its sole bypass actor. Create a second active ruleset for the same pattern that restricts
+  updates and deletions with no bypass actors. [GitHub tag rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository)
+- Enable **Immutable releases** in repository settings. The publisher checks the setting before
+  creating the tag or draft. [GitHub immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
 
 To try the archives of a commit before it is tagged:
 
@@ -195,10 +207,14 @@ To publish:
    tests. Update README/security publication text and the changelog for that version.
 2. Merge the branch into `main` and wait until the run of CI for the merge
    commit has passed.
-3. Tag that commit with the tag `docs/release-install.md` names and push the tag:
-   `git tag <tag> <commit>` and `git push origin <tag>`.
-4. Verify that publication and public installer checks passed, and check the installed version
-   and revision using the one-line commands in the README.
+3. Dispatch `gh workflow run release.yml --ref main -f tag=<tag>` while that commit is at
+   the tip of `main`. Check the workflow revision and tag when approving the release deployment.
+4. Confirm the release is immutable and try the README install command to check the reported
+   version and revision. See [provenance verification](release-install.md#verify-release-provenance).
+
+If an upload fails, rerun the failed jobs on the original execution so the workflow keeps the
+same revision. A draft can resume when its tag, revision, and existing asset digests match the
+tested bundle. Inspect a conflicting tag or draft before retrying.
 
 If reusing a deleted version name, review the existing changelog heading before tagging:
 `release-notes.sh` prefers that version's section over `Unreleased`, so historical notes could
@@ -210,7 +226,7 @@ When preparing a release, give the section `Unreleased` of the changelog the hea
 of that version, and start a new section `Unreleased` above it.
 
 CI reads the single `tag=v<version>` line from the release installation guide to name its archives.
-The release workflow requires that line and the matching PowerShell assignment to match the pushed tag.
+The release workflow requires that line and the matching PowerShell assignment to match the dispatch tag.
 Keep both examples aligned with the installer and manifest versions even while no release exists.
 Until publication, the installers can use a downloaded
 [`kitsu-archives` CI artifact](release-install.md#install-a-ci-artifact-before-publication) without

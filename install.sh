@@ -1,5 +1,10 @@
 #!/bin/sh
 # Install a verified release archive without a source checkout or Go.
+trap 'printf "%s\n" "kitsu installer: incomplete script" >&2; exit 1' 0
+
+# Parse the entire installer before doing any work, including when piped to sh.
+{
+trap - 0
 set -eu
 
 _kitsu_version=${KITSU_VERSION:-}
@@ -469,3 +474,4 @@ $(quote_shell_argument "$_kitsu_target") agent setup --host $_kitsu_agent_host -
 fi
 printf 'Open a new terminal or restart your shell for PATH changes to take effect.\n'
 printf 'Run "%s version" to check the installed version.\n' "$_kitsu_target"
+}

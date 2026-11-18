@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- [Release installers](docs/release-install.md#install-from-a-release) stage the shell script before running. The release workflow tests and attests the exact bundle before publishing.
+
 - Release archives include the [license for Go networking and HTML dependencies](THIRD_PARTY.md).
 
 - Require initialized submodules for new [check evidence](docs/evidence.md#the-same-content). Rerun checks once on trees that contain submodules after upgrading.

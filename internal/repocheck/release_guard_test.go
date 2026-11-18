@@ -106,13 +106,13 @@ func (r *guardRepo) runs(lines string) {
 	}
 }
 
-func (r *guardRepo) guard(commit string) (string, int) {
+func (r *guardRepo) guard(args ...string) (string, int) {
 	r.t.Helper()
 	script, err := filepath.Abs(filepath.Join(repoRoot, ".github", "scripts", "release-guard.sh"))
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	return r.run("sh", script, commit)
+	return r.run("sh", append([]string{script}, args...)...)
 }
 
 // The release job runs on Linux only, so the guard is tested there and on
@@ -159,7 +159,7 @@ func TestReleaseGuard(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				for _, want := range []string{"run\nlist\n", "--workflow\nci.yml\n", "--commit\n" + commit + "\n"} {
+				for _, want := range []string{"run\nlist\n", "--workflow\nci.yml\n", "--branch\nmain\n", "--commit\n" + commit + "\n"} {
 					if !strings.Contains(string(args), want) {
 						t.Errorf("gh was called with %q, want %q in it", args, want)
 					}
@@ -174,6 +174,54 @@ func TestReleaseGuard(t *testing.T) {
 			}
 			if lines := strings.Count(strings.TrimSpace(out), "\n"); lines != 0 {
 				t.Errorf("the guard said %d lines, want one sentence: %q", lines+1, out)
+			}
+		})
+	}
+}
+
+func TestProtectedReleaseDispatch(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the release job does not run on Windows")
+	}
+	const tag = "v0.1.0-rc.1"
+	tests := []struct {
+		name   string
+		arg    string
+		env    string
+		reason string
+	}{
+		{name: "protected main", arg: tag},
+		{name: "fork", arg: tag, env: "GITHUB_REPOSITORY=example/kitsu", reason: "protected main"},
+		{name: "tag push", arg: tag, env: "GITHUB_EVENT_NAME=push", reason: "protected main"},
+		{name: "side branch", arg: tag, env: "GITHUB_REF=refs/heads/side", reason: "protected main"},
+		{name: "unprotected main", arg: tag, env: "GITHUB_REF_PROTECTED=false", reason: "protected main"},
+		{name: "different revision", arg: tag, env: "GITHUB_SHA=other", reason: "exact protected workflow revision"},
+		{name: "newlines", arg: tag + "\nanything", reason: "semantic version"},
+		{name: "leading zeros", arg: "v01.1.0", reason: "semantic version"},
+		{name: "prerelease leading zeros", arg: "v0.1.0-rc.01", reason: "semantic version"},
+		{name: "tag not prepared", arg: "v0.2.0", reason: "must use v0.2.0"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r := newGuardRepo(t)
+			r.git("switch", "main")
+			docs := filepath.Join(r.dir, "docs")
+			if err := os.Mkdir(docs, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			note := "tag=" + tag + "\n$tag = \"" + tag + "\"\n"
+			if err := os.WriteFile(filepath.Join(docs, "release-install.md"), []byte(note), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			r.runs(r.onMain + " push completed success\n")
+			r.env = append(r.env, "GITHUB_REPOSITORY=belevtsev/kitsu", "GITHUB_EVENT_NAME=workflow_dispatch",
+				"GITHUB_REF=refs/heads/main", "GITHUB_REF_PROTECTED=true", "GITHUB_SHA="+r.onMain)
+			if test.env != "" {
+				r.env = append(r.env, test.env)
+			}
+			out, code := r.guard(r.onMain, test.arg)
+			if test.reason == "" && code != 0 || test.reason != "" && (code == 0 || !strings.Contains(out, test.reason)) {
+				t.Fatalf("guard exit %d: %s; expected %q", code, out, test.reason)
 			}
 		})
 	}
