@@ -43,6 +43,7 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	verificationLines := 0
 	harnessLines := 0
 	insightLines := 0
+	releaseLines := 0
 	for _, file := range repoFiles(t) {
 		if !strings.HasSuffix(file, ".go") || strings.HasSuffix(file, "_test.go") || strings.Contains(file, "/testdata/") {
 			continue
@@ -74,6 +75,8 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 			skills += lines
 		} else if strings.HasPrefix(file, "internal/advisers/") || strings.HasPrefix(file, "internal/cli/adviser") || strings.HasPrefix(file, "internal/cli/consult") {
 			advisers += lines
+		} else if strings.HasPrefix(file, "internal/releasecmd/") {
+			releaseLines += lines
 		} else if rolesCode(file) {
 			roles += lines
 		} else {
@@ -93,6 +96,11 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	t.Logf("workflow insights: %d of %d lines", insightLines, maxInsightLines)
 	const maxHarnessLines = 3310 // Includes anonymous public document intake, host-supplied tickets, snapshots and delivery evidence.
 	t.Logf("task harness: %d of %d lines", harnessLines, maxHarnessLines)
+	const maxReleaseLines = 410 // Repository-only release assembly, integrity and publication.
+	t.Logf("release automation: %d of %d lines", releaseLines, maxReleaseLines)
+	if releaseLines > maxReleaseLines {
+		t.Errorf("release automation holds %d lines of Go, want at most %d", releaseLines, maxReleaseLines)
+	}
 	if harnessLines > maxHarnessLines {
 		t.Errorf("task harness holds %d lines of Go, want at most %d", harnessLines, maxHarnessLines)
 	}
