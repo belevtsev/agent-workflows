@@ -56,7 +56,7 @@ func codexWindowsCommands(t *testing.T) map[string][]string {
 			}
 		}
 	}
-	for _, event := range []string{"SessionStart", "PreToolUse", "SubagentStop", "SessionEnd"} {
+	for _, event := range []string{"SessionStart", "PreToolUse", "SubagentStart", "SubagentStop", "SessionEnd"} {
 		if len(commands[event]) == 0 {
 			t.Fatalf("hooks/codex-hooks.json has no commandWindows for %s", event)
 		}

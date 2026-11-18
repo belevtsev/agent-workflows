@@ -14,10 +14,14 @@ import (
 
 type state struct {
 	Next, Ticket, Delivery string
-	CommitTarget           string              `json:"commit_target"`
-	Completion             *harness.Completion `json:"completed_delivery"`
-	Verified               bool
-	Proof                  *struct {
+	Scope                  struct {
+		RequireReview bool `json:"require_review"`
+	}
+	RepositoryReview bool                `json:"repository_requires_review"`
+	CommitTarget     string              `json:"commit_target"`
+	Completion       *harness.Completion `json:"completed_delivery"`
+	Verified         bool
+	Proof            *struct {
 		Run     string `json:"run_id"`
 		Outcome string
 	} `json:"behavioral_assertion"`
@@ -59,8 +63,32 @@ func (f *flow) record(action, actor, note string, extra ...string) {
 }
 func (f *flow) review(actor, note string, extra ...string) {
 	f.t.Helper()
-	f.call(0, "claim", "--actor", "host", "--ticket", f.state.Ticket)
+	claim := []string{"claim", "--actor", "host", "--ticket", f.state.Ticket}
+	required := f.state.Scope.RequireReview || f.state.RepositoryReview
+	if required {
+		claim = append(claim, "--host", "codex")
+	}
+	f.call(0, claim...)
+	if required {
+		f.observedReview("codex", "host", actor, note, extra...)
+		return
+	}
 	f.record("review", actor, note, extra...)
+}
+
+func (f *flow) observedReview(host, parent, worker, note string, extra ...string) {
+	f.t.Helper()
+	f.want("review")
+	var findings []string
+	for i, arg := range extra {
+		if arg == "--finding" && i+1 < len(extra) {
+			findings = append(findings, extra[i+1])
+		}
+	}
+	ticket := f.state.Ticket
+	sendNativeReviewEvent(f.t, f.repo, host, "SubagentStart", parent, worker, "")
+	finishNativeFixture(f.t, f.repo, f.id, ticket, host, parent, worker, note, findings...)
+	f.call(0, "record", "review", "--ticket", ticket, "--observed-review")
 }
 
 func TestGoExistingFixRepairVerificationAndRecovery(t *testing.T) {
@@ -432,7 +460,7 @@ func TestReviewScopeExtensionChecksTheWholeDeliveryCandidate(t *testing.T) {
 	f.want("done")
 	f.call(0, "extend", "--until", "deliver", "--commit")
 	f.want("review")
-	received := r.Kitsu("task", "claim", f.id, "--actor", "host", "--ticket", f.state.Ticket, "--brief")
+	received := r.Kitsu("task", "claim", f.id, "--actor", "host", "--ticket", f.state.Ticket, "--host", "codex", "--brief")
 	var expanded struct {
 		Changes      []string `json:"review_changes"`
 		ScopeChanged bool     `json:"review_scope_changed"`
@@ -443,11 +471,11 @@ func TestReviewScopeExtensionChecksTheWholeDeliveryCandidate(t *testing.T) {
 	if diff := r.Git(expanded.Changes[1:]...); !strings.Contains(diff, "untracked.txt") || strings.Contains(diff, "staged.txt") {
 		t.Fatalf("incremental review did not identify the previously excluded file: %s", diff)
 	}
-	f.record("review", "full-reviewer", "Checked both changed files")
+	f.observedReview("codex", "host", "full-reviewer", "Checked both changed files")
 	r.Git("commit", "--allow-empty", "--only", "-qm", "Intervening base change")
 	f.call(0, "next")
 	f.want("review")
-	reservation := r.Kitsu("task", "claim", f.id, "--actor", "host", "--ticket", f.state.Ticket, "--brief")
+	reservation := r.Kitsu("task", "claim", f.id, "--actor", "host", "--ticket", f.state.Ticket, "--host", "codex", "--brief")
 	var receipt struct {
 		Changes     []string `json:"review_changes"`
 		BaseChanged bool     `json:"review_base_changed"`
@@ -458,7 +486,7 @@ func TestReviewScopeExtensionChecksTheWholeDeliveryCandidate(t *testing.T) {
 	if diff := r.Git(receipt.Changes[1:]...); diff != "" {
 		t.Fatalf("the worktree stayed identical across the base change: %s", diff)
 	}
-	f.record("review", "new-base-reviewer", "Checked the diff against the new base")
+	f.observedReview("codex", "host", "new-base-reviewer", "Checked the diff against the new base")
 	f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "Run unit suite", "--", "sh", "unit.sh")
 	r.Git("add", "untracked.txt")
 	f.call(0, "commit", "--ticket", f.state.Ticket, "--message", "Deliver reviewed change", "--include", "staged.txt", "--include", "untracked.txt")

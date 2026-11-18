@@ -104,7 +104,7 @@ func (f fixture) inventory(version int, scope, project, path string) {
 func (f fixture) hooks(omit, matcher string, disabled bool) {
 	f.t.Helper()
 	events := map[string]any{}
-	for _, event := range []string{"SessionStart", "PreToolUse", "SubagentStop", "SessionEnd"} {
+	for _, event := range []string{"SessionStart", "PreToolUse", "SubagentStart", "SubagentStop", "SessionEnd"} {
 		if event == omit {
 			continue
 		}

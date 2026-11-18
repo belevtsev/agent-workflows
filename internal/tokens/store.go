@@ -48,6 +48,8 @@ type Start struct {
 
 // Notice is what a host gives its hook when a role or a session ends.
 type Notice struct {
+	Event           string `json:"hook_event_name"`
+	LastAssistant   string `json:"last_assistant_message"`
 	Session         string `json:"session_id"`
 	Transcript      string `json:"transcript_path"`
 	AgentID         string `json:"agent_id"`

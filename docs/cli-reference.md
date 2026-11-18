@@ -466,7 +466,7 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ```text
 usage: kitsu task record <task> <action> [options]
 
-Record intake, a plan, implementation, repair or independent review.
+Record intake, a plan, implementation, repair or review.
 
 Arguments:
   <task>             task name: lowercase words joined by hyphens
@@ -478,6 +478,8 @@ Options:
   --actor <id>             native session identity
   --note <text>            result and evidence or artifact reference
   --finding <text>         unresolved review finding; repeatable
+  --observed-review        use the matching native review result captured by the
+                           host hooks
   --brief                  return next action, ticket and evidence references as
                            JSON
   --json                   return structured task state
@@ -485,6 +487,7 @@ Options:
 
 Examples:
   kitsu task record export-quoting intake --actor SESSION --ticket TICKET --note "Quoted fields should round-trip"
+  kitsu task record export-quoting review --ticket TICKET --observed-review --brief
 
 Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.

@@ -129,6 +129,11 @@ Source: proposal.md and approved daily coding harness plan.
 - **WHEN** a coordinator reserves a review for a specific host
 - **THEN** the reservation and review record retain that host's selected model, reasoning effort and skill source references, and resolution failure leaves the action unclaimed.
 
+#### Scenario: Verify a required review came from a native worker
+
+- **WHEN** the task or repository requires review of the current candidate
+- **THEN** the harness accepts a result only after the installed host records the distinct worker starting and completing under the reserving coordinator, and the result matches the reserved review and candidate. A coordinator can replay the observed result without starting another worker. An absent observation or changed candidate leaves review pending. The receipt identifies the observed host, coordinator and worker.
+
 #### Scenario: Extend a partial review to delivery
 
 - **WHEN** the requested delivery contains files outside a previously reviewed index or the review base changes before verification
