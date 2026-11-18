@@ -28,16 +28,17 @@ type verificationLogRef struct {
 }
 
 type harnessView struct {
-	ActorSessions     []tokens.Session    `json:"actor_session_usage,omitempty"`
-	ReviewPolicyError string              `json:"review_policy_error,omitempty"`
-	RepositoryReview  bool                `json:"repository_requires_review,omitempty"`
-	VerificationLog   *verificationLogRef `json:"verification_log,omitempty"`
-	ManagedInterval   string              `json:"managed_interval,omitempty"`
-	PendingDaily      string              `json:"pending_daily_action,omitempty"`
-	PriorNotes        map[string]string   `json:"prior_notes,omitempty"`
-	Publication       *publicationReceipt `json:"last_publication,omitempty"`
-	DeveloperLaunch   string              `json:"developer_launch,omitempty"`
-	ReviewCurrent     bool                `json:"review_current"`
+	TicketSource      *harness.TicketSource `json:"ticket_source,omitempty"`
+	ActorSessions     []tokens.Session      `json:"actor_session_usage,omitempty"`
+	ReviewPolicyError string                `json:"review_policy_error,omitempty"`
+	RepositoryReview  bool                  `json:"repository_requires_review,omitempty"`
+	VerificationLog   *verificationLogRef   `json:"verification_log,omitempty"`
+	ManagedInterval   string                `json:"managed_interval,omitempty"`
+	PendingDaily      string                `json:"pending_daily_action,omitempty"`
+	PriorNotes        map[string]string     `json:"prior_notes,omitempty"`
+	Publication       *publicationReceipt   `json:"last_publication,omitempty"`
+	DeveloperLaunch   string                `json:"developer_launch,omitempty"`
+	ReviewCurrent     bool                  `json:"review_current"`
 	store             *store.Store
 	ClaimCreated      bool           `json:"claim_created,omitempty"`
 	Pause             *harness.Pause `json:"pause,omitempty"`
@@ -101,6 +102,7 @@ func observeHarness(ctx context.Context, s *session, t *harness.Task, withUsage 
 		return v, err
 	}
 	v.Deadline, v.FinishReserve, v.ReviewLimit, v.ReviewStarts = t.Deadline, t.FinishReserve, t.ReviewLimit, t.StartedReviews()
+	v.describeBug(t)
 	if err := v.routeAction(ctx, s, t); err != nil {
 		return v, err
 	}
@@ -109,6 +111,16 @@ func observeHarness(ctx context.Context, s *session, t *harness.Task, withUsage 
 		v.loadUsage(s.repo, t.Events)
 	}
 	return v, nil
+}
+
+func (v *harnessView) describeBug(t *harness.Task) {
+	if t.Bug != nil {
+		v.TicketSource = &t.Bug.Source
+	}
+	if t.NeedsReproduction() && v.Behavior == "passed" {
+		v.Verified = false
+		v.Delivery = "bug not reproduced; run an assertion that demonstrates the reported behavior"
+	}
 }
 
 func (v *harnessView) setActionTicket(ctx context.Context, s *session, t *harness.Task) error {
@@ -260,6 +272,12 @@ func printHarness(cfg Config, o harnessOptions, v harnessView) error {
 	if v.ReviewPolicyError != "" {
 		fmt.Fprintln(cfg.Out, decl.Plain(v.ReviewPolicyError))
 	}
+	if v.TicketSource != nil {
+		fmt.Fprintln(cfg.Out, "Source ticket:", decl.Plain(v.TicketSource.URL))
+		if v.Next == "receipt" || v.Next == "done" {
+			fmt.Fprintln(cfg.Out, "Delivery receipt: kitsu task receipt", v.Task)
+		}
+	}
 	v.printResumeNotes(cfg.Out)
 	if v.Scope.ReviewBase != "" {
 		fmt.Fprintf(cfg.Out, "Review range %s..%s\n", v.Scope.ReviewBase, v.Scope.ReviewHead)
@@ -355,6 +373,9 @@ func (v harnessView) verificationLog() *verificationLogRef {
 // Full results, findings and inputs stay in task show across interruptions.
 func (v harnessView) brief() map[string]any {
 	reply := map[string]any{"task": v.Task, "next": v.Next, "verified": v.Verified, "repository_checks": v.Gate, "delivery": v.Delivery, "details": []string{"kitsu", "task", "show", v.Task, "--json"}}
+	if v.TicketSource != nil && (v.Next == "receipt" || v.Next == "done") {
+		reply["delivery_receipt"] = []string{"kitsu", "task", "receipt", v.Task, "--json"}
+	}
 	if v.ReviewPolicyError != "" {
 		reply["review_policy_error"] = v.ReviewPolicyError
 	}
@@ -373,18 +394,7 @@ func (v harnessView) brief() map[string]any {
 	if v.Publication != nil {
 		reply["last_publication"] = v.Publication
 	}
-	if v.Pause != nil || v.Claim != nil && (v.ReviewLimit > 0 || !v.Deadline.IsZero()) {
-		reply["review_starts"], reply["review_limit"] = v.ReviewStarts, v.ReviewLimit
-		if !v.Deadline.IsZero() {
-			reply["deadline"] = v.Deadline
-			if v.DeveloperLaunch == "" {
-				reply["review_return_by"] = v.Deadline.Add(-v.FinishReserve)
-			}
-		}
-	}
-	if v.Pause != nil {
-		reply["pause"], reply["candidate"], reply["resume"] = v.Pause, v.Candidate, []string{"kitsu", "task", "next", v.Task, "--brief"}
-	}
+	v.addBriefLimits(reply)
 	if v.Ticket != "" {
 		reply["ticket"] = v.Ticket
 	}
@@ -404,6 +414,21 @@ func (v harnessView) brief() map[string]any {
 		}
 	}
 	return reply
+}
+
+func (v harnessView) addBriefLimits(reply map[string]any) {
+	if v.Pause != nil || v.Claim != nil && (v.ReviewLimit > 0 || !v.Deadline.IsZero()) {
+		reply["review_starts"], reply["review_limit"] = v.ReviewStarts, v.ReviewLimit
+		if !v.Deadline.IsZero() {
+			reply["deadline"] = v.Deadline
+			if v.DeveloperLaunch == "" {
+				reply["review_return_by"] = v.Deadline.Add(-v.FinishReserve)
+			}
+		}
+	}
+	if v.Pause != nil {
+		reply["pause"], reply["candidate"], reply["resume"] = v.Pause, v.Candidate, []string{"kitsu", "task", "next", v.Task, "--brief"}
+	}
 }
 
 func (v harnessView) addBriefClaim(reply map[string]any) {
@@ -427,8 +452,11 @@ func (v harnessView) addBriefClaim(reply map[string]any) {
 }
 
 func harnessProofValid(s *session, t *harness.Task) (bool, error) {
-	p := t.Proof
-	if (!p.PerRunInputs || !p.IndexChecked) || p.Outcome != store.Passed || !validProofLocation(p) || !filepath.IsLocal(p.Run) || filepath.Base(p.Run) != p.Run {
+	return validAssertionRecord(s, t.Proof, store.Passed)
+}
+
+func validAssertionRecord(s *session, p *harness.Proof, outcome string) (bool, error) {
+	if p == nil || (!p.PerRunInputs || !p.IndexChecked) || p.Outcome != outcome || !validProofLocation(p) || !filepath.IsLocal(p.Run) || filepath.Base(p.Run) != p.Run {
 		return false, nil
 	}
 	records, damaged, err := s.store.Records(p.CheckID, p.Key)
@@ -439,7 +467,7 @@ func harnessProofValid(s *session, t *harness.Task) (bool, error) {
 		if r.RunID != p.Run {
 			continue
 		}
-		if r.ID != p.CheckID || r.ContentKey != p.Key || r.Outcome != store.Passed || r.Tree != p.Candidate.Tree || !slices.Equal(r.Run, p.Argv) {
+		if r.ID != p.CheckID || r.ContentKey != p.Key || r.Outcome != outcome || r.Tree != p.Candidate.Tree || !slices.Equal(r.Run, p.Argv) {
 			return false, nil
 		}
 		digest, err := taskVerificationLog(s, r.RunID)
@@ -503,7 +531,7 @@ func runHarnessTest(ctx context.Context, s *session, l *stageLedger, t *harness.
 			return err
 		}
 	}
-	if p.Outcome != store.Passed {
+	if p.Outcome != store.Passed || t.NeedsReproduction() {
 		return nil
 	}
 	_, found, err := s.repo.Object(ctx, c.Tree, decl.FileName)

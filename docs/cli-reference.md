@@ -204,6 +204,52 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
 ```
 
+### kitsu task bug
+
+```text
+usage: kitsu task bug <task> --from SOURCE [options]
+
+Open a ticket for reproduction, repair and verified local commit delivery.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --from <source>          GitHub issue URL or Markdown file
+  --require-review         require an independent review of the candidate
+  --brief                  return next action, ticket and evidence references as
+                           JSON
+  --json                   return structured task state
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task bug csv-fix --from tickets/csv.md
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task receipt
+
+```text
+usage: kitsu task receipt <task> [options]
+
+Verify the delivered bug fix on its commit and print the saved ticket-linked receipt.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --json                   return structured task state
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task receipt add-login
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
 ### kitsu task open
 
 ```text

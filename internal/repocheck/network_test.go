@@ -59,8 +59,8 @@ func TestNetworkImportsStayInNativeAdvisers(t *testing.T) {
 				continue
 			}
 			for _, imported := range pkg.Imports {
-				// Terminal OSC formatting uses URL escaping, not a network client.
-				if pkg.ImportPath == "github.com/charmbracelet/x/ansi" && imported == "net/url" {
+				// Terminal formatting and ticket source identifiers use local URL parsing and escaping.
+				if (pkg.ImportPath == "github.com/charmbracelet/x/ansi" || pkg.ImportPath == "github.com/belevtsev/kitsu/v3/internal/tickets") && imported == "net/url" {
 					continue
 				}
 				if networkPackage(imported) {

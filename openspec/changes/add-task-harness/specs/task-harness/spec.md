@@ -345,3 +345,24 @@ Source: proposal.md and approved daily coding harness plan.
 
 - **WHEN** a developer resumes an interrupted task in Codex or Claude
 - **THEN** the host handoff directs it to the ordinary next-action view. That view exposes the saved scope, relevant work, review currency, worker recovery identity, applicable deadlines and ticket without a token archive read. Full JSON still includes the accounting result and exact candidate identities.
+
+### Requirement: Deliver a ticket-linked bug fix
+
+The daily harness SHALL import a GitHub issue or Markdown file into an immutable local task snapshot. It SHALL link a real failing behavioral assertion, a recorded repair, a passing rerun and a successful assertion observed on the delivered commit in a retrievable receipt.
+
+Source: developer request for the first closed-loop delivery slice.
+
+#### Scenario: Resume and deliver the same ticket
+
+- **WHEN** a developer opens a bug task from an issue or file and resumes after its source changes or disappears
+- **THEN** the task retains its original request and source identity and a different source cannot replace it.
+
+#### Scenario: Repair a reproduced failure and verify the commit
+
+- **WHEN** the saved behavior fails, a developer records a changed repair and the same assertion and applicable repository checks pass
+- **THEN** Kitsu permits local commit delivery, verifies the assertion on that commit, and retains its revision, source and evidence.
+
+#### Scenario: Withhold an unsupported receipt
+
+- **WHEN** reproduction is missing, a different command is substituted, or the post-commit assertion fails
+- **THEN** Kitsu withholds a successful receipt. A saved successful receipt remains available after the checkout moves.

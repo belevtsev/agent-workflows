@@ -22,3 +22,9 @@ A repository-check failure stays available on resume until a new result supersed
 | Detachment preserves evidence by default | test |
 
 Interactive startup shares Git discovery with other commands. The checkout fix reallocates 28 lines of the onboarding allowance to core discovery and 8 to the daily harness for resume preflight. The combined allowance remains 11,002 production lines across those three components.
+
+## Ticket-linked local delivery
+
+Ticket import is an explicit execution boundary. The ticket reader invokes the authenticated GitHub CLI through the existing process runner, or reads a local Markdown file. The immutable request supplies context; the bug command supplies local delivery scope. Git and the gate remain offline. The harness production allowance increases from 2,760 to 3,140 lines to cover the importer, retained reproduction and post-commit receipt.
+
+The worktree ledger holds the original source digest, the first failing assertion and the successful receipt. The post-commit check has its own run ID and log and must observe the verified commit, staged tree, source and target. Receipt retries reuse a completed observation. A crash before saving the receipt may rerun the assertion but cannot duplicate the commit.
