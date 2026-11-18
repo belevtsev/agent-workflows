@@ -22,30 +22,30 @@ func TestGitHubTicketImport(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir)
-	src, err := Location(issue + "/")
+	src, err := Location(issue+"/", false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	src, text, err := Read(t.Context(), issue, src)
+	src, text, err := Read(t.Context(), issue, src, nil)
 	if err != nil || text != "Quoted input\n\nKeep quotes.\nSee example." || src.URL != issue || src.UpdatedAt == "" || src.SHA256 != fmt.Sprintf("%x", sha256.Sum256([]byte(text))) {
 		t.Fatal(src, text, err)
 	}
 	if err := os.Remove(filepath.Join(dir, "gh")); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Read(t.Context(), issue, src); err == nil {
+	if _, _, err := Read(t.Context(), issue, src, nil); err == nil {
 		t.Fatal("missing gh reported a successful import")
 	}
 }
 
 func TestTicketSourceRejectsInvalidInputs(t *testing.T) {
 	for _, value := range []string{"", "ticket.txt", "https://github.com/o/r/pull/1", "https://github.com/o/r/issues/0", "https://github.com@elsewhere.example/o/r/issues/4"} {
-		if _, err := Location(value); err == nil {
+		if _, err := Location(value, false); err == nil {
 			t.Errorf("accepted %q", value)
 		}
 	}
 	p := filepath.Join(t.TempDir(), "issue.md")
-	src, err := Location(p)
+	src, err := Location(p, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,11 +53,34 @@ func TestTicketSourceRejectsInvalidInputs(t *testing.T) {
 		if err := os.WriteFile(p, content, 0600); err != nil {
 			t.Fatal(err)
 		}
-		if _, _, err := Read(t.Context(), p, src); err == nil {
+		if _, _, err := Read(t.Context(), p, src, nil); err == nil {
 			t.Fatal("accepted invalid Markdown")
 		}
 	}
 	if !strings.HasPrefix(src.URL, "file:") {
 		t.Fatal(src)
+	}
+}
+
+func TestSuppliedTicket(t *testing.T) {
+	const ref = "https://issues.example.test/record?id=17"
+	src, err := Location(ref, true)
+	if err != nil || src.Kind != "supplied" || src.URL != ref {
+		t.Fatal(src, err)
+	}
+	const body = "# Café exports\n\nReproduce with an empty table."
+	got, text, err := Read(t.Context(), ref, src, strings.NewReader(body))
+	if err != nil || text != body || got.Title != "Café exports" || got.SHA256 != fmt.Sprintf("%x", sha256.Sum256([]byte(body))) {
+		t.Fatal(got, text, err)
+	}
+	for _, val := range []string{"", "   ", "bad\x00body", "\xff", strings.Repeat("x", maxTicketBytes+1)} {
+		if _, _, err := Read(t.Context(), ref, src, strings.NewReader(val)); err == nil {
+			t.Fatal("accepted invalid body")
+		}
+	}
+	for _, val := range []string{"", "local.md", "mcp:///no-server", "https://user:secret@example.test/t", "javascript:alert(1)"} {
+		if _, err := Location(val, true); err == nil {
+			t.Errorf("accepted %q", val)
+		}
 	}
 }

@@ -30,7 +30,7 @@ func harnessCommands() []uxCommand {
 	reviewHead := uxOption("review-head", "revision", "end commit of a read-only review range; requires --review-base")
 	ticket := uxOption("ticket", "id", "action ticket returned by task next")
 	return []uxCommand{
-		{path: "task bug", args: "<task> --from SOURCE", summary: "Open a ticket for reproduction, repair and verified local commit delivery", flags: []uxFlag{uxOption("from", "source", "GitHub or Jira Cloud issue URL, or Markdown file"), requireReviewFlag(), brief, json}, examples: []string{"kitsu task bug csv-fix --from tickets/csv.md"}, run: harnessCommand("bug")},
+		{path: "task bug", args: "<task> --from SOURCE", summary: "Open a ticket for reproduction, repair and verified local commit delivery", flags: []uxFlag{uxOption("from", "source", "ticket source URL or Markdown file"), uxOption("stdin", "", "read ticket Markdown from standard input and retain its source link"), requireReviewFlag(), brief, json}, examples: []string{"kitsu task bug csv-fix --from tickets/csv.md"}, run: harnessCommand("bug")},
 		{path: "task receipt", args: "<task>", summary: "Verify the delivered bug fix on its commit and print the saved ticket-linked receipt", flags: []uxFlag{json}, run: harnessCommand("receipt")},
 
 		{path: "task open", args: "<task> --until <outcome>", summary: "Pin a candidate and the developer's requested outcome", flags: append([]uxFlag{request, taskEntry, taskUntil, repair, commit, publish, base, reviewBase, reviewHead, requireReviewFlag(), brief, json}, reviewLimitFlags()...), examples: []string{`kitsu task open export-quoting --entry review --until verify --repair --request "Verify CSV quoting"`, `kitsu task open review-pr --until review --review-base main --review-head topic --request "Review the committed change"`}, run: harnessCommand("open")},
@@ -70,7 +70,7 @@ type harnessOptions struct {
 	findings, includes                                                            stringList
 	argv                                                                          []string
 	reviewLimits
-	json, brief, retry, defaultDeliveryEntry bool
+	json, brief, retry, defaultDeliveryEntry, stdin bool
 }
 
 func parseHarness(verb string, args []string) (harnessOptions, error) {
@@ -81,6 +81,7 @@ func parseHarness(verb string, args []string) (harnessOptions, error) {
 	switch verb {
 	case "bug":
 		f.StringVar(&o.from, "from", "", "")
+		f.BoolVar(&o.stdin, "stdin", false, "")
 		o.scope = harness.Scope{Entry: "verify", Until: "deliver", Repair: true, Commit: true}
 		f.BoolVar(&o.scope.RequireReview, "require-review", false, "")
 	case "open", "extend":
@@ -184,7 +185,7 @@ func validateHarnessOptions(verb string, p parsed, o harnessOptions) (harnessOpt
 }
 
 func (o harnessOptions) withTicketSource() (harnessOptions, error) {
-	source, err := tickets.Location(o.from)
+	source, err := tickets.Location(o.from, o.stdin)
 	if err != nil {
 		return o, usagef("%v", err)
 	}
@@ -656,7 +657,7 @@ func loadHarness(ctx context.Context, s *session, l *stageLedger, o harnessOptio
 func createHarness(ctx context.Context, s *session, l *stageLedger, o harnessOptions, start harness.Snapshot) (harness.Task, error) {
 	var bug *harness.BugDelivery
 	if o.from != "" {
-		src, text, err := tickets.Read(ctx, o.from, o.source)
+		src, text, err := tickets.Read(ctx, o.from, o.source, s.cfg.In)
 		if err != nil {
 			return harness.Task{}, err
 		}
@@ -697,7 +698,7 @@ func pinHarnessCommitTarget(ctx context.Context, s *session, task *harness.Task)
 }
 
 func (o *harnessOptions) matchesSavedScope(task *harness.Task) bool {
-	if o.from != "" && (task.Bug == nil || o.source.URL != task.Bug.Source.URL) {
+	if o.from != "" && (task.Bug == nil || o.source.Kind != task.Bug.Source.Kind || o.source.URL != task.Bug.Source.URL) {
 		return false
 	}
 	scope := o.scope

@@ -215,7 +215,9 @@ Arguments:
   <task>             task name: lowercase words joined by hyphens
 
 Options:
-  --from <source>          GitHub or Jira Cloud issue URL, or Markdown file
+  --from <source>          ticket source URL or Markdown file
+  --stdin                  read ticket Markdown from standard input and retain
+                           its source link
   --require-review         require an independent review of the candidate
   --brief                  return next action, ticket and evidence references as
                            JSON

@@ -52,7 +52,7 @@ func TestJiraIssue(t *testing.T) {
 			t.Setenv("KITSU_JIRA_EMAIL", "user")
 			t.Setenv("KITSU_JIRA_API_TOKEN", "token")
 			src := harness.TicketSource{URL: srv.URL + "/browse/APP-42", Kind: "jira"}
-			got, text, err := Read(t.Context(), src.URL, src)
+			got, text, err := Read(t.Context(), src.URL, src, nil)
 			if tc.want && (err != nil || text != "Broken output\n\nStep 1\nStep 2" || got.UpdatedAt != "today" || got.SHA256 == "") {
 				t.Fatal(got, text, err)
 			}
@@ -64,12 +64,12 @@ func TestJiraIssue(t *testing.T) {
 }
 func TestJiraSourceURL(t *testing.T) {
 	const target = "https://acme.atlassian.net/browse/APP-42"
-	src, err := Location(target + "/?from=board#detail")
+	src, err := Location(target+"/?from=board#detail", false)
 	if err != nil || src.Kind != "jira" || src.URL != target {
 		t.Fatal(src, err)
 	}
 	for _, v := range []string{"http://acme.atlassian.net/browse/X-1", "https://acme.atlassian.net.evil.test/browse/X-1", "https://user@acme.atlassian.net/browse/X-1", target + "/comment", target + ":80"} {
-		if _, err := Location(v); err == nil {
+		if _, err := Location(v, false); err == nil {
 			t.Error(v)
 		}
 	}

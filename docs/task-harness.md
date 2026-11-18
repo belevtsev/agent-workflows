@@ -40,12 +40,20 @@ Choose the base you intend to compare. For a branch that diverged from main, use
 
 ## Deliver a bug ticket
 
-From the target repository, open a task using a GitHub issue URL, Jira Cloud issue URL or a Markdown file. The command authorizes a local repair and commit on the current branch. Ticket text supplies the problem statement. Publishing a branch, posting to the tracker and closing the issue require separate developer action.
+From the target repository, open a task from a connected tracker, a Markdown file, or a built-in GitHub or Jira Cloud reader. The command authorizes a local repair and commit on the current branch. Ticket text supplies the problem statement. Publishing a branch, posting to the tracker and closing the issue require separate developer action.
 
 ```sh
 kitsu task bug wrapper-args --from https://github.com/spf13/pflag/issues/537
 kitsu task start --resume wrapper-args --host codex
 ```
+
+For a tracker exposed through MCP, ask Codex or Claude Code to read the ticket with your configured server. For example, “Read EXP-14 from our support tracker and use Kitsu to reproduce, repair and verify it.” The host passes the returned title and description as Markdown on standard input. Use the ticket's stable browser link, or an `mcp://SERVER/TICKET-ID` reference when the server only returns an ID. A file exported by another tool works the same way:
+
+```sh
+kitsu task bug export-14 --from mcp://support/EXP-14 --stdin < ticket.md
+```
+
+The host handles tracker access. Kitsu records the supplied text and source reference. Use a permanent link without credentials or temporary access tokens. Resume offline with `kitsu task next export-14`.
 
 To read a Jira Cloud issue, paste its browser link. For private issues, set `KITSU_JIRA_SITE` to the HTTPS site origin (for example `https://acme.atlassian.net`), `KITSU_JIRA_EMAIL` to your account email, and `KITSU_JIRA_API_TOKEN` to a site-compatible API token through your shell or secret manager. Public issues can be imported anonymously. This uses the site's read-only issue endpoint and preserves Jira's description text. [Atlassian authentication guide](https://developer.atlassian.com/cloud/jira/platform/basic-auth-for-rest-apis/)
 

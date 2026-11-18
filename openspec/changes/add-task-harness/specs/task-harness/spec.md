@@ -371,3 +371,8 @@ Source: developer request for the first closed-loop delivery slice.
 
 - **WHEN** a developer opens a Jira Cloud browse URL using credentials for that site, then reopens the same task offline
 - **THEN** Kitsu captures the requested issue, writes a private Markdown copy with its canonical source link and regenerates it from the saved task. Failed intake creates no deliverable ticket.
+
+#### Scenario: Deliver a ticket supplied by a host tracker
+
+- **WHEN** the host reads a ticket through a configured MCP server and supplies its Markdown and stable tracker reference on standard input
+- **THEN** Kitsu snapshots that text locally without contacting the source. Offline resume retains the original input and the verified delivery receipt identifies the same tracker reference.
