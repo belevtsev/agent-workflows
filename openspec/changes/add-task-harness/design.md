@@ -25,6 +25,6 @@ Interactive startup shares Git discovery with other commands. The checkout fix r
 
 ## Ticket-linked local delivery
 
-Ticket import is an explicit execution boundary. The ticket reader invokes the authenticated GitHub CLI through the existing process runner, or reads a local Markdown file. The immutable request supplies context; the bug command supplies local delivery scope. Git and the gate remain offline. The harness production allowance increases from 2,760 to 3,140 lines to cover the importer, retained reproduction and post-commit receipt.
+Ticket intake accepts local Markdown, a public HTTP(S) link, or Markdown supplied by a host integration. Only explicit public-link import makes an HTTP request. Authentication and private tracker access belong to the host connector or plugin. The task stores a source reference and digest and can resume from its private snapshot offline.
 
 The worktree ledger holds the original source digest, the first failing assertion and the successful receipt. The post-commit check has its own run ID and log and must observe the verified commit, staged tree, source and target. Receipt retries reuse a completed observation. A crash before saving the receipt may rerun the assertion but cannot duplicate the commit.
