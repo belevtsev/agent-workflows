@@ -7,7 +7,7 @@ Requires PowerShell 5.1 or newer. No Go toolchain or administrator access is nee
 ArchiveDir can install a CI build before publication.
 .PARAMETER Version
 Archive version label. Defaults to KITSU_VERSION. When neither is provided, a local install uses
-the single archive tag for this platform. Remote host installs select the latest pair; CLI-only installs use v0.0.1.
+the single archive tag for this platform. Remote host installs select the latest pair; CLI-only installs use v0.0.2.
 .PARAMETER InstallDir
 Destination directory. Defaults to KITSU_INSTALL_DIR, then LOCALAPPDATA\kitsu.
 .PARAMETER NoModifyPath
@@ -217,7 +217,7 @@ param(
 
     function Assert-KitsuReleaseTag([string]$Tag) {
         if ($Tag -notmatch '\Av[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?(?:\+[0-9A-Za-z][0-9A-Za-z.-]*)?\z') {
-            throw 'Version must be a v-prefixed release tag, such as v0.0.1.'
+            throw 'Version must be a v-prefixed release tag, such as v0.0.2.'
         }
     }
 
@@ -227,7 +227,7 @@ param(
     $isLocal = -not [string]::IsNullOrEmpty($LocalArchives)
     $remoteHost = $SelectedHost -and -not $isLocal
     $officialLatest = $remoteHost -and -not $ReleaseVersion -and -not $env:KITSU_DOWNLOAD_BASE
-    if (-not $isLocal -and -not $SelectedHost -and -not $ReleaseVersion) { $ReleaseVersion = 'v0.0.1' }
+    if (-not $isLocal -and -not $SelectedHost -and -not $ReleaseVersion) { $ReleaseVersion = 'v0.0.2' }
     if ($ReleaseVersion) { Assert-KitsuReleaseTag $ReleaseVersion }
     $architecture = Get-KitsuArchitecture
     if ([string]::IsNullOrEmpty($DestinationDir)) {
@@ -269,29 +269,7 @@ param(
         }
         Save-KitsuAsset $client $source 'SHA256SUMS' $manifestFile
         if ((Get-Item -LiteralPath $manifestFile).Length -gt 1MB) { throw 'SHA256SUMS is too large.' }
-        $assetClient = $client
         $pluginDir = $source
-        if ($officialLatest) {
-            $lines = [IO.File]::ReadAllLines($manifestFile)
-            $legacyRow = '[ \t]+\*?' + [regex]::Escape("kitsu_v0.0.1${archiveSuffix}") + '$'
-            if (($lines -cmatch $legacyRow) -and -not ($lines -cmatch '[ \t]+\*?kitsu-plugin\.zip$')) {
-                if (-not (Get-Command gh -CommandType Application -ErrorAction SilentlyContinue)) {
-                    throw 'v0.0.1 predates the plugin. Install GitHub CLI, run gh auth login, and rerun this installer.'
-                }
-                $repo = 'github.com/belevtsev/kitsu'
-                $run = & gh run list -R $repo --workflow ci.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId'
-                if ($LASTEXITCODE -ne 0 -or $run -notmatch '^[1-9][0-9]*$') { throw 'Cannot find a successful main build. Check gh auth status and retry.' }
-                Write-Host "Release v0.0.1 predates the plugin. Installing the main bundle from CI run $run."
-                $source = Join-Path $work 'bundle'
-                & gh run download $run -R $repo -n kitsu-archives -D $source
-                if ($LASTEXITCODE -ne 0) { throw 'Cannot download the matching CLI and plugin from the selected main build.' }
-                $assetClient = $null
-                $pluginDir = $source
-                [IO.File]::Delete($manifestFile)
-                Save-KitsuAsset $null $source 'SHA256SUMS' $manifestFile
-                if ((Get-Item -LiteralPath $manifestFile).Length -gt 1MB) { throw 'SHA256SUMS is too large.' }
-            }
-        }
         $pluginRows = 0
         $pluginHash = ''
         $matchingRows = 0
@@ -328,22 +306,20 @@ param(
         if ($matchingRows -ne 1) { throw "SHA256SUMS must list $archiveName exactly once." }
         if ($expected -notmatch '\A[0-9a-fA-F]{64}\z') { throw "Invalid SHA-256 row for $archiveName." }
         $archiveFile = Join-Path $work $archiveName
-        if ($officialLatest -and $null -ne $assetClient) {
+        if ($officialLatest) {
             $source = "https://github.com/belevtsev/kitsu/releases/download/$ReleaseVersion"
         }
         if ($remoteHost) {
             if ($pluginRows -ne 1 -or $pluginHash -notmatch '^[0-9a-fA-F]{64}$') {
                 throw 'SHA256SUMS must list kitsu-plugin.zip exactly once with a valid checksum.'
             }
-            if ($null -ne $assetClient) {
-                $pluginDir = $work
-                Save-KitsuAsset $assetClient $source 'kitsu-plugin.zip' (Join-Path $pluginDir 'kitsu-plugin.zip')
-            }
+            $pluginDir = $work
+            Save-KitsuAsset $client $source 'kitsu-plugin.zip' (Join-Path $pluginDir 'kitsu-plugin.zip')
             if ((Get-KitsuSHA256 (Join-Path $pluginDir 'kitsu-plugin.zip')) -ine $pluginHash) {
                 throw 'Checksum mismatch for kitsu-plugin.zip.'
             }
         }
-        Save-KitsuAsset $assetClient $source $archiveName $archiveFile
+        Save-KitsuAsset $client $source $archiveName $archiveFile
         $actual = Get-KitsuSHA256 $archiveFile
         if ($actual -ine $expected) { throw "The checksum of $archiveName does not match SHA256SUMS." }
         $verifiedExe = Join-Path $work 'kitsu.exe'

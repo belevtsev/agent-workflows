@@ -1,6 +1,6 @@
 {
   "name": "kitsu",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "icon": "./docs/brand/kitsu-mascot.png",
   "description": "Kitsu for Claude Code: workflow instructions for coordinating coding agents through specification, implementation, testing and review, with seven roles, shared task records and token reports. The workflow runs in the agent host; end-to-end orchestration remains experimental. A Git check-evidence gate provides an additional safeguard.",
   "author": {

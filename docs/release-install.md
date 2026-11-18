@@ -11,16 +11,16 @@ With Git and Codex or Claude Code installed, run the command for your platform. 
 **macOS or Linux**
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh | sh -s -- --host codex
+curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.sh | sh -s -- --host codex
 ```
 
 **Windows PowerShell**
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1))) -AgentHost codex
+& ([scriptblock]::Create([Net.WebClient]::new().DownloadString('https://github.com/belevtsev/kitsu/releases/latest/download/install.ps1'))) -AgentHost codex
 ```
 
-This installs the CLI and registers its matching plugin. While the latest release is CLI-only v0.0.1, the installer uses a signed-in GitHub CLI (`gh`) to fetch both from the latest successful build on `main`. Once a tagged release includes both assets, the same command downloads them directly without `gh`. For the current preview, run `gh auth login` if needed. The installer prints the selected CI run.
+The installer downloads the CLI and matching plugin from the latest public release, verifies both checksums, and registers the plugin with your agent. Downloads are anonymous.
 
 The default locations are `$HOME/.local/bin/kitsu` on macOS/Linux and `%LOCALAPPDATA%\kitsu\kitsu.exe` on Windows. Open a new terminal and run `kitsu version` for the installed tag and revision. Windows hooks use Git for Windows.
 
@@ -50,15 +50,15 @@ For a published version or custom directory, download the installer once and pas
 On macOS/Linux:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh -o kitsu-install.sh
-sh kitsu-install.sh --version v0.0.1 --install-dir "$HOME/tools/kitsu" --no-modify-path
+curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.sh -o kitsu-install.sh
+sh kitsu-install.sh --version v0.0.2 --install-dir "$HOME/tools/kitsu" --no-modify-path
 ```
 
 On Windows:
 
 ```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 -OutFile "$env:TEMP\kitsu-install.ps1"
-powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\kitsu-install.ps1" -Version v0.0.1 -InstallDir "$env:LOCALAPPDATA\tools\kitsu" -NoModifyPath
+Invoke-WebRequest https://github.com/belevtsev/kitsu/releases/latest/download/install.ps1 -OutFile "$env:TEMP\kitsu-install.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\kitsu-install.ps1" -Version v0.0.2 -InstallDir "$env:LOCALAPPDATA\tools\kitsu" -NoModifyPath
 ```
 
 These examples leave `PATH` unchanged. Use the installed executable by its full path, or add the
@@ -68,7 +68,7 @@ CI build, use the bundled installer and pass its artifact directory.
 
 | macOS/Linux flag | PowerShell parameter | Environment default | Purpose |
 | --- | --- | --- | --- |
-| `--version TAG` | `-Version TAG` | `KITSU_VERSION` | Pin the requested tag. CLI-only remote installs default to `v0.0.1`. |
+| `--version TAG` | `-Version TAG` | `KITSU_VERSION` | Pin the requested tag. CLI-only remote installs default to `v0.0.2`. |
 | `--host codex\|claude` | `-AgentHost codex\|claude` | — | Install and register the plugin paired with the platform CLI. |
 | `--install-dir DIR` | `-InstallDir DIR` | `KITSU_INSTALL_DIR` | Choose the destination directory. |
 | `--no-modify-path` | `-NoModifyPath` | `KITSU_NO_MODIFY_PATH=1` | Install without changing user `PATH`. |
@@ -189,7 +189,7 @@ On macOS or Linux:
 
 ```sh
 set -eu
-tag=v0.0.1
+tag=v0.0.2
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
 arch=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
 base=https://github.com/belevtsev/kitsu/releases/download/$tag
@@ -214,7 +214,7 @@ On Windows:
 
 ```powershell
 $ErrorActionPreference = "Stop"
-$tag = "v0.0.1"
+$tag = "v0.0.2"
 $machineArch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
 $arch = switch ($machineArch) { "ARM64" { "arm64" }; "AMD64" { "amd64" }; default { throw "Unsupported architecture: $machineArch" } }
 $base = "https://github.com/belevtsev/kitsu/releases/download/$tag"

@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-const preparedVersion = "v0.0.1"
+const preparedVersion = "v0.0.2"
 
 // The archived test executable acts as a native release binary on every OS.
 func TestMain(m *testing.M) {

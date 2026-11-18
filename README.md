@@ -11,16 +11,16 @@ With Git and Codex or Claude Code installed, run the command for your platform. 
 **macOS or Linux**
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh | sh -s -- --host codex
+curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.sh | sh -s -- --host codex
 ```
 
 **Windows PowerShell**
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1))) -AgentHost codex
+& ([scriptblock]::Create([Net.WebClient]::new().DownloadString('https://github.com/belevtsev/kitsu/releases/latest/download/install.ps1'))) -AgentHost codex
 ```
 
-This installs the CLI and registers its matching plugin. While the latest release is CLI-only v0.0.1, the installer uses a signed-in GitHub CLI (`gh`) to fetch both from the latest successful build on `main`. [Versions and offline installs](docs/release-install.md)
+The installer downloads the CLI and matching plugin from the latest public release, verifies both checksums, and registers the plugin with your agent. [Versions and offline installs](docs/release-install.md)
 
 ## Quick start
 

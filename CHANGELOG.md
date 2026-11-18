@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-11-18
+
+Install the CLI and matching Codex or Claude Code plugin with one command on macOS, Linux or Windows. Both come from the same public release and are verified against its checksum manifest. [Installation commands](docs/release-install.md)
+
+- Start a bug repair from a Markdown ticket or public link and produce a delivery receipt linked to the verified commit. [Ticket walkthrough](docs/task-harness.md#deliver-a-bug-ticket)
+
 ### Added
 
 - A [daily coding harness](docs/task-harness.md) supports outcome-scoped work, independent review, repair and resumable local verification.
@@ -580,7 +586,8 @@ The first published v3 release candidate (`v3.0.0-rc.1` was never published): ev
 Historical final automatic `cw` release from main. Its tag and release assets were removed on
 17 November 2026; the version link retains its source commit.
 
-[Unreleased]: https://github.com/belevtsev/kitsu/compare/v0.0.1...main
+[Unreleased]: https://github.com/belevtsev/kitsu/compare/v0.0.2...main
+[0.0.2]: https://github.com/belevtsev/kitsu/releases/tag/v0.0.2
 [0.0.1]: https://github.com/belevtsev/kitsu/releases/tag/v0.0.1
 [3.0.0-beta.1]: https://github.com/belevtsev/kitsu/commit/511ceb11c1946c4185c5a93c0c0a9e79613bdc3d
 [2.0.96]: https://github.com/belevtsev/kitsu/commit/1f26165884e4f6047e6ca12da15fba7bc378b37e

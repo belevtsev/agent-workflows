@@ -16,7 +16,7 @@ usage() {
 		'Usage: install.sh [--version TAG] [--install-dir DIR] [--no-modify-path]' \
 		'                  [--archive-dir DIR] [--host codex|claude]' \
 		'' \
-		'With --host, install the latest CLI and matching plugin. CLI-only downloads default to v0.0.1. The default install directory is $HOME/.local/bin.' \
+		'With --host, install the latest CLI and matching plugin. CLI-only downloads default to v0.0.2. The default install directory is $HOME/.local/bin.' \
 		'Environment: KITSU_VERSION, KITSU_INSTALL_DIR, KITSU_NO_MODIFY_PATH=1,' \
 		'             KITSU_ARCHIVE_DIR, KITSU_DOWNLOAD_BASE.' \
 		'With an archive directory, the installer uses the single archive tag for this platform in SHA256SUMS unless a version is provided.'
@@ -120,7 +120,7 @@ case "$_kitsu_agent_host" in
 	*) argument_error '--host must be codex or claude' ;;
 esac
 if [ -z "$_kitsu_archive_dir$_kitsu_agent_host" ]; then
-	_kitsu_version=${_kitsu_version:-v0.0.1}
+	_kitsu_version=${_kitsu_version:-v0.0.2}
 fi
 [ -z "$_kitsu_version" ] || validate_version
 case "$_kitsu_no_modify_path" in
@@ -272,23 +272,6 @@ else
 		fail "cannot download SHA256SUMS for Kitsu $_kitsu_version; check that this release is published at $_kitsu_base"
 fi
 
-# v0.0.1 predates the plugin. Only the unpinned official installer may use main.
-if [ -n "$_kitsu_official_latest" ] && awk -v legacy="kitsu_v0.0.1${_kitsu_archive_suffix}" '
-	{ sub(/\r$/, ""); name=$2; sub(/^\*/, "", name); if (name==legacy) old=1; if (name=="kitsu-plugin.zip") plugin=1 }
-	END { exit !(old && !plugin) }
-' "$_kitsu_work/SHA256SUMS"; then
-	command -v gh >/dev/null 2>&1 || fail 'v0.0.1 predates the plugin. Install GitHub CLI, run gh auth login, and rerun this installer.'
-	_kitsu_repo=github.com/belevtsev/kitsu
-	_kitsu_run=$(gh run list -R "$_kitsu_repo" --workflow ci.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId') ||
-		fail 'cannot find a successful main build; check gh auth status and retry'
-	case "$_kitsu_run" in ''|0|*[!0-9]*) fail 'no successful main build found' ;; esac
-	printf 'Release v0.0.1 predates the plugin. Installing the main bundle from CI run %s.\n' "$_kitsu_run"
-	_kitsu_archive_dir=$_kitsu_work/bundle
-	gh run download "$_kitsu_run" -R "$_kitsu_repo" -n kitsu-archives -D "$_kitsu_archive_dir" ||
-		fail 'cannot download the matching CLI and plugin from the selected main build'
-	cp "$_kitsu_archive_dir/SHA256SUMS" "$_kitsu_work/SHA256SUMS" || fail 'main bundle is missing SHA256SUMS'
-fi
-
 if _kitsu_manifest_entry=$(LC_ALL=C awk -v archive="$_kitsu_archive" -v suffix="$_kitsu_archive_suffix" '
 	{
 		sub(/\r$/, "", $0)
@@ -331,7 +314,7 @@ if [ -z "$_kitsu_version" ]; then
 	_kitsu_version=${_kitsu_version%"$_kitsu_archive_suffix"}
 	validate_version
 fi
-if [ -n "$_kitsu_official_latest" ] && [ -z "$_kitsu_archive_dir" ]; then
+if [ -n "$_kitsu_official_latest" ]; then
 	_kitsu_base=https://github.com/belevtsev/kitsu/releases/download/$_kitsu_version
 fi
 printf 'Installing kitsu %s for %s/%s...\n' "$_kitsu_version" "$_kitsu_os" "$_kitsu_arch"
@@ -350,10 +333,8 @@ if [ -n "$_kitsu_remote_host" ]; then
 		name=="kitsu-plugin.zip" { count++; digest=$1; if (NF!=2) bad=1 }
 		END { if (bad || count!=1 || length(digest)!=64 || digest ~ /[^0-9a-fA-F]/) exit 1; print tolower(digest) }
 	' "$_kitsu_work/SHA256SUMS") || fail 'SHA256SUMS must list kitsu-plugin.zip exactly once with a valid checksum'
-	if [ -z "$_kitsu_plugin_dir" ]; then
-		_kitsu_plugin_dir=$_kitsu_work
-		download "$_kitsu_base/kitsu-plugin.zip" "$_kitsu_plugin_dir/kitsu-plugin.zip" || fail 'cannot download kitsu-plugin.zip'
-	fi
+	_kitsu_plugin_dir=$_kitsu_work
+	download "$_kitsu_base/kitsu-plugin.zip" "$_kitsu_plugin_dir/kitsu-plugin.zip" || fail 'cannot download kitsu-plugin.zip'
 	verify_checksum "$_kitsu_plugin_dir/kitsu-plugin.zip" "$_kitsu_plugin_hash" kitsu-plugin.zip
 fi
 
