@@ -16,7 +16,7 @@ const (
 	maxAdviserLines      = 4000 // CLI advisers plus native typed providers and usage records.
 	maxSkillLines        = 2000
 	maxUXLines           = 3500 // Shared routing, help, preferences, forms and completion.
-	maxOnboardingLines   = 1200 // Local setup diagnostics and explicit host handoff.
+	maxOnboardingLines   = 2050 // Local setup diagnostics, verified plugin installation and explicit host handoff.
 	maxContextLines      = 2000 // Opt-in Go collection, briefs, compact checks and private artifacts.
 	maxWorkerLines       = 1400 // Saved dispatch, local intervals and bounded QE hints; no model execution.
 	maxProtocolLines     = 700  // Explicit native launch descriptions and bounded untrusted hand-backs.
@@ -41,6 +41,7 @@ func rolesCode(file string) bool {
 func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	core, roles, advisers, skills, ux, onboarding, contextLines, workers, protocols, states := 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 	verificationLines := 0
+	harnessLines := 0
 	insightLines := 0
 	for _, file := range repoFiles(t) {
 		if !strings.HasSuffix(file, ".go") || strings.HasSuffix(file, "_test.go") || strings.Contains(file, "/testdata/") {
@@ -51,7 +52,9 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 			t.Fatal(err)
 		}
 		lines := bytes.Count(data, []byte("\n"))
-		if strings.HasPrefix(file, "internal/insights/") || strings.HasPrefix(file, "internal/taskbudget/") || strings.HasPrefix(file, "internal/cli/usage_") {
+		if strings.HasPrefix(file, "internal/gitx/harness_") || strings.HasPrefix(file, "internal/harness/") || strings.HasPrefix(file, "internal/cli/harness_") {
+			harnessLines += lines
+		} else if strings.HasPrefix(file, "internal/insights/") || strings.HasPrefix(file, "internal/taskbudget/") || strings.HasPrefix(file, "internal/cli/usage_") {
 			insightLines += lines
 		} else if strings.HasPrefix(file, "internal/verification/") || strings.HasPrefix(file, "internal/cli/task_verification") || file == "internal/cli/check_plan.go" {
 			verificationLines += lines
@@ -63,7 +66,7 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 			workers += lines
 		} else if strings.HasPrefix(file, "internal/contextpack/") || strings.HasPrefix(file, "internal/cli/compact_") {
 			contextLines += lines
-		} else if strings.HasPrefix(file, "internal/onboarding/") || strings.HasPrefix(file, "internal/cli/onboarding") {
+		} else if strings.HasPrefix(file, "internal/onboarding/") || strings.HasPrefix(file, "internal/pluginsetup/") || strings.HasPrefix(file, "internal/cli/onboarding") {
 			onboarding += lines
 		} else if strings.HasPrefix(file, "internal/cli/ux_") || strings.HasPrefix(file, "internal/shellwords/ux_") {
 			ux += lines
@@ -88,6 +91,11 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	t.Logf("coordinator state: %d of %d lines", states, maxStateLines)
 	t.Logf("task verification: %d of %d lines", verificationLines, maxVerificationLines)
 	t.Logf("workflow insights: %d of %d lines", insightLines, maxInsightLines)
+	const maxHarnessLines = 2600 // Includes pinned delivery destinations, committed-range reviews and recoverable developer assignments.
+	t.Logf("task harness: %d of %d lines", harnessLines, maxHarnessLines)
+	if harnessLines > maxHarnessLines {
+		t.Errorf("task harness holds %d lines of Go, want at most %d", harnessLines, maxHarnessLines)
+	}
 	if insightLines > maxInsightLines {
 		t.Errorf("workflow insights hold %d lines of Go, want at most %d", insightLines, maxInsightLines)
 	}

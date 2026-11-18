@@ -133,8 +133,8 @@ The first line of every brief the coordinator writes is a label:
 kitsu-task: <task> <stage> <round>
 ```
 
-`<task>` is lower-case letters and digits in words joined by hyphens, `<stage>` is one of the nine
-below, and `<round>` is a number from 1 that grows each time the same stage starts again. Blank
+`<task>` is lower-case letters and digits in words joined by hyphens, `<stage>` is one of the stages
+below, and `<round>` is a positive number. Daily coding assignments use the saved developer launch attempt. Blank
 lines before the label are skipped. A first line in any other form is no label. `kitsu` gives the
 tokens of the start to that task, stage and round, and to the role of the stage:
 
@@ -147,6 +147,8 @@ tokens of the start to that task, stage and round, and to the role of the stage:
 | `design-review` | `reviewer` | review | review |
 | `tests` | `quality-engineer` | writing | rework |
 | `code` | `developer` | writing | rework |
+| `implement` (daily assignment) | `developer` | writing | writing |
+| `repair` (daily correction) | `developer` | rework | rework |
 | `review` | `reviewer` | review | review |
 | `commit` | `git` | git | git |
 
@@ -164,7 +166,7 @@ instruction to the coordinator; `kitsu` cannot tell whether the coordinator wrot
   - `review`: every start of `spec-review`, `design-review` and `review`;
   - `lookup`: every start of `lookup`;
   - `git`: every start of `commit`;
-  - `rework`: a later round of a writing stage, such as `code 2`.
+  - `rework`: a daily repair or a later round of a managed writing stage, such as `code 2`. A daily launch attempt number distinguishes reservations. Replacing a worker before its initial implementation is accepted still counts as writing.
 
 `flow_share` is the workflow tokens as a share of the task's total, in whole per cent, rounded
 half up.

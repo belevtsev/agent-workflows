@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -99,7 +100,7 @@ func printJSON(cfg Config, value any) error {
 
 // runTokensRecord reads the notice a host gives its hook when a role or a
 // session ends, and stores the counts of the records the notice names. It
-// stores nothing outside a repository that holds kitsu.toml.
+// records only in a repository with a declaration or an opened local harness task.
 func runTokensRecord(ctx context.Context, cfg Config, args []string) error {
 	if os.Getenv("KITSU_ADVISER_CALL") != "" {
 		return nil
@@ -127,7 +128,7 @@ func runTokensRecord(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return failf("%v", err)
 	}
-	if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err != nil {
+	if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err != nil && !hasLocalHarnessTasks(repo) {
 		return nil
 	}
 	if bad {
@@ -254,7 +255,7 @@ func printTask(out io.Writer, t *tokens.Task, sessions []tokens.Session, unlabel
 	_ = w.Flush()
 	fmt.Fprintln(out)
 	printSessions(out, sessions, unlabelled)
-	fmt.Fprintln(out, "workflow tokens are coordination (the session itself), review, lookup, git and rework (a later round of a writing role)")
+	fmt.Fprintln(out, "workflow tokens are coordination (the session itself), review, lookup, git and rework (a repair or a later managed writing round)")
 }
 
 // unknownWhat names what has unknown tokens: starts of roles, the session
@@ -276,4 +277,31 @@ func unknownWhat(t *tokens.Task) string {
 // kinds are the columns of the four kinds, their sum and the models.
 func kinds(e tokens.Entry) string {
 	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s", commas(e.Input), commas(e.CacheWrite), commas(e.CacheRead), commas(e.Output), atLeast(e), strings.Join(e.Models, ", "))
+}
+
+func (v *harnessView) loadUsage(repo *gitx.Repo) error {
+	starts, damaged, err := tokens.Load(tokensDir(repo))
+	if err == nil {
+		v.observeUsage(tokens.Build(starts, damaged))
+	}
+	return err
+}
+
+// A missing coordinator receipt must not erase the worker tokens we did see.
+func (v *harnessView) observeUsage(report *tokens.Report) {
+	v.Coverage = "unavailable"
+	task, sessions, _, found := report.Find(v.Task)
+	if !found {
+		return
+	}
+	known := slices.ContainsFunc(task.Roles, func(e tokens.Entry) bool { return !e.Total.Unknown }) ||
+		slices.ContainsFunc(sessions, func(s tokens.Session) bool { return !s.Shared && !s.Total.Unknown })
+	if !known {
+		return
+	}
+	v.Captured = &task.Total
+	v.Coverage = "partial"
+	if task.Complete && len(task.SharedSessions) == 0 {
+		v.Coverage = "complete for attributed notices"
+	}
 }

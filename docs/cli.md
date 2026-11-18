@@ -12,6 +12,7 @@ by the thing you work with:
 | `skill` | `list`, `show`, `attach`, `detach`, `clear`, `reset`, `resolve` |
 | `adviser` | `list`, `show`, `providers`, `bind`, `ask`, `accept`, `reject`, `defer`, `status`, `check` |
 | `check` | `list`, `add`, `run`, `stats` |
+| [Daily task harness](task-harness.md) | `task open`, `next`, `claim`, `release`, `record`, `test`, `extend`, `commit` |
 | `gate` | `init`, `status`, `uninstall` |
 | `usage` | `show`, `record` |
 | `config` | `show`, `get`, `set`, `reset`, `edit` |
@@ -21,6 +22,8 @@ by the thing you work with:
 integration. Existing spellings such as `roles`, `skills`, `change`, `tokens`, `consult`, `run`,
 and `init` keep working quietly, including their existing bare-command behavior.
 `kitsu help --all` lists compatibility aliases and advanced integrations.
+
+Use `task start --resume <task> --host codex|claude` to reopen a daily task and recover its next action. An explicit `--until` at launch pins its stopping point.
 
 ## Help works before setup
 
@@ -120,6 +123,8 @@ kitsu agent check --host claude --json
 kitsu task start "Add an order CSV export" --host codex
 ```
 
+If the plugin is missing and you have the matching preview bundle, run `kitsu agent setup --host codex --archive-dir .` from its extracted directory. Substitute `claude` for Claude Code. Rerun `agent check` in your working repository after setup. [Preview installer and upgrade instructions](release-install.md#install-a-ci-artifact-before-publication)
+
 `agent check` reads local PATH, the selected host CLI, the installed and enabled Kitsu plugin,
 its task skill, and its hook bundle and known disable settings. Each check gives evidence and
 next steps. It runs no host, hook, authentication flow, or model and changes no settings.
@@ -143,7 +148,7 @@ prompt to use Kitsu's task skill. All three standard streams must be terminals. 
 local setup failures prevent launch; unknown trust or runtime behavior remains a stated caveat.
 The host controls authentication, model access, permissions, and delegation. On Claude Code the
 workflow is `/kitsu:task` and workers are `kitsu:<role>`; on Codex the host loads Kitsu's `task`
-skill and the role texts. Starting the host creates no workflow stage or completion evidence.
+skill and the role texts. In a Git checkout, daily startup saves a private intake snapshot before opening the host. Preview and legacy managed compact handoffs retain their existing behavior.
 
 To prepare a handoff for an existing desktop session, or inspect it before installing the host CLI:
 
@@ -282,8 +287,7 @@ kitsu check stats --since 7d
 
 These commands retain the existing [evidence](evidence.md) and [hook](hooks.md) behavior, with
 the existing guard decisions for policy and gate changes. `gate uninstall` removes Kitsu hooks
-and local records, including host token records; it keeps configuration, private CLI preferences,
-and shared OpenSpec history.
+and retains records. After a complete detach, `--purge` deletes the shared check and token store. Task history and configuration remain.
 
 ## Enable shell completion
 

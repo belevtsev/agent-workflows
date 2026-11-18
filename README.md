@@ -6,8 +6,7 @@
 
 **Coding agents, working together.**
 
-A workflow toolkit for coordinating coding agents through specification, implementation, testing, and review.
-Seven specialist roles, shared task records, and token reporting, with a Git gate to check work before commits and pushes.
+Bring an idea, an approved design, or an unfinished diff. Kitsu records the outcome you want, guides Codex or Claude Code through the remaining work, and shows what was reviewed, tested and delivered.
 
 [![CI](https://github.com/belevtsev/kitsu/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/belevtsev/kitsu/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -17,6 +16,74 @@ Seven specialist roles, shared task records, and token reporting, with a Git gat
 [For a coding agent](#for-a-coding-agent) · [The Git gate](#how-the-gate-decides) · [State](#state) · [Documents](#documents)
 
 </div>
+
+## Install
+
+**For the daily harness**, download and extract a matching preview bundle. From the extracted directory, run the bundled installer for your platform. Choose `codex` or `claude` as your host. [Download and installation guide](docs/release-install.md#install-a-ci-artifact-before-publication)
+
+```sh
+sh ./install.sh --archive-dir . --host codex
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -ArchiveDir . -AgentHost codex
+```
+
+For an older preview without the host option, follow the [manual registration steps](docs/release-install.md#register-the-matching-marketplace). Contributors can also [build from source](docs/development.md#build-from-source).
+
+**For the released managed workflow**, the following commands install the v0.0.1 CLI. That release predates the daily harness commands.
+
+Linux and macOS:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh | sh
+```
+
+Windows, in PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 | iex
+```
+
+The installer selects your platform and architecture, verifies the archive checksum before
+replacing the executable, and sets up your user `PATH`. The default location is `$HOME/.local/bin`
+on macOS/Linux or `%LOCALAPPDATA%\kitsu` on Windows. Open a new terminal, then run `kitsu version`.
+The current installer selects `v0.0.1`.
+
+Rerun the same command to install the version selected by the current installer. The
+[installation guide](docs/release-install.md) covers version pinning, custom directories and
+CI artifacts. Contributors can [build from source](docs/development.md#build-from-source).
+
+Kitsu uses Git to work in a repository. On Windows its Git hooks use the `sh` supplied by Git for
+Windows. The released v0.0.1 command installs the CLI. Add its matching plugin through the host marketplace for managed tasks. [Host plugin instructions](#for-a-coding-agent)
+
+The hooks look for `kitsu` only in the entries of `PATH` that are absolute paths; see
+[hooks](docs/hooks.md#when-kitsu-is-not-on-path). Existing `cw` users should follow the
+[migration guide](docs/migration.md) before initializing Kitsu in an existing repository.
+
+## Quick start
+
+From the repository you want to work on, check your host and start a task. Use `--host claude` for Claude Code.
+
+```sh
+kitsu agent check --host codex
+kitsu task start "Review my CSV export change, repair confirmed issues, and test quoted fields" --until verify --host codex
+```
+
+Tell the agent **what it may change and where to stop**. Choose a finish that matches your request.
+
+| If you want to… | Ask for… | Finish |
+| --- | --- | --- |
+| Understand a bug or shape a feature | A reproduction or design, with acceptance examples | `--until plan` |
+| Get a second opinion on an existing diff | Independent review and findings on those files | `--until review` |
+| Check a partial fix | An actual test of the reported behavior. Explicitly request repair if the agent may edit failing code. | `--until verify` |
+| Deliver a change | Verification plus the precise Git action you authorize, such as a local commit on the current branch | `--until deliver` |
+
+**After an interruption**, run `kitsu task list`, then `kitsu task next ID` to see the current action, evidence and findings. Replace `ID` with the listed task ID. Continue the existing task with `kitsu task start --resume ID --host codex`. When you request a developer agent, Kitsu records the worker so a replacement coordinator can recover its assignment. [Delegate coding](docs/task-harness.md#delegate-implementation-or-repair)
+
+The daily guide covers bounded reviews, retained logs, retrying the original failed assertion, and confirming delivery. For a committed PR or a partly staged change, choose the exact revision range or files to inspect. [Daily harness how-to](docs/task-harness.md) · [Review a committed change](docs/task-harness.md#review-a-committed-change) · [Deliver selected staged files](docs/task-harness.md#deliver-selected-staged-files) · [CLI help](docs/cli-reference.md)
+
+## Advanced workflows
 
 | Part | What it does |
 | --- | --- |
@@ -28,7 +95,7 @@ Seven specialist roles, shared task records, and token reporting, with a Git gat
 | **Advisers (experimental)** | Optional Jev, SubQ Snap, and CLI consultations, with recorded answers and decisions. None are enabled by default. |
 | **Git gate** | As a supporting check, Git hooks allow commits and pushes only when the checks declared in `kitsu.toml` have passing evidence for that content. |
 
-Your agent host runs the coordinator and delegates to the roles. Kitsu supplies the workflow instructions,
+In the managed role workflow, your agent host runs the coordinator and delegates to the roles. Kitsu supplies the workflow instructions,
 role definitions, record checks, and usage reports. The Git gate supports that workflow and can also be used on its own.
 
 > [!NOTE]
@@ -74,114 +141,17 @@ Adviser answers replace no review or approval.
   what `kitsu task` checks.
 - [Tokens](docs/tokens.md): what is counted, and what "workflow tokens" mean.
 
-## Quick start
-
-1. [Install](#install) the CLI and [add the plugin](#for-a-coding-agent) to your coding-agent host.
-2. Run `kitsu agent check --host codex` or `kitsu agent check --host claude` and follow any setup steps.
-   On Codex, review and trust the current Kitsu hooks in `/hooks`; local diagnostics cannot prove that trust or hook execution.
-3. Run `kitsu role list --host codex` or `kitsu role list --host claude` to inspect models, reasoning, skills, and advisers.
-   [Set a specialist's model or reasoning](docs/roles.md#changing-a-model) with `kitsu role set`; your host selects the coordinator.
-   Optionally [select existing skills](#use-your-existing-skills) for a role.
-4. From a terminal, run `kitsu task start "Add an order CSV export" --host codex` (or `--host claude`).
-   This explicitly opens the selected interactive host with Kitsu's task skill and your request.
-   In an existing session, invoke `/kitsu:task` on Claude Code or ask Codex to use Kitsu's installed `task` skill.
-   The host's coordinator chooses the workflow and delegates each stage.
-5. Review the proposed specification and design when the task changes behavior, then follow implementation,
-   tests, and review through the shared task record.
-
-You can inspect the role instructions and a recorded task from the terminal:
-
-```sh
-kitsu role list --host codex
-kitsu role text coordinator
-kitsu task show <task>
-kitsu usage show --task <task>
-```
-
-The [task workflow](docs/workflow.md) explains the full path and the shorter path for work whose behavior is already clear.
-Task records and token totals appear as the host runs the workflow. The inspection commands above launch no agents.
-For desktop use or incomplete CLI setup, run `kitsu task start "Add an order CSV export" --host codex --print`
-and paste the printed handoff into your selected host. `--json` returns the prompt, proposed argv, and local diagnostics.
-Both modes execute nothing and create no task record. The [CLI guide](docs/cli.md#check-setup-and-start-a-task)
-explains ready, broken, and unknown setup evidence. The supporting Git gate can be configured separately.
-
 ### Send smaller observations
 
 ```sh
 kitsu task start "Fix login retries" --host codex --compact
 ```
 
-Compact mode selects observations: native host reads for short whole files and scoped searches
-with small output, typed collection for broad or noisy retrieval, and bounded noisy check output.
-Agents expand retained evidence when needed and keep original role instructions and skills
-uncompressed. It ships in the existing binary, preserving reviews, approvals and check evidence.
-[How to use it](docs/compact-context.md), [research and tradeoffs](docs/context-research.md).
-Worker packets include their role and reading policy; keep coordinator guides out of
-repeated assignments and use ordinary output for quiet checks. See the
-[offline delivery checks](docs/benchmarks/compact-delivery-report.md); these measure bytes and calls, not provider tokens.
-Fitting failed logs now return complete evidence, and QE packets include executable
-check/log recipes and scoped optional-tool observations. For a smaller native
-handoff, use `task prepare --dispatch --view launch`; `task dispatch <id>` reads
-the original full response. The [handoff how-to](docs/compact-response-cycles.md)
-explains safe sequential finish/preparation and the offline quality checks.
-The [latest paid pair](docs/benchmarks/response-cycles-paid-report.md) recorded 1,655,932 ordinary and 1,467,207 compact tokens,
-with all ten sessions closed and both attempts passing protected quality checks. This one pair does not establish general savings or quality equivalence.
-The [revised paid pair](docs/benchmarks/compact-delivery-paid-report.md) recorded 1,982,129 ordinary and 1,872,131 compact tokens,
-with passing frozen checks. Uncached input increased; no general quality equivalence or lower bill is established.
-The [24-run Codex pilot](docs/benchmarks/codex-compact-pilot-report.md) found passing frozen tests
-in both modes, additional defects on review, and less workflow completion with compact mode
-under an eight-minute limit. Complete-task token savings remain unestablished.
-The separate [selective evaluation](docs/benchmarks/selective-compact-report.md) includes offline
-replay overhead and a rejected v2 charset reference. Its bounded canary stopped the first ordinary
-run at 3.26M captured tokens; three runs stayed unstarted, leaving no new on/off savings evidence.
-The [offline verification guide](docs/verification.md) covers historical defect calibration,
-generated evidence-equivalence checks and bounded fuzzing without model calls.
-Repositories can also opt in to [task behavioral verification](docs/verification.md#verify-task-behavior):
-plan relevant declared checks, exercise actual behavior and retain source-bound attempt summaries before the final gate checks.
+Compact mode is opt-in. Use it when a broad search or a noisy check would otherwise bury the relevant evidence. Workers can expand the saved output. Ordinary short reads stay on the native host path. Review and verification use the same evidence requirements. [Compact how-to](docs/compact-context.md)
 
-For an opted-in coordinator, common reads need no request JSON:
+To manage cost during a task, inspect `kitsu usage show --task <id> --json`. The daily harness can limit reviewer starts and reserve time for verification and delivery. Its task record shows the outcome, handoffs and available usage. A missing coordinator or worker counter leaves the cost incomplete. [Limits and recovery](docs/task-harness.md#delivery-and-limits)
 
-```sh
-kitsu context read README.md --start 1 --end 30
-kitsu context search 'retry' internal
-kitsu task prepare fix-login --role developer --stage code --round 1 \
-  --host codex --workflow small --assignment /absolute/path/assignment.txt
-kitsu task finish <dispatch-id> --expect-checks pass
-```
-
-`prepare` returns a saved brief's path/hash, model, reasoning and baseline. The host starts
-the fresh worker from that complete brief; `finish` checks its writes and existing evidence
-without running tests again. Finish the prior interval before preparing another worker.
-These commands launch no model and replace no review or approval. See the
-[worked handoff and recovery steps](docs/compact-context.md#prepare-and-finish-a-worker).
-
-For an opted-in coordinator, `task prepare ... --dispatch` also generates a native
-launch description with the original packet reference and return shape. The host starts
-the fresh worker; `task return` retains bounded claims separately from observed local
-facts without finishing the interval. See [coordinator handoffs](docs/coordinator-overhead.md)
-for examples, reduced polling/bookkeeping guidance and offline measurement limits.
-
-Inspect coordinator state without repeatedly printing complete task records:
-
-```sh
-kitsu task show fix-login --compact
-kitsu task show fix-login --since <snapshot-id>
-```
-
-The first command returns a bounded snapshot of stage, active interval, checks,
-open recorded findings, policy keys and missing prerequisites. The second returns
-only changed sections. Expand original references when needed; snapshots certify
-no task completion. See [state snapshots and deltas](docs/coordinator-state.md).
-
-Optional [workflow insights](docs/workflow-insights.md) add `usage show --diagnostics`,
-source-linked uncertainty and troubleshooting notes, and task budget estimates or
-sourced limits. Unknown usage remains unknown; recorded budgets authorize no paid
-work and enforce no runtime cap.
-
-The latest [Codex compact comparison](docs/benchmarks/workflow-insights-paid-report.md)
-records actual coordinator and worker tokens on one real task. Both attempts
-passed the frozen quality checks; compact used 21.1% more captured tokens in this
-pair. Compact remains opt-in.
+For managed workflows, saved worker briefs, bounded state views and deltas reduce repeated output. Their effect on total model usage varies by task. [Worker handoffs](docs/compact-response-cycles.md) · [Coordinator state](docs/coordinator-state.md) · [Measured outcomes](docs/benchmarks/kitsu-product-audit-2026-11-18.md)
 
 ### Find a command
 
@@ -324,43 +294,9 @@ kitsu: to produce the missing evidence, run:
 
 The [quick start](docs/quickstart.md) is the same five commands as a text that a test executes.
 
-## Install
-
-Run one command for your system. No clone, Go toolchain, or manual archive extraction is needed.
-
-Linux and macOS:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh | sh
-```
-
-Windows, in PowerShell:
-
-```powershell
-irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 | iex
-```
-
-The installer selects your platform and architecture, verifies the archive checksum before
-replacing the executable, and sets up your user `PATH`. The default location is `$HOME/.local/bin`
-on macOS/Linux or `%LOCALAPPDATA%\kitsu` on Windows. Open a new terminal, then run `kitsu version`.
-The current installer selects `v0.0.1`.
-
-Rerun the same command to install the version selected by the current installer. The
-[installation guide](docs/release-install.md) covers version pinning, custom directories and
-CI artifacts. Contributors can [build from source](docs/development.md#build-from-source).
-
-Kitsu uses Git to work in a repository. On Windows its Git hooks use the `sh` supplied by Git for
-Windows. The installer installs only Kitsu's CLI; [add the plugin](#for-a-coding-agent) through
-your host's marketplace to use the coordinated workflow.
-
-The hooks look for `kitsu` only in the entries of `PATH` that are absolute paths; see
-[hooks](docs/hooks.md#when-kitsu-is-not-on-path). Existing `cw` users should follow the
-[migration guide](docs/migration.md) before initializing Kitsu in an existing repository.
-
 ## For a coding agent
 
-The plugin's `task` skill gives the coding-agent host a coordinator workflow for specification, design, tests,
-implementation, review, and commit. Claude Code receives the seven roles as agents; on Codex, the coordinator uses
+The plugin’s `task` skill uses the daily harness or resumes a managed role workflow. Claude Code receives the seven roles as agents; on Codex, the coordinator uses
 the texts printed by `kitsu role text <role>`. Execution and delegation are handled by the host.
 
 The plugin also connects the workflow to supporting checks and token reporting:
@@ -376,12 +312,15 @@ ask from a hook; run the call yourself if you want it. The guard is a reminder, 
 [operations](docs/operations.md#what-it-misses) lists what it misses.
 
 The additional [`kitsu`](skills/kitsu/SKILL.md) skill explains the check-and-change loop, each gate denial,
-and seven worked examples that tests replay against the CLI. The role workflow has not been run on Codex.
+and seven worked examples that tests replay against the CLI. The [product audit](docs/benchmarks/kitsu-product-audit-2026-11-18.md) covers live Codex tasks and offline host checks.
 
-On Claude Code:
+For a daily preview, use the marketplace packaged with the CLI. [Register the matching marketplace](docs/release-install.md#register-the-matching-marketplace)
 
-```text
-/plugin install kitsu --marketplace belevtsev/kitsu
+To install from the GitHub marketplace, use the following commands for Claude Code:
+
+```sh
+claude plugin marketplace add belevtsev/kitsu
+claude plugin install kitsu@kitsu
 ```
 
 On Codex:
@@ -455,9 +394,8 @@ separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advise
   Windows PowerShell 5.1 runtime testing remains unavailable.
 - [Agent onboarding](openspec/changes/add-agent-onboarding/tests.md) passed Linux race tests, fake-host terminal launches,
   and three-target lint/vulnerability checks. Darwin and Windows test binaries compiled; native runtime and interactive plugin/hook trust remain unverified.
-- Whether the workflow improves code quality or saves tokens compared with one agent is **not measured**.
-  Historical scratch runs on two small tasks recorded workflow usage, without a comparative quality result:
-  [benchmarks](docs/benchmarks.md). The planned [evaluation](docs/evaluation.md) has not been run.
+- In the completed pflag comparison, plain Codex and daily Kitsu both delivered a verified commit. On qs, Kitsu’s reviewers caught defects in successive repairs, and the run reached its budget stop before committing. The audit reports quality, elapsed time, total captured tokens and unfinished work together. [Product audit](docs/benchmarks/kitsu-product-audit-2026-11-18.md)
+
 - [Compact context](openspec/changes/add-compact-context/tests.md) adds opt-in Go collection, worker briefs and bounded check results.
   Local race/regression and three-target lint/vulnerability checks passed; offline comparisons include JSON/page overhead and no live token-saving claim.
 - [Typed context and saved handoffs](openspec/changes/streamline-compact-handoffs/tests.md) passed build, vet, full Linux race,
@@ -494,6 +432,7 @@ More in [evidence](docs/evidence.md) and [hooks](docs/hooks.md).
 
 | Document | What it holds |
 | --- | --- |
+| [Daily harness product audit](docs/benchmarks/kitsu-product-audit-2026-11-18.md) | Real pflag token and timing results, the budget-stopped qs repair, offline checks and release priorities. |
 | [CLI guide](docs/cli.md) | Check agent setup, start a task, find commands, save host preferences, use editors and completion. |
 | [CLI command reference](docs/cli-reference.md) | Generated help for command operands, options, defaults, and examples. |
 | [Quick start](docs/quickstart.md) | The five commands in a new repository. A test executes them. |

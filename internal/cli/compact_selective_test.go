@@ -45,13 +45,8 @@ func TestSelectiveCompactTaskStartRequiresExplicitOptIn(t *testing.T) {
 					t.Fatalf("compact mode changed the original request: %q", handoff.Prompt)
 				}
 				for _, instruction := range []string{
-					"references/compact.md", "native host reads for short whole files",
-					"scoped native search", "context read/search/collect for broad or noisy retrieval",
-					"check run --compact for noisy declared checks", "expand retained logs",
-					"every fresh worker brief", "original full role instructions and selected skills uncompressed",
-					"independent reviews and required evidence", "local rendered text, not provider prompt cache",
-					"all requests, responses and expansions",
-					"ordinary check output for quiet checks", "do not copy coordinator guides",
+					"references/compact.md", "native reads for short files", "noisy searches and logs",
+					"Expand retained evidence", "Keep the requested workflow",
 				} {
 					if !strings.Contains(handoff.Prompt, instruction) {
 						t.Errorf("compact handoff lost %q", instruction)

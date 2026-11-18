@@ -89,6 +89,7 @@ func uxPrintLeaf(cfg Config, c uxCommand) error {
 	}
 	var seen []string
 	descriptions := map[string]string{"role": "specialist role id, or coordinator where supported", "task": "task name: lowercase words joined by hyphens", "skill": "catalog id, unique skill name, or original absolute path", "adviser": "name of an explicitly configured experimental adviser", "id": "check or consultation id, as appropriate", "tree": "starting Git tree or revision", "key": "CLI preference key; currently host", "value": "preference value; host accepts codex or claude", "program": "executable run directly without a shell", "argument": "argument passed unchanged to the check program", "text": "explicit explanation of this recorded decision", "workflow": "full for an existing task folder, or small for lightweight history", "stage": "stage of the role making this request", "file": "JSON request file, or - to read standard input", "disposition": "accept, reject or defer the consultation, with an explicit reason"}
+	descriptions["action"] = "next judgment action returned by task next"
 	descriptions["host"] = "codex or claude; legacy aliases require explicit host selection"
 	descriptions["word"] = "literal command word; the final word is the current prefix, including an empty prefix"
 	for _, match := range uxOperand.FindAllStringSubmatch(c.args, -1) {
@@ -123,7 +124,7 @@ func uxPrintLeaf(cfg Config, c uxCommand) error {
 		fmt.Fprintln(cfg.Out, "\nSetup: local inspection does not prove host authentication, model access, hook\ntrust or runtime execution. Follow the reported manual host checks.")
 	}
 	if c.path == "task start" {
-		fmt.Fprintln(cfg.Out, "\nStart: requires terminal input, stdout and stderr and no known local blockers.\nThe host remains the orchestrator and may request permissions. --print and\n--json prepare a handoff even when setup is incomplete; they execute nothing\nand create no task records. The two output options are mutually exclusive.\nA launched host's exit status is preserved; interruption exits 130.")
+		fmt.Fprintln(cfg.Out, "\nStart: requires terminal input, stdout and stderr and no known local blockers.\nDaily startup pins a task before the host opens in a repository. Use --resume\nto reopen it. The host may request permissions. --print and\n--json prepare a handoff even when setup is incomplete; they execute nothing\nand create no task records. The two output options are mutually exclusive.\nA launched host's exit status is preserved; interruption exits 130.")
 	}
 	if strings.HasPrefix(c.path, "skill ") || strings.HasPrefix(c.path, "role ") {
 		fmt.Fprintln(cfg.Out, "\nRole settings: repository skills replace personal lists; clear pins none; reset\nrestores inheritance. Personal settings and coordinator accept only skills.\nSelections grant no extra permissions and do not prove host loading.")
@@ -135,7 +136,7 @@ func uxPrintLeaf(cfg Config, c uxCommand) error {
 		fmt.Fprintln(cfg.Out, "\nRequest: CLI advisers accept version 1 advice/decision JSON; native advisers\naccept decision, score and boolean requests (version 2 for score/boolean).\nThe call may execute a configured CLI or contact an enabled experimental API.\nThe complete exchange is recorded. Answers provide no automatic approval.")
 	}
 	if c.path == "gate uninstall" {
-		fmt.Fprintln(cfg.Out, "\nRemoval: local check evidence and host token records are removed. Configuration\nand shared OpenSpec records remain, including your private CLI host preference.")
+		fmt.Fprintln(cfg.Out, "\nRemoval: records are retained. --purge deletes shared check and token records\nonly after all Kitsu hook calls are detached. Task history and configuration stay.")
 	}
 	fmt.Fprintln(cfg.Out, "\nExamples:")
 	for _, example := range c.examples {

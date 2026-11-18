@@ -5,6 +5,29 @@ Regenerate with `GOWORK=off go test ./internal/cli -run TestUXCommandReferenceIs
 
 ## agent
 
+### kitsu agent setup
+
+```text
+usage: kitsu agent setup [options]
+
+Install the verified Kitsu plugin from a local release bundle.
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --archive-dir <directory> required directory containing kitsu-plugin.zip and
+                            SHA256SUMS
+  --help, -h               show this command's help without executing it
+
+Host: --host > KITSU_HOST > private checkout preference > personal preference.
+Set a preference with `kitsu config set host codex` (or add --global).
+
+Examples:
+  kitsu agent setup --host codex --archive-dir /path/to/kitsu-archives
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
 ### kitsu agent check
 
 ```text
@@ -36,7 +59,7 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ### kitsu task start
 
 ```text
-usage: kitsu task start <request> [options]
+usage: kitsu task start [<request>] [options]
 
 Open an interactive agent host with the Kitsu task skill.
 
@@ -49,8 +72,14 @@ Options:
                            opening the host
   --json                   print machine-readable JSON without prompts or
                            styling
+  --resume <task>          launch a saved local task instead of creating another
+  --until <outcome>        stop at the requested outcome
   --compact                opt in to Go context collection, compact briefs and
                            check results
+  --time-limit <duration>  time remaining before the task pauses
+  --review-limit <count>   maximum total independent review starts, including
+                           released reservations
+  --finish-reserve <duration> time before the deadline reserved from new reviews
   --help, -h               show this command's help without executing it
 
 Host: --host > KITSU_HOST > private checkout preference > personal preference.
@@ -60,7 +89,8 @@ Setup: local inspection does not prove host authentication, model access, hook
 trust or runtime execution. Follow the reported manual host checks.
 
 Start: requires terminal input, stdout and stderr and no known local blockers.
-The host remains the orchestrator and may request permissions. --print and
+Daily startup pins a task before the host opens in a repository. Use --resume
+to reopen it. The host may request permissions. --print and
 --json prepare a handoff even when setup is incomplete; they execute nothing
 and create no task records. The two output options are mutually exclusive.
 A launched host's exit status is preserved; interruption exits 130.
@@ -78,7 +108,7 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ```text
 usage: kitsu task list [options]
 
-List full tasks and saved small-task histories.
+List daily requests, managed tasks and saved small-task histories.
 
 Options:
   --json                   print machine-readable JSON without prompts or
@@ -105,6 +135,8 @@ Arguments:
 Options:
   --json                   print machine-readable JSON without prompts or
                            styling
+  --review-ticket <id>     read the reserved candidate, findings and work notes
+                           for the independent reviewer as JSON
   --compact                return a full coordinator snapshot with references;
                            always JSON
   --since <snapshot-id>    return only sections changed since a retained
@@ -165,6 +197,272 @@ Options:
 Examples:
   kitsu task verify fix-login --from HEAD
   kitsu task verify fix-login --compact
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task open
+
+```text
+usage: kitsu task open <task> [options]
+
+Pin a candidate and the developer's requested outcome.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --request <text>         original developer request
+  --entry <stage>          starting activity
+  --until <outcome>        requested finish line
+  --repair                 authorize source repairs after findings or failing
+                           assertions
+  --commit                 delivery includes a local commit
+  --publish-to <remote/branch> authorized remote branch whose commit must be
+                               confirmed
+  --pr-base <branch>       require confirmation of an open GitHub PR into this
+                           branch
+  --review-base <revision> start commit of a read-only review range; requires
+                           --review-head
+  --review-head <revision> end commit of a read-only review range; requires
+                           --review-base
+  --brief                  return next action, ticket and evidence references as
+                           JSON
+  --json                   return structured task state
+  --time-limit <duration>  time remaining before the task pauses
+  --review-limit <count>   maximum total independent review starts, including
+                           released reservations
+  --finish-reserve <duration> time before the deadline reserved from new reviews
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task open export-quoting --entry review --until verify --repair --request "Verify CSV quoting"
+  kitsu task open review-pr --until review --review-base main --review-head topic --request "Review the committed change"
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task extend
+
+```text
+usage: kitsu task extend <task> [options]
+
+Explicitly extend a saved outcome or renew its time limit.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --until <outcome>        requested finish line
+  --repair                 authorize source repairs after findings or failing
+                           assertions
+  --commit                 delivery includes a local commit
+  --publish-to <remote/branch> authorized remote branch whose commit must be
+                               confirmed
+  --pr-base <branch>       require confirmation of an open GitHub PR into this
+                           branch
+  --brief                  return next action, ticket and evidence references as
+                           JSON
+  --json                   return structured task state
+  --time-limit <duration>  time remaining before the task pauses
+  --review-limit <count>   maximum total independent review starts, including
+                           released reservations
+  --finish-reserve <duration> time before the deadline reserved from new reviews
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task extend add-login
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task claim
+
+```text
+usage: kitsu task claim <task> [options]
+
+Reserve an action before launching a host worker.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --ticket <id>            action ticket returned by task next
+  --actor <id>             session reserving this action
+  --worker <id>            link the launched native reviewer or developer to an
+                           existing reservation
+  --host <host>            resolve specialist settings for a review,
+                           implementation or repair reservation
+  --brief                  return next action, ticket and evidence references as
+                           JSON
+  --json                   return structured task state
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task claim add-login
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task release
+
+```text
+usage: kitsu task release <task> [options]
+
+Release a claim after reconciling or cancelling its worker.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --ticket <id>            action ticket returned by task next
+  --brief                  return next action, ticket and evidence references as
+                           JSON
+  --json                   return structured task state
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task release add-login
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task confirm
+
+```text
+usage: kitsu task confirm <task> [options]
+
+Check every push destination and requested PR, or recheck a completed delivery.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --ticket <id>            action ticket returned by task next
+  --pr <url>               published pull request URL
+  --brief                  return next action, ticket and evidence references as
+                           JSON
+  --json                   return structured task state
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task confirm export-quoting --ticket TICKET --pr https://github.com/example/repo/pull/17
+  kitsu task confirm export-quoting --brief
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task commit
+
+```text
+usage: kitsu task commit <task> [options]
+
+Commit the verified candidate already staged for authorized delivery.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --ticket <id>            action ticket returned by task next
+  --message <text>         commit message
+  --include <path>         explicitly include a pre-existing changed path;
+                           repeatable
+  --brief                  return next action, ticket and evidence references as
+                           JSON
+  --json                   return structured task state
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task commit add-login
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task next
+
+```text
+usage: kitsu task next <task> [options]
+
+Resume from current evidence and show the next action.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --brief                  return next action, ticket and evidence references as
+                           JSON
+  --json                   return structured task state
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task next add-login
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task record
+
+```text
+usage: kitsu task record <task> <action> [options]
+
+Record intake, a plan, implementation, repair or independent review.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+  <action>           next judgment action returned by task next
+
+Options:
+  --ticket <id>            action ticket returned by task next
+  --claim-review <host>    reserve the next independent review with this result
+  --actor <id>             native session identity
+  --note <text>            result and evidence or artifact reference
+  --finding <text>         unresolved review finding; repeatable
+  --brief                  return next action, ticket and evidence references as
+                           JSON
+  --json                   return structured task state
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task record export-quoting intake --actor SESSION --ticket TICKET --note "Quoted fields should round-trip"
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu task test
+
+```text
+usage: kitsu task test <task> [-- <program> [<argument>...]] [options]
+
+Execute the requested behavioral assertion and required repository checks.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+  <program>          executable run directly without a shell
+  <argument>         argument passed unchanged to the check program
+
+Options:
+  --ticket <id>            action ticket returned by task next
+  --expect <text>          observable behavior asserted by this command
+  --retry                  use the saved behavioral assertion on the current
+                           candidate
+  --replace-reason <text>  explain why a failing assertion needs a different
+                           command
+  --brief                  return next action, ticket and evidence references as
+                           JSON
+  --json                   return structured task state
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task test export-quoting --ticket TICKET --expect "Quoted fields round-trip" -- go test ./csv
 
 Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
@@ -1309,15 +1607,17 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ### kitsu gate uninstall
 
 ```text
-usage: kitsu gate uninstall
+usage: kitsu gate uninstall [options]
 
-Remove Kitsu's Git hooks and local records; keep configuration.
+Detach Kitsu hooks and preserve local history.
 
 Options:
+  --purge                  also delete shared check and token evidence after
+                           successful detach
   --help, -h               show this command's help without executing it
 
-Removal: local check evidence and host token records are removed. Configuration
-and shared OpenSpec records remain, including your private CLI host preference.
+Removal: records are retained. --purge deletes shared check and token records
+only after all Kitsu hook calls are detached. Task history and configuration stay.
 
 Examples:
   kitsu gate uninstall
@@ -1840,9 +2140,11 @@ For an agent host's hook: ask before a git call that skips the hooks, or an edit
 ### kitsu uninstall
 
 ```text
-usage: kitsu uninstall
+usage: kitsu uninstall [--purge]
 
-Remove the hooks kitsu wrote and its records; kitsu.toml stays.
+Detach owned hooks; optionally purge the shared check and token store.
+
+  --purge  Delete shared check and token evidence after complete hook removal.
 ```
 
 ### kitsu version

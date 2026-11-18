@@ -1,0 +1,71 @@
+{
+  "task": "pflag-unknown-flags",
+  "candidate_trees": {
+    "codex": "7852017cabbc7d192b397884b3096be6ead51374",
+    "kitsu": "6c602f6ee830267ed161d15387e299e932b02950"
+  },
+  "test_names": {
+    "codex": "TestPassUnknownFlagToArgsNonInterspersed",
+    "kitsu": "TestUnknownFlagPassthrough"
+  },
+  "original_test_blob": "6d23feb6c5e992976d9b9aacc805ad9f298789eb",
+  "different_paths": [
+    "flag.go",
+    "flag_test.go",
+    "kitsu-roles.toml",
+    "kitsu.toml"
+  ],
+  "production_source_differences": "prose line comments only",
+  "go": "go version go1.26.4 linux/amd64",
+  "model_calls": 0,
+  "controls": [
+    {
+      "case": "correct",
+      "source_sha256": "5340533f686bc1332680ba0941d550c3fb7397fd68dd58c1b03fec63ab981db7",
+      "oracle": "pass",
+      "original_suite": "pass",
+      "codex": "pass",
+      "kitsu": "pass"
+    },
+    {
+      "case": "discard_trailing_arguments",
+      "source_sha256": "4ce77f04b12128f19bfea3940b6525179cdc39a6f2d0937d35e48f825f7412c1",
+      "oracle": "fail",
+      "original_suite": "pass",
+      "codex": "fail",
+      "kitsu": "fail"
+    },
+    {
+      "case": "continue_after_unknown",
+      "source_sha256": "009edb78c36b6cbd15078a8d5219509b75cb89d42710ce7485b1aa6f935d2647",
+      "oracle": "fail",
+      "original_suite": "pass",
+      "codex": "fail",
+      "kitsu": "fail"
+    },
+    {
+      "case": "parse_known_suffix_after_unknown",
+      "source_sha256": "3895c9cb3340f0b8505994aca92c2724eef8e57a13291a744c46a0952e2eb861",
+      "oracle": "fail",
+      "original_suite": "pass",
+      "codex": "fail",
+      "kitsu": "fail"
+    },
+    {
+      "case": "forward_known_suffix_in_interspersed_mode",
+      "source_sha256": "5cc38edf7cd770ff1c85525257cb822ae51e1a63b707aa33c97618e3cb4d8504",
+      "oracle": "fail",
+      "original_suite": "fail",
+      "codex": "pass",
+      "kitsu": "fail"
+    },
+    {
+      "case": "stop_in_interspersed_mode",
+      "source_sha256": "3009fe7e6df109cafbdc9ab37d20d332154a838a00212e099b1592c8d3942f0e",
+      "oracle": "fail",
+      "original_suite": "fail",
+      "codex": "pass",
+      "kitsu": "fail"
+    }
+  ]
+}

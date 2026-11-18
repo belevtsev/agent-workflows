@@ -1,6 +1,7 @@
 package onboarding
 
 import (
+	"bytes"
 	"encoding/json"
 	"path/filepath"
 	"regexp"
@@ -54,6 +55,11 @@ func taskCheck(p plugin, root, host string, s settings) Check {
 	}
 	if disabled || !entry.UserInvocable {
 		check.Detail = "The installed task skill is disabled, malformed or unavailable for user invocation."
+		return check
+	}
+	body, err := readFile(entry.Path)
+	if err != nil || !bytes.Contains(body, []byte("<!-- kitsu-task-harness: 2 -->")) {
+		check.Detail = "The installed task skill does not declare harness protocol 2. Update the Kitsu plugin to match this CLI."
 		return check
 	}
 	check.Status, check.Summary = "pass", "Installed Kitsu task skill is usable in configuration"

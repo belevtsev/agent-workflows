@@ -55,6 +55,11 @@ Source: approved bounded observations with expandable evidence.
 - **WHEN** a failed check prints noisy output
 - **THEN** its compact preview retains tail diagnostics and expansion recovers its normal retained log from the beginning.
 
+#### Scenario: Byte-exact large pages
+
+- **WHEN** multiple strings compete for a byte budget or a caller resumes a retained item
+- **THEN** the output preserves the same evidence, cursor and newline as a full JSON size check at each boundary.
+
 ### Requirement: Private fresh artifacts
 
 Artifacts SHALL be isolated per worktree, private where platform modes apply, bounded to

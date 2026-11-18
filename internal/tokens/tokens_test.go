@@ -530,3 +530,15 @@ func TestRecordKeepsItsFoldersPrivate(t *testing.T) {
 		}
 	}
 }
+
+func TestTokenStoreInLiteralBracketDirectory(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "work[release]", "tokens")
+	s := Start{Version: 1, Host: Codex, Session: "parent", Agent: "agent-review", Task: "topic", Known: true}
+	if err := write(dir, s); err != nil {
+		t.Fatal(err)
+	}
+	starts, damaged, err := Load(dir)
+	if err != nil || len(damaged) != 0 || len(starts) != 1 || starts[0].Task != "topic" {
+		t.Fatalf("lost stored usage: starts=%v damaged=%v error=%v", starts, damaged, err)
+	}
+}

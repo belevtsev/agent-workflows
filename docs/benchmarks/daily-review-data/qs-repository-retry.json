@@ -1,0 +1,100 @@
+{
+  "task": "qs-sparse-array-limit",
+  "candidate": "5ac4dfb7110790669a239051ec07491f4fd9e862",
+  "ledger_sha256": "37da5c659648175cd88009c3e3a74cea7f9562c28baee562caefe9395c9d4d4a",
+  "kitsu_sha256": "951c2eab03bcc9be484a14e750e30ab8d4d7c929d6fb1da3f5e6de155b4e57f5",
+  "model_calls": 0,
+  "compact": false,
+  "saved_reviews": 4,
+  "additional_reviews": 0,
+  "median_wall_seconds": {
+    "plain": 1.070113,
+    "kitsu": 2.479408
+  },
+  "runs": [
+    {
+      "pair": 1,
+      "repository_retry": {
+        "injected_exit": 23,
+        "declared_suite_launches": 2
+      },
+      "arm": "plain",
+      "seconds": 1.070113,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 1,
+      "repository_retry": {
+        "injected_exit": 23,
+        "declared_suite_launches": 2,
+        "failure_receipt_retained": true,
+        "lost_success_replayed": true
+      },
+      "arm": "kitsu",
+      "seconds": 2.445037,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 2,
+      "repository_retry": {
+        "injected_exit": 23,
+        "declared_suite_launches": 2,
+        "failure_receipt_retained": true,
+        "lost_success_replayed": true
+      },
+      "arm": "kitsu",
+      "seconds": 2.522548,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 2,
+      "repository_retry": {
+        "injected_exit": 23,
+        "declared_suite_launches": 2
+      },
+      "arm": "plain",
+      "seconds": 1.073482,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 3,
+      "repository_retry": {
+        "injected_exit": 23,
+        "declared_suite_launches": 2
+      },
+      "arm": "plain",
+      "seconds": 1.065207,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 3,
+      "repository_retry": {
+        "injected_exit": 23,
+        "declared_suite_launches": 2,
+        "failure_receipt_retained": true,
+        "lost_success_replayed": true
+      },
+      "arm": "kitsu",
+      "seconds": 2.479408,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    }
+  ]
+}

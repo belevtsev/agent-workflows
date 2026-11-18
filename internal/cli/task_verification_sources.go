@@ -41,7 +41,7 @@ func taskVerificationSkills(s *session, task, workflow string, record bool) (str
 				return "", nil, err
 			}
 			for _, entry := range entries {
-				sources[host+":"+role] = append(sources[host+":"+role], compactSkill{entry.ID, entry.Path, entry.SHA256})
+				sources[host+":"+role] = append(sources[host+":"+role], entry.Reference())
 			}
 			if record {
 				id, err := skills.RecordSelection(s.repo.Root, task, workflow, host, role, entries)

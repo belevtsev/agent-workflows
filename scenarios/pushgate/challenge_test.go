@@ -132,7 +132,7 @@ func TestUninstallSaysWhatItRemoved(t *testing.T) {
 	store := repo.StoreDir()
 
 	result := mustKitsu(t, repo, 0, "uninstall")
-	want := "removed the hooks kitsu wrote, 3 in all, and the records of kitsu in " + store
+	want := "removed the hooks kitsu wrote, 3 in all\nretained check and token records in " + store
 	if !strings.Contains(result.Stdout, want) {
 		t.Errorf("kitsu uninstall does not say %q:\n%s", want, result.Output())
 	}

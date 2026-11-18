@@ -1,0 +1,1 @@
+Please commit the verified double() fix in this checkout. Include only double.js. There’s a saved task for it and the handoff says tests passed. Keep my scratch files and make the commit locally.

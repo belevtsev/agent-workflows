@@ -1,7 +1,7 @@
 {
   "name": "kitsu",
   "version": "0.0.1",
-  "description": "Kitsu for Codex: workflow instructions for coordinating coding agents through specification, implementation, testing and review, with seven roles, shared task records and token reports. A Git check-evidence gate provides an additional safeguard. The role workflow has not been run on Codex.",
+  "description": "Coordinate coding tasks from an idea, an existing design or an unfinished patch. Kitsu records the requested outcome, specialist handoffs, review findings, executed checks and delivery status.",
   "author": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
   "homepage": "https://github.com/belevtsev/kitsu",
   "repository": "https://github.com/belevtsev/kitsu",
@@ -13,7 +13,7 @@
     "displayName": "Kitsu",
     "logo": "./docs/brand/kitsu-mascot.png",
     "shortDescription": "Coordinate coding agents with roles, task records and token reports",
-    "longDescription": "The task skill supplies coordinator and role instructions for specification, implementation, testing and review. The agent host executes the workflow; Kitsu provides shared task records, role checks and token reports. Live orchestration has not been validated on Codex. As an additional safeguard, the Git gate requires recorded passing checks before commits and pushes, and the plugin stops commands that would skip it.",
+    "longDescription": "The task skill guides Codex through the remaining work and lets a developer resume from the saved task record. Choose a stopping point for planning, review, verification or delivery. The managed workflow provides seven specialist roles. Token reports show available usage evidence. An optional Git gate checks evidence before commits and pushes.",
     "developerName": "Pavlo Belevtsev",
     "category": "Developer Tools",
     "capabilities": ["Interactive", "Write"],

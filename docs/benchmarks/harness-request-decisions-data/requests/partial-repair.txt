@@ -1,0 +1,1 @@
+I started fixing double() in the working diff, but double("3") still returns 6. It should reject strings with TypeError and still double numbers. Please finish and check the fix. My notes and draft are separate work. Leave the fix here for me without committing it.

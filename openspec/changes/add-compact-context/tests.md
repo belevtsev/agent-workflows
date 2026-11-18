@@ -2,6 +2,7 @@
 
 | Scenario | Test file | Text |
 | --- | --- | --- |
+| Byte-exact large pages | internal/contextpack/page_benchmark_test.go | TestPagingMatchesFullEncodingAtByteBoundaries |
 | Collection retains ranges and deterministic search facts | internal/contextpack/context_test.go | TestCollectDeterministicRangesSearchAndPartialFailures |
 | Executable or malformed requests are refused | internal/contextpack/context_test.go | TestContextRequestRejectsExecutableAndMalformedInput |
 | Ignored or escaping sources expose no content | internal/contextpack/context_test.go | TestCollectConfinesSourcesAndRespectsIgnoreRules |

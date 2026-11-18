@@ -58,7 +58,8 @@ go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
 Explicitly enabled native advisers may contact provider APIs. Help, skill discovery, completion,
 agent diagnostics, task handoff preparation, and the first-party gate and token packages operate
 offline. Default `task start` explicitly opens the selected interactive host, which can contact
-its provider. Configured checks and adviser CLIs can use their own networks.
+its provider. Explicit publication confirmation reads the remote through Git and, for a PR,
+uses the authenticated GitHub CLI. Configured checks and adviser CLIs can use their own networks.
 
 ## Tests
 
@@ -137,7 +138,7 @@ GOWORK=off go test ./internal/cli -run TestUXCommandReferenceIsGenerated -update
 | Gate / kitsu run | Builds `kitsu` and runs the checks of `kitsu.toml` with `kitsu run --base` against the base revision |
 | Release archives | Builds six archives, an SBOM for each, both installers, `SHA256SUMS`, and release notes. It publishes nothing: the artifact `kitsu-archives` holds them |
 | Install without Go / ubuntu-latest, macos-latest, windows-latest | The `scenarios/installers` harness runs downloaded scripts with an isolated home and a `PATH` without Go or Git. It tests real archives through `KITSU_INSTALL_ARCHIVES`, version/revision, checksum rejection, updates, and `PATH`. Windows runs both PowerShell 7 and Windows PowerShell 5.1 |
-| Plugin manifests | `claude plugin validate .` |
+| Plugin manifests | `claude plugin validate .claude-plugin/marketplace.json` and `claude plugin validate .claude-plugin/plugin.json --strict` |
 
 A thorough run is started by hand, with the input `thorough` of the workflow:
 `gh workflow run ci.yml --ref <branch> -f thorough=true`. It uses the race
@@ -216,3 +217,5 @@ Until publication, the installers can use a downloaded
 a checkout or Go. Use scripts and archives from the same artifact, and verify the commit shown
 by `kitsu version`; multiple CI builds can share the same version label. Preparing the installers
 does not create a tag or release.
+
+The [native Linux setup replay](benchmarks/kitsu-product-audit-2026-11-18.md#native-host-discovery-and-git-delivery) installs a local archive, checks plugin discovery in both hosts and resumes a verified CLI commit.

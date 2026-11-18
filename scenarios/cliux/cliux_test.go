@@ -130,8 +130,12 @@ func TestCLIUXGateRemovalPreservesHostPreference(t *testing.T) {
 	if got := mustKitsu(t, repo, "config", "get", "host"); strings.TrimSpace(got) != "claude" {
 		t.Fatalf("removing the gate lost the checkout override: %q", got)
 	}
+	if !repo.Exists(".git/kitsu") {
+		t.Fatal("gate removal lost its local records")
+	}
+	mustKitsu(t, repo, "gate", "uninstall", "--purge")
 	if repo.Exists(".git/kitsu") {
-		t.Fatal("gate removal kept its local records")
+		t.Fatal("explicit purge retained check records")
 	}
 	if !repo.Exists(decl.FileName) {
 		t.Fatal("gate removal deleted declared configuration")
@@ -224,4 +228,31 @@ func TestCLIUXAttachesIndependentlyAndInspectsSourceAliases(t *testing.T) {
 		t.Fatalf("manual-only source was attached or partially edited: %s", got.Output())
 	}
 	mustKitsu(t, repo, "skill", "detach", "codex:repo:.agents/skills/missing", "--role", "developer", "--host", "codex")
+}
+
+func TestTaskListSharesUnchangedVerificationPolicy(t *testing.T) {
+	r := uxRepo(t)
+	for _, id := range []string{"one", "two", "three"} {
+		r.Write("openspec/changes/"+id+"/proposal.md", "# Proposal\n")
+	}
+	trace := filepath.Join(t.TempDir(), "git-events.jsonl")
+	r.Setenv("GIT_TRACE2_EVENT", trace)
+	out := mustKitsu(t, r, "task", "list", "--json")
+	if !strings.Contains(out, `"three"`) {
+		t.Fatal(out)
+	}
+	data, err := os.ReadFile(trace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for line := range strings.SplitSeq(string(data), "\n") {
+		var e struct{ Event, Name string }
+		if json.Unmarshal([]byte(line), &e) == nil && e.Event == "cmd_name" && e.Name == "write-tree" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("listed three ordinary tasks with %d snapshot writes, want 1", count)
+	}
 }

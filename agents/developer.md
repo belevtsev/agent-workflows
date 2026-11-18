@@ -1,6 +1,6 @@
 ---
 name: developer
-description: Writes the code that makes the tests pass, within the design. Started only by the coordinator of the kitsu task workflow, with a brief.
+description: Writes the code that makes the tests pass, within the design. Requires a Kitsu coordinator brief.
 model: sonnet
 effort: high
 tools: Read, Grep, Glob, Edit, Write, Bash, Skill

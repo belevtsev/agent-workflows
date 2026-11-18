@@ -164,7 +164,11 @@ func Record(dir, host string, notice Notice) error {
 	} else if len(starts) == 0 {
 		return errors.New("the notice names no record")
 	}
-	for _, s := range append(again(dir, session, starts), starts...) {
+	prior, err := again(dir, session, starts)
+	if err != nil {
+		return err
+	}
+	for _, s := range append(prior, starts...) {
 		if err := write(dir, s); err != nil {
 			return err
 		}
@@ -202,8 +206,11 @@ func write(dir string, s Start) error {
 // again reads once more the record of each start stored for the session
 // that named does not hold, when the record still exists and its size has
 // changed. A start whose new reading is unknown keeps its counts.
-func again(dir, session string, named []Start) []Start {
-	files, _ := filepath.Glob(filepath.Join(dir, fileName(session), "*.json"))
+func again(dir, session string, named []Start) ([]Start, error) {
+	files, err := sessionFiles(filepath.Join(dir, fileName(session)))
+	if err != nil {
+		return nil, err
+	}
 	var out []Start
 	for _, file := range files {
 		s, ok := load(file)
@@ -217,7 +224,7 @@ func again(dir, session string, named []Start) []Start {
 			out = append(out, start(s.Host, s.Session, s.Agent, s.Record, s.Role, r))
 		}
 	}
-	return out
+	return out, nil
 }
 
 // load reads one stored start; ok is false when it cannot be read.
@@ -230,17 +237,45 @@ func load(file string) (s Start, ok bool) {
 // Load reads every start stored under dir, in the order of their paths. A
 // file that cannot be read is named in damaged.
 func Load(dir string) (starts []Start, damaged []string, err error) {
-	files, err := filepath.Glob(filepath.Join(dir, "*", "*.json"))
+	folders, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil, nil
+	}
 	if err != nil {
 		return nil, nil, err
 	}
-	slices.Sort(files)
-	for _, file := range files {
-		if s, ok := load(file); ok {
-			starts = append(starts, s)
-		} else {
-			damaged = append(damaged, file)
+	for _, folder := range folders {
+		if !folder.IsDir() {
+			continue
+		}
+		files, err := sessionFiles(filepath.Join(dir, folder.Name()))
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, file := range files {
+			if s, ok := load(file); ok {
+				starts = append(starts, s)
+			} else {
+				damaged = append(damaged, file)
+			}
 		}
 	}
 	return starts, damaged, nil
+}
+
+func sessionFiles(dir string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".json") {
+			files = append(files, filepath.Join(dir, e.Name()))
+		}
+	}
+	return files, nil
 }

@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -108,67 +109,46 @@ func (s *session) runOne(ctx context.Context, id string, force bool, base *evide
 	if err != nil {
 		return false, failf("%v", err)
 	}
-	var check *evidence.Check
-	for i := range verdict.Checks {
-		if verdict.Checks[i].ID == id {
-			check = &verdict.Checks[i]
-		}
-	}
-	if check == nil {
+	idx := slices.IndexFunc(verdict.Checks, func(check evidence.Check) bool { return check.ID == id })
+	if idx < 0 {
 		return false, failf("kitsu.toml changed during the run: the check `%s` is no longer declared", id)
 	}
+	check := &verdict.Checks[idx]
 	s.warn(verdict.Warnings)
 	if s.compact != nil {
 		s.compact.begin(check, force)
 	}
 	out := s.cfg.Out
 	if check.State == evidence.Satisfied && !force {
-		switch {
-		case check.Implied:
+		if check.Implied {
 			fmt.Fprintf(out, "== %s: satisfied, not run: its checked content is the same as in the base revision\n", id)
-		default:
+		} else {
 			fmt.Fprintf(out, "== %s: satisfied, not run again: run %s passed on this content\n", id, check.Deciding.RunID)
 		}
 		return true, nil
 	}
-	// On Windows the program is looked up here and started by its full path:
-	// cmd.exe, which runs a batch file, would look a bare name up again, the
-	// folder first. A bare name is found on PATH only, as on the other
-	// systems, and a path is read from the repository root.
-	program := ""
-	if name := check.Run[0]; runtime.GOOS == "windows" {
-		places := []string{filepath.Join(s.repo.Root, name)}
-		if filepath.IsAbs(name) {
-			places[0] = name
-		} else if !strings.ContainsAny(name, `:/\`) {
-			places = filepath.SplitList(os.Getenv("PATH"))
-			for i, dir := range places {
-				places[i] = filepath.Join(dir, name)
-			}
-		}
-		for _, place := range places {
-			found, err := exec.LookPath(place)
-			if err != nil || !filepath.IsAbs(place) {
-				continue
-			}
-			if refusal := runner.BatchRefusal(found, check.Run[1:]); refusal != "" {
-				return false, failf("the check `%s` was not started: %s", id, refusal)
-			}
-			program = found
-			break
-		}
+	job := runner.Job{Check: check.Check, Tree: verdict.Tree, Key: check.Key, Out: out, Err: s.cfg.Err}
+	record, err := s.executeJob(ctx, job, true)
+	return record.Outcome == store.Passed, err
+}
+
+func (s *session) executeJob(ctx context.Context, job runner.Job, printStatus bool) (store.Record, error) {
+	var err error
+	if job.Program, err = checkExecutable(s.repo.Root, job.Check); err != nil {
+		return store.Record{}, err
 	}
-	fmt.Fprintf(out, "== %s: %s\n", id, decl.Plain(strings.Join(check.Run, " ")))
-	result, err := runner.Execute(ctx, s.repo, s.store, runner.Job{Check: check.Check, Tree: verdict.Tree, Key: check.Key, Program: program, Out: s.cfg.Out, Err: s.cfg.Err})
-	if err != nil {
-		return false, failf("%v", err)
+	if printStatus {
+		fmt.Fprintf(job.Out, "== %s: %s\n", job.Check.ID, decl.Plain(strings.Join(job.Check.Run, " ")))
 	}
+	result, err := runner.Execute(ctx, s.repo, s.store, job)
 	s.warn(result.Warnings)
-	if s.compact != nil {
-		s.compact.finish(result.Record)
+	if err == nil && printStatus {
+		if s.compact != nil {
+			s.compact.finish(result.Record)
+		}
+		fmt.Fprintf(job.Out, "== %s: %s\n", job.Check.ID, describeRun(s.store, result.Record))
 	}
-	fmt.Fprintf(out, "== %s: %s\n", id, describeRun(s.store, result.Record))
-	return result.Record.Outcome == store.Passed, nil
+	return result.Record, err
 }
 
 // describeRun says how a run ended, with the outcome as its first word.
@@ -208,4 +188,35 @@ func (s *session) summary(ctx context.Context, base *evidence.Base) error {
 	}
 	fmt.Fprintf(s.cfg.Out, "not yet verified; still missing: %s\n", strings.Join(names, ", "))
 	return nil
+}
+
+func checkExecutable(root string, check decl.Check) (string, error) {
+	// On Windows the program is looked up here and started by its full path:
+	// cmd.exe, which runs a batch file, would look a bare name up again, the
+	// folder first. A bare name is found on PATH only, as on the other
+	// systems, and a path is read from the repository root.
+	program := ""
+	if name := check.Run[0]; runtime.GOOS == "windows" {
+		places := []string{filepath.Join(root, name)}
+		if filepath.IsAbs(name) {
+			places[0] = name
+		} else if !strings.ContainsAny(name, `:/\`) {
+			places = filepath.SplitList(os.Getenv("PATH"))
+			for i, dir := range places {
+				places[i] = filepath.Join(dir, name)
+			}
+		}
+		for _, place := range places {
+			found, err := exec.LookPath(place)
+			if err != nil || !filepath.IsAbs(place) {
+				continue
+			}
+			if refusal := runner.BatchRefusal(found, check.Run[1:]); refusal != "" {
+				return "", failf("the check `%s` was not started: %s", check.ID, refusal)
+			}
+			program = found
+			break
+		}
+	}
+	return program, nil
 }

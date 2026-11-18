@@ -1,6 +1,6 @@
 ---
 name: git
-description: Runs the checks and makes the commit through the gate. Started only by the coordinator of the kitsu task workflow, with a brief.
+description: Runs the checks and makes the commit through the gate. Requires a Kitsu coordinator brief.
 model: haiku
 effort: low
 tools: Read, Grep, Glob, Bash, Skill

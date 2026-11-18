@@ -47,7 +47,7 @@ func taskVerificationPolicyKey(ctx context.Context, s *session, tree string) (st
 	return verification.PolicyKey(file), nil
 }
 
-func uxSmallTaskView(ctx context.Context, s *session, task string) (uxTaskView, error) {
+func uxSmallTaskView(s *session, task string, verify func(string) (*taskVerificationView, error)) (uxTaskView, error) {
 	view := uxTaskView{Task: task, Workflow: "small", Stage: "unknown"}
 	has, err := skills.HasSelections(s.repo.Root, task)
 	if err != nil {
@@ -68,7 +68,7 @@ func uxSmallTaskView(ctx context.Context, s *session, task string) (uxTaskView, 
 	if !has && !hasVerification && !hasBudget && errors.Is(adviceErr, advisers.ErrNoBinding) {
 		return view, change.ErrNoFolder
 	}
-	view.Verification, err = observeTaskVerification(ctx, s, task)
+	view.Verification, err = verify(task)
 	return view, err
 }
 

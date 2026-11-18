@@ -2,22 +2,24 @@
 # Install a verified release archive without a source checkout or Go.
 set -eu
 
-_kitsu_version=${KITSU_VERSION:-v0.0.1}
+_kitsu_version=${KITSU_VERSION:-}
 _kitsu_install_dir=${KITSU_INSTALL_DIR:-}
 _kitsu_no_modify_path=${KITSU_NO_MODIFY_PATH:-0}
 _kitsu_archive_dir=${KITSU_ARCHIVE_DIR:-}
+_kitsu_agent_host=
 _kitsu_work=
 _kitsu_stage=
 _kitsu_profile_stage=
 
 usage() {
 	printf '%s\n' \
-		'Usage: install.sh [--version TAG] [--install-dir DIR] [--no-modify-path] [--archive-dir DIR]' \
+		'Usage: install.sh [--version TAG] [--install-dir DIR] [--no-modify-path]' \
+		'                  [--archive-dir DIR [--host codex|claude]]' \
 		'' \
-		'Defaults: version v0.0.1; install directory $HOME/.local/bin.' \
+		'Remote installs default to v0.0.1. The default install directory is $HOME/.local/bin.' \
 		'Environment: KITSU_VERSION, KITSU_INSTALL_DIR, KITSU_NO_MODIFY_PATH=1,' \
 		'             KITSU_ARCHIVE_DIR, KITSU_DOWNLOAD_BASE.' \
-		'An archive directory must contain the release archive and SHA256SUMS.'
+		'With an archive directory, the installer uses the single archive tag for this platform in SHA256SUMS unless a version is provided.'
 }
 
 fail() {
@@ -33,6 +35,23 @@ argument_error() {
 
 need_value() {
 	[ "$#" -ge 2 ] && [ -n "$2" ] || argument_error "$1 requires a value"
+}
+
+validate_version() {
+	case "$_kitsu_version" in
+		''|[!a-zA-Z0-9]*|*[!a-zA-Z0-9._+-]*)
+			argument_error 'version must be a release tag containing letters, numbers, dots, underscores, + or -'
+			;;
+	esac
+}
+
+quote_shell_argument() {
+	printf "'"
+	while [ "$1" != "${1#*\'}" ]; do
+		printf '%s%s' "${1%%\'*}" "'\\''"
+		set -- "${1#*\'}"
+	done
+	printf "%s'" "$1"
 }
 
 while [ "$#" -gt 0 ]; do
@@ -67,6 +86,16 @@ while [ "$#" -gt 0 ]; do
 			[ -n "$_kitsu_archive_dir" ] || argument_error '--archive-dir requires a value'
 			shift
 			;;
+		--host)
+			need_value "$@"
+			_kitsu_agent_host=$2
+			shift 2
+			;;
+		--host=*)
+			_kitsu_agent_host=${1#*=}
+			[ -n "$_kitsu_agent_host" ] || argument_error '--host requires a value'
+			shift
+			;;
 		--no-modify-path)
 			_kitsu_no_modify_path=1
 			shift
@@ -85,11 +114,15 @@ while [ "$#" -gt 0 ]; do
 	esac
 done
 
-case "$_kitsu_version" in
-	''|[!a-zA-Z0-9]*|*[!a-zA-Z0-9._+-]*)
-		argument_error 'version must be a release tag containing letters, numbers, dots, underscores, + or -'
-		;;
+case "$_kitsu_agent_host" in
+	'') ;;
+	codex|claude) [ -n "$_kitsu_archive_dir" ] || argument_error '--host requires --archive-dir' ;;
+	*) argument_error '--host must be codex or claude' ;;
 esac
+if [ -z "$_kitsu_archive_dir" ]; then
+	_kitsu_version=${_kitsu_version:-v0.0.1}
+fi
+[ -z "$_kitsu_version" ] || validate_version
 case "$_kitsu_no_modify_path" in
 	0|1) ;;
 	*) argument_error 'KITSU_NO_MODIFY_PATH must be 0 or 1' ;;
@@ -147,10 +180,11 @@ if [ "$_kitsu_os" = darwin ] && command -v sysctl >/dev/null 2>&1; then
 		_kitsu_arch=arm64
 	fi
 fi
-_kitsu_archive=kitsu_${_kitsu_version}_${_kitsu_os}_${_kitsu_arch}.tar.gz
-_kitsu_base=${KITSU_DOWNLOAD_BASE:-https://github.com/belevtsev/kitsu/releases/download/$_kitsu_version}
-_kitsu_base=${_kitsu_base%/}
-_kitsu_http=0
+_kitsu_archive_suffix=_${_kitsu_os}_${_kitsu_arch}.tar.gz
+_kitsu_archive=
+if [ -n "$_kitsu_version" ]; then
+	_kitsu_archive=kitsu_${_kitsu_version}${_kitsu_archive_suffix}
+fi
 
 validate_download_base() {
 	case "$_kitsu_base" in
@@ -196,13 +230,20 @@ umask 077
 _kitsu_work=$(mktemp -d "${TMPDIR:-/tmp}/kitsu-install.XXXXXX") ||
 	fail 'cannot create a temporary directory'
 _kitsu_work=$(cd "$_kitsu_work" && pwd -P) || fail 'cannot open the temporary directory'
-printf 'Installing kitsu %s for %s/%s...\n' "$_kitsu_version" "$_kitsu_os" "$_kitsu_arch"
 if [ -n "$_kitsu_archive_dir" ]; then
+	case "$_kitsu_archive_dir" in
+		/*) ;;
+		*) _kitsu_archive_dir=./$_kitsu_archive_dir ;;
+	esac
+	_kitsu_archive_dir=$(CDPATH= cd -P "$_kitsu_archive_dir" && printf '%s.' "$PWD") ||
+		fail 'cannot open the archive directory'
+	_kitsu_archive_dir=${_kitsu_archive_dir%.}
 	cp "$_kitsu_archive_dir/SHA256SUMS" "$_kitsu_work/SHA256SUMS" ||
 		fail 'the archive directory does not contain a readable SHA256SUMS'
-	cp "$_kitsu_archive_dir/$_kitsu_archive" "$_kitsu_work/archive.tar.gz" ||
-		fail "the archive directory does not contain a readable $_kitsu_archive"
 else
+	_kitsu_base=${KITSU_DOWNLOAD_BASE:-https://github.com/belevtsev/kitsu/releases/download/$_kitsu_version}
+	_kitsu_base=${_kitsu_base%/}
+	_kitsu_http=0
 	validate_download_base
 	if command -v curl >/dev/null 2>&1; then
 		_kitsu_downloader=curl
@@ -213,27 +254,58 @@ else
 	fi
 	download "$_kitsu_base/SHA256SUMS" "$_kitsu_work/SHA256SUMS" ||
 		fail "cannot download SHA256SUMS for Kitsu $_kitsu_version; check that this release is published at $_kitsu_base"
-	download "$_kitsu_base/$_kitsu_archive" "$_kitsu_work/archive.tar.gz" ||
-		fail "cannot download $_kitsu_archive; check that this release has an archive for $_kitsu_os/$_kitsu_arch"
 fi
 
-_kitsu_expected=$(LC_ALL=C awk -v archive="$_kitsu_archive" '
+if _kitsu_manifest_entry=$(LC_ALL=C awk -v archive="$_kitsu_archive" -v suffix="$_kitsu_archive_suffix" '
 	{
 		sub(/\r$/, "", $0)
 		name = $2
 		sub(/^\*/, "", name)
-		if (name == archive) {
-			count++
-			if (NF != 2 || length($1) != 64 || $1 ~ /[^0-9a-fA-F]/) bad = 1
-			digest = tolower($1)
+		if (archive != "") {
+			if (name != archive) next
+		} else if (length(name) < 6 + length(suffix) || substr(name, 1, 6) != "kitsu_" ||
+			substr(name, length(name) - length(suffix) + 1) != suffix) {
+			next
 		}
+		if (count && name != selected) ambiguous = 1
+		selected = name
+		count++
+		if (NF != 2 || length($1) != 64 || $1 ~ /[^0-9a-fA-F]/) bad = 1
+		digest = tolower($1)
 	}
 	END {
-		if (count != 1 || bad) exit 1
-		print digest
+		if (ambiguous) exit 10
+		if (!count && archive == "") exit 11
+		if (count != 1 || bad) {
+			print (count ? selected : archive)
+			exit 12
+		}
+		print selected, digest
 	}
-' "$_kitsu_work/SHA256SUMS") ||
-	fail "SHA256SUMS must list $_kitsu_archive exactly once with a 64-digit SHA-256 checksum"
+' "$_kitsu_work/SHA256SUMS"); then
+	_kitsu_archive=${_kitsu_manifest_entry% *}
+	_kitsu_expected=${_kitsu_manifest_entry##* }
+else
+	case "$?" in
+		10) fail "SHA256SUMS lists multiple Kitsu archives for $_kitsu_os/$_kitsu_arch. Specify --version TAG." ;;
+		11) fail "SHA256SUMS does not list a Kitsu archive for $_kitsu_os/$_kitsu_arch" ;;
+		12) fail "SHA256SUMS must list $_kitsu_manifest_entry exactly once with a 64-digit SHA-256 checksum" ;;
+		*) fail 'cannot read SHA256SUMS' ;;
+	esac
+fi
+if [ -z "$_kitsu_version" ]; then
+	_kitsu_version=${_kitsu_archive#kitsu_}
+	_kitsu_version=${_kitsu_version%"$_kitsu_archive_suffix"}
+	validate_version
+fi
+printf 'Installing kitsu %s for %s/%s...\n' "$_kitsu_version" "$_kitsu_os" "$_kitsu_arch"
+if [ -n "$_kitsu_archive_dir" ]; then
+	cp "$_kitsu_archive_dir/$_kitsu_archive" "$_kitsu_work/archive.tar.gz" ||
+		fail "the archive directory does not contain a readable $_kitsu_archive"
+else
+	download "$_kitsu_base/$_kitsu_archive" "$_kitsu_work/archive.tar.gz" ||
+		fail "cannot download $_kitsu_archive; check that this release has an archive for $_kitsu_os/$_kitsu_arch"
+fi
 if [ "$_kitsu_checksum" = sha256sum ]; then
 	_kitsu_digest_line=$(sha256sum <"$_kitsu_work/archive.tar.gz") || fail 'cannot compute the archive checksum'
 else
@@ -319,17 +391,17 @@ configure_path() {
 		printf 'PATH setup was skipped; add %s to PATH if needed.\n' "$_kitsu_install_dir"
 		return
 	fi
-	if [ -z "${HOME:-}" ] || ! command -v grep >/dev/null 2>&1 || ! command -v sed >/dev/null 2>&1; then
+	if [ -z "${HOME:-}" ] || ! command -v grep >/dev/null 2>&1; then
 		path_warning 'the active shell profile'
 		return
 	fi
-	_kitsu_escaped_dir=$(printf '%s' "$_kitsu_install_dir" | sed "s/'/'\\\\''/g") || {
-		path_warning 'the active shell profile'
-		return
-	}
-	_kitsu_quoted_dir="'$_kitsu_escaped_dir'"
+	_kitsu_quoted_dir=$(quote_shell_argument "$_kitsu_install_dir")
 	_kitsu_export="export PATH=$_kitsu_quoted_dir:\"\$PATH\""
 	_kitsu_export_line="    *) $_kitsu_export ;;"
+	case ":$PATH:" in
+		*:"$_kitsu_install_dir":*) ;;
+		*) printf 'Use kitsu in this shell now: %s\n' "$_kitsu_export" ;;
+	esac
 	_kitsu_shell=${SHELL:-sh}
 	_kitsu_shell=${_kitsu_shell##*/}
 	case "$_kitsu_shell" in
@@ -364,5 +436,10 @@ configure_path() {
 
 printf 'Installed kitsu %s at %s.\n' "$_kitsu_version" "$_kitsu_target"
 configure_path
+if [ -n "$_kitsu_agent_host" ]; then
+	"$_kitsu_target" agent setup --host "$_kitsu_agent_host" --archive-dir "$_kitsu_archive_dir" ||
+		fail "$_kitsu_agent_host setup failed. Retry with this command.
+$(quote_shell_argument "$_kitsu_target") agent setup --host $_kitsu_agent_host --archive-dir $(quote_shell_argument "$_kitsu_archive_dir")"
+fi
 printf 'Open a new terminal or restart your shell for PATH changes to take effect.\n'
 printf 'Run "%s version" to check the installed version.\n' "$_kitsu_target"

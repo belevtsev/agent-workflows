@@ -1,6 +1,6 @@
 ---
 name: kitsu
-description: 'Works with kitsu, the commit gate of a git repository - git allows a commit or a push only when every check declared in kitsu.toml has a recorded passing run on exactly that content. Use when the repository holds kitsu.toml and you are about to change code, run its checks, commit or push; when git prints "kitsu: this commit is denied" or kitsu status says "not verified"; when a declared check fails; or when the user asks to add checks or a commit gate to a repository in any language. Not for general git help.'
+description: 'Configure or run kitsu.toml checks before committing or pushing. Diagnose failed checks, "not verified", and "kitsu: this commit is denied". Use when adding a Kitsu Git gate.'
 ---
 
 # Working in a repository gated by kitsu
@@ -52,7 +52,7 @@ Run `kitsu status` and act on the first row that matches what it prints.
    with `kitsu run`: a test that never failed shows nothing.
 3. `kitsu run`. Read what did not pass, fix the cause, run again. Repeat until the last line is
    `every declared check has a passing run on this content`.
-4. `git add -A`, then commit as usual. The hook answers at once.
+4. When a commit was requested, inspect and stage its intended changes, then commit. The hook checks the staged tree.
 5. Tell the user what changed, and quote the last line of `kitsu run`.
 
 A change that is small and plain needs nothing more than this loop:

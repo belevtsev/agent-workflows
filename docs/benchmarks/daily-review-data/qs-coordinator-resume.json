@@ -1,0 +1,104 @@
+{
+  "task": "qs-sparse-array-limit",
+  "candidate": "5ac4dfb7110790669a239051ec07491f4fd9e862",
+  "ledger_sha256": "37da5c659648175cd88009c3e3a74cea7f9562c28baee562caefe9395c9d4d4a",
+  "kitsu_sha256": "d0b00db9ee4e0825987485a7b4c365a2d7d1df4b1fa05caee637d585e952a908",
+  "model_calls": 0,
+  "compact": false,
+  "saved_reviews": 4,
+  "additional_reviews": 0,
+  "median_wall_seconds": {
+    "plain": 1.051,
+    "kitsu": 1.854692
+  },
+  "runs": [
+    {
+      "pair": 1,
+      "arm": "plain",
+      "seconds": 1.05334,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 1,
+      "coordinator_reads": {
+        "next_bytes": 4362,
+        "show_bytes": 13217,
+        "request_intake_repair_review_scope_and_pause_matched": true,
+        "previous_next_bytes": 3590,
+        "previous_show_bytes": 13189,
+        "previous_show_had_full_history": true,
+        "previous_next_omitted_prior_notes": true
+      },
+      "arm": "kitsu",
+      "seconds": 1.794713,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 2,
+      "coordinator_reads": {
+        "next_bytes": 4362,
+        "show_bytes": 13217,
+        "request_intake_repair_review_scope_and_pause_matched": true,
+        "previous_next_bytes": 3590,
+        "previous_show_bytes": 13189,
+        "previous_show_had_full_history": true,
+        "previous_next_omitted_prior_notes": true
+      },
+      "arm": "kitsu",
+      "seconds": 1.854692,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 2,
+      "arm": "plain",
+      "seconds": 1.051,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 3,
+      "arm": "plain",
+      "seconds": 1.020982,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 3,
+      "coordinator_reads": {
+        "next_bytes": 4362,
+        "show_bytes": 13217,
+        "request_intake_repair_review_scope_and_pause_matched": true,
+        "previous_next_bytes": 3590,
+        "previous_show_bytes": 13189,
+        "previous_show_had_full_history": true,
+        "previous_next_omitted_prior_notes": true
+      },
+      "arm": "kitsu",
+      "seconds": 1.857417,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    }
+  ],
+  "previous_read_cli_sha256": "f68e0dfaa77a06d5dd6cd807b45e3f723890566dfabe9bf77695d4028bb45597",
+  "installed_preview": {
+    "source": "GoReleaser archives",
+    "plugin_zip_sha256": "2a205d698f81880f6740051556cf2d31abdf42c73fe7e1cf4500566fecf2f47f",
+    "version": "v0.0.1-resume-preview",
+    "installed_binary_sha256": "d0b00db9ee4e0825987485a7b4c365a2d7d1df4b1fa05caee637d585e952a908"
+  }
+}

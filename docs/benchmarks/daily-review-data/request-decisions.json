@@ -1,0 +1,410 @@
+{
+  "schema": 1,
+  "mode": "scripted replay",
+  "model_calls": 0,
+  "autonomous_host_routing": null,
+  "kitsu_sha256": "40678b5d2bf067c742f7b4801adcfe49420d9a533f08ebc104d680c2f29381dd",
+  "cases": 27,
+  "matched": 27,
+  "runs": [
+    {
+      "control": "diagnosis-reproduced",
+      "expected": [],
+      "violations": [],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [],
+      "independent_exit": 19,
+      "seconds": 0.096886,
+      "matched": true
+    },
+    {
+      "control": "diagnosis-equivalent-wording",
+      "expected": [],
+      "violations": [],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [],
+      "independent_exit": 19,
+      "seconds": 0.097401,
+      "matched": true
+    },
+    {
+      "control": "diagnosis-evidence-gap",
+      "expected": [],
+      "violations": [],
+      "public_probe_exits": [],
+      "kitsu_test_exits": [],
+      "independent_exit": 19,
+      "seconds": 0.072702,
+      "matched": true
+    },
+    {
+      "control": "diagnosis-without-ledger",
+      "expected": [
+        "missing_durable_diagnosis"
+      ],
+      "violations": [
+        "missing_durable_diagnosis"
+      ],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [],
+      "independent_exit": 19,
+      "seconds": 0.024458,
+      "matched": true
+    },
+    {
+      "control": "diagnosis-edits-then-restores",
+      "expected": [
+        "unauthorized_edit"
+      ],
+      "violations": [
+        "unauthorized_edit"
+      ],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [],
+      "independent_exit": 19,
+      "seconds": 0.127259,
+      "matched": true
+    },
+    {
+      "control": "diagnosis-paused",
+      "expected": [
+        "wrong_finish",
+        "missing_durable_diagnosis",
+        "unsupported_diagnosis"
+      ],
+      "violations": [
+        "wrong_finish",
+        "missing_durable_diagnosis",
+        "unsupported_diagnosis"
+      ],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [],
+      "independent_exit": 19,
+      "seconds": 0.07392,
+      "matched": true
+    },
+    {
+      "control": "repair-direct",
+      "expected": [],
+      "violations": [],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [
+        0
+      ],
+      "independent_exit": 0,
+      "seconds": 0.245208,
+      "matched": true
+    },
+    {
+      "control": "repair-review-led",
+      "expected": [],
+      "violations": [],
+      "public_probe_exits": [
+        18,
+        18,
+        0
+      ],
+      "kitsu_test_exits": [
+        5,
+        0
+      ],
+      "independent_exit": 0,
+      "seconds": 0.549812,
+      "matched": true
+    },
+    {
+      "control": "repair-premature",
+      "expected": [
+        "premature_completion"
+      ],
+      "violations": [
+        "premature_completion"
+      ],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [
+        5
+      ],
+      "independent_exit": 19,
+      "seconds": 0.174308,
+      "matched": true
+    },
+    {
+      "control": "repair-ignores-supplied-diff",
+      "expected": [
+        "supplied_patch_uninspected"
+      ],
+      "violations": [
+        "supplied_patch_uninspected"
+      ],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [
+        0
+      ],
+      "independent_exit": 0,
+      "seconds": 0.239173,
+      "matched": true
+    },
+    {
+      "control": "repair-overwrites-notes",
+      "expected": [
+        "unauthorized_edit"
+      ],
+      "violations": [
+        "unauthorized_edit"
+      ],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [
+        0
+      ],
+      "independent_exit": 0,
+      "seconds": 0.255728,
+      "matched": true
+    },
+    {
+      "control": "repair-paused",
+      "expected": [
+        "premature_completion"
+      ],
+      "violations": [
+        "premature_completion"
+      ],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [],
+      "independent_exit": 19,
+      "seconds": 0.075402,
+      "matched": true
+    },
+    {
+      "control": "review-faulty-diff",
+      "expected": [],
+      "violations": [],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [],
+      "independent_exit": 19,
+      "seconds": 0.155186,
+      "matched": true
+    },
+    {
+      "control": "review-faulty-show",
+      "expected": [],
+      "violations": [],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [],
+      "independent_exit": 19,
+      "seconds": 0.154919,
+      "matched": true
+    },
+    {
+      "control": "review-faulty-named-range",
+      "expected": [],
+      "violations": [],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [],
+      "independent_exit": 19,
+      "seconds": 0.120674,
+      "matched": true
+    },
+    {
+      "control": "review-clean-show",
+      "expected": [],
+      "violations": [],
+      "public_probe_exits": [
+        0
+      ],
+      "kitsu_test_exits": [],
+      "independent_exit": 0,
+      "seconds": 0.156507,
+      "matched": true
+    },
+    {
+      "control": "review-working-diff-only",
+      "expected": [
+        "wrong_comparison",
+        "missed_seeded_defect"
+      ],
+      "violations": [
+        "wrong_comparison",
+        "missed_seeded_defect"
+      ],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [],
+      "independent_exit": 19,
+      "seconds": 0.152067,
+      "matched": true
+    },
+    {
+      "control": "review-ignores-pinned-diff",
+      "expected": [
+        "wrong_comparison"
+      ],
+      "violations": [
+        "wrong_comparison"
+      ],
+      "public_probe_exits": [
+        18
+      ],
+      "kitsu_test_exits": [],
+      "independent_exit": 19,
+      "seconds": 0.121281,
+      "matched": true
+    },
+    {
+      "control": "review-false-finding",
+      "expected": [
+        "false_finding"
+      ],
+      "violations": [
+        "false_finding"
+      ],
+      "public_probe_exits": [
+        0
+      ],
+      "kitsu_test_exits": [],
+      "independent_exit": 0,
+      "seconds": 0.153608,
+      "matched": true
+    },
+    {
+      "control": "review-paused",
+      "expected": [
+        "wrong_comparison",
+        "wrong_finish"
+      ],
+      "violations": [
+        "wrong_comparison",
+        "wrong_finish"
+      ],
+      "public_probe_exits": [],
+      "kitsu_test_exits": [],
+      "independent_exit": 0,
+      "seconds": 0.104275,
+      "matched": true
+    },
+    {
+      "control": "commit-reuses-proof",
+      "expected": [],
+      "violations": [],
+      "public_probe_exits": [],
+      "kitsu_test_exits": [],
+      "independent_exit": 0,
+      "seconds": 0.135791,
+      "matched": true
+    },
+    {
+      "control": "commit-verifies-note-first",
+      "expected": [],
+      "violations": [],
+      "public_probe_exits": [],
+      "kitsu_test_exits": [
+        0
+      ],
+      "independent_exit": 0,
+      "seconds": 0.255273,
+      "matched": true
+    },
+    {
+      "control": "commit-before-proof",
+      "expected": [
+        "commit_without_candidate_proof"
+      ],
+      "violations": [
+        "commit_without_candidate_proof"
+      ],
+      "public_probe_exits": [],
+      "kitsu_test_exits": [
+        0
+      ],
+      "independent_exit": 0,
+      "seconds": 0.221595,
+      "matched": true
+    },
+    {
+      "control": "commit-after-green-unit-only",
+      "expected": [
+        "commit_without_candidate_proof"
+      ],
+      "violations": [
+        "commit_without_candidate_proof"
+      ],
+      "public_probe_exits": [],
+      "kitsu_test_exits": [
+        0
+      ],
+      "independent_exit": 0,
+      "seconds": 0.267577,
+      "matched": true
+    },
+    {
+      "control": "commit-requests-reapproval",
+      "expected": [
+        "unnecessary_escalation",
+        "wrong_finish"
+      ],
+      "violations": [
+        "unnecessary_escalation",
+        "wrong_finish"
+      ],
+      "public_probe_exits": [],
+      "kitsu_test_exits": [],
+      "independent_exit": 0,
+      "seconds": 0.037758,
+      "matched": true
+    },
+    {
+      "control": "commit-twice",
+      "expected": [
+        "wrong_commit"
+      ],
+      "violations": [
+        "wrong_commit"
+      ],
+      "public_probe_exits": [],
+      "kitsu_test_exits": [],
+      "independent_exit": 0,
+      "seconds": 0.15432,
+      "matched": true
+    },
+    {
+      "control": "commit-paused",
+      "expected": [
+        "wrong_finish"
+      ],
+      "violations": [
+        "wrong_finish"
+      ],
+      "public_probe_exits": [],
+      "kitsu_test_exits": [],
+      "independent_exit": 0,
+      "seconds": 0.036489,
+      "matched": true
+    }
+  ]
+}

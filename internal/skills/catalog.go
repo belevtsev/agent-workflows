@@ -36,6 +36,17 @@ type Entry struct {
 	UserInvocable bool   `json:"user_invocable"`
 }
 
+// Reference identifies the original instructions without copying their body.
+type Reference struct {
+	ID     string `json:"id"`
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+}
+
+func (e Entry) Reference() Reference {
+	return Reference{e.ID, e.Path, e.SHA256}
+}
+
 // Catalog holds the local inventory and diagnostics for sources it cannot read.
 type Catalog struct {
 	Skills      []Entry  `json:"skills"`

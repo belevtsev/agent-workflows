@@ -1,0 +1,1 @@
+A CI import failed with TypeError when it should have doubled a numeric field to 6. The job used ci/failed-input.json. Can you diagnose that incident from this checkout and tell me what evidence you still need? Please leave the code and Git state alone.

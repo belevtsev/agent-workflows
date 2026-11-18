@@ -61,7 +61,7 @@ The preferred surface is:
 | `adviser ask` | Consult positional `<adviser>` with `--task`, `--role`, `--stage`, and `--request`; opt-in still applies. |
 | `adviser accept`, `adviser reject`, `adviser defer` | Record `<id> --task <task> --reason <text>` with optional `--choice <id>`. |
 | `check list`, `check add`, `check run`, `check stats` | Inspect checks, add `<id> -- <program> [args...]`, run `[<id>...]`, or report recorded runs. |
-| `gate init`, `gate status`, `gate uninstall` | Install hooks, inspect evidence, or remove hooks and local records, including host tokens; retain configuration and shared history. |
+| `gate init`, `gate status`, `gate uninstall` | Install hooks, inspect evidence, or detach hooks and retain records. Use `--purge` to delete the shared check and token store after a complete detach. |
 | `usage show`, `usage record` | Report `--task <task>` or read a notice from stdin with explicit `--host`. |
 | `config show`, `config get` | Inspect CLI preferences and their origins; get the `host` key. |
 | `config set`, `config reset`, `config edit` | Set `host codex|claude`, reset `host`, or explicitly edit preferences; `--global` selects personal scope. |
@@ -662,8 +662,7 @@ end with exit status 0 whatever `kitsu` returns.
 
 ## kitsu uninstall
 
-Removes the hook files that `kitsu` wrote and the whole `kitsu/` directory of
-records. `kitsu.toml` and every hook file of another tool stay as they are. In
+Removes the hook files that `kitsu` wrote. Check and token records are retained by default. After complete detachment, `--purge` deletes the shared check store. `kitsu.toml` and every hook file of another tool stay as they are. In
 `hooks/` of the common git directory, a hook file that holds the marker line of
 `kitsu` is removed. In a directory that `core.hooksPath` names, which belongs to
 its owner, only a file that is exactly the script `kitsu` writes is removed; every
@@ -675,7 +674,8 @@ kitsu uninstall
 
 ```text
 $ kitsu uninstall
-removed the hooks kitsu wrote, 3 in all, and the records of kitsu in <repository>/.git/kitsu
+removed the hooks kitsu wrote, 3 in all
+retained check and token records in <repository>/.git/kitsu
 kitsu.toml is left as it is
 ```
 
@@ -996,8 +996,7 @@ and can write there; `kitsu` records such a run as `source_changed`.
 
 `kitsu uninstall` removes the hook files that hold the marker line of `kitsu` in
 `hooks/` of the common git directory, and the files that are exactly the
-script of `kitsu` in a directory that `core.hooksPath` names; then the whole
-`kitsu/` directory: runs, logs, decisions, the mode and the token records. It
+script of `kitsu` in a directory that `core.hooksPath` names. Only an explicit `--purge` after successful detachment removes the common `kitsu/` directory with runs, logs, decisions, mode and token records. It
 leaves configuration, private CLI preferences, shared OpenSpec history, every other hook file,
 and the agent plugin.
 
@@ -1105,7 +1104,8 @@ $ git commit -m "stop using kitsu"
 kitsu: notice: this commit changes the required checks: `unit` is no longer declared
 kitsu: this commit is denied: the tree has no declaration: it holds no kitsu.toml at its root. When that is on purpose, see https://github.com/belevtsev/kitsu/blob/main/docs/operations.md#a-tree-without-kitsutoml
 $ kitsu uninstall
-removed the hooks kitsu wrote, 3 in all, and the records of kitsu in <repository>/.git/kitsu
+removed the hooks kitsu wrote, 3 in all
+retained check and token records in <repository>/.git/kitsu
 $ git commit -m "stop using kitsu"
 ```
 
@@ -1123,7 +1123,8 @@ kitsu: notice: this commit changes the required checks: `unit` is no longer decl
 kitsu: this merge is denied: the tree has no declaration: it holds no kitsu.toml at its root. When that is on purpose, see https://github.com/belevtsev/kitsu/blob/main/docs/operations.md#a-tree-without-kitsutoml
 Not committing merge; use 'git commit' to complete the merge.
 $ kitsu uninstall
-removed the hooks kitsu wrote, 3 in all, and the records of kitsu in <repository>/.git/kitsu
+removed the hooks kitsu wrote, 3 in all
+retained check and token records in <repository>/.git/kitsu
 $ git commit --no-edit
 ```
 

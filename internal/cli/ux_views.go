@@ -8,9 +8,13 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/belevtsev/kitsu/v3/internal/change"
 	"github.com/belevtsev/kitsu/v3/internal/decl"
+	"github.com/belevtsev/kitsu/v3/internal/evidence"
+	"github.com/belevtsev/kitsu/v3/internal/gitx"
+	"github.com/belevtsev/kitsu/v3/internal/harness"
 	"github.com/belevtsev/kitsu/v3/internal/roles"
 	"github.com/belevtsev/kitsu/v3/internal/skills"
 )
@@ -154,7 +158,29 @@ func uxSameSkillPath(path, ref string) bool {
 	return physical(path) == physical(ref)
 }
 
+// Daily list rows summarize the ledger without inspecting the current checkout.
+type dailyTaskSummary struct {
+	Request    string `json:"request"`
+	LastAction string `json:"last_action,omitempty"`
+}
+
+func summarizeDailyTask(task *harness.Task) *dailyTaskSummary {
+	request := strings.Join(strings.Fields(task.Request), " ")
+	runes := []rune(request)
+	if len(runes) > 120 {
+		request = string(runes[:119]) + "…"
+	}
+	summary := &dailyTaskSummary{Request: request}
+	if n := len(task.Events); n != 0 {
+		summary.LastAction = task.Events[n-1].Action
+	}
+	return summary
+}
+
 type uxTaskView struct {
+	Daily        *dailyTaskSummary     `json:"daily,omitempty"`
+	Harness      *harnessView          `json:"harness,omitempty"`
+	History      []harness.Event       `json:"events,omitempty"`
 	Task         string                `json:"task"`
 	Workflow     string                `json:"workflow"`
 	Stage        string                `json:"stage"`
@@ -173,6 +199,8 @@ func uxTaskViews(ctx context.Context, s *session, named string) ([]uxTaskView, e
 		}
 	}
 	views := []uxTaskView{}
+	snapshot := sync.OnceValues(func() (string, error) { return s.repo.Snapshot(ctx, s.store.Tmp()) })
+	verify := taskListVerification(ctx, s, named, snapshot)
 	var gitOf func(*change.Folder) (change.Git, error)
 	for _, task := range tasks {
 		problems, err := skills.ValidateSelections(s.repo.Root, task)
@@ -181,7 +209,7 @@ func uxTaskViews(ctx context.Context, s *session, named string) ([]uxTaskView, e
 		}
 		folder, err := change.Read(s.repo.Root, task)
 		if errors.Is(err, change.ErrNoFolder) {
-			view, err := uxSmallTaskView(ctx, s, task)
+			view, err := uxSmallTaskView(s, task, verify)
 			if err != nil {
 				return nil, err
 			}
@@ -192,7 +220,11 @@ func uxTaskViews(ctx context.Context, s *session, named string) ([]uxTaskView, e
 			return nil, err
 		}
 		if gitOf == nil {
-			gitOf, err = s.changeGit(ctx)
+			tree, err := snapshot()
+			if err != nil {
+				return nil, err
+			}
+			gitOf, err = s.changeGitAt(ctx, tree)
 			if err != nil {
 				return nil, err
 			}
@@ -201,7 +233,7 @@ func uxTaskViews(ctx context.Context, s *session, named string) ([]uxTaskView, e
 		if err != nil {
 			return nil, err
 		}
-		v, err := observeTaskVerification(ctx, s, task)
+		v, err := verify(task)
 		if err != nil {
 			return nil, err
 		}
@@ -209,6 +241,40 @@ func uxTaskViews(ctx context.Context, s *session, named string) ([]uxTaskView, e
 		views = append(views, uxTaskView{Task: task, Workflow: "full", Stage: report.Stage, Report: report, Verification: v})
 	}
 	return appendUsageBudgetReferences(s.repo.Root, views)
+}
+
+// Each list reads one policy for tasks with no verification history. An active
+// policy or a historical record still gets the full freshness checks.
+func taskListVerification(ctx context.Context, s *session, named string, snapshot func() (string, error)) func(string) (*taskVerificationView, error) {
+	enabled := sync.OnceValues(func() (bool, error) {
+		tree, err := snapshot()
+		if err != nil {
+			return false, err
+		}
+		policy, err := evidence.Declaration(ctx, s.repo, tree)
+		if errors.Is(err, evidence.ErrNoDeclaration) {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		return slices.ContainsFunc(policy.Checks, func(c decl.Check) bool { return c.Verify }), nil
+	})
+	return func(task string) (*taskVerificationView, error) {
+		if named == "" {
+			on, err := enabled()
+			if err != nil {
+				return nil, err
+			}
+			if !on {
+				has, err := hasVerificationHistory(s.repo.Root, task)
+				if err != nil || !has {
+					return nil, err
+				}
+			}
+		}
+		return observeTaskVerification(ctx, s, task)
+	}
 }
 
 func uxTaskReport(s *session, folder *change.Folder, gitOf func(*change.Folder) (change.Git, error)) (*change.Report, error) {
@@ -247,9 +313,9 @@ func uxPrintTasks(ctx context.Context, cfg Config, args []string, named bool) er
 	if named {
 		task = p.pos[0]
 	}
-	views, err := uxTaskViews(ctx, s, task)
+	views, err := combinedTaskViews(ctx, s, task)
 	if err != nil {
-		return failf("%v", err)
+		return err
 	}
 	if options.json {
 		if named {
@@ -260,12 +326,24 @@ func uxPrintTasks(ctx context.Context, cfg Config, args []string, named bool) er
 	if len(views) == 0 {
 		fmt.Fprintln(cfg.Out, "No saved task records.")
 	}
+	return printTaskViews(cfg, views, named)
+}
+
+func printTaskViews(cfg Config, views []uxTaskView, named bool) error {
 	for _, view := range views {
 		fmt.Fprintf(cfg.Out, "%s: %s (%s)\n", view.Task, view.Stage, view.Workflow)
+		if view.Daily != nil {
+			fmt.Fprintln(cfg.Out, "  "+decl.Plain(view.Daily.Request))
+			if view.Daily.LastAction != "" {
+				fmt.Fprintln(cfg.Out, "  Last recorded action:", decl.Plain(view.Daily.LastAction))
+			}
+		}
 		if named {
 			printTaskVerificationSummary(cfg, view.Verification)
 		}
-		if view.Workflow == "small" {
+		if view.Harness != nil && named {
+			return printHarness(cfg, harnessOptions{}, *view.Harness)
+		} else if view.Workflow == "small" {
 			fmt.Fprintln(cfg.Out, "  Saved history only; the workflow stage cannot be recovered from these files.")
 		} else if named {
 			for _, missing := range view.Report.Missing {
@@ -310,4 +388,96 @@ func runUXCheckList(ctx context.Context, cfg Config, args []string) error {
 		}
 	}
 	return nil
+}
+
+// Preserve existing shared records even if a local task has the same name.
+func combinedTaskViews(ctx context.Context, s *session, id string) ([]uxTaskView, error) {
+	views, err := uxTaskViews(ctx, s, id)
+	if err != nil && !errors.Is(err, change.ErrNoFolder) {
+		return nil, err
+	}
+	_, statErr := os.Lstat(filepath.Join(s.repo.GitDir, "kitsu-stages"))
+	if errors.Is(statErr, os.ErrNotExist) {
+		return views, err
+	}
+	if statErr != nil {
+		return nil, statErr
+	}
+	l, openErr := readOnlyStageLedger(s.repo.GitDir)
+	if openErr != nil {
+		return nil, openErr
+	}
+	defer l.close()
+	entries, readErr := os.ReadDir(l.root.Name())
+	if readErr != nil {
+		return nil, readErr
+	}
+	shared := make(map[string]int, len(views))
+	for i := range views {
+		shared[views[i].Task] = i
+	}
+	for _, entry := range entries {
+		name := harnessRecordName(entry.Name())
+		if name == "" || id != "" && name != id {
+			continue
+		}
+		var task harness.Task
+		if e := l.read(entry.Name(), &task); e != nil {
+			return nil, e
+		}
+		if !task.Valid(name) {
+			return nil, fmt.Errorf("invalid task record %q", name)
+		}
+		i, exists := shared[name]
+		if !exists {
+			views = append(views, uxTaskView{Task: name, Workflow: "harness", Stage: "saved"})
+			i = len(views) - 1
+		}
+		if id == "" {
+			views[i].Daily = summarizeDailyTask(&task)
+		} else {
+			current, e := observeHarness(ctx, s, &task, true)
+			if e != nil {
+				return nil, e
+			}
+			active, e := l.active()
+			if e != nil {
+				return nil, e
+			}
+			current.checkManagedInterval(active)
+			views[i].Harness = &current
+			views[i].History = task.Events
+			if views[i].Workflow == "harness" {
+				views[i].Stage = current.Next
+			}
+		}
+		err = nil
+	}
+	return views, err
+}
+
+func harnessRecordName(file string) string {
+	name, ok := strings.CutPrefix(file, "task-harness-")
+	if !ok {
+		return ""
+	}
+	name, ok = strings.CutSuffix(name, ".json")
+	if !ok || !taskName.MatchString(name) {
+		return ""
+	}
+	return name
+}
+
+// Opening a local harness task opts this worktree into host usage notices.
+func hasLocalHarnessTasks(repo *gitx.Repo) bool {
+	ledger, err := readOnlyStageLedger(repo.GitDir)
+	if err != nil {
+		return false
+	}
+	defer ledger.close()
+	entries, err := os.ReadDir(ledger.root.Name())
+	if err != nil {
+		return false
+	}
+	return slices.ContainsFunc(entries, func(e os.DirEntry) bool { return e.Type().IsRegular() && harnessRecordName(e.Name()) != "" })
 }

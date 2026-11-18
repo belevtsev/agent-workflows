@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Designs the building blocks, their dependencies and the tasks. Started only by the coordinator of the kitsu task workflow, with a brief.
+description: Designs the building blocks, their dependencies and the tasks. Requires a Kitsu coordinator brief.
 model: opus
 effort: max
 tools: Read, Grep, Glob, Edit, Write, Skill

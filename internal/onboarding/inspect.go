@@ -72,10 +72,11 @@ func inspect(ctx context.Context, options Options, system string) (Report, error
 	}
 	report := Report{Host: options.Host, Ready: true, Checks: []Check{}}
 	report.add(cliCheck(options.Version))
-	report.HostExecutable = absoluteExecutable(options.Host)
+	var native bool
+	report.HostExecutable, native = HostExecutable(options.Host)
 	if report.HostExecutable == "" {
 		report.add(Check{ID: "host_cli", Status: "fail", Summary: "Host CLI is missing from absolute PATH entries", Actions: []string{"Install the " + options.Host + " CLI and add its directory to PATH."}})
-	} else if runtime.GOOS == "windows" && strings.ToLower(filepath.Ext(report.HostExecutable)) != ".exe" {
+	} else if !native {
 		report.add(Check{ID: "host_cli", Status: "fail", Summary: "Host CLI resolves to a shell wrapper", Detail: "Task launch needs a native executable for direct argument passing.", Actions: []string{"Install a native host .exe, or use kitsu task start --print to copy the prompt into your host."}})
 		report.HostExecutable = ""
 	} else {
@@ -151,6 +152,13 @@ func absoluteExecutable(name string) string {
 		}
 	}
 	return ""
+}
+
+// HostExecutable resolves a host from absolute PATH entries and identifies
+// whether it can be used for direct argument passing.
+func HostExecutable(host string) (path string, native bool) {
+	path = absoluteExecutable(host)
+	return path, path != "" && (runtime.GOOS != "windows" || strings.EqualFold(filepath.Ext(path), ".exe"))
 }
 
 func gitCheck(ctx context.Context, repo *gitx.Repo, err error) Check {

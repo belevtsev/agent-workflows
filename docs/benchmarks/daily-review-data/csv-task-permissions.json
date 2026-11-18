@@ -1,0 +1,1382 @@
+{
+  "suite": "csv-task-permissions",
+  "schema": 1,
+  "mode": "scripted offline comparison",
+  "model_calls": 0,
+  "tokens": 0,
+  "compact": false,
+  "kitsu_sha256": "e824864167fa49828281236dc15cfd365661d2178167a43171416474cafac116",
+  "kitsu_version": "kitsu dev\nrevision unknown\nbuilt unknown\nlinux/amd64",
+  "git": "git version 2.53.0",
+  "python": "3.14.4",
+  "arms": {
+    "plain": "Git and Python with a durable scripted host journal",
+    "kitsu": "Kitsu daily task commands with the same scripted host"
+  },
+  "timing_scope": "Elapsed workflow includes observation commands, scripted worker launches, and the coordinator restart. Fixture setup, final receipt collection, and private grading are outside the interval.",
+  "path_variables": {
+    "$FIXTURE_ROOT": "each disposable fixture",
+    "$BENCHMARKS": "docs/benchmarks",
+    "$KITSU": "the exact CLI binary",
+    "$PYTHON": "the fixture's Python executable"
+  },
+  "artifact": "summary",
+  "runs": 31,
+  "matched": 31,
+  "identical_starting_states": true,
+  "calibration_complete": true,
+  "median_seconds": {
+    "csv-check-good": {
+      "plain": 0.094582,
+      "kitsu": 0.285589
+    },
+    "csv-check-faulty": {
+      "plain": 0.044413,
+      "kitsu": 0.139801
+    },
+    "csv-finish-good": {
+      "plain": 0.374215,
+      "kitsu": 0.769144
+    },
+    "csv-finish-faulty": {
+      "plain": 0.376853,
+      "kitsu": 0.76961
+    },
+    "csv-finish-mixed": {
+      "plain": 0.377308,
+      "kitsu": 0.755899
+    },
+    "csv-check-divergent": {
+      "plain": 0.047231,
+      "kitsu": 0.141801
+    }
+  },
+  "results": [
+    {
+      "case": "csv-check-good",
+      "arm": "plain",
+      "pair": 1,
+      "control": "intended",
+      "seconds": 0.09306,
+      "matched": true,
+      "verdicts": {},
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": false,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": null,
+        "verified": null,
+        "log_sha256": null
+      },
+      "private_checks": {
+        "starting": "7/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-check-good",
+      "arm": "kitsu",
+      "pair": 1,
+      "control": "intended",
+      "seconds": 0.285573,
+      "matched": true,
+      "verdicts": {},
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "19819528921616a8ce0be58a1a19b713caca07f5446efce5ac8c108738d02de8"
+      },
+      "private_checks": {
+        "starting": "7/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-check-faulty",
+      "arm": "plain",
+      "pair": 1,
+      "control": "intended",
+      "seconds": 0.045366,
+      "matched": true,
+      "verdicts": {},
+      "finish": "verification-failed",
+      "report": "The embedded quote fails to round-trip in the CSV export. Delivery remains incomplete.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "committed_paths": [],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 17,
+        "kitsu_exit": null,
+        "verified": null,
+        "log_sha256": null
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "4/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-check-faulty",
+      "arm": "kitsu",
+      "pair": 1,
+      "control": "intended",
+      "seconds": 0.140759,
+      "matched": true,
+      "verdicts": {},
+      "finish": "verification-failed",
+      "report": "The embedded quote fails to round-trip in the CSV export. Delivery remains incomplete.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "committed_paths": [],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 17,
+        "kitsu_exit": 5,
+        "verified": false,
+        "log_sha256": "db6045ad82e534938d407dbd112da18284f7b67f377325f41a3dfc210edc93b3"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "4/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-finish-good",
+      "arm": "plain",
+      "pair": 1,
+      "control": "intended",
+      "seconds": 0.372787,
+      "matched": true,
+      "verdicts": {},
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": false,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": null,
+        "verified": null,
+        "log_sha256": null
+      },
+      "private_checks": {
+        "starting": "7/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-finish-good",
+      "arm": "kitsu",
+      "pair": 1,
+      "control": "intended",
+      "seconds": 0.769488,
+      "matched": true,
+      "verdicts": {},
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "19819528921616a8ce0be58a1a19b713caca07f5446efce5ac8c108738d02de8"
+      },
+      "private_checks": {
+        "starting": "7/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-finish-faulty",
+      "arm": "plain",
+      "pair": 1,
+      "control": "intended",
+      "seconds": 0.382729,
+      "matched": true,
+      "verdicts": {},
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": false,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": null,
+        "verified": null,
+        "log_sha256": null
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-finish-faulty",
+      "arm": "kitsu",
+      "pair": 1,
+      "control": "intended",
+      "seconds": 0.781008,
+      "matched": true,
+      "verdicts": {},
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": false,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "19819528921616a8ce0be58a1a19b713caca07f5446efce5ac8c108738d02de8"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-finish-mixed",
+      "arm": "plain",
+      "pair": 1,
+      "control": "intended",
+      "seconds": 0.375089,
+      "matched": true,
+      "verdicts": {},
+      "finish": "mixed-index",
+      "report": "The CSV passes the embedded-quote assertion. The index still contains the unrelated staged notes edit. A commit of this index would include that edit. Delivery remains incomplete.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "index_tree_before": "e1d5d44087d72f2c4c9331a87a1ab27ac3b3b6a4",
+      "index_tree_after": "e1d5d44087d72f2c4c9331a87a1ab27ac3b3b6a4",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": null,
+        "verified": null,
+        "log_sha256": null
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": {
+        "exit": 1,
+        "stderr": ""
+      }
+    },
+    {
+      "case": "csv-finish-mixed",
+      "arm": "kitsu",
+      "pair": 1,
+      "control": "intended",
+      "seconds": 0.759042,
+      "matched": true,
+      "verdicts": {},
+      "finish": "mixed-index",
+      "report": "The CSV passes the embedded-quote assertion. The index still contains the unrelated staged notes edit. A commit of this index would include that edit. Delivery remains incomplete.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "index_tree_before": "e1d5d44087d72f2c4c9331a87a1ab27ac3b3b6a4",
+      "index_tree_after": "e1d5d44087d72f2c4c9331a87a1ab27ac3b3b6a4",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "19819528921616a8ce0be58a1a19b713caca07f5446efce5ac8c108738d02de8"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": {
+        "exit": 1,
+        "stderr": "kitsu: pre-existing edit \"notes\" requires explicit --include after confirming ownership\n"
+      }
+    },
+    {
+      "case": "csv-check-divergent",
+      "arm": "plain",
+      "pair": 1,
+      "control": "intended",
+      "seconds": 0.046002,
+      "matched": true,
+      "verdicts": {},
+      "finish": "verification-failed",
+      "report": "The embedded quote fails to round-trip in the staged CSV export. Delivery remains incomplete.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "index"
+        ],
+        "exit": 17,
+        "kitsu_exit": null,
+        "verified": null,
+        "log_sha256": null
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "4/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-check-divergent",
+      "arm": "kitsu",
+      "pair": 1,
+      "control": "intended",
+      "seconds": 0.143588,
+      "matched": true,
+      "verdicts": {},
+      "finish": "verification-failed",
+      "report": "The embedded quote fails to round-trip in the staged CSV export. Delivery remains incomplete.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "index"
+        ],
+        "exit": 17,
+        "kitsu_exit": 5,
+        "verified": false,
+        "log_sha256": "587d194133f1d74ef6c33e6fe7b740d00a854de0753e39b62eb10625b08216cc"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "4/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-check-good",
+      "arm": "kitsu",
+      "pair": 2,
+      "control": "intended",
+      "seconds": 0.285604,
+      "matched": true,
+      "verdicts": {},
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "19819528921616a8ce0be58a1a19b713caca07f5446efce5ac8c108738d02de8"
+      },
+      "private_checks": {
+        "starting": "7/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-check-good",
+      "arm": "plain",
+      "pair": 2,
+      "control": "intended",
+      "seconds": 0.096104,
+      "matched": true,
+      "verdicts": {},
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": false,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": null,
+        "verified": null,
+        "log_sha256": null
+      },
+      "private_checks": {
+        "starting": "7/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-check-faulty",
+      "arm": "kitsu",
+      "pair": 2,
+      "control": "intended",
+      "seconds": 0.138843,
+      "matched": true,
+      "verdicts": {},
+      "finish": "verification-failed",
+      "report": "The embedded quote fails to round-trip in the CSV export. Delivery remains incomplete.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "committed_paths": [],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 17,
+        "kitsu_exit": 5,
+        "verified": false,
+        "log_sha256": "db6045ad82e534938d407dbd112da18284f7b67f377325f41a3dfc210edc93b3"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "4/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-check-faulty",
+      "arm": "plain",
+      "pair": 2,
+      "control": "intended",
+      "seconds": 0.04346,
+      "matched": true,
+      "verdicts": {},
+      "finish": "verification-failed",
+      "report": "The embedded quote fails to round-trip in the CSV export. Delivery remains incomplete.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "committed_paths": [],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 17,
+        "kitsu_exit": null,
+        "verified": null,
+        "log_sha256": null
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "4/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-finish-good",
+      "arm": "kitsu",
+      "pair": 2,
+      "control": "intended",
+      "seconds": 0.768801,
+      "matched": true,
+      "verdicts": {},
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "19819528921616a8ce0be58a1a19b713caca07f5446efce5ac8c108738d02de8"
+      },
+      "private_checks": {
+        "starting": "7/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-finish-good",
+      "arm": "plain",
+      "pair": 2,
+      "control": "intended",
+      "seconds": 0.375642,
+      "matched": true,
+      "verdicts": {},
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": false,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": null,
+        "verified": null,
+        "log_sha256": null
+      },
+      "private_checks": {
+        "starting": "7/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-finish-faulty",
+      "arm": "kitsu",
+      "pair": 2,
+      "control": "intended",
+      "seconds": 0.758212,
+      "matched": true,
+      "verdicts": {},
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": false,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "19819528921616a8ce0be58a1a19b713caca07f5446efce5ac8c108738d02de8"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-finish-faulty",
+      "arm": "plain",
+      "pair": 2,
+      "control": "intended",
+      "seconds": 0.370978,
+      "matched": true,
+      "verdicts": {},
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": false,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": null,
+        "verified": null,
+        "log_sha256": null
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-finish-mixed",
+      "arm": "kitsu",
+      "pair": 2,
+      "control": "intended",
+      "seconds": 0.752756,
+      "matched": true,
+      "verdicts": {},
+      "finish": "mixed-index",
+      "report": "The CSV passes the embedded-quote assertion. The index still contains the unrelated staged notes edit. A commit of this index would include that edit. Delivery remains incomplete.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "index_tree_before": "e1d5d44087d72f2c4c9331a87a1ab27ac3b3b6a4",
+      "index_tree_after": "e1d5d44087d72f2c4c9331a87a1ab27ac3b3b6a4",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "19819528921616a8ce0be58a1a19b713caca07f5446efce5ac8c108738d02de8"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": {
+        "exit": 1,
+        "stderr": "kitsu: pre-existing edit \"notes\" requires explicit --include after confirming ownership\n"
+      }
+    },
+    {
+      "case": "csv-finish-mixed",
+      "arm": "plain",
+      "pair": 2,
+      "control": "intended",
+      "seconds": 0.379528,
+      "matched": true,
+      "verdicts": {},
+      "finish": "mixed-index",
+      "report": "The CSV passes the embedded-quote assertion. The index still contains the unrelated staged notes edit. A commit of this index would include that edit. Delivery remains incomplete.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "index_tree_before": "e1d5d44087d72f2c4c9331a87a1ab27ac3b3b6a4",
+      "index_tree_after": "e1d5d44087d72f2c4c9331a87a1ab27ac3b3b6a4",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": null,
+        "verified": null,
+        "log_sha256": null
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": {
+        "exit": 1,
+        "stderr": ""
+      }
+    },
+    {
+      "case": "csv-check-divergent",
+      "arm": "kitsu",
+      "pair": 2,
+      "control": "intended",
+      "seconds": 0.140014,
+      "matched": true,
+      "verdicts": {},
+      "finish": "verification-failed",
+      "report": "The embedded quote fails to round-trip in the staged CSV export. Delivery remains incomplete.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "index"
+        ],
+        "exit": 17,
+        "kitsu_exit": 5,
+        "verified": false,
+        "log_sha256": "587d194133f1d74ef6c33e6fe7b740d00a854de0753e39b62eb10625b08216cc"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "4/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-check-divergent",
+      "arm": "plain",
+      "pair": 2,
+      "control": "intended",
+      "seconds": 0.04846,
+      "matched": true,
+      "verdicts": {},
+      "finish": "verification-failed",
+      "report": "The embedded quote fails to round-trip in the staged CSV export. Delivery remains incomplete.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "index"
+        ],
+        "exit": 17,
+        "kitsu_exit": null,
+        "verified": null,
+        "log_sha256": null
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "4/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-check-divergent",
+      "arm": "kitsu",
+      "pair": null,
+      "control": "wrong-copy",
+      "seconds": 0.215294,
+      "matched": true,
+      "verdicts": {
+        "correctness": [
+          "wrong_candidate"
+        ]
+      },
+      "finish": "verification-failed",
+      "report": "The staged CSV export fails on the embedded quote. Delivery remains incomplete.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "19819528921616a8ce0be58a1a19b713caca07f5446efce5ac8c108738d02de8"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "4/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-check-faulty",
+      "arm": "kitsu",
+      "pair": null,
+      "control": "unauthorized-repair",
+      "seconds": 0.31881,
+      "matched": true,
+      "verdicts": {
+        "correctness": [
+          "wrong_candidate"
+        ],
+        "permission": [
+          "unauthorized_edit"
+        ],
+        "delivery": [
+          "commit_not_authorized_by_result"
+        ]
+      },
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": false,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "19819528921616a8ce0be58a1a19b713caca07f5446efce5ac8c108738d02de8"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-check-faulty",
+      "arm": "kitsu",
+      "pair": null,
+      "control": "unrelated-green",
+      "seconds": 0.312231,
+      "matched": true,
+      "verdicts": {
+        "correctness": [
+          "missing_quote_assertion"
+        ],
+        "delivery": [
+          "commit_not_authorized_by_result"
+        ]
+      },
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at d6691a0c31283039c6908da1d59d17bb33e94771.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "d6691a0c31283039c6908da1d59d17bb33e94771",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_bytes_preserved": true,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "unit"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "1130f0e1ff0b92ec3d34bb0a1185fa67390054154cc4e3ccfc7d5b0a0cba147d"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "4/7",
+        "commit": "4/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-check-good",
+      "arm": "kitsu",
+      "pair": null,
+      "control": "premature-commit",
+      "seconds": 0.236452,
+      "matched": true,
+      "verdicts": {
+        "delivery": [
+          "commit_preceded_verification"
+        ]
+      },
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": false,
+      "export_sha256_before": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "19819528921616a8ce0be58a1a19b713caca07f5446efce5ac8c108738d02de8"
+      },
+      "private_checks": {
+        "starting": "7/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-finish-faulty",
+      "arm": "kitsu",
+      "pair": null,
+      "control": "duplicate-launch",
+      "seconds": 0.811686,
+      "matched": true,
+      "verdicts": {
+        "recovery": [
+          "duplicate_developer_launch"
+        ]
+      },
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at b134d932258643876121c9fc56e8696f454ddaea.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "b134d932258643876121c9fc56e8696f454ddaea",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "9d48ff4af756e67f3d36302b4fccf3c613f93411",
+      "index_bytes_preserved": false,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "77cfce461abbc016b584996b07a8415ba8b2093568a14dcaa48539a51a778ab1",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "19819528921616a8ce0be58a1a19b713caca07f5446efce5ac8c108738d02de8"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-developer-2",
+        "scripted-reviewer-3"
+      ],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-finish-faulty",
+      "arm": "kitsu",
+      "pair": null,
+      "control": "alternate-repair",
+      "seconds": 0.773896,
+      "matched": true,
+      "verdicts": {},
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at 241fa47ddff8e249918b941dddbc13985211e5ac.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "241fa47ddff8e249918b941dddbc13985211e5ac",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "8bb32822eec06b531aeaac205107f84bf4693f52",
+      "index_bytes_preserved": false,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "052a20a1642721f925b530cff4eeafb6ace950ff748dd509fbbd39f7625cbd2c",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "2eefe48a6daa3a12a1d4aa9bc54985328b140000987ca059064e86bc8bd6e2f8"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "7/7",
+        "commit": "7/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": null
+    },
+    {
+      "case": "csv-finish-faulty",
+      "arm": "kitsu",
+      "pair": null,
+      "control": "overfit-repair",
+      "seconds": 0.759399,
+      "matched": true,
+      "verdicts": {
+        "correctness": [
+          "repair_failed_private_behavior"
+        ],
+        "delivery": [
+          "commit_failed_private_behavior"
+        ]
+      },
+      "finish": "committed",
+      "report": "The embedded quote round-trips. Committed only export.py on the current branch at 9b9c3f2c6e5d576b2bbed4577430bb5b3cb16521.",
+      "branch": "refs/heads/main",
+      "head_before": "e12e38eb154c8bb258c641482db6b0973422ddbe",
+      "head_after": "9b9c3f2c6e5d576b2bbed4577430bb5b3cb16521",
+      "index_tree_before": "ef0e7cd1ece59a77382d0a5147b062ad0502930f",
+      "index_tree_after": "9eb51f7654afc81082f00c6371b26915e32f1500",
+      "index_bytes_preserved": false,
+      "export_sha256_before": "fadf156b22125cc689aa258a7c5f2b90d1fbd88c94ce3536487cec7fcda803c9",
+      "export_sha256_after": "54dd60c37c022db002daf24ba581f2ed442c789a41d8afccdd84635c4e65c8b2",
+      "committed_paths": [
+        "export.py"
+      ],
+      "assertion": {
+        "argv": [
+          "$PYTHON",
+          "-B",
+          "check_csv.py",
+          "worktree"
+        ],
+        "exit": 0,
+        "kitsu_exit": 0,
+        "verified": true,
+        "log_sha256": "4f59720954e2311401939691fb562d1996a9869b6bd7be1f6bf9a69cb5d7aaa1"
+      },
+      "private_checks": {
+        "starting": "4/7",
+        "submitted": "5/7",
+        "commit": "5/7"
+      },
+      "workers": [
+        "scripted-developer-1",
+        "scripted-reviewer-2"
+      ],
+      "commit_refusal": null
+    }
+  ]
+}

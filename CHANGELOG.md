@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A [daily coding harness](docs/task-harness.md) supports outcome-scoped work, independent review, repair and resumable local verification.
+  Gate detachment preserves check history by default. Use `--purge` for explicit removal.
+
 - A [response-cycle comparison](docs/benchmarks/response-cycles-paid-report.md) records −11.4% compact tokens in one completed pair;
   all coordinator/worker sessions are counted, protected checks pass, and general quality or billing savings remain unproven.
 

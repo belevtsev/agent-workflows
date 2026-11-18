@@ -1,0 +1,164 @@
+{
+  "task": "pflag-unknown-flags",
+  "upstream": "spf13/pflag",
+  "upstream_base": "f8a990678a6d44385313e9b19e40737f889f9b14",
+  "reference_fix": "046b0d889369e6f70ae31483dffad578ffb10e2e",
+  "model": "gpt-6.2-sol",
+  "reasoning": "high",
+  "compact": false,
+  "paid_binary_sha256": "ef9afed13a21fd21e1a5a697bddd6a3e49c165919ff6b27128feb2fe234b0162",
+  "manifest_sha256": "7d811a15a580722d84a8ffa32eb5ae40a9afaabf4ea440cc5e8355ef4ea35365",
+  "timeout_seconds": 720,
+  "captured_limit": 6000000,
+  "stop_launches_at": 5000000,
+  "attempts": [
+    {
+      "order": 1,
+      "arm": "codex",
+      "status": "completed",
+      "solver_seconds": 154.007439358,
+      "setup_seconds": 0.036383157,
+      "grading_seconds": 1.318148804,
+      "usage": {
+        "total": 394607,
+        "complete": true,
+        "input_total": 389045,
+        "input_uncached": 30133,
+        "cache_read": 358912,
+        "output": 5562,
+        "reasoning_output_tokens": 2293
+      },
+      "sessions": [
+        {
+          "role": "coordinator",
+          "total": 394607,
+          "model": [
+            "gpt-6.2-sol"
+          ],
+          "effort": [
+            "high"
+          ],
+          "calls": {
+            "exec": 13
+          }
+        }
+      ],
+      "cpu_seconds": 68.38187,
+      "peak_memory_bytes": 636796928,
+      "clean_committed": true,
+      "candidate_tree": "7852017cabbc7d192b397884b3096be6ead51374",
+      "acceptance": {
+        "TestPilotUnknownFlagStopsNonInterspersed": true,
+        "TestPilotInterspersedPassthroughStillParsesKnown": true
+      },
+      "original_suite_pass": true,
+      "frozen_patch_integrity_pass": true,
+      "file_integrity_flags": [
+        "original test/control changed or removed: flag_test.go"
+      ],
+      "changed_original_test_declarations": [],
+      "added_test_results": {
+        "baseline-with-new-tests": {
+          "TestPassUnknownFlagToArgsNonInterspersed": "fail"
+        },
+        "candidate": {
+          "TestPassUnknownFlagToArgsNonInterspersed": "pass"
+        }
+      },
+      "callback_edge": {
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges": "fail"
+      },
+      "method_status": "not_applicable",
+      "recorded_steps": []
+    },
+    {
+      "order": 2,
+      "arm": "kitsu",
+      "status": "completed",
+      "solver_seconds": 186.536644912,
+      "setup_seconds": 0.061121076,
+      "grading_seconds": 1.323350902,
+      "usage": {
+        "total": 841548,
+        "complete": true,
+        "input_total": 834165,
+        "input_uncached": 82421,
+        "cache_read": 751744,
+        "output": 7383,
+        "reasoning_output_tokens": 1788
+      },
+      "sessions": [
+        {
+          "role": "coordinator",
+          "total": 745088,
+          "model": [
+            "gpt-6.2-sol"
+          ],
+          "effort": [
+            "high"
+          ],
+          "calls": {
+            "exec": 21,
+            "spawn_agent": 1
+          }
+        },
+        {
+          "role": "reviewer",
+          "total": 96460,
+          "model": [
+            "gpt-6.2-sol"
+          ],
+          "effort": [
+            "high"
+          ],
+          "calls": {
+            "exec": 3,
+            "send_message": 1
+          }
+        }
+      ],
+      "cpu_seconds": 27.193174,
+      "peak_memory_bytes": 356536320,
+      "clean_committed": true,
+      "candidate_tree": "6c602f6ee830267ed161d15387e299e932b02950",
+      "acceptance": {
+        "TestPilotUnknownFlagStopsNonInterspersed": true,
+        "TestPilotInterspersedPassthroughStillParsesKnown": true
+      },
+      "original_suite_pass": true,
+      "frozen_patch_integrity_pass": true,
+      "file_integrity_flags": [
+        "original test/control changed or removed: flag_test.go"
+      ],
+      "changed_original_test_declarations": [],
+      "added_test_results": {
+        "baseline-with-new-tests": {
+          "TestUnknownFlagPassthrough": "fail"
+        },
+        "candidate": {
+          "TestUnknownFlagPassthrough": "pass"
+        }
+      },
+      "callback_edge": {
+        "TestParseAllPassUnknownShorthandsWhenInterspersedChanges": "fail"
+      },
+      "method_status": "unknown",
+      "recorded_steps": [
+        "intake",
+        "implement",
+        "review",
+        "test",
+        "commit"
+      ]
+    }
+  ],
+  "callback_control": {
+    "original": {
+      "TestParseAllPassUnknownShorthandsWhenInterspersedChanges": "fail"
+    },
+    "reference": {
+      "TestParseAllPassUnknownShorthandsWhenInterspersedChanges": "fail"
+    }
+  },
+  "captured_total": 1236155
+}

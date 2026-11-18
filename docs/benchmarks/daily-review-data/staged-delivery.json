@@ -1,0 +1,149 @@
+{
+  "model_calls": 0,
+  "compact": false,
+  "kitsu_sha256": "cf178f1a689708966098341ff6a758b5df8a177fc5767c95eb34e8d7d23b7827",
+  "median_seconds": {
+    "good": {
+      "plain": 0.038328,
+      "kitsu": 0.198039
+    },
+    "faulty": {
+      "plain": 0.032986,
+      "kitsu": 0.126141
+    }
+  },
+  "runs": [
+    {
+      "pair": 1,
+      "arm": "plain",
+      "staged": "good",
+      "cases_passed": 5,
+      "cases_total": 5,
+      "original_preserved": true,
+      "selected_index_entry_matched": true,
+      "committed": true,
+      "seconds": 0.038328
+    },
+    {
+      "pair": 1,
+      "arm": "kitsu",
+      "staged": "good",
+      "cases_passed": 5,
+      "cases_total": 5,
+      "original_preserved": true,
+      "selected_index_entry_matched": true,
+      "committed": true,
+      "seconds": 0.203971
+    },
+    {
+      "pair": 1,
+      "arm": "plain",
+      "staged": "faulty",
+      "cases_passed": 4,
+      "cases_total": 5,
+      "original_preserved": true,
+      "selected_index_entry_matched": true,
+      "committed": false,
+      "seconds": 0.032775
+    },
+    {
+      "pair": 1,
+      "arm": "kitsu",
+      "staged": "faulty",
+      "cases_passed": 4,
+      "cases_total": 5,
+      "original_preserved": true,
+      "selected_index_entry_matched": true,
+      "committed": false,
+      "seconds": 0.126141
+    },
+    {
+      "pair": 2,
+      "arm": "kitsu",
+      "staged": "good",
+      "cases_passed": 5,
+      "cases_total": 5,
+      "original_preserved": true,
+      "selected_index_entry_matched": true,
+      "committed": true,
+      "seconds": 0.195819
+    },
+    {
+      "pair": 2,
+      "arm": "plain",
+      "staged": "good",
+      "cases_passed": 5,
+      "cases_total": 5,
+      "original_preserved": true,
+      "selected_index_entry_matched": true,
+      "committed": true,
+      "seconds": 0.038253
+    },
+    {
+      "pair": 2,
+      "arm": "kitsu",
+      "staged": "faulty",
+      "cases_passed": 4,
+      "cases_total": 5,
+      "original_preserved": true,
+      "selected_index_entry_matched": true,
+      "committed": false,
+      "seconds": 0.127974
+    },
+    {
+      "pair": 2,
+      "arm": "plain",
+      "staged": "faulty",
+      "cases_passed": 4,
+      "cases_total": 5,
+      "original_preserved": true,
+      "selected_index_entry_matched": true,
+      "committed": false,
+      "seconds": 0.032986
+    },
+    {
+      "pair": 3,
+      "arm": "plain",
+      "staged": "good",
+      "cases_passed": 5,
+      "cases_total": 5,
+      "original_preserved": true,
+      "selected_index_entry_matched": true,
+      "committed": true,
+      "seconds": 0.038629
+    },
+    {
+      "pair": 3,
+      "arm": "kitsu",
+      "staged": "good",
+      "cases_passed": 5,
+      "cases_total": 5,
+      "original_preserved": true,
+      "selected_index_entry_matched": true,
+      "committed": true,
+      "seconds": 0.198039
+    },
+    {
+      "pair": 3,
+      "arm": "plain",
+      "staged": "faulty",
+      "cases_passed": 4,
+      "cases_total": 5,
+      "original_preserved": true,
+      "selected_index_entry_matched": true,
+      "committed": false,
+      "seconds": 0.033254
+    },
+    {
+      "pair": 3,
+      "arm": "kitsu",
+      "staged": "faulty",
+      "cases_passed": 4,
+      "cases_total": 5,
+      "original_preserved": true,
+      "selected_index_entry_matched": true,
+      "committed": false,
+      "seconds": 0.123965
+    }
+  ]
+}

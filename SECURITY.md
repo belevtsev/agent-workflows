@@ -23,9 +23,11 @@ The gate stops a commit or a push whose content has no passing run of every decl
 
 None of these is a vulnerability. Running the same checks in CI catches a commit that went around the hooks; it does not catch a weakened `kitsu.toml`.
 
-## No network
+## Network access and local records
 
-`kitsu` never opens a network connection. Every git call of `kitsu` sets `GIT_NO_LAZY_FETCH=1`, so git fetches no missing object in a partial clone; `kitsu` then reports the object as missing. It reads the repository and the session records the coding agent keeps on the same machine, and it writes `kitsu.toml`, the git hooks and its records under the git directory. `kitsu tokens` stores counts and names, and no text of a brief or an answer. Logs, records and decision files are created readable by the user only (`0600`), and the folders of the gate's store with `0700`.
+The gate checks repository content locally. Kitsu sets `GIT_NO_LAZY_FETCH=1` on Git commands and reports missing objects in partial clones. Explicit publication confirmation uses Git to read the configured push destination and uses the authenticated GitHub CLI when a PR is requested. Starting an interactive coding host, consulting an enabled adviser or running a repository check can also contact external services.
+
+Daily task records in the private Git directory include the developer's request, recorded results and review findings. Token records contain counts and names. Kitsu creates logs, records and decision files with mode `0600` and gate store directories with mode `0700`.
 
 ## Supported versions
 

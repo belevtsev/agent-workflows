@@ -15,10 +15,11 @@ func uxCommands() []uxCommand {
 	role := uxOption("role", "role", "role requesting advice or receiving skill selections")
 	accessible := uxOption("accessible", "", "use descriptive accessible prompts instead of the full-screen form")
 	list := []uxCommand{
+		{path: "agent setup", summary: "Install the verified Kitsu plugin from a local release bundle", flags: []uxFlag{host, uxOption("archive-dir", "directory", "required directory containing kitsu-plugin.zip and SHA256SUMS")}, examples: []string{"kitsu agent setup --host codex --archive-dir /path/to/kitsu-archives"}, run: runUXAgentSetup, host: true, requiredHost: true},
 		{path: "agent check", summary: "Check local CLI, plugin, task skill and hooks without executing the host", flags: []uxFlag{host, json}, run: runUXAgentCheck, host: true, requiredHost: true},
-		{path: "task start", args: "<request>", summary: "Open an interactive agent host with the Kitsu task skill", flags: []uxFlag{host, uxOption("print", "", "print diagnostics and the handoff prompt without opening the host"), json}, operands: [][2]string{{"request", "one nonempty request; quote the complete request"}}, examples: []string{"kitsu task start \"Add a login screen\" --host codex", "kitsu task start \"Fix the failing test\" --host claude --print"}, run: runUXTaskStart, host: true, requiredHost: true},
-		{path: "task list", summary: "List full tasks and saved small-task histories", flags: []uxFlag{json}, run: runUXTaskList},
-		{path: "task show", args: "<task>", summary: "Show task records, or an explicit bounded coordinator snapshot/delta", flags: []uxFlag{json, uxOption("compact", "", "return a full coordinator snapshot with references; always JSON"), uxOption("since", "snapshot-id", "return only sections changed since a retained snapshot; implies --compact"), uxOption("max-bytes", "bytes", "compact response byte limit; default 16384, range 512 to 1048576")}, run: runUXTaskShow},
+		{path: "task start", args: "[<request>]", summary: "Open an interactive agent host with the Kitsu task skill", flags: []uxFlag{host, uxOption("print", "", "print diagnostics and the handoff prompt without opening the host"), json}, operands: [][2]string{{"request", "one nonempty request; quote the complete request"}}, examples: []string{"kitsu task start \"Add a login screen\" --host codex", "kitsu task start \"Fix the failing test\" --host claude --print"}, run: runUXTaskStart, host: true, requiredHost: true},
+		{path: "task list", summary: "List daily requests, managed tasks and saved small-task histories", flags: []uxFlag{json}, run: runUXTaskList},
+		{path: "task show", args: "<task>", summary: "Show task records, or an explicit bounded coordinator snapshot/delta", flags: []uxFlag{json, uxOption("review-ticket", "id", "read the reserved candidate, findings and work notes for the independent reviewer as JSON"), uxOption("compact", "", "return a full coordinator snapshot with references; always JSON"), uxOption("since", "snapshot-id", "return only sections changed since a retained snapshot; implies --compact"), uxOption("max-bytes", "bytes", "compact response byte limit; default 16384, range 512 to 1048576")}, run: runUXTaskShow},
 		{path: "task check", args: "[<task>]", summary: "Check saved task records offline", run: uxLegacy("change", "check")},
 		{path: "task verify", args: "<task>", summary: "Run prioritized regressions, record historical evidence, then finish required checks", flags: []uxFlag{uxOption("from", "rev", "starting revision; required initially, then reuse the pinned base"), workflow, json, uxOption("compact", "", "return an explicit bounded JSON report with retained log references"), uxOption("max-bytes", "bytes", "compact response limit; default 16384, range 512 to 1048576")}, examples: []string{"kitsu task verify fix-login --from HEAD", "kitsu task verify fix-login --compact"}, run: runTaskVerify},
 		{path: "role list", summary: "List role models, reasoning, skills and adviser access", flags: []uxFlag{host, task, json}, run: uxLegacy("roles"), host: true},
@@ -44,10 +45,11 @@ func uxCommands() []uxCommand {
 		{path: "check stats", summary: "Report recorded check runs and gate decisions", flags: []uxFlag{uxOption("since", "period", "reporting period such as 90m, 7d or 2w; default 30d"), json}, run: uxLegacy("stats")},
 		{path: "gate init", summary: "Declare checks when needed and install Git hooks", flags: []uxFlag{uxOption("observe", "", "record decisions while allowing commits and pushes")}, run: uxLegacy("init"), guard: "observe"},
 		{path: "gate status", summary: "Report whether current content has evidence to permit a commit", flags: []uxFlag{json}, run: uxLegacy("status")},
-		{path: "gate uninstall", summary: "Remove Kitsu's Git hooks and local records; keep configuration", run: uxLegacy("uninstall"), guard: "gate"},
+		{path: "gate uninstall", summary: "Detach Kitsu hooks and preserve local history", flags: []uxFlag{uxOption("purge", "", "also delete shared check and token evidence after successful detach")}, run: uxLegacy("uninstall"), guard: "gate"},
 		{path: "usage show", summary: "Report task tokens and workflow overhead; unknown usage stays unknown", flags: []uxFlag{task, json, uxOption("diagnostics", "", "inspect captured usage, managed spans, check evidence and optional task notes offline")}, run: uxLegacy("tokens")},
 		{path: "usage record", summary: "Record a host token notice from standard input", flags: []uxFlag{uxOption("host", "codex|claude", "required notice format; explicit host avoids protocol guessing", "codex", "claude")}, run: runUXUsageRecord},
 	}
+	list = append(list, harnessCommands()...)
 	list = append(list, compactCommands()...)
 	list = append(list, workerCommands()...)
 	list = append(list, usageBudgetCommands()...)
@@ -56,7 +58,8 @@ func uxCommands() []uxCommand {
 			list[i].flags = append(list[i].flags, compactCheckFlags()...)
 		}
 		if list[i].path == "task start" {
-			list[i].flags = append(list[i].flags, uxOption("compact", "", "opt in to Go context collection, compact briefs and check results"))
+			list[i].flags = append(list[i].flags, uxOption("resume", "task", "launch a saved local task instead of creating another"), uxOption("until", "outcome", "stop at the requested outcome", "plan", "implement", "review", "verify", "deliver"), uxOption("compact", "", "opt in to Go context collection, compact briefs and check results"))
+			list[i].flags = append(list[i].flags, reviewLimitFlags()...)
 		}
 	}
 	return uxExtraCommands(list, []uxFlag{host, json, global, root, task, role, accessible})

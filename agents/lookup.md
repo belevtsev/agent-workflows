@@ -1,6 +1,6 @@
 ---
 name: lookup
-description: Finds files, facts and existing specifications, and reports where they are. Started only by the coordinator of the kitsu task workflow, with a brief.
+description: Finds files, facts and existing specifications, and reports where they are. Requires a Kitsu coordinator brief.
 model: haiku
 effort: medium
 tools: Read, Grep, Glob, WebFetch, WebSearch, Skill

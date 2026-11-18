@@ -152,8 +152,8 @@ func (r *Repo) CommitOf(ctx context.Context, rev string) (string, bool, error) {
 
 // resolve reads exit status 1 as "names nothing"; any other failure of git,
 // such as an object it cannot read, is an error.
-func (r *Repo) resolve(ctx context.Context, spec string) (string, bool, error) {
-	out, err := r.git(ctx, nil, "rev-parse", "--verify", "--quiet", "--end-of-options", spec)
+func (r *Repo) resolve(ctx context.Context, spec string, env ...string) (string, bool, error) {
+	out, err := r.git(ctx, env, "rev-parse", "--verify", "--quiet", "--end-of-options", spec)
 	var gitErr *Error
 	if errors.As(err, &gitErr) && gitErr.Code == 1 {
 		return "", false, nil

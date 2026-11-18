@@ -21,7 +21,7 @@ func TestOnlyCwsOwnFilesGo(t *testing.T) {
 	}
 	declaration := sha256Of(t, repo.Path("kitsu.toml"))
 
-	result := repo.Kitsu("uninstall")
+	result := repo.Kitsu("uninstall", "--purge")
 	if result.Code != 0 {
 		t.Errorf("kitsu uninstall exited %d, want 0\n%s", result.Code, result.Output())
 	}
@@ -58,11 +58,14 @@ func TestAnotherToolsHookStillCallsCw(t *testing.T) {
 	}
 	before := sha256Of(t, preCommit)
 
-	result := repo.Kitsu("uninstall")
+	result := repo.Kitsu("uninstall", "--purge")
 	if result.Code != 4 {
 		t.Errorf("kitsu uninstall exited %d, want 4\n%s", result.Code, result.Output())
 	}
-	for _, path := range []string{filepath.Join(hooks, "pre-push"), store} {
+	if !exists(store) {
+		t.Fatal("partial detach lost evidence")
+	}
+	for _, path := range []string{filepath.Join(hooks, "pre-push")} {
 		if exists(path) {
 			t.Errorf("%s is still there after kitsu uninstall", path)
 		}

@@ -1,0 +1,116 @@
+{
+  "task": "qs-sparse-array-limit",
+  "candidate": "5ac4dfb7110790669a239051ec07491f4fd9e862",
+  "ledger_sha256": "37da5c659648175cd88009c3e3a74cea7f9562c28baee562caefe9395c9d4d4a",
+  "kitsu_sha256": "590630d872bdaa14fa2e9a4b1df6e018cda03e9949949ac2d5ad30eb8d08b6cc",
+  "model_calls": 0,
+  "compact": false,
+  "saved_reviews": 4,
+  "additional_reviews": 0,
+  "median_wall_seconds": {
+    "plain": 1.054345,
+    "kitsu": 1.905657
+  },
+  "runs": [
+    {
+      "pair": 1,
+      "publication": {
+        "initial_seconds": 1.51946,
+        "recovery_seconds": 0.555829,
+        "missing_mirror_detected": true,
+        "destinations_at_verified_commit": 2
+      },
+      "arm": "plain",
+      "seconds": 1.054345,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 1,
+      "publication": {
+        "initial_seconds": 1.626092,
+        "recovery_seconds": 0.642074,
+        "missing_mirror_detected": true,
+        "destinations_at_verified_commit": 2
+      },
+      "arm": "kitsu",
+      "seconds": 1.906748,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 2,
+      "publication": {
+        "initial_seconds": 1.627166,
+        "recovery_seconds": 0.640687,
+        "missing_mirror_detected": true,
+        "destinations_at_verified_commit": 2
+      },
+      "arm": "kitsu",
+      "seconds": 1.848512,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 2,
+      "publication": {
+        "initial_seconds": 1.521557,
+        "recovery_seconds": 0.550063,
+        "missing_mirror_detected": true,
+        "destinations_at_verified_commit": 2
+      },
+      "arm": "plain",
+      "seconds": 1.054955,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 3,
+      "publication": {
+        "initial_seconds": 1.517605,
+        "recovery_seconds": 0.549248,
+        "missing_mirror_detected": true,
+        "destinations_at_verified_commit": 2
+      },
+      "arm": "plain",
+      "seconds": 1.047525,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 3,
+      "publication": {
+        "initial_seconds": 1.62495,
+        "recovery_seconds": 0.642079,
+        "missing_mirror_detected": true,
+        "destinations_at_verified_commit": 2
+      },
+      "arm": "kitsu",
+      "seconds": 1.905657,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    }
+  ],
+  "local_publication_medians": {
+    "plain": {
+      "initial_seconds": 1.51946,
+      "recovery_seconds": 0.550063
+    },
+    "kitsu": {
+      "initial_seconds": 1.626092,
+      "recovery_seconds": 0.642074
+    }
+  }
+}

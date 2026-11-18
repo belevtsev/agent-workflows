@@ -1,0 +1,57 @@
+<!-- kitsu-task-harness: 2 -->
+
+# Run a Kitsu task
+
+Interpret the developer's request, inspect the supplied issue, design, files or diff,
+and agree on the observable outcome. For a bug, establish expected and actual behavior,
+reproduce it where feasible, and assess any existing fix before changing code.
+For diagnosis alone, plan is a read-only finish. Record the reproduction, expected and actual result, or the evidence still missing. A confirmed bug can complete a diagnosis.
+For a feature, use its acceptance examples and existing design. Ask only when the
+answer would change scope. Show the outcome and first action.
+
+Use the daily harness below. For a requested managed role workflow, existing OpenSpec
+change, or explicitly requested managed compact role dispatch, follow references/managed.md.
+Compact mode is opt-in. Compact controls noisy observations within the chosen workflow. Honor existing role models, reasoning, repository skills and
+adviser policy on either path. Read the selected original skills before doing the work.
+
+1. Use the saved ID from the handoff. When the ID is unknown, look it up with `kitsu task list`.
+   Resume with `kitsu task next ID --json`. Read prior_notes and the latest result for the agreed criteria, plan and reported work. Check review_current before relying on the last review. For next=scope, bind its saved request and stopping point with `task open ID --entry STAGE --until OUTCOME`. For new work choose a short hyphenated ID and run `kitsu task open ID --request TEXT
+   --entry STAGE --until OUTCOME --brief`. Supply plain arguments using the host's safe
+   tool interface. Pick the entry from plan, implement, review or verify and the finish
+   from plan, implement, review, verify or deliver. For a read-only review of named commits,
+   pin the requested comparison with --review-base BASE --review-head HEAD. Pass --repair only for authorized
+   corrections, --commit only for explicitly requested local commit, and --time-limit
+   when a deadline was agreed. Honor agreed --review-limit (total starts) and --finish-reserve (time before deadline for finishing). For an explicitly requested push, pin --publish-to REMOTE/BRANCH. For a requested GitHub PR add --pr-base BASE. Use task extend only for newly authorized work.
+2. Follow the returned next action. Treat staged, unstaged and untracked content as
+   existing developer work. Inspect before writing and clarify an overlapping edit of
+   uncertain ownership. Preserve the index on planning and review. Do not stash,
+   reset or commit to get a clean start. Record intake with expected behavior,
+   evidence needed, starting inputs and relevant file boundaries.
+3. Record judgment with `kitsu task record ID ACTION --actor SESSION --ticket TICKET
+   --note RESULT --brief`. Use --brief for routine transitions. Read the full task on resume or when a finding, blocker or source change needs explanation. Use the real native session identifier. Include the design,
+   test result or evidence reference in the note. For plan-only return the design and
+   open decisions in the note. Implement or repair directly unless delegating. For a delegated coding task,
+   reserve the implement or repair action with `task claim ID --actor SESSION --ticket TICKET --host HOST --brief`.
+   Launch only on `claim_created`, using the saved developer settings, skill references and launch label.
+   Link the native ID with `task claim ID --actor SESSION --ticket TICKET --worker WORKER --brief`.
+   On resume, recover that worker or search native history by the saved label. Record its result with the linked worker as actor. Diagnose a failing assertion before editing. When an implementation-only task returns to implement, correct the reported work and record it again, then retry the saved assertion. A transient failure on unchanged source can be retried before claiming the correction. When intake, implementation or repair leads directly to independent review, append `--claim-review HOST` to the record command. A `claim_created` receipt lets you start that reviewer immediately. On replay, recover the existing claim.
+4. When the review has no claim yet, run `kitsu task claim ID --actor SESSION
+   --ticket TICKET --host HOST --brief`. Exactly one claimant launches a fresh read-only reviewer using
+   the model and effort in `claim.reviewer`. Pass the `review_input` command to the worker in this worktree. The worker runs it once to read the reserved candidate, request, skill references, prior findings and latest work note. For older claims, supply the needed inputs from the full task record. When the receipt includes `review_return_by`, give the worker that return time and bound the host wait accordingly. Use `review_round` to label the worker brief `kitsu-task: ID review ROUND` for usage
+   attribution. Have the reviewer read the selected skills at their original paths and check their hashes. Record its actual worker session, explanation and one --finding per
+   unresolved defect with severity, location and a reproducible case. For a repair review, use `review_changes` to inspect each fix and affected behavior. Reinspect the full candidate on a changed base or scope and inspect original files when Git filters hide changes. When the starting patch is already committed, inspect the requested behavior even if the diff is empty. Treat recorded work notes as claims to check. Record a blocking finding when it violates the agreed behavior or introduces a regression. Put adjacent improvements in the review note. An approval omits --finding. To save a native reviewer ID for recovery, run `task claim ID --ticket TICKET --actor SESSION --worker WORKER_ID --brief`. At `reconcile`, recover the outstanding worker using `claim.worker` or the host’s review-round label. Only after confirming it has terminated use `kitsu task release ID
+   --ticket ORIGINAL` if a new attempt is needed. Report a missing independent
+   reviewer as a blocker. Never invent a worker or identity.
+5. At verify use `kitsu task test ID --brief --ticket TICKET --expect BEHAVIOR -- PROGRAM ARGS`.
+   Reuse matching saved task proof on resume. A note saying tests passed still needs an executable assertion.
+   Choose an assertion that exercises the public entry point and the reported failure. For “verify and commit if it passes,” a failed assertion with no repair authority ends the attempt: report the failure and leave the source and index intact. A retry ticket permits another check.
+   When callers can change state during the operation, check the transition and its observable result. Kitsu also runs
+   declared checks. Read `verification_log.path` on failure. After repair, rerun the saved assertion with `task test ID --brief --ticket TICKET --retry`. When correcting a mistaken assertion, explain the change with --replace-reason.
+6. At commit check the receipt’s `commit_target` and the intended staged files before using its ticket. On a changed checkout, recover the named branch and any existing commit. Commit authority stays with its recorded destination. Resolve unrelated content with the
+   developer before staging. `kitsu task commit ID --ticket TICKET --message TEXT`
+   uses ordinary Git hooks. Explicitly authorized edits already present at intake require --include PATH. On interruption read task next before retrying. Only
+   publish a branch or PR when the developer requested it. At publish, inspect the existing remote or PR before repeating any operation, use the host integration for missing delivery work, then run `kitsu task confirm ID --ticket TICKET` with `--pr URL` for a requested PR.
+7. At done, blocked or paused, give the requested artifact, outstanding findings and
+   next action. A pause receipt includes the pending action, candidate and resume command. Extend a limit only with developer authorization. Distinguish review outcome, behavioral assertion, repository checks
+   and delivery. Use `kitsu task show ID --json` for prior results. Report captured
+   tokens as unknown when unavailable.

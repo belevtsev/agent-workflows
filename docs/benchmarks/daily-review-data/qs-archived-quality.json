@@ -1,0 +1,100 @@
+{
+  "model_calls": 0,
+  "grader_sha256": "655503ff0383478c653590850ce9440b0c40d650829689b11174964495a52c63",
+  "suite_files_sha256": {
+    "empty-keys-cases.js": "14d3091bdde249668f5d88d61a045185a0d5c2ea376a3211b791a58148475224",
+    "parse.js": "374f76c0fc77147ffea00ca0badaa296d566135b738be489a232a9ad847e75f0",
+    "stringify.js": "ca9764d020171e107690d7200a0d54b8f96336c9e5f22932778e0552429b86d7",
+    "utils.js": "245aec86fbd5f014d0c6b8b3a27a3994ac600ea73bfd2265db9ed00df56211f9"
+  },
+  "results": [
+    {
+      "variant": "original",
+      "candidate_tree": null,
+      "unchanged_suite_passed": 1686,
+      "behavior_passed": 2,
+      "failed_behavior_ids": [
+        "holes_not_values:false:false:a[]=new&a[19]=19&a[0]=0",
+        "holes_not_values:false:false:a[19]=19&a[]=new&a[0]=0",
+        "holes_not_values:false:false:a[19]=19&a[0]=0&a[]=new",
+        "three_values_at_limit:false:false",
+        "holes_not_values:false:true:a[]=new&a[19]=19&a[0]=0",
+        "holes_not_values:false:true:a[19]=19&a[]=new&a[0]=0",
+        "holes_not_values:false:true:a[19]=19&a[0]=0&a[]=new",
+        "three_values_at_limit:false:true",
+        "holes_not_values:true:false:a[]=new&a[19]=19&a[0]=0",
+        "holes_not_values:true:false:a[19]=19&a[]=new&a[0]=0",
+        "holes_not_values:true:false:a[19]=19&a[0]=0&a[]=new",
+        "three_values_at_limit:true:false",
+        "holes_not_values:true:true:a[]=new&a[19]=19&a[0]=0",
+        "holes_not_values:true:true:a[19]=19&a[]=new&a[0]=0",
+        "holes_not_values:true:true:a[19]=19&a[0]=0&a[]=new",
+        "three_values_at_limit:true:true",
+        "supplementary_scalar_append"
+      ],
+      "library_sha256": {
+        "formats.js": "04200f6ac29e41163d3b09729bb0c2a01cc8e53e5fb0078c54c6b582c6deba81",
+        "index.js": "8f4e02eef6ccc43f2b7448c18ae209281c8e9af9807cad491df67450e3817a95",
+        "parse.js": "eb3b11cb1d00be180742569984012bc3dcdb45d3320a16a5f45d4247304ce7d9",
+        "stringify.js": "62eea028e526c792fa22d3ac1778cceae84f46f908f70205be4ae94f84779f45",
+        "utils.js": "0cc35581f38d05554e412a7645ac9fc083263622386ba7f04c999161206a1b70"
+      }
+    },
+    {
+      "variant": "upstream_fix",
+      "candidate_tree": null,
+      "unchanged_suite_passed": 1686,
+      "behavior_passed": 19,
+      "failed_behavior_ids": [],
+      "library_sha256": {
+        "formats.js": "04200f6ac29e41163d3b09729bb0c2a01cc8e53e5fb0078c54c6b582c6deba81",
+        "index.js": "8f4e02eef6ccc43f2b7448c18ae209281c8e9af9807cad491df67450e3817a95",
+        "parse.js": "eb3b11cb1d00be180742569984012bc3dcdb45d3320a16a5f45d4247304ce7d9",
+        "stringify.js": "62eea028e526c792fa22d3ac1778cceae84f46f908f70205be4ae94f84779f45",
+        "utils.js": "ace1c643b256be181aba29f01612283fc48d50f076a681bf3931316bf712756a"
+      }
+    },
+    {
+      "variant": "plain_codex",
+      "candidate_tree": "df264cdf55d46e9fa71ac21dfe6df5e6c07b31c2",
+      "unchanged_suite_passed": 1686,
+      "behavior_passed": 19,
+      "failed_behavior_ids": [],
+      "library_sha256": {
+        "formats.js": "04200f6ac29e41163d3b09729bb0c2a01cc8e53e5fb0078c54c6b582c6deba81",
+        "index.js": "8f4e02eef6ccc43f2b7448c18ae209281c8e9af9807cad491df67450e3817a95",
+        "parse.js": "fa33ff93b086ff39464146810677e478bb8283a3669efe6a72c2873cb38e5916",
+        "stringify.js": "62eea028e526c792fa22d3ac1778cceae84f46f908f70205be4ae94f84779f45",
+        "utils.js": "6df2519624055cf20346624e45587cd7e4a2870b80ab5978994345a8a6fb38e4"
+      }
+    },
+    {
+      "variant": "managed_kitsu",
+      "candidate_tree": "a16a76bde7e3b1b0711234381f2acbe01ae2ef44",
+      "unchanged_suite_passed": 1686,
+      "behavior_passed": 19,
+      "failed_behavior_ids": [],
+      "library_sha256": {
+        "formats.js": "04200f6ac29e41163d3b09729bb0c2a01cc8e53e5fb0078c54c6b582c6deba81",
+        "index.js": "8f4e02eef6ccc43f2b7448c18ae209281c8e9af9807cad491df67450e3817a95",
+        "parse.js": "eb3b11cb1d00be180742569984012bc3dcdb45d3320a16a5f45d4247304ce7d9",
+        "stringify.js": "62eea028e526c792fa22d3ac1778cceae84f46f908f70205be4ae94f84779f45",
+        "utils.js": "5ae0f22185cac2ff98264e0a20810e2767e74ae450e4846980cd836266d4c453"
+      }
+    },
+    {
+      "variant": "daily_kitsu",
+      "candidate_tree": "5ac4dfb7110790669a239051ec07491f4fd9e862",
+      "unchanged_suite_passed": 1686,
+      "behavior_passed": 19,
+      "failed_behavior_ids": [],
+      "library_sha256": {
+        "formats.js": "04200f6ac29e41163d3b09729bb0c2a01cc8e53e5fb0078c54c6b582c6deba81",
+        "index.js": "8f4e02eef6ccc43f2b7448c18ae209281c8e9af9807cad491df67450e3817a95",
+        "parse.js": "ac8f777953dac25b37e21bbd72c45522f569042f9fb457d681223c0329d49d41",
+        "stringify.js": "62eea028e526c792fa22d3ac1778cceae84f46f908f70205be4ae94f84779f45",
+        "utils.js": "81ea54b6c27fd39715cbfa0897a948c975963bf96f7413c6f96a8e43329be617"
+      }
+    }
+  ]
+}
