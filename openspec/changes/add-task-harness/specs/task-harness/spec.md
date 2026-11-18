@@ -152,7 +152,7 @@ Source: proposal.md and approved daily coding harness plan.
 #### Scenario: A hook rewrites the verified tree
 
 - **WHEN** a normal Git hook changes the tree recorded by a requested commit
-- **THEN** the command reports the mismatch and preserves the created commit for inspection.
+- **THEN** the CLI retains the observed commit and requires fresh verification of that exact tree. Kitsu reconciles the real index under Git's lock only when it still matches the pre-commit index.
 
 #### Scenario: Merge parents change during verification
 
@@ -235,10 +235,10 @@ Source: proposal.md and approved daily coding harness plan.
 - **WHEN** a normally exiting command reports a failure after changing the original candidate
 - **THEN** the task reports the input change, retains the child exit status and requests verification on stable inputs before dispatching a behavioral repair.
 
-#### Scenario: Recover verification on an already reviewed commit
+#### Scenario: Preserve a completed commit after checkout changes
 
-- **WHEN** a delivered candidate loses test evidence and its independent review still matches the original bytes, committed tree and expected parents
-- **THEN** the task can reverify the existing commit without consuming another review slot. A different parent requires a fresh review.
+- **WHEN** a completed delivery is resumed after the checkout changes or an original local log is removed
+- **THEN** the record still identifies the historical delivery. It issues no new action ticket, and legacy records report only known commit or tree identity.
 
 #### Scenario: Repeat the behavior that required repair
 
@@ -263,7 +263,7 @@ Source: proposal.md and approved daily coding harness plan.
 #### Scenario: Recheck a completed publication
 
 - **WHEN** a developer confirms a previously delivered task again
-- **THEN** confirmation reads every current push destination and the requested PR. Failure reopens publication while retaining the local verification, commit and historical confirmation. Local resume can show the last observation without contacting a remote.
+- **THEN** confirmation checks every current push destination and the requested PR for the saved commit. Failure records the latest observation while keeping the historical delivery complete. Local resume shows the latest observation without contacting a remote.
 
 #### Scenario: Confirm a PR from a mirrored push destination
 

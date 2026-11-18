@@ -11,7 +11,7 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
-func checkPublicationReceipt(t *testing.T, r *kitsutest.Repo, task, outcome, target, pr string) time.Time {
+func checkPublicationReceipt(t *testing.T, r *kitsutest.Repo, task, outcome, target, pr, commit string) time.Time {
 	t.Helper()
 	result := r.Kitsu("task", "next", task, "--brief")
 	var brief struct {
@@ -21,7 +21,7 @@ func checkPublicationReceipt(t *testing.T, r *kitsutest.Repo, task, outcome, tar
 			ObservedAt              time.Time `json:"observed_at"`
 		} `json:"last_publication"`
 	}
-	if err := json.Unmarshal([]byte(result.Stdout), &brief); err != nil || result.Code != 0 || brief.Last.Outcome != outcome || brief.Last.Target != target || brief.Last.PR != pr || brief.Last.Commit != r.Git("rev-parse", "HEAD") || brief.Last.ObservedAt.IsZero() {
+	if err := json.Unmarshal([]byte(result.Stdout), &brief); err != nil || result.Code != 0 || brief.Last.Outcome != outcome || brief.Last.Target != target || brief.Last.PR != pr || brief.Last.Commit != commit || brief.Last.ObservedAt.IsZero() {
 		t.Fatal("incomplete publication receipt", result.Output(), err)
 	}
 	return brief.Last.ObservedAt
@@ -44,34 +44,34 @@ func TestReconfirmPublishedBranchAfterOneDestinationChanges(t *testing.T) {
 	firstTicket, firstRun := f.state.Ticket, f.state.Proof.Run
 	f.call(0, "confirm", "--ticket", firstTicket)
 	f.want("done")
-	checkPublicationReceipt(t, r, f.id, "confirmed", "mirrors/topic", "")
+	head, completed := r.Git("rev-parse", "HEAD"), f.state.Completion
+	checkPublicationReceipt(t, r, f.id, "confirmed", "mirrors/topic", "", head)
+	r.Git("commit", "--allow-empty", "-qm", "Later local work")
 	// Mutate a remote outside Kitsu, just as a teammate could after delivery.
-	r.Git("--git-dir", second, "update-ref", "refs/heads/archive/refs/heads/topic", r.Git("rev-parse", "HEAD"))
+	r.Git("--git-dir", second, "update-ref", "refs/heads/archive/refs/heads/topic", head)
 	r.Git("--git-dir", second, "update-ref", "-d", "refs/heads/topic")
 	f.call(0, "next")
 	f.want("done") // ordinary resume reads the last observation locally
 	failed := r.Kitsu("task", "confirm", f.id, "--brief", "--ticket", firstTicket)
 	var recovery struct{ Next, Ticket string }
-	if err := json.Unmarshal([]byte(failed.Stdout), &recovery); failed.Code != 1 || err != nil || recovery.Next != "publish" || recovery.Ticket == "" {
-		t.Fatal("recheck failure lost its resume ticket", failed.Output(), err)
+	if err := json.Unmarshal([]byte(failed.Stdout), &recovery); failed.Code != 1 || err != nil || recovery.Next != "done" || recovery.Ticket != "" {
+		t.Fatal("recheck failure reopened the delivery", failed.Output(), err)
 	}
-	checkPublicationReceipt(t, r, f.id, "unconfirmed", "mirrors/topic", "")
+	checkPublicationReceipt(t, r, f.id, "unconfirmed", "mirrors/topic", "", head)
 	f.call(0, "next")
-	f.want("publish")
-	if f.state.Ticket != recovery.Ticket || !f.state.Verified || f.state.Proof.Run != firstRun {
-		t.Fatal("missing remote branch invalidated local verification", f.state)
-	}
-	f.call(1, "confirm", "--ticket", f.state.Ticket)
-	r.Git("push", second, "HEAD:refs/heads/topic")
-	newTicket := f.state.Ticket
-	f.call(0, "confirm", "--ticket", newTicket)
 	f.want("done")
-	confirmed := checkPublicationReceipt(t, r, f.id, "confirmed", "mirrors/topic", "")
-	// The old ticket is stale; rechecking the saved destination needs no lookup.
-	f.call(1, "confirm", "--ticket", firstTicket)
+	if f.state.Ticket != "" || !f.state.Verified || f.state.Proof.Run != firstRun ||
+		completed == nil || f.state.Completion == nil || *f.state.Completion != *completed {
+		t.Fatal("missing remote branch changed the completed delivery", f.state)
+	}
+	f.call(1, "confirm", "--ticket", "unrelated")
+	r.Git("push", second, head+":refs/heads/topic")
 	f.call(0, "confirm")
 	f.want("done")
-	if !checkPublicationReceipt(t, r, f.id, "confirmed", "mirrors/topic", "").After(confirmed) {
+	confirmed := checkPublicationReceipt(t, r, f.id, "confirmed", "mirrors/topic", "", head)
+	f.call(0, "confirm")
+	f.want("done")
+	if !checkPublicationReceipt(t, r, f.id, "confirmed", "mirrors/topic", "", head).After(confirmed) {
 		t.Fatal("live check did not refresh the observation time")
 	}
 	shown := r.Kitsu("task", "show", f.id, "--json")
@@ -127,12 +127,12 @@ func TestPullRequestOnSecondPushDestinationCanBeRechecked(t *testing.T) {
 	setPR("OPEN", "contributor")
 	f.call(0, "confirm", "--ticket", f.state.Ticket, "--pr", url)
 	f.want("done")
-	checkPublicationReceipt(t, r, f.id, "confirmed", "team/topic", url)
+	checkPublicationReceipt(t, r, f.id, "confirmed", "team/topic", url, head)
 	setPR("CLOSED", "contributor")
 	f.call(1, "confirm")
 	f.call(0, "next")
-	f.want("publish")
+	f.want("done")
 	setPR("OPEN", "contributor")
-	f.call(0, "confirm", "--ticket", f.state.Ticket, "--pr", url)
+	f.call(0, "confirm")
 	f.want("done")
 }

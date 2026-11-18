@@ -266,9 +266,16 @@ func (v harnessView) printVerification(out io.Writer) {
 		}
 		fmt.Fprintf(out, "Verification log for %s: %s\n", decl.Plain(log.CheckID), decl.Plain(log.Path))
 	}
-	fmt.Fprintf(out, "Verified on current content: %t · repository checks: %s · %s\n", v.Verified, v.Gate, v.Delivery)
+	if c := v.Completion; c != nil {
+		fmt.Fprintf(out, "Verified at delivery · repository checks: %s · tree %s\n", c.RepositoryChecks, c.Candidate.Tree)
+		if c.Candidate.Head != "" {
+			fmt.Fprintln(out, "Delivered commit:", c.Candidate.Head)
+		}
+	} else {
+		fmt.Fprintf(out, "Verified on current content: %t · repository checks: %s · %s\n", v.Verified, v.Gate, v.Delivery)
+	}
 	if v.CommitEvidence == "verified_existing_commit" {
-		fmt.Fprintln(out, "The current verification ran with this commit already checked out.")
+		fmt.Fprintln(out, "Verification ran with this commit already checked out.")
 	}
 }
 

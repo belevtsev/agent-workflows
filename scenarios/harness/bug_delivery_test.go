@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -16,11 +17,18 @@ import (
 
 func TestTicketLinkedDelivery(t *testing.T) {
 	for _, kind := range []string{"markdown", "supplied", "url"} {
-		t.Run(kind, func(t *testing.T) { checkTicketDelivery(t, kind) })
+		t.Run(kind, func(t *testing.T) { checkTicketDelivery(t, kind, false) })
 	}
 }
 
-func checkTicketDelivery(t *testing.T, kind string) {
+func TestTicketReceiptAfterCommitHookChangedTree(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a POSIX executable hook")
+	}
+	checkTicketDelivery(t, "markdown", true)
+}
+
+func checkTicketDelivery(t *testing.T, kind string, formatter bool) {
 	r := kitsutest.NewRepo(t)
 	r.Write("output.txt", "broken\n")
 	r.Git("add", ".")
@@ -92,7 +100,18 @@ func checkTicketDelivery(t *testing.T, kind string) {
 	f.call(1, "test", "--ticket", f.state.Ticket, "--expect", "exists", "--replace-reason", "easier", "--", "git", "ls-files", "output.txt")
 	f.call(0, "test", "--ticket", f.state.Ticket, "--retry")
 	f.want("commit")
-	f.call(0, "commit", "--ticket", f.state.Ticket, "--message", "Fix export")
+	beforeRun, beforeTree := f.state.Proof.Run, r.Git("write-tree")
+	if formatter {
+		r.Git("config", "core.hooksPath", r.Path(".git/local-hooks"))
+		writeCommitHook(t, r, "pre-commit", "printf 'normalized\\n' >> output.txt\ngit add output.txt\n")
+		f.call(1, "commit", "--ticket", f.state.Ticket, "--message", "Fix export")
+		f.call(1, "receipt")
+		f.call(0, "next")
+		f.want("verify")
+		f.call(0, "test", "--ticket", f.state.Ticket, "--retry")
+	} else {
+		f.call(0, "commit", "--ticket", f.state.Ticket, "--message", "Fix export")
+	}
 	f.want("receipt")
 	delivered := r.Git("rev-parse", "HEAD")
 	r.Write(".git/refuse-receipt", "injected post-commit failure")
@@ -109,6 +128,9 @@ func checkTicketDelivery(t *testing.T, kind string) {
 	}
 	if receipt.Commit != delivered || receipt.Source.Kind != kind || !strings.HasSuffix(receipt.Source.URL, refSuffix) || len(receipt.Source.SHA256) != 64 || receipt.Reproduction.ID != red || receipt.BeforeCommit.ID == receipt.OnCommit.ID || len(receipt.OnCommit.Digest) != 64 {
 		t.Fatalf("incorrect receipt: %+v", receipt)
+	}
+	if formatter && (receipt.BeforeCommitTree != beforeTree || receipt.Tree == beforeTree || receipt.BeforeCommit.ID != beforeRun || receipt.OnCommit.ID == f.state.Proof.Run) {
+		t.Fatalf("did not distinguish pre-hook, post-hook and receipt runs: %+v", receipt)
 	}
 	f.call(0, "next")
 	f.want("done")

@@ -33,6 +33,7 @@ func bugReceipt(ctx context.Context, s *session, l *stageLedger, t *harness.Task
 			return err
 		}
 		t.Bug.Receipt = r
+		t.Completion = view.deliveryCompletion(r.At)
 		t.Events = append(t.Events, harness.Event{Action: "receipt", Note: "Verified local delivery", ObservedCommit: r.Commit, Candidate: view.Candidate, At: r.At})
 		if err := l.write(harnessFile(t.ID), t); err != nil {
 			return err
@@ -47,11 +48,18 @@ func bugReceipt(ctx context.Context, s *session, l *stageLedger, t *harness.Task
 
 func verifyBugCommit(ctx context.Context, s *session, t *harness.Task, v harnessView) (*harness.DeliveryReceipt, error) {
 	red, p := t.Bug.Reproduction, t.Proof
-	if delivery := t.Latest("commit"); delivery != nil && delivery.ObservedCommit != v.Candidate.Head {
+	if delivery := t.Latest("commit"); delivery != nil && delivery.ObservedCommit != "" && delivery.ObservedCommit != v.Candidate.Head {
 		return nil, failf("return to delivered commit %s to issue its receipt", delivery.ObservedCommit)
 	}
-	if p.CommitTarget == "" || p.CommitTarget != t.CommitTarget || p.Candidate.Head == v.Candidate.Head {
+	target := t.AuthorizedCommitTarget()
+	hookChangedTree := t.CommitAttempt != nil && t.CommitAttempt.Commit == v.Candidate.Head && t.CommitAttempt.Tree != t.CommitAttempt.Before.Tree
+	if target == "" || p.CommitTarget != target || p.Candidate.Head == v.Candidate.Head && !hookChangedTree {
 		return nil, failf("no verified commit operation for this ticket on the current revision")
+	}
+	before := harness.CheckRun{ID: p.Run, Digest: p.LogDigest}
+	beforeTree := ""
+	if hookChangedTree {
+		before, beforeTree = t.CommitAttempt.Assertion, t.CommitAttempt.Before.Tree
 	}
 	valid, err := validAssertionRecord(s, red, store.Failed)
 	if err != nil {
@@ -67,7 +75,7 @@ func verifyBugCommit(ctx context.Context, s *session, t *harness.Task, v harness
 	}
 	key := contextpack.Key([]string{"ticket-delivery", t.ID, v.Candidate.Head, p.Run})
 	check := decl.Check{ID: "receipt-" + t.ID, Run: p.Argv, Timeout: 10 * time.Minute}
-	job := runner.Job{Check: check, Tree: v.Candidate.Tree, Key: key, Out: io.Discard, Err: io.Discard, CheckInputs: s.checkHarnessInputs(v.Candidate, t.CommitTarget)}
+	job := runner.Job{Check: check, Tree: v.Candidate.Tree, Key: key, Out: io.Discard, Err: io.Discard, CheckInputs: s.checkHarnessInputs(v.Candidate, target)}
 	if err := job.CheckInputs(ctx); err != nil {
 		return nil, err
 	}
@@ -83,22 +91,20 @@ func verifyBugCommit(ctx context.Context, s *session, t *harness.Task, v harness
 		return nil, err
 	}
 	return &harness.DeliveryReceipt{
-		Task: t.ID, Source: t.Bug.Source, Target: t.CommitTarget,
+		Task: t.ID, Source: t.Bug.Source, Target: target,
 		Commit: v.Candidate.Head, Tree: v.Candidate.Tree, Expect: p.Expect, Argv: p.Argv,
 		Reproduction: harness.FailureEvidence{
 			CheckRun: harness.CheckRun{ID: red.Run, Digest: red.LogDigest},
 			Tree:     red.Candidate.Tree, Head: red.Candidate.Head, ExitStatus: *red.ExitStatus,
 		},
-		BeforeCommit:     harness.CheckRun{ID: p.Run, Digest: p.LogDigest},
+		BeforeCommit:     before,
+		BeforeCommitTree: beforeTree,
 		OnCommit:         harness.CheckRun{ID: record.RunID, Digest: digest},
 		RepositoryChecks: v.Gate, RepositoryRuns: p.GateRuns, At: time.Now().UTC(),
 	}, nil
 }
 
 func checkBugExtension(task *harness.Task, scope harness.Scope) error {
-	if task.Bug != nil && task.Bug.Receipt != nil {
-		return failf("ticket delivery already has a final receipt; open a new task for further work")
-	}
 	if task.Bug != nil && (scope.Publish != "" || scope.PRBase != "") {
 		return usagef("bug ticket delivery ends at the verified local commit; use a separate task to publish")
 	}

@@ -38,6 +38,7 @@ type harnessView struct {
 	PendingDaily      string                `json:"pending_daily_action,omitempty"`
 	PriorNotes        map[string]string     `json:"prior_notes,omitempty"`
 	Publication       *publicationReceipt   `json:"last_publication,omitempty"`
+	Completion        *harness.Completion   `json:"completed_delivery,omitempty"`
 	DeveloperLaunch   string                `json:"developer_launch,omitempty"`
 	ReviewCurrent     bool                  `json:"review_current"`
 	store             *store.Store
@@ -77,11 +78,34 @@ type harnessView struct {
 }
 
 func observeHarness(ctx context.Context, s *session, t *harness.Task, withUsage bool) (harnessView, error) {
-	c, err := harnessCandidate(ctx, s, t)
-	v := harnessView{store: s.store, Claim: t.Claim, Request: t.Request, Task: t.ID, Scope: t.Scope, Candidate: c, Behavior: "pending", Gate: "unchecked", Delivery: "working tree", Proof: t.Proof, Review: t.Latest("review"), Usage: []string{"kitsu", "usage", "show", "--task", t.ID, "--json"}}
-	if err != nil {
+	v := harnessView{store: s.store, Claim: t.Claim, Request: t.Request, Task: t.ID, Scope: t.Scope, Behavior: "pending", Gate: "unchecked", Delivery: "working tree", Proof: t.Proof, Review: t.Latest("review"), Usage: []string{"kitsu", "usage", "show", "--task", t.ID, "--json"}}
+	v.Publication = lastPublication(t)
+	v.Deadline, v.FinishReserve, v.ReviewLimit, v.ReviewStarts = t.Deadline, t.FinishReserve, t.ReviewLimit, t.StartedReviews()
+	if completion := t.CompletedDelivery(); completion != nil {
+		v.Completion, v.Candidate, v.CommitTarget = completion, completion.Candidate, completion.Target
+		v.Next, v.Delivery, v.Verified = "done", "committed", true
+		v.Claim, v.ReviewCurrent = nil, completion.Reviewed
+		v.Behavior, v.Gate, v.CommitEvidence = "passed", completion.RepositoryChecks, completion.CommitEvidence
+		if v.Proof != nil && (v.Proof.Outcome != store.Passed || v.Proof.Candidate.Tree != completion.Candidate.Tree) {
+			v.Proof = nil
+		}
+		v.describeBug(t)
+	} else if err := v.observeCurrentHarness(ctx, s, t); err != nil {
 		return v, err
 	}
+	v.timing(t)
+	if withUsage {
+		v.loadUsage(s.repo, t.Events)
+	}
+	return v, nil
+}
+
+func (v *harnessView) observeCurrentHarness(ctx context.Context, s *session, t *harness.Task) error {
+	c, err := harnessCandidate(ctx, s, t)
+	if err != nil {
+		return err
+	}
+	v.Candidate = c
 	if t.Scope.ReviewBase != "" {
 		v.Delivery = "committed range"
 	}
@@ -94,24 +118,32 @@ func observeHarness(ctx context.Context, s *session, t *harness.Task, withUsage 
 	if c.Head != "" && c.MergeHeads == "" && (movedReview || passingRun) {
 		headTree, parents, err = s.repo.CommitContents(ctx, c.Head)
 		if err != nil {
-			return v, err
+			return err
 		}
 	}
-	v.Publication = lastPublication(t)
 	v.ReviewCurrent = v.Review != nil && v.Review.ReviewMatches(c, t.Scope.Until, headTree, parents)
 	if err := v.observeDelivery(ctx, s, t, headTree, parents); err != nil {
-		return v, err
+		return err
 	}
-	v.Deadline, v.FinishReserve, v.ReviewLimit, v.ReviewStarts = t.Deadline, t.FinishReserve, t.ReviewLimit, t.StartedReviews()
 	v.describeBug(t)
+	return v.routeCurrentDelivery(ctx, s, t)
+}
+
+func (v *harnessView) routeCurrentDelivery(ctx context.Context, s *session, t *harness.Task) error {
+	recovering, err := v.checkCommitAttempt(ctx, s, t)
+	if err != nil || v.Next == "blocked" {
+		return err
+	}
 	if err := v.routeAction(ctx, s, t); err != nil {
-		return v, err
+		return err
 	}
-	v.timing(t)
-	if withUsage {
-		v.loadUsage(s.repo, t.Events)
+	if recovering && slices.Contains([]string{"commit", "implement", "repair"}, v.Next) {
+		v.Next, v.Ticket, v.Delivery = "blocked", "", "Git already created this commit. Open a new task for further edits."
 	}
-	return v, nil
+	if v.Next == "done" && v.Delivery == "committed" && t.Scope.Until == "deliver" && (t.Scope.Commit || t.Scope.Publish != "") {
+		v.Completion = v.deliveryCompletion(time.Now().UTC())
+	}
+	return nil
 }
 
 func (v *harnessView) describeBug(t *harness.Task) {
@@ -401,6 +433,9 @@ func (v harnessView) brief() map[string]any {
 	if v.Publication != nil {
 		reply["last_publication"] = v.Publication
 	}
+	if v.Completion != nil {
+		reply["completed_delivery"] = v.Completion
+	}
 	v.addBriefLimits(reply)
 	if v.Ticket != "" {
 		reply["ticket"] = v.Ticket
@@ -630,7 +665,9 @@ func (v *harnessView) timing(t *harness.Task) {
 			v.FirstResult = &d
 		}
 	}
-	if v.Next == "done" && v.Last != nil {
+	if v.Completion != nil {
+		end = v.Completion.At
+	} else if v.Next == "done" && v.Last != nil {
 		end = v.Last.At
 		if t.Proof != nil && t.Proof.CheckedAt.After(end) {
 			end = t.Proof.CheckedAt

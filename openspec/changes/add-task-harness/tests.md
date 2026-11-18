@@ -25,7 +25,8 @@
 | Reserve review with a result | scenarios/harness/review_limits_test.go | TestRecordAndClaimReviewSurvivesRetries |
 | A commit has an unexpected merge parent | scenarios/harness/commit_history_test.go | TestUnreviewedMergeParentCannotCompleteDelivery |
 | Finish a pending merge | scenarios/harness/commit_history_test.go | TestPendingMergeMustActuallyBeCommitted |
-| A hook rewrites the verified tree | scenarios/harness/commit_history_test.go | TestCommitHookChangingIndexCannotRecordVerifiedDelivery |
+| A hook rewrites the verified tree | scenarios/harness/commit_history_test.go | TestCommitHookTreeRequiresFreshEvidenceAndKeepsTheCommit |
+| A hook rewrites the verified tree | scenarios/harness/commit_history_test.go | TestCommitHookPreservesStagingChangedDuringCommit |
 | Merge parents change during verification | scenarios/harness/commit_history_test.go | TestChangingMergeParentsDuringVerificationRequiresAnotherAssertion |
 | Brief verification names the executed check | scenarios/harness/verification_output_test.go | TestBriefVerificationPointsToExecutedLog |
 | Stream full verification output | scenarios/harness/verification_output_test.go | TestFullVerificationStillStreamsDiagnostics |
@@ -48,7 +49,8 @@
 | Reverify earlier daily evidence | scenarios/harness/verification_candidate_test.go | TestLegacyVerificationGetsFreshPerRunEvidence |
 | Staging changes after an assertion | scenarios/harness/verification_index_test.go | TestVerifyStagedContentsAfterIndexOnlyChange |
 | Diagnose an unstable check before repair | scenarios/harness/verification_candidate_test.go | TestInputChangeDoesNotDispatchABehaviorRepair |
-| Recover verification on an already reviewed commit | scenarios/harness/verification_candidate_test.go | TestLosingVerificationAfterCommitKeepsIndependentReview |
+| Preserve a completed commit after checkout changes | scenarios/harness/verification_candidate_test.go | TestCompletedDeliveryKeepsItsCommitAfterLogsAndHistoryChange |
+| Preserve a completed commit after checkout changes | scenarios/harness/commit_history_test.go | TestLegacyCommitDeliveryStaysComplete |
 | Repeat the behavior that required repair | scenarios/harness/assertion_recovery_test.go | TestRepairCannotSilentlyReplaceItsFailingAssertion |
 | Correct a mistaken assertion | scenarios/harness/assertion_recovery_test.go | TestAssertionCorrectionRetainsOriginalFailure |
 | Reconcile an outstanding reviewer after rollback | scenarios/harness/claim_recovery_test.go | TestOutstandingReviewerSurvivesCandidateRollback |

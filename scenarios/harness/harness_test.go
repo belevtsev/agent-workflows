@@ -8,12 +8,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/belevtsev/kitsu/v3/internal/harness"
 	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 type state struct {
 	Next, Ticket, Delivery string
-	CommitTarget           string `json:"commit_target"`
+	CommitTarget           string              `json:"commit_target"`
+	Completion             *harness.Completion `json:"completed_delivery"`
 	Verified               bool
 	Proof                  *struct {
 		Run     string `json:"run_id"`
@@ -127,9 +129,9 @@ func TestNegative(t *testing.T){if Label(-2)!=2{t.Fatal("negative")}}
 	}
 	r.Write("label.go", "package format\nfunc Label(x int) int {return x}\n")
 	f.call(0, "next")
-	f.want("review")
-	if f.state.Verified {
-		t.Fatal("stale evidence certified another candidate")
+	f.want("done")
+	if !f.state.Verified || f.state.Ticket != "" || f.state.Completion == nil || f.state.Completion.Candidate.Head != r.Git("rev-parse", "HEAD") {
+		t.Fatal("later edits reopened the historical delivery", f.state)
 	}
 }
 
@@ -288,8 +290,14 @@ func TestPublishChecksActualBranchBeforeCompleting(t *testing.T) {
 	f.want("done")
 	f.call(0, "confirm", "--ticket", ticket)
 	f.call(1, "confirm", "--ticket", ticket, "--pr", "https://github.com/example/other/pull/1")
-	f.call(0, "extend", "--pr-base", "main")
-	f.want("publish")
+	f.call(1, "extend", "--pr-base", "main")
+	f.call(0, "next")
+	f.want("done")
+
+	f = flow{t: t, repo: r, id: "publish-pr"}
+	f.call(0, "open", "--request", "Verify and confirm the requested PR", "--entry", "verify", "--until", "deliver", "--publish-to", "upstream/topic", "--pr-base", "main")
+	f.record("intake", "host", "Check the unit behavior and confirm the PR")
+	f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "fixture unit behavior", "--", "sh", "unit.sh")
 	f.call(2, "confirm", "--ticket", f.state.Ticket, "--pr", "invalid")
 }
 

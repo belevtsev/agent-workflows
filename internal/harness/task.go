@@ -204,16 +204,18 @@ type DeveloperAssignment struct {
 }
 
 type Task struct {
-	Bug                *BugDelivery  `json:"bug,omitempty"`
-	CommitTarget       string        `json:"commit_target,omitempty"` // Captured at launch or when commit scope is granted.
-	ReviewLimit        int           `json:"review_limit,omitempty"`
-	ReviewStarts       int           `json:"review_starts,omitempty"`
-	DeveloperStarts    int           `json:"developer_starts,omitempty"`
-	ReleasedDevelopers []string      `json:"released_developer_workers,omitempty"`
-	FinishReserve      time.Duration `json:"finish_reserve_ns,omitempty"`
-	PendingScope       bool          `json:"pending_scope,omitempty"`
-	Claim              *Claim        `json:"claim,omitempty"`
-	Generation         int           `json:"generation,omitempty"`
+	Bug                *BugDelivery   `json:"bug,omitempty"`
+	Completion         *Completion    `json:"completed_delivery,omitempty"`
+	CommitAttempt      *CommitAttempt `json:"commit_attempt,omitempty"`
+	CommitTarget       string         `json:"commit_target,omitempty"` // Captured at launch or when commit scope is granted.
+	ReviewLimit        int            `json:"review_limit,omitempty"`
+	ReviewStarts       int            `json:"review_starts,omitempty"`
+	DeveloperStarts    int            `json:"developer_starts,omitempty"`
+	ReleasedDevelopers []string       `json:"released_developer_workers,omitempty"`
+	FinishReserve      time.Duration  `json:"finish_reserve_ns,omitempty"`
+	PendingScope       bool           `json:"pending_scope,omitempty"`
+	Claim              *Claim         `json:"claim,omitempty"`
+	Generation         int            `json:"generation,omitempty"`
 
 	Version  int       `json:"version"`
 	ID       string    `json:"task"`

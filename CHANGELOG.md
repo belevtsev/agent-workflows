@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - Help for `check add` and `task test` now puts Kitsu options before `--`. The [verification example](docs/cli-reference.md#kitsu-check-add) shows how to save a required check.
+- Completed commits and publication confirmations remain historical after a branch moves. Formatter hooks that change a commit require fresh verification and preserve concurrent staging.
 
 ## [0.0.2] - 2026-11-18
 

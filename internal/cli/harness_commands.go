@@ -248,6 +248,9 @@ func runHarnessCommand(ctx context.Context, s *session, l *stageLedger, verb str
 	if err != nil {
 		return err
 	}
+	if err := saveObservedDelivery(l, &task, view); err != nil {
+		return err
+	}
 	if readOnly {
 		return printOpenedHarness(s, l, &task, o, verb, active, view)
 	}
@@ -263,6 +266,9 @@ func runHarnessCommand(ctx context.Context, s *session, l *stageLedger, verb str
 	}
 	view, err = observeHarness(ctx, s, &task, full)
 	if err != nil {
+		return err
+	}
+	if err := saveObservedDelivery(l, &task, view); err != nil {
 		return err
 	}
 	view.ClaimCreated = verb == "claim" && o.worker == ""
@@ -391,6 +397,9 @@ func actionTicket(task *harness.Task, next string, c harness.Snapshot) string {
 }
 
 func commitHarness(ctx context.Context, s *session, l *stageLedger, task *harness.Task, o harnessOptions, view harnessView) error {
+	if view.Completion != nil {
+		return nil
+	}
 	if view.CurrentCommitTarget != "" {
 		return failf("%s", view.Delivery)
 	}
@@ -439,27 +448,7 @@ func commitVerifiedHarness(ctx context.Context, s *session, l *stageLedger, task
 	if err := checkCommitIncludes(ctx, s, task, view.Candidate.Tree, o.includes); err != nil {
 		return err
 	}
-	// Recovery must know the intended destination even if Git finishes before
-	// the coordinator can record the result.
-	if task.Proof.CommitTarget != view.CommitTarget || task.CommitTarget != view.CommitTarget {
-		task.CommitTarget, task.Proof.CommitTarget = view.CommitTarget, view.CommitTarget
-		if err := l.write(harnessFile(task.ID), task); err != nil {
-			return err
-		}
-	}
-	if err := s.repo.CommitStaged(ctx, s.store.Tmp(), view.Candidate.Tree, view.Candidate.Head, view.Candidate.MergeHeads, view.CommitTarget, o.note); err != nil {
-		return err
-	}
-	event := harness.Event{Action: "commit", Note: o.note, Ticket: o.ticket, Candidate: view.Candidate, At: time.Now().UTC()}
-	if task.Bug != nil {
-		head, _, err := s.repo.CommitOf(ctx, view.CommitTarget)
-		if err != nil {
-			return err
-		}
-		event.ObservedCommit = head
-	}
-	task.Events = append(task.Events, event)
-	return nil
+	return performHarnessCommit(ctx, s, l, task, o, view)
 }
 
 // A commit ticket survives staging the verified working tree. Its assertion
@@ -538,6 +527,9 @@ func checkCommitIncludes(ctx context.Context, s *session, task *harness.Task, ca
 }
 
 func extendHarness(ctx context.Context, s *session, task *harness.Task, o harnessOptions) error {
+	if task.CompletedDelivery() != nil {
+		return failf("delivery is complete; open a new task for additional work")
+	}
 	if err := checkBugExtension(task, o.scope); err != nil {
 		return err
 	}

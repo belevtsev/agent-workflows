@@ -76,12 +76,7 @@ func (r *Repo) IndexTree(ctx context.Context, tmp string) (string, error) {
 // An empty file next to the copy keeps another process from removing the
 // directory while git still works in it.
 func (r *Repo) copyIndex(tmp string) (path string, cleanup func(), err error) {
-	source := os.Getenv("GIT_INDEX_FILE")
-	if source == "" {
-		source = filepath.Join(r.GitDir, "index")
-	} else if !filepath.IsAbs(source) {
-		source = filepath.Join(r.dir, source)
-	}
+	source := r.indexPath()
 	path = filepath.Join(tmp, fmt.Sprintf("index-%d-%s", os.Getpid(), rand.Text()))
 	hold := path + ".hold"
 	if err := holdDir(tmp, hold); err != nil {
@@ -111,6 +106,17 @@ func (r *Repo) copyIndex(tmp string) (path string, cleanup func(), err error) {
 		return "", nil, err
 	}
 	return path, cleanup, nil
+}
+
+func (r *Repo) indexPath() string {
+	source := os.Getenv("GIT_INDEX_FILE")
+	if source == "" {
+		return filepath.Join(r.GitDir, "index")
+	}
+	if !filepath.IsAbs(source) {
+		return filepath.Join(r.dir, source)
+	}
+	return source
 }
 
 // holdDir creates the directory and an empty file in it, again when another process removed the
