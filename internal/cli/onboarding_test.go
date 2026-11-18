@@ -116,7 +116,7 @@ func onboardingReadyFixture(t *testing.T) (program, capture string) {
 	}
 	write(filepath.Join(dir, "config.toml"), "[plugins.\"kitsu@kitsu\"]\nenabled = true\n")
 	write(filepath.Join(plugin, ".codex-plugin", "plugin.json"), `{"name":"kitsu","version":"1","skills":"./skills","hooks":"./hooks.json"}`)
-	write(filepath.Join(plugin, "skills", "task", "SKILL.md"), "---\nname: task\ndescription: Coordinate a Kitsu task.\n---\nUse the host workflow.\n")
+	write(filepath.Join(plugin, "skills", "task", "SKILL.md"), "---\nname: task\ndescription: Coordinate a Kitsu task.\n---\n<!-- kitsu-task-harness: 3 -->\nUse the host workflow.\n")
 	events := map[string]any{}
 	for _, event := range []string{"SessionStart", "PreToolUse", "SubagentStop", "SessionEnd"} {
 		command := "tokens record"
@@ -274,6 +274,32 @@ func TestOnboardingParsesOneLiteralRequest(t *testing.T) {
 			}
 			if err == nil && test.start && got.request != request {
 				t.Fatalf("request changed: %q", got.request)
+			}
+		})
+	}
+}
+
+func TestTaskResumeCommandPreservesCompactOptIn(t *testing.T) {
+	for _, compact := range []bool{false, true} {
+		command := (onboardingArgs{compact: compact}).resumeCommand("fix-csv", "claude")
+		options, err := parseOnboardingArgs(strings.Fields(command)[3:], true)
+		if err != nil || options.resume != "fix-csv" || options.host != "claude" || options.compact != compact {
+			t.Fatalf("resume command %q gave %+v, %v", command, options, err)
+		}
+	}
+}
+
+func TestPreviewCarriesExecutableTaskLimits(t *testing.T) {
+	onboardingReadyFixture(t)
+	for _, mode := range []string{"--print", "--json"} {
+		t.Run(mode, func(t *testing.T) {
+			var out bytes.Buffer
+			args := []string{"task", "start", "Review the staged patch", "--host", "codex", mode, "--time-limit", "12m", "--review-limit", "2", "--finish-reserve", "1m"}
+			if err := Execute(t.Context(), args, Config{Out: &out, Err: io.Discard}); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(out.String(), "--time-limit 12m0s --review-limit 2 --finish-reserve 1m0s") || strings.Contains(out.String(), "saved limits") {
+				t.Fatalf("manual handoff must supply the limits for task open: %s", out.String())
 			}
 		})
 	}

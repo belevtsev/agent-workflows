@@ -64,6 +64,10 @@ func (s *session) changeGit(ctx context.Context) (func(*change.Folder) (change.G
 	if err != nil {
 		return nil, err
 	}
+	return s.changeGitAt(ctx, snapshot)
+}
+
+func (s *session) changeGitAt(ctx context.Context, snapshot string) (func(*change.Folder) (change.Git, error), error) {
 	codeOf := func(tree string) (string, error) {
 		code := change.NewCode()
 		err := s.repo.Entries(ctx, tree, code.Add)

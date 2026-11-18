@@ -375,7 +375,8 @@ kitsu uninstall
 ```
 
 ```text
-removed the hooks kitsu wrote, 3 in all, and the records of kitsu in <your home>/kitsu-try/demo/.git/kitsu
+removed the hooks kitsu wrote, 3 in all
+retained check and token records in <your home>/kitsu-try/demo/.git/kitsu
 kitsu.toml is left as it is
 ```
 

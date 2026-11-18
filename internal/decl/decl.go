@@ -39,7 +39,8 @@ type Check struct {
 
 // File is a valid declaration.
 type File struct {
-	Checks []Check
+	RequireReview bool
+	Checks        []Check
 }
 
 // Check finds a declared check by its id.
@@ -97,8 +98,9 @@ func Plain(text string) string {
 // raw is the file as TOML gives it. The fields of a check are decoded
 // loosely, so that each broken rule gets a sentence of its own.
 type raw struct {
-	Version any        `toml:"version"`
-	Check   []rawCheck `toml:"check"`
+	RequireReview bool       `toml:"require_review"`
+	Version       any        `toml:"version"`
+	Check         []rawCheck `toml:"check"`
 }
 
 type rawCheck struct {
@@ -127,7 +129,7 @@ func Parse(data []byte) (*File, error) {
 	if len(headers) != len(r.Check) {
 		headers = make([]int, len(r.Check)) // written in another form: lines unknown
 	}
-	file := &File{}
+	file := &File{RequireReview: r.RequireReview}
 	seen := map[string]int{}
 	for i, rc := range r.Check {
 		end := 0

@@ -1,0 +1,129 @@
+{
+  "binary_sha256": "40678b5d2bf067c742f7b4801adcfe49420d9a533f08ebc104d680c2f29381dd",
+  "grader_sha256": "a8ead05e9440fe4743120709417c1c4f400f9fcc66079e78bda225434a5d2369",
+  "model_calls": 0,
+  "compact": false,
+  "go": "go version go1.26.4 linux/amd64",
+  "respective_upstream_suite_passed_on": [
+    "base",
+    "gold"
+  ],
+  "controls": {
+    "base": [
+      "ebda872fa10e6cc730c5973bbdb512b9511eb65e",
+      "0fbb32d1dd3014c0889a411014066661731e49f4499b79369f41cecd25bfed61"
+    ],
+    "gold": [
+      "057c901b9979a2a6b8e06adfbf96349a641ba2e1",
+      "629d0559830d1bbac3c7f47d5fa5f5b4e0333a619d1d4c8e4052bea68b469bf4"
+    ]
+  },
+  "runs": [
+    {
+      "candidate": "base",
+      "pair": 1,
+      "arm": "plain",
+      "seconds": 0.16068,
+      "public_cases_passed": 3,
+      "accepted": false
+    },
+    {
+      "candidate": "base",
+      "pair": 1,
+      "arm": "kitsu",
+      "seconds": 0.251977,
+      "public_cases_passed": 3,
+      "accepted": false
+    },
+    {
+      "candidate": "base",
+      "pair": 2,
+      "arm": "kitsu",
+      "seconds": 0.249134,
+      "public_cases_passed": 3,
+      "accepted": false
+    },
+    {
+      "candidate": "base",
+      "pair": 2,
+      "arm": "plain",
+      "seconds": 0.163681,
+      "public_cases_passed": 3,
+      "accepted": false
+    },
+    {
+      "candidate": "base",
+      "pair": 3,
+      "arm": "plain",
+      "seconds": 0.161135,
+      "public_cases_passed": 3,
+      "accepted": false
+    },
+    {
+      "candidate": "base",
+      "pair": 3,
+      "arm": "kitsu",
+      "seconds": 0.249031,
+      "public_cases_passed": 3,
+      "accepted": false
+    },
+    {
+      "candidate": "gold",
+      "pair": 1,
+      "arm": "plain",
+      "seconds": 0.163396,
+      "public_cases_passed": 4,
+      "accepted": true
+    },
+    {
+      "candidate": "gold",
+      "pair": 1,
+      "arm": "kitsu",
+      "seconds": 0.262435,
+      "public_cases_passed": 4,
+      "accepted": true
+    },
+    {
+      "candidate": "gold",
+      "pair": 2,
+      "arm": "kitsu",
+      "seconds": 0.262238,
+      "public_cases_passed": 4,
+      "accepted": true
+    },
+    {
+      "candidate": "gold",
+      "pair": 2,
+      "arm": "plain",
+      "seconds": 0.162857,
+      "public_cases_passed": 4,
+      "accepted": true
+    },
+    {
+      "candidate": "gold",
+      "pair": 3,
+      "arm": "plain",
+      "seconds": 0.15635,
+      "public_cases_passed": 4,
+      "accepted": true
+    },
+    {
+      "candidate": "gold",
+      "pair": 3,
+      "arm": "kitsu",
+      "seconds": 0.263157,
+      "public_cases_passed": 4,
+      "accepted": true
+    }
+  ],
+  "medians": {
+    "base": {
+      "plain": 0.161135,
+      "kitsu": 0.249134
+    },
+    "gold": {
+      "plain": 0.162857,
+      "kitsu": 0.262435
+    }
+  }
+}

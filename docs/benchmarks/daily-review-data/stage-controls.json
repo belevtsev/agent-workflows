@@ -1,0 +1,91 @@
+{
+  "platform": "Linux-7.0.0-43-generic-x86_64-with-glibc2.43",
+  "kitsu_sha256": "cf178f1a689708966098341ff6a758b5df8a177fc5767c95eb34e8d7d23b7827",
+  "model_calls": 0,
+  "compact": false,
+  "host_judgments": "scripted",
+  "test_file_sha256": {
+    "implementation_retry_test.go": "225e1d58830fafce01a45a51069d21d18299560c2bc82e7a3f7b2b88765c5fb1",
+    "interrupted_journey_test.go": "2fa0527a8029c963df64fa1e568bdc1c86fc157b80080de30fa525da2a213f0a",
+    "stage_outcomes_test.go": "39da794f5c8965aa2ce3a4955d4d65578753a664aac1e84f6bb7148862d51d6a",
+    "commit_history_test.go": "403fbb848d9affa33794cc1b9e6ccb175e3cbe8ed260ae99c01b08b298388967"
+  },
+  "leaf_results": [
+    {
+      "test": "TestCommitReceiptCanBeReplayedWhilePublicationIsPending/recorded_commit",
+      "elapsed_seconds": 0.46
+    },
+    {
+      "test": "TestCommitReceiptCanBeReplayedWhilePublicationIsPending/interrupted_after_Git",
+      "elapsed_seconds": 0.38
+    },
+    {
+      "test": "TestIncompleteImplementationReturnsToItsOwner",
+      "elapsed_seconds": 0.3
+    },
+    {
+      "test": "TestImplementationCheckCanBeRetriedBeforeEditing",
+      "elapsed_seconds": 0.24
+    },
+    {
+      "test": "TestImplementationCorrectsDeclaredCheckAfterPassingBehavior",
+      "elapsed_seconds": 0.33
+    },
+    {
+      "test": "TestFailedAssertionRechecksUnchangedSourceAfterBaseMoves/implement",
+      "elapsed_seconds": 0.2
+    },
+    {
+      "test": "TestFailedAssertionRechecksUnchangedSourceAfterBaseMoves/verify",
+      "elapsed_seconds": 0.18
+    },
+    {
+      "test": "TestExistingPatchJourneySurvivesFreshCoordinator/uninterrupted",
+      "elapsed_seconds": 0.67
+    },
+    {
+      "test": "TestExistingPatchJourneySurvivesFreshCoordinator/restarted",
+      "elapsed_seconds": 1.09
+    },
+    {
+      "test": "TestStageOutcomePlanOnly",
+      "elapsed_seconds": 0.12
+    },
+    {
+      "test": "TestStageOutcomeApprovedImplementation",
+      "elapsed_seconds": 0.36
+    },
+    {
+      "test": "TestStageOutcomeVerifyOnly/faulty",
+      "elapsed_seconds": 0.26
+    },
+    {
+      "test": "TestStageOutcomeVerifyOnly/reference",
+      "elapsed_seconds": 0.34
+    },
+    {
+      "test": "TestStageOutcomeStagedReview/faulty_index_with_clean_working_copy",
+      "elapsed_seconds": 0.18
+    },
+    {
+      "test": "TestStageOutcomeStagedReview/clean_index_with_faulty_working_copy",
+      "elapsed_seconds": 0.17
+    },
+    {
+      "test": "TestStageOutcomePartialRepair",
+      "elapsed_seconds": 4.46
+    },
+    {
+      "test": "TestStageOutcomeVerifiedDelivery/commit_preserves_developer_scratch_file",
+      "elapsed_seconds": 0.43
+    },
+    {
+      "test": "TestStageOutcomeVerifiedDelivery/conflicting_staged_notes_are_preserved",
+      "elapsed_seconds": 0.32
+    },
+    {
+      "test": "TestStageOutcomeExplicitPublication",
+      "elapsed_seconds": 0.43
+    }
+  ]
+}

@@ -62,7 +62,7 @@ func HostFiles() (map[string]string, error) {
 			return nil, err
 		}
 		model := role.Models["claude"]
-		head := fmt.Sprintf("---\nname: %s\ndescription: %s Started only by the coordinator of the kitsu task workflow, with a brief.\nmodel: %s\neffort: %s\ntools: %s\n---\n",
+		head := fmt.Sprintf("---\nname: %s\ndescription: %s Requires a Kitsu coordinator brief.\nmodel: %s\neffort: %s\ntools: %s\n---\n",
 			role.ID, role.Job, model.Model, model.Effort, strings.Join(role.Tools, ", "))
 		files["agents/"+role.ID+".md"] = head + generated(role.ID) + text
 	}
@@ -70,7 +70,12 @@ func HostFiles() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	const head = "---\nname: task\ndescription: Takes one task from a request to a gated commit with the seven roles of kitsu - specification, design, tests, code, review and commit. Use it when the user asks to build, change or fix something with the role workflow, or to continue a change folder under openspec/changes/.\n---\n"
-	files[Skill+"/SKILL.md"] = head + generated(Coordinator) + text
+	const head = "---\nname: task\ndescription: Plan, implement, review, repair, verify or deliver a coding task from its current state in Codex or Claude Code. Use it to resume recorded work or follow the managed role workflow when requested.\n---\n"
+	daily, err := texts.ReadFile("text/harness.md")
+	if err != nil {
+		return nil, err
+	}
+	files[Skill+"/SKILL.md"] = head + generated("harness") + string(daily)
+	files[Skill+"/references/managed.md"] = generated(Coordinator) + text
 	return files, nil
 }

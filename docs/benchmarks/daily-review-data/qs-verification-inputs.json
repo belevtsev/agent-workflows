@@ -1,0 +1,215 @@
+{
+  "upstream": "ljharb/qs",
+  "base": "42eccf0f6292c502fb4bc175191f0812d5476769",
+  "reference": "101492a5c4d9cb72f6510ecc15483759ec8e45fa",
+  "grader_sha256": "655503ff0383478c653590850ce9440b0c40d650829689b11174964495a52c63",
+  "model_calls": 0,
+  "binary_sha256": {
+    "previous": "96bdb07cf0d7465a4ad46aa43873b80ed404de7f0110a9923126f5d19698cefb",
+    "revised": "dd527c7445af46bed5d8361dc7097a29b2b21b3aa4ce0faf603db4f9c1076ae9"
+  },
+  "compact": false,
+  "repetitions": 5,
+  "observations": 60,
+  "measurement": "Local wall seconds for the full-suite verification command. Plain and Kitsu used the same behavior assertions. Kitsu also ran its declared repository check on the passing candidate.",
+  "candidates": {
+    "original": {
+      "original_suite": true,
+      "criteria_sha256": "c89b699eb7c6f951c93ae7cfc596d3e0719121ad052f2e1d0155d91e61370a45",
+      "source_sha256": "0cc35581f38d05554e412a7645ac9fc083263622386ba7f04c999161206a1b70",
+      "frozen_assertions_passed": 2,
+      "frozen_assertions_total": 18,
+      "supplementary_scalar_append": false,
+      "measurements": {
+        "previous_plain": {
+          "wall_seconds": [
+            0.543407,
+            0.550426,
+            0.546509,
+            0.541005,
+            0.542101
+          ],
+          "median_seconds": 0.543407,
+          "response_bytes": [
+            92599
+          ],
+          "next": null
+        },
+        "previous_kitsu": {
+          "wall_seconds": [
+            0.699642,
+            0.689391,
+            0.702197,
+            0.706825,
+            0.702027
+          ],
+          "median_seconds": 0.702027,
+          "response_bytes": [
+            562
+          ],
+          "next": "verify"
+        },
+        "revised_plain": {
+          "wall_seconds": [
+            0.547287,
+            0.543902,
+            0.545839,
+            0.545399,
+            0.546152
+          ],
+          "median_seconds": 0.545839,
+          "response_bytes": [
+            92599
+          ],
+          "next": null
+        },
+        "revised_kitsu": {
+          "wall_seconds": [
+            0.707467,
+            0.717367,
+            0.708846,
+            0.714088,
+            0.718989
+          ],
+          "median_seconds": 0.714088,
+          "response_bytes": [
+            562
+          ],
+          "next": "verify"
+        }
+      }
+    },
+    "partial": {
+      "original_suite": true,
+      "criteria_sha256": "47b92f255770b4e63d72cdf1987be73d1ab25edc4f239d6f6f34e95355fa920b",
+      "source_sha256": "ddc766e885241ed004d614094bc50418d2429ae2b0ca8c3e572bda3cdf251822",
+      "frozen_assertions_passed": 18,
+      "frozen_assertions_total": 18,
+      "supplementary_scalar_append": false,
+      "measurements": {
+        "previous_plain": {
+          "wall_seconds": [
+            0.539424,
+            0.537451,
+            0.537477,
+            0.543813,
+            0.541668
+          ],
+          "median_seconds": 0.539424,
+          "response_bytes": [
+            90800
+          ],
+          "next": null
+        },
+        "previous_kitsu": {
+          "wall_seconds": [
+            0.698205,
+            0.700245,
+            0.697943,
+            0.697309,
+            0.701107
+          ],
+          "median_seconds": 0.698205,
+          "response_bytes": [
+            562
+          ],
+          "next": "verify"
+        },
+        "revised_plain": {
+          "wall_seconds": [
+            0.541282,
+            0.53884,
+            0.540348,
+            0.537715,
+            0.546513
+          ],
+          "median_seconds": 0.540348,
+          "response_bytes": [
+            90800
+          ],
+          "next": null
+        },
+        "revised_kitsu": {
+          "wall_seconds": [
+            0.718428,
+            0.710038,
+            0.710457,
+            0.712818,
+            0.712696
+          ],
+          "median_seconds": 0.712696,
+          "response_bytes": [
+            562
+          ],
+          "next": "verify"
+        }
+      }
+    },
+    "reference": {
+      "original_suite": true,
+      "criteria_sha256": "1924daa5f9e5afd8189f7edd2b73e016647847659d3aaa3289d75ca117cdb410",
+      "source_sha256": "ace1c643b256be181aba29f01612283fc48d50f076a681bf3931316bf712756a",
+      "frozen_assertions_passed": 18,
+      "frozen_assertions_total": 18,
+      "supplementary_scalar_append": true,
+      "measurements": {
+        "previous_plain": {
+          "wall_seconds": [
+            0.535272,
+            0.539896,
+            0.538918,
+            0.54568,
+            0.543926
+          ],
+          "median_seconds": 0.539896,
+          "response_bytes": [
+            90056
+          ],
+          "next": null
+        },
+        "previous_kitsu": {
+          "wall_seconds": [
+            1.173257,
+            1.181615,
+            1.175648,
+            1.172345,
+            1.181641
+          ],
+          "median_seconds": 1.175648,
+          "response_bytes": [
+            477
+          ],
+          "next": "done"
+        },
+        "revised_plain": {
+          "wall_seconds": [
+            0.540922,
+            0.549558,
+            0.536885,
+            0.540472,
+            0.545749
+          ],
+          "median_seconds": 0.540922,
+          "response_bytes": [
+            90056
+          ],
+          "next": null
+        },
+        "revised_kitsu": {
+          "wall_seconds": [
+            1.208156,
+            1.218776,
+            1.213494,
+            1.214341,
+            1.233576
+          ],
+          "median_seconds": 1.214341,
+          "response_bytes": [
+            477
+          ],
+          "next": "done"
+        }
+      }
+    }
+  }
+}

@@ -14,11 +14,7 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/skills"
 )
 
-type compactSkill struct {
-	ID     string `json:"id"`
-	Path   string `json:"path"`
-	SHA256 string `json:"sha256"`
-}
+type compactSkill = skills.Reference
 
 type workerBrief struct {
 	Label        string         `json:"label"`
@@ -71,7 +67,7 @@ func briefInputs(s *session, b workerBrief) (workerBrief, []skills.Entry, error)
 	}
 	b.Skills, b.Warnings = []compactSkill{}, slices.Clone(catalog.Warnings)
 	for _, entry := range entries {
-		b.Skills = append(b.Skills, compactSkill{entry.ID, entry.Path, entry.SHA256})
+		b.Skills = append(b.Skills, entry.Reference())
 	}
 	b.Advisers = []string{}
 	binding, err := advisers.LoadBinding(s.repo.Root, b.Task)

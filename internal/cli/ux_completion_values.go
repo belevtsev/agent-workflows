@@ -45,7 +45,7 @@ func uxCompleteValue(ctx context.Context, state uxCompleteState, flag uxFlag, pr
 		return values
 	case "checkpoint":
 		return uxCompletionCheckpoints(ctx, state)
-	case "root":
+	case "root", "archive-dir":
 		return uxCompletionPaths(prefix, true)
 	case "request", "assignment", "paths", "when", "file", "path", "output":
 		return uxCompletionPaths(prefix, false)
@@ -252,9 +252,16 @@ func uxCompletionTasks(ctx context.Context) []uxSuggestion {
 	if root == "" {
 		return nil
 	}
-	tasks, _ := skills.Tasks(root)
-	small, _ := smallAdviserTasks(root)
-	return uxSuggestionValues(append(tasks, small...), "Saved task")
+	tasks, _ := uxSavedTasks(root)
+	if s, err := open(ctx, Config{}, true); err == nil {
+		entries, _ := os.ReadDir(filepath.Join(s.repo.GitDir, "kitsu-stages"))
+		for _, entry := range entries {
+			if name := harnessRecordName(entry.Name()); name != "" {
+				tasks = append(tasks, name)
+			}
+		}
+	}
+	return uxSuggestionValues(tasks, "Saved task")
 }
 
 func uxCompletionAdvisers(ctx context.Context, state uxCompleteState) []uxSuggestion {

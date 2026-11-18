@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/belevtsev/kitsu/v3/internal/fslock"
 )
 
 func canaryUnitManifest(t *testing.T) (string, string, manifest) {
@@ -110,6 +112,16 @@ func TestCanaryBudgetStopsLocalDescendantsAndFurtherLaunches(t *testing.T) {
 	if err := os.MkdirAll(vars["worktree"], 0o700); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.MkdirAll(vars["home"], 0o700); err != nil {
+		t.Fatal(err)
+	}
+	// Hold the gate until after the liveness check. A surviving grandchild must
+	// still hold its own lock even if polling or process cleanup was delayed.
+	gate, err := fslock.Acquire(t.Context(), filepath.Join(vars["home"], "descendant-exit.lock"), fslock.Options{Wait: fslock.NoWait})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = gate.Close() })
 	program, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -122,7 +134,7 @@ func TestCanaryBudgetStopsLocalDescendantsAndFurtherLaunches(t *testing.T) {
 	}
 	execution, err := canaryInvoke(t.Context(), m, output, selected, vars, "", executionEnv(m.Host, vars))
 	release()
-	if err != nil || !execution.Stopped || !execution.Cancelled {
+	if err != nil || !execution.Stopped || !execution.Cancelled || execution.Cleanup != "" {
 		t.Fatal("budget failed to stop fake process tree", execution, err)
 	}
 	l, err := canaryReadLedger(output, *m.Budget)
@@ -133,10 +145,15 @@ func TestCanaryBudgetStopsLocalDescendantsAndFurtherLaunches(t *testing.T) {
 		next()
 		t.Fatal("launch accepted after reserve stop and unknown tail")
 	}
-	// Surviving children would create this marker after the parent was stopped.
-	time.Sleep(150 * time.Millisecond)
-	if _, err := os.Stat(filepath.Join(vars["home"], "escaped")); !os.IsNotExist(err) {
-		t.Fatal("fake descendant survived stop", err)
+	// The final counter was written while the grandchild held this lock. The
+	// kernel releases it on process exit. Allow for delayed Windows lock release.
+	liveness, err := fslock.Acquire(t.Context(), filepath.Join(vars["home"], "descendant-alive.lock"),
+		fslock.Options{NoCreate: true, Wait: 5 * time.Second})
+	if err != nil {
+		t.Fatal("stop did not release the grandchild's liveness lock", err)
+	}
+	if err := liveness.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -180,7 +197,8 @@ func TestCanaryBudgetProcess(t *testing.T) {
 	if !strings.HasPrefix(*pilotHelper, "budget-") {
 		t.Skip("offline fake child only")
 	}
-	dir := filepath.Join(os.Getenv("HOME"), ".codex", "sessions")
+	home := os.Getenv("HOME")
+	dir := filepath.Join(home, ".codex", "sessions")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -191,6 +209,12 @@ func TestCanaryBudgetProcess(t *testing.T) {
 		id, parent, input = "worker-001", "root-001", 200
 	case "grandchild":
 		id, parent, input = "grandchild-001", "worker-001", 510
+		liveness, err := fslock.Acquire(t.Context(), filepath.Join(home, "descendant-alive.lock"),
+			fslock.Options{Wait: fslock.NoWait})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = liveness.Close() }()
 	}
 	data := fakeRollout(id, parent, "", "normal", input, 0, 5, 1)
 	if err := os.WriteFile(filepath.Join(dir, stage+".jsonl"), data, 0o600); err != nil {
@@ -215,8 +239,14 @@ func TestCanaryBudgetProcess(t *testing.T) {
 		defer func() { _ = child.Wait() }()
 	}
 	if stage == "grandchild" {
-		time.Sleep(100 * time.Millisecond)
-		_ = os.WriteFile(filepath.Join(os.Getenv("HOME"), "escaped"), []byte("survived"), 0o600)
+		gate, err := fslock.Acquire(t.Context(), filepath.Join(home, "descendant-exit.lock"), fslock.Options{NoCreate: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := gate.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return
 	}
 	time.Sleep(5 * time.Second)
 }

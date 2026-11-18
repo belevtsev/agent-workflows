@@ -8,7 +8,7 @@ You changed nothing yet and run the checks to learn the state.
 $ kitsu run
 == unit: sh check.sh
 unit tests passed
-== unit: source_changed: the source changed during the run: report.txt; when the check writes these files, list them in .gitignore or write them outside the working tree
+== unit: source_changed: the source changed during the run: report.txt; inspect tracked edits; for generated outputs, use an ignored directory or write outside the working tree
    log: <repo>/.git/kitsu/logs/<run>.log
 == lint: service-lint app
 == lint: failed: the program `service-lint` could not be started: exec: "service-lint": executable file not found in $PATH

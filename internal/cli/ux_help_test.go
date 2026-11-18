@@ -160,3 +160,41 @@ func TestUXCanonicalMutationsAndAliasesReceiveGuardProtection(t *testing.T) {
 		}
 	}
 }
+
+func TestTaskScopeChoicesAreDiscoverableAndValidatedBeforeOpeningRepository(t *testing.T) {
+	t.Chdir(t.TempDir())
+	for _, tc := range []struct{ verb, flag, choices string }{
+		{"start", "until", "plan, implement, review, verify, deliver"},
+		{"open", "until", "plan, implement, review, verify, deliver"},
+		{"extend", "until", "plan, implement, review, verify, deliver"},
+		{"open", "entry", "plan, implement, review, verify"},
+	} {
+		var out bytes.Buffer
+		cfg := Config{Out: &out}
+		if err := Execute(t.Context(), []string{"task", tc.verb, "--help"}, cfg); err != nil {
+			t.Fatal(err)
+		}
+		help := strings.Join(strings.Fields(out.String()), " ")
+		flagHelp := "--until <outcome> finish at "
+		if tc.flag == "entry" {
+			flagHelp = "--entry <stage> start at "
+		}
+		if !strings.Contains(help, flagHelp+tc.choices) || (tc.verb == "start" && !strings.Contains(help, "kitsu task start --resume")) {
+			t.Errorf("task %s help lacks choices or resume example", tc.verb)
+		}
+		for _, value := range []string{"", "typo"} {
+			args := []string{"task", tc.verb, "sample", "--" + tc.flag + "=" + value}
+			if tc.verb == "start" {
+				args = append(args, "--host", "codex", "--print")
+			}
+			err := Execute(t.Context(), args, cfg)
+			if ExitCode(err) != ExitUsage || !strings.Contains(err.Error(), "--"+tc.flag) || !strings.Contains(err.Error(), tc.choices) {
+				t.Errorf("%q: got %v, want choices for --%s", args, err, tc.flag)
+			}
+		}
+	}
+	err := Execute(t.Context(), []string{"task", "open", "sample", "--request", "test"}, Config{})
+	if ExitCode(err) != ExitUsage || !strings.Contains(err.Error(), "requires --until") {
+		t.Errorf("missing outcome: %v", err)
+	}
+}

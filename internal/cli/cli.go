@@ -48,7 +48,7 @@ func commands() []command {
 		{"context", "[--host claude|codex]", "Print what an agent should know at the start of a session here", "\n  --host claude|codex       read the host's notice from standard input and judge its directory\n  collect --request <file>  batch source reads and searches; run `kitsu context collect --help`\n  show <artifact-id>        expand retained evidence; run `kitsu context show --help`\n", runContext},
 		{"hook", "<name> [<argument>...]", "Decide for git: pre-commit, pre-merge-commit or pre-push", "\n  <name>         pre-commit, pre-merge-commit or pre-push\n  <argument>...  what git gives that hook; the hook files that kitsu init writes pass them on\n", runHook},
 		{"guard", "[--host claude|codex]", "For an agent host's hook: ask before a git call that skips the hooks, or an edit of kitsu.toml, a hook or a record", "\n  --host claude  the answer asks the user; this is the default\n  --host codex   the answer denies the call and gives the reason\n", runGuard},
-		{"uninstall", "", "Remove the hooks kitsu wrote and its records; kitsu.toml stays", "", runUninstall},
+		{"uninstall", "[--purge]", "Detach owned hooks; optionally purge the shared check and token store", "\n  --purge  Delete shared check and token evidence after complete hook removal.\n", runUninstall},
 		{"version", "", "Print the version, the revision and the build time", "", runVersion},
 	}
 }

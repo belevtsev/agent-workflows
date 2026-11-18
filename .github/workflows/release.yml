@@ -142,6 +142,7 @@ jobs:
           subject-path: |
             dist/*.tar.gz
             dist/*.zip
+            .kitsu-release-plugin/kitsu-plugin.zip
             install.sh
             install.ps1
       # .goreleaser.yaml makes the release a draft. It becomes public only

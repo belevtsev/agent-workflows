@@ -33,6 +33,9 @@ type Job struct {
 	Program string
 	// Out and Err receive the program's output as it is produced.
 	Out, Err io.Writer
+	// CheckInputs rechecks additional caller-owned inputs after execution, such as file
+	// bytes that Git normalizes. The caller observes them before the run.
+	CheckInputs func(context.Context) error
 }
 
 // Result is a finished run.
@@ -126,11 +129,14 @@ func classify(ctx context.Context, repo *gitx.Repo, st *store.Store, job Job, en
 			detail += ": " + ended.Err.Error()
 		}
 		return ending{outcome: store.Failed, detail: detail}
-	case ended.Code != 0:
+	case ended.Code != 0 && job.CheckInputs == nil:
 		return ending{outcome: store.Failed, exit: &ended.Code}
 	}
-	exit := 0
+	exit := ended.Code
 	after, err := repo.Snapshot(ctx, st.Tmp())
+	if err == nil && after == job.Tree && job.CheckInputs != nil {
+		err = job.CheckInputs(ctx)
+	}
 	if err != nil {
 		if ctx.Err() != nil {
 			return ending{outcome: store.Interrupted, exit: &exit}
@@ -138,6 +144,9 @@ func classify(ctx context.Context, repo *gitx.Repo, st *store.Store, job Job, en
 		return ending{outcome: store.SourceChanged, exit: &exit, detail: "after the run " + err.Error()}
 	}
 	if after == job.Tree {
+		if exit != 0 {
+			return ending{outcome: store.Failed, exit: &exit}
+		}
 		return ending{outcome: store.Passed, exit: &exit}
 	}
 	end := ending{outcome: store.SourceChanged, exit: &exit, detail: "the source changed during the run"}
@@ -150,7 +159,7 @@ func classify(ctx context.Context, repo *gitx.Repo, st *store.Store, job Job, en
 	}
 	// A file the check itself wrote is the usual cause, and the next run
 	// would pass only because the file is then already there.
-	end.detail += "; when the check writes these files, list them in .gitignore or write them outside the working tree"
+	end.detail += "; inspect tracked edits; for generated outputs, use an ignored directory or write outside the working tree"
 	return end
 }
 

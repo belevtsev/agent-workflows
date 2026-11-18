@@ -1,0 +1,118 @@
+{
+  "os": "Linux",
+  "kitsu_binary_sha256": "3eb2415ac28dfa6f61ca26c10e8514c7935380e90349eb4fb0dfcebc397c0bb6",
+  "model_requests": 0,
+  "install": {
+    "source": "GoReleaser archives",
+    "plugin_zip_sha256": "47f973636710a185867af733f09aa75de2d6fc922a9a3779d2960c54284e9b7d",
+    "version": "v0.0.1-local-preview",
+    "installed_binary_sha256": "3eb2415ac28dfa6f61ca26c10e8514c7935380e90349eb4fb0dfcebc397c0bb6"
+  },
+  "codex": {
+    "version": "codex-cli 0.169.0",
+    "ready": true,
+    "checks": {
+      "kitsu_cli": "pass",
+      "host_cli": "pass",
+      "plugin": "pass",
+      "task_skill": "pass",
+      "hooks": "pass",
+      "hook_runtime": "warn",
+      "git_gate": "warn"
+    },
+    "handoff_preview": true,
+    "enabled_skills": [
+      "kitsu:kitsu",
+      "kitsu:task"
+    ],
+    "fresh_install_hook_trust": {
+      "preToolUse": "untrusted",
+      "sessionStart": "untrusted",
+      "sessionEnd": "untrusted",
+      "subagentStop": "untrusted"
+    },
+    "legacy_task_skill_control": {
+      "exit": 5,
+      "detail": "The installed task skill does not declare harness protocol 1. Update the Kitsu plugin to match this CLI.",
+      "skill_sha256": "3bc8a15952af9104c80eb042b62d72ab3a22c53f69d8349c0f308ccb7ae0dea9"
+    }
+  },
+  "claude": {
+    "version": "2.1.325 (Claude Code)",
+    "ready": true,
+    "checks": {
+      "kitsu_cli": "pass",
+      "host_cli": "pass",
+      "plugin": "pass",
+      "task_skill": "pass",
+      "hooks": "pass",
+      "hook_runtime": "warn",
+      "git_gate": "warn"
+    },
+    "handoff_preview": true,
+    "commands": [
+      "kitsu:kitsu",
+      "kitsu:task"
+    ],
+    "agents": [
+      "kitsu:architect",
+      "kitsu:developer",
+      "kitsu:git",
+      "kitsu:lookup",
+      "kitsu:quality-engineer",
+      "kitsu:reviewer",
+      "kitsu:spec-writer"
+    ],
+    "session_start_exit": 0,
+    "projected_always_on_tokens": 297,
+    "task_skill_sha256": "3fa3583ce0df475994122958625237cfcf19a45a0265ab53af44d09cf73d1638",
+    "legacy_task_skill_control": {
+      "exit": 5,
+      "detail": "The installed task skill does not declare harness protocol 1. Update the Kitsu plugin to match this CLI.",
+      "skill_sha256": "3bc8a15952af9104c80eb042b62d72ab3a22c53f69d8349c0f308ccb7ae0dea9"
+    }
+  },
+  "installed_cli_journey": {
+    "entry": "verify",
+    "resumed": "done",
+    "delivery": "committed",
+    "clean_checkout": true,
+    "host_judgment": "scripted"
+  },
+  "published_release_control": {
+    "version": "v0.0.1",
+    "revision": "c0b3c74657875cf996722bf9e82bd679f86a4ac5",
+    "platform": "linux_amd64",
+    "daily_open_help_exit": 2,
+    "result": "unknown command \"task open\"",
+    "plugin_archive_available": false
+  },
+  "preview_build": {
+    "release_published": false,
+    "platforms": [
+      "darwin_amd64",
+      "darwin_arm64",
+      "linux_amd64",
+      "linux_arm64",
+      "windows_amd64",
+      "windows_arm64"
+    ],
+    "sha256sums": {
+      "install.ps1": "5c44aad8713e84a00b400f68f319cd728f6b7b6f858565f13cbbaa3f13494dc4",
+      "install.sh": "f37de4247d1724ae8923ef4043a7654827b5c1f2e6da73b82865112cd4acf13c",
+      "kitsu-plugin.zip": "47f973636710a185867af733f09aa75de2d6fc922a9a3779d2960c54284e9b7d",
+      "kitsu_v0.0.1-local-preview_darwin_amd64.tar.gz": "f23c7babdec30146e033f7e169537f7d472f4e1bad8ba7682555c17ec83f6849",
+      "kitsu_v0.0.1-local-preview_darwin_amd64.tar.gz.sbom.json": "15d2bb82d7fa12f8278a713a747408d6840b6b4cafca86f7650eecb28b40ebea",
+      "kitsu_v0.0.1-local-preview_darwin_arm64.tar.gz": "c6dd901c86bcbf93a85bb77743afad25af50348d72296eaf119214ab4040abb6",
+      "kitsu_v0.0.1-local-preview_darwin_arm64.tar.gz.sbom.json": "3380f6724942bb190d72195662fa11d01415f2b23a89f57b2ea8cb93480201fb",
+      "kitsu_v0.0.1-local-preview_linux_amd64.tar.gz": "38da929e129a68e5f7b0ccf3df40a19de549ba5a234ab9c6ccbdd7b5fa0db4a4",
+      "kitsu_v0.0.1-local-preview_linux_amd64.tar.gz.sbom.json": "9b045e1a58d604e14676dd8df345cf7e250169a23f2053d1fd46b59544daad83",
+      "kitsu_v0.0.1-local-preview_linux_arm64.tar.gz": "1af94c58f80a4489afa923b7afb4b79d971789f9c8c353539bafc40479cda7eb",
+      "kitsu_v0.0.1-local-preview_linux_arm64.tar.gz.sbom.json": "0ed208a2c17474a4a8264406644842edc19658c9363097d03fe7348064bdba96",
+      "kitsu_v0.0.1-local-preview_windows_amd64.zip": "72884ad7d65ccc82c4ba5b5178ea2919b018d49583dacbde56f0d50d6100a258",
+      "kitsu_v0.0.1-local-preview_windows_amd64.zip.sbom.json": "2c1acef0a876b04b7f4bd30c47c65b6cafa6c70840e584daba4275b41bb9bd5d",
+      "kitsu_v0.0.1-local-preview_windows_arm64.zip": "cfd9715004759862dba62ca205e68db16830cd4a7fb7807e431531a162d7c0db",
+      "kitsu_v0.0.1-local-preview_windows_arm64.zip.sbom.json": "b90751dbecf420603cd0973592da34e4e1d4f3283e1a10541866cedb9de5cfdb"
+    }
+  }
+}

@@ -8,7 +8,7 @@ import (
 )
 
 var uxGroups = [][2]string{
-	{"agent", "Check coding-agent setup"},
+	{"agent", "Install or check coding-agent plugins"},
 	{"task", "Start a task or inspect task stages and saved records"},
 	{"context", "Collect and expand compact context; bare context preserves session-hook output"},
 	{"role", "Choose models, reasoning, skills and role instructions"},

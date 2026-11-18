@@ -39,6 +39,8 @@ kitsu task finish --help
 kitsu check run --help
 ```
 
+When a response has many lines, the pager measures each proposed line against the byte budget and preserves its continuation cursor. See the [local large-read benchmark](benchmarks/kitsu-product-audit-2026-11-18.md#follow-up-engineering-and-offline-evidence).
+
 ## Collect only the evidence you need
 
 Prefer a native host read for a short whole file and a scoped native search when its output

@@ -1,6 +1,7 @@
 package tokens
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -12,6 +13,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/belevtsev/kitsu/v3/internal/fslock"
 	"github.com/belevtsev/kitsu/v3/internal/roles"
 )
 
@@ -36,7 +38,9 @@ type Start struct {
 	// the record gives no label, so that a start whose record cannot be
 	// read still has its role.
 	Role string `json:"role,omitempty"`
-	// Known is false when the counts could not be read; Why says why.
+	// Partial indicates that Models holds an earlier measurement because a later read failed.
+	Partial bool `json:"partial,omitempty"`
+	// Known is false when no counts could be read. Why records the last failure.
 	Known  bool              `json:"known"`
 	Why    string            `json:"why,omitempty"`
 	Models map[string]Counts `json:"models,omitempty"`
@@ -92,17 +96,20 @@ func stem(path string) string {
 	return strings.TrimSuffix(base, filepath.Ext(base))
 }
 
-// start makes what is stored of one start. role is the role the notice
-// names; it is kept when the record gives no label.
-func start(host, session, agent, record, role string, r reading) Start {
-	s := Start{Version: 1, Host: host, Session: session, Agent: agent, Record: record, Size: r.size, Known: r.why == "", Why: r.why, Models: r.models}
-	if agent == SessionAgent {
-		return s
+// refresh takes a new measurement and retains the last attributable counters
+// when another read of the same transcript fails.
+func (s Start) refresh(old Start) Start {
+	r := reading{why: "the notice names no record of the role"}
+	if s.Record != "" {
+		r = readNow(s.Host, s.Record)
 	}
-	if label, ok := ParseLabel(r.brief); ok {
-		s.Task, s.Stage, s.Round = label.Task, label.Stage, label.Round
-	} else {
-		s.Role = role
+	if r.why != "" && old.Known && old.Record == s.Record {
+		old.Partial, old.Why = true, r.why
+		return old
+	}
+	s = Start{Version: 1, Host: s.Host, Session: s.Session, Agent: s.Agent, Record: s.Record, Role: s.Role, Size: r.size, Known: r.why == "", Why: r.why, Models: r.models}
+	if label, ok := ParseLabel(r.brief); ok && s.Agent != SessionAgent {
+		s.Task, s.Stage, s.Round, s.Role = label.Task, label.Stage, label.Round, ""
 	}
 	return s
 }
@@ -126,7 +133,7 @@ func readNow(host, path string) reading {
 // every record stored for the session that has grown since: the host may
 // write a record after its notice. Giving the same notice again writes the
 // same files.
-func Record(dir, host string, notice Notice) error {
+func Record(ctx context.Context, dir, host string, notice Notice) error {
 	if readers[host] == nil {
 		return fmt.Errorf("unknown host %q; the hosts are %s and %s", host, Claude, Codex)
 	}
@@ -137,39 +144,59 @@ func Record(dir, host string, notice Notice) error {
 	if session == "" || session == "." {
 		return errors.New("the notice names no session")
 	}
-	var starts []Start
-	// Claude Code ends its own agents, such as a prompt suggestion, with an
-	// empty agent_type. They are no start.
-	internal := host == Claude && notice.AgentID != "" && notice.AgentType == ""
-	switch {
-	case internal:
-	case notice.AgentTranscript != "":
-		agent := notice.AgentID
-		if agent == "" {
-			agent = stem(notice.AgentTranscript)
+	starts, err := notice.starts(host, session)
+	if err != nil || len(starts) == 0 {
+		return err
+	}
+	folder := filepath.Join(dir, fileName(session))
+	if err := os.MkdirAll(folder, 0o700); err != nil {
+		return err
+	}
+	lock, err := fslock.Acquire(ctx, filepath.Join(folder, ".record.lock"), fslock.Options{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = lock.Close() }()
+	for i, s := range starts {
+		old, _ := load(filepath.Join(folder, fileName(s.Agent)+".json"))
+		if old.Host != host || old.Session != session || old.Agent != s.Agent {
+			old = Start{}
 		}
-		starts = append(starts, start(host, session, "agent-"+agent, notice.AgentTranscript, noticeRole(notice.AgentType), readNow(host, notice.AgentTranscript)))
-	case notice.AgentID != "":
-		// The host says that a role ended and names no record of it: the
-		// start is kept, with unknown tokens, so that no sum leaves it out
-		// in silence.
-		unread := reading{why: "the notice names no record of the role"}
-		starts = append(starts, start(host, session, "agent-"+notice.AgentID, "", noticeRole(notice.AgentType), unread))
+		if s.Record == "" {
+			s.Record = old.Record
+		}
+		starts[i] = s.refresh(old)
 	}
-	if notice.Transcript != "" {
-		starts = append(starts, start(host, session, SessionAgent, notice.Transcript, "", readNow(host, notice.Transcript)))
+	prior, err := again(dir, session, starts)
+	if err != nil {
+		return err
 	}
-	if len(starts) == 0 && internal {
-		return nil
-	} else if len(starts) == 0 {
-		return errors.New("the notice names no record")
-	}
-	for _, s := range append(again(dir, session, starts), starts...) {
+	for _, s := range append(prior, starts...) {
 		if err := write(dir, s); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (n Notice) starts(host, session string) ([]Start, error) {
+	var starts []Start
+	// Claude's internal suggestions do not represent role starts.
+	internal := host == Claude && n.AgentID != "" && n.AgentType == ""
+	if !internal && (n.AgentTranscript != "" || n.AgentID != "") {
+		agent := n.AgentID
+		if agent == "" {
+			agent = stem(n.AgentTranscript)
+		}
+		starts = append(starts, Start{Host: host, Session: session, Agent: "agent-" + agent, Record: n.AgentTranscript, Role: noticeRole(n.AgentType)})
+	}
+	if n.Transcript != "" {
+		starts = append(starts, Start{Host: host, Session: session, Agent: SessionAgent, Record: n.Transcript})
+	}
+	if len(starts) == 0 && !internal {
+		return nil, errors.New("the notice names no record")
+	}
+	return starts, nil
 }
 
 // write stores one start. The file appears whole or not at all.
@@ -202,22 +229,23 @@ func write(dir string, s Start) error {
 // again reads once more the record of each start stored for the session
 // that named does not hold, when the record still exists and its size has
 // changed. A start whose new reading is unknown keeps its counts.
-func again(dir, session string, named []Start) []Start {
-	files, _ := filepath.Glob(filepath.Join(dir, fileName(session), "*.json"))
+func again(dir, session string, named []Start) ([]Start, error) {
+	files, err := sessionFiles(filepath.Join(dir, fileName(session)))
+	if err != nil {
+		return nil, err
+	}
 	var out []Start
 	for _, file := range files {
 		s, ok := load(file)
 		if !ok || s.Session != session || readers[s.Host] == nil || slices.ContainsFunc(named, func(n Start) bool { return n.Agent == s.Agent }) {
 			continue
 		}
-		if info, err := os.Stat(s.Record); s.Record == "" || err != nil || info.Size() == s.Size {
+		if info, err := os.Stat(s.Record); s.Record == "" || err != nil || (info.Size() == s.Size && !s.Partial) {
 			continue
 		}
-		if r := readNow(s.Host, s.Record); r.why == "" {
-			out = append(out, start(s.Host, s.Session, s.Agent, s.Record, s.Role, r))
-		}
+		out = append(out, s.refresh(s))
 	}
-	return out
+	return out, nil
 }
 
 // load reads one stored start; ok is false when it cannot be read.
@@ -230,17 +258,55 @@ func load(file string) (s Start, ok bool) {
 // Load reads every start stored under dir, in the order of their paths. A
 // file that cannot be read is named in damaged.
 func Load(dir string) (starts []Start, damaged []string, err error) {
-	files, err := filepath.Glob(filepath.Join(dir, "*", "*.json"))
+	folders, err := archiveEntries(dir)
 	if err != nil {
 		return nil, nil, err
 	}
-	slices.Sort(files)
-	for _, file := range files {
-		if s, ok := load(file); ok {
-			starts = append(starts, s)
-		} else {
-			damaged = append(damaged, file)
+	for _, folder := range folders {
+		if !folder.IsDir() {
+			continue
+		}
+		files, err := sessionFiles(filepath.Join(dir, folder.Name()))
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, file := range files {
+			if s, ok := load(file); ok {
+				starts = append(starts, s)
+			} else {
+				damaged = append(damaged, file)
+			}
 		}
 	}
 	return starts, damaged, nil
+}
+
+func sessionFiles(dir string) ([]string, error) {
+	entries, err := archiveEntries(dir)
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".json") {
+			files = append(files, filepath.Join(dir, e.Name()))
+		}
+	}
+	return files, nil
+}
+
+func archiveEntries(dir string) ([]os.DirEntry, error) {
+	// Directory enumeration can return no entries for a regular file on Windows.
+	info, err := os.Stat(dir)
+	var entries []os.DirEntry
+	if err == nil {
+		if !info.IsDir() {
+			return nil, fmt.Errorf("token archive path %q is not a directory", dir)
+		}
+		entries, err = os.ReadDir(dir)
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	return entries, err
 }

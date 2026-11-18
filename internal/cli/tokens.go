@@ -8,12 +8,14 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/belevtsev/kitsu/v3/internal/decl"
 	"github.com/belevtsev/kitsu/v3/internal/gitx"
+	"github.com/belevtsev/kitsu/v3/internal/harness"
 	"github.com/belevtsev/kitsu/v3/internal/store"
 	"github.com/belevtsev/kitsu/v3/internal/tokens"
 )
@@ -67,24 +69,37 @@ func runTokens(ctx context.Context, cfg Config, args []string) error {
 		printAdviserTokenUsage(cfg.Out, activity.all)
 		return nil
 	}
-	found, sessions, unlabelled, ok := report.Find(*task)
-	if !ok {
-		return failf("no start is recorded for the task `%s`", *task)
+	return printNamedUsage(cfg, s.repo, *task, *asJSON, report, activity.byTask[*task])
+}
+
+func printNamedUsage(cfg Config, repo *gitx.Repo, task string, asJSON bool, report *tokens.Report, advisers *adviserTokenUsage) error {
+	found, sessions, unlabelled, ok := report.Find(task)
+	if !ok || found.Starts == 0 {
+		daily, err := savedUsageTask(repo, task)
+		if err != nil {
+			return failf("read daily task usage: %v", err)
+		}
+		if daily != nil {
+			return printDailySessionUsage(cfg, daily.ID, actorSessionUsage(daily.Events, report.Sessions), advisers, asJSON)
+		}
 	}
-	if *asJSON {
+	if !ok {
+		return failf("no start is recorded for the task `%s`", task)
+	}
+	if asJSON {
 		return printJSON(cfg, struct {
 			*tokens.Task
 			Unlabelled []tokens.Unlabelled `json:"unlabelled"`
 			Sessions   []tokens.Session    `json:"sessions"`
 			Advisers   *adviserTokenUsage  `json:"advisers,omitempty"`
-		}{found, unlabelled, sessions, activity.byTask[*task]})
+		}{found, unlabelled, sessions, advisers})
 	}
-	if found.Starts > 0 || activity.byTask[*task] == nil {
+	if found.Starts > 0 || advisers == nil {
 		printTask(cfg.Out, found, sessions, unlabelled)
 	} else {
 		fmt.Fprintln(cfg.Out, found.Task+": no measured host token usage")
 	}
-	printAdviserTokenUsage(cfg.Out, activity.byTask[*task])
+	printAdviserTokenUsage(cfg.Out, advisers)
 	return nil
 }
 
@@ -99,7 +114,7 @@ func printJSON(cfg Config, value any) error {
 
 // runTokensRecord reads the notice a host gives its hook when a role or a
 // session ends, and stores the counts of the records the notice names. It
-// stores nothing outside a repository that holds kitsu.toml.
+// records only in a repository with a declaration or an opened local harness task.
 func runTokensRecord(ctx context.Context, cfg Config, args []string) error {
 	if os.Getenv("KITSU_ADVISER_CALL") != "" {
 		return nil
@@ -127,13 +142,13 @@ func runTokensRecord(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return failf("%v", err)
 	}
-	if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err != nil {
+	if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err != nil && !hasLocalHarnessTasks(repo) {
 		return nil
 	}
 	if bad {
 		return failf("the notice on standard input is not a JSON object")
 	}
-	if err := tokens.Record(tokensDir(repo), *host, notice); err != nil {
+	if err := tokens.Record(ctx, tokensDir(repo), *host, notice); err != nil {
 		return failf("%v", err)
 	}
 	return nil
@@ -161,7 +176,7 @@ func amount(a tokens.Amount) string {
 
 // atLeast marks a sum that leaves a start out.
 func atLeast(e tokens.Entry) string {
-	if e.UnknownStarts > 0 && !e.Total.Unknown {
+	if (e.UnknownStarts > 0 || e.PartialStarts > 0) && !e.Total.Unknown {
 		return "at least " + amount(e.Total)
 	}
 	return amount(e.Total)
@@ -222,7 +237,11 @@ func printSessions(out io.Writer, sessions []tokens.Session, unlabelled []tokens
 
 // printTask prints the report of one task.
 func printTask(out io.Writer, t *tokens.Task, sessions []tokens.Session, unlabelled []tokens.Unlabelled) {
-	fmt.Fprintf(out, "%s: %s tokens in %s\n", t.Task, commas(t.Total), plural(t.Starts, "start of a role", "starts of roles"))
+	total := commas(t.Total)
+	if !t.Complete {
+		total = "at least " + total
+	}
+	fmt.Fprintf(out, "%s: %s tokens in %s\n", t.Task, total, plural(t.Starts, "start of a role", "starts of roles"))
 	// With an unknown start the share is a share of what is known.
 	known := ""
 	if !t.Complete {
@@ -231,7 +250,7 @@ func printTask(out io.Writer, t *tokens.Task, sessions []tokens.Session, unlabel
 	fmt.Fprintf(out, "%s of %s%s tokens, %d%%, went to the workflow and not to the first writing of the specification, the design, the tests and the code\n",
 		commas(t.Flow.Total), commas(t.Total), known, t.FlowShare)
 	if len(t.UnknownRecords) > 0 {
-		fmt.Fprintf(out, "the tokens of %s are unknown, so every sum is at least the number shown:\n", unknownWhat(t))
+		fmt.Fprintf(out, "the final token counts for %s are unknown, so every sum is at least the number shown:\n", unknownWhat(t))
 		for _, record := range t.UnknownRecords {
 			fmt.Fprintf(out, "  %s\n", record)
 		}
@@ -254,7 +273,7 @@ func printTask(out io.Writer, t *tokens.Task, sessions []tokens.Session, unlabel
 	_ = w.Flush()
 	fmt.Fprintln(out)
 	printSessions(out, sessions, unlabelled)
-	fmt.Fprintln(out, "workflow tokens are coordination (the session itself), review, lookup, git and rework (a later round of a writing role)")
+	fmt.Fprintln(out, "workflow tokens are coordination (the session itself), review, lookup, git and rework (a repair or a later managed writing round)")
 }
 
 // unknownWhat names what has unknown tokens: starts of roles, the session
@@ -276,4 +295,36 @@ func unknownWhat(t *tokens.Task) string {
 // kinds are the columns of the four kinds, their sum and the models.
 func kinds(e tokens.Entry) string {
 	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s", commas(e.Input), commas(e.CacheWrite), commas(e.CacheRead), commas(e.Output), atLeast(e), strings.Join(e.Models, ", "))
+}
+
+func (v *harnessView) loadUsage(repo *gitx.Repo, events []harness.Event) {
+	starts, damaged, err := tokens.Load(tokensDir(repo))
+	if err != nil {
+		v.Coverage, v.UsageError = "unavailable", err.Error()
+		return
+	}
+	report := tokens.Build(starts, damaged)
+	v.observeUsage(report)
+	if v.Captured == nil {
+		v.ActorSessions = actorSessionUsage(events, report.Sessions)
+	}
+}
+
+// A missing coordinator receipt must not erase the worker tokens we did see.
+func (v *harnessView) observeUsage(report *tokens.Report) {
+	v.Coverage = "unavailable"
+	task, sessions, _, found := report.Find(v.Task)
+	if !found {
+		return
+	}
+	known := slices.ContainsFunc(task.Roles, func(e tokens.Entry) bool { return !e.Total.Unknown }) ||
+		slices.ContainsFunc(sessions, func(s tokens.Session) bool { return !s.Shared && !s.Total.Unknown })
+	if !known {
+		return
+	}
+	v.Captured = &task.Total
+	v.Coverage = "partial"
+	if task.Complete && len(task.SharedSessions) == 0 {
+		v.Coverage = "complete for attributed notices"
+	}
 }

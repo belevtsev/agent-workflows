@@ -1,6 +1,6 @@
 ---
 name: quality-engineer
-description: Writes the tests of the scenarios before the code exists. Started only by the coordinator of the kitsu task workflow, with a brief.
+description: Writes the tests of the scenarios before the code exists. Requires a Kitsu coordinator brief.
 model: sonnet
 effort: high
 tools: Read, Grep, Glob, Edit, Write, Bash, Skill

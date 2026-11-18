@@ -28,12 +28,12 @@ The defaults are `$HOME/.local/bin/kitsu` on macOS/Linux and
 Kitsu uses Git to work in a repository; Windows hooks use the shell supplied by Git for Windows.
 
 The installer adds its directory to user `PATH` unless you opt out. Rerunning it does not add
-duplicate entries. It installs the CLI only; add the [agent plugin](../README.md#for-a-coding-agent)
+duplicate entries. The release command installs the CLI. Add the [agent plugin](../README.md#for-a-coding-agent)
 through your host's marketplace. Provider CLIs and Git are installed separately.
 
 ## Check the host and start a task
 
-After adding the [Kitsu plugin](../README.md#for-a-coding-agent), run:
+For the daily harness, install a CLI and marketplace from the same preview build as described below. From your working repository, run:
 
 ```sh
 kitsu agent check --host codex
@@ -70,12 +70,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\kitsu-install.ps1
 
 These examples leave `PATH` unchanged. Use the installed executable by its full path, or add the
 chosen directory to user `PATH`. The selected version must be published. To install a local
-CI build, add `--archive-dir` or `-ArchiveDir` and match its archive filenames.
+CI build, use the bundled installer and pass its artifact directory.
 `-ExecutionPolicy Bypass` applies only to that PowerShell process.
 
 | macOS/Linux flag | PowerShell parameter | Environment default | Purpose |
 | --- | --- | --- | --- |
-| `--version TAG` | `-Version TAG` | `KITSU_VERSION` | Match the archive version; the current default is `v0.0.1`. |
+| `--version TAG` | `-Version TAG` | `KITSU_VERSION` | Select a tag. Downloads default to `v0.0.1`. Local bundles can supply the tag. |
+| `--host codex\|claude` | `-AgentHost codex\|claude` | — | Register the plugin from the same local artifact with the selected host. |
 | `--install-dir DIR` | `-InstallDir DIR` | `KITSU_INSTALL_DIR` | Choose the destination directory. |
 | `--no-modify-path` | `-NoModifyPath` | `KITSU_NO_MODIFY_PATH=1` | Install without changing user `PATH`. |
 | `--archive-dir DIR` | `-ArchiveDir DIR` | `KITSU_ARCHIVE_DIR` | Use local archives and `SHA256SUMS`, with no download. |
@@ -111,29 +112,82 @@ Reusing a saved installer keeps that script's default unless you override it.
 
 ## Install a CI artifact before publication
 
-For contributors trying an unpublished commit:
+Download **kitsu-archives** from a successful run for the revision you want, extract it, and open a terminal in the extracted directory. Keep the platform archives, `kitsu-plugin.zip`, installers and `SHA256SUMS` together. Install the host CLI you want to use. [CI runs](https://github.com/belevtsev/kitsu/actions/workflows/ci.yml)
 
-1. Open a successful run of [CI](https://github.com/belevtsev/kitsu/actions/workflows/ci.yml)
-   for the revision you want, then download and extract its **kitsu-archives** artifact.
-2. Keep the contained platform archives intact alongside `install.sh`, `install.ps1` and `SHA256SUMS`.
-3. Run the bundled installer with that directory. It verifies the selected local archive and uses no network.
-
-On macOS or Linux:
+With a build whose installer lists the host option, one command installs the platform CLI and registers the local plugin. Choose `codex` or `claude`.
 
 ```sh
-sh /path/to/kitsu-archives/install.sh --archive-dir /path/to/kitsu-archives
+sh ./install.sh --archive-dir . --host codex
 ```
-
-On Windows:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "C:\path\kitsu-archives\install.ps1" -ArchiveDir "C:\path\kitsu-archives"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -ArchiveDir . -AgentHost codex
 ```
 
-Use scripts and archives from the same download. If its filenames use a different version,
-pass it with `--version` or `-Version`. To update, download a newer successful artifact and
-rerun its bundled installer. Check the revision printed by `kitsu version` against the CI run:
-different commits can share the same version label.
+Omit the host option for a CLI-only install. With one matching platform archive in the manifest, the installer can discover a preview tag. When multiple tags match, select one with `--version TAG` or `-Version TAG`. Use scripts and archives from the same download. For an update, rerun the command from the new bundle. Check the revision from `kitsu version` against the CI run because two builds can share a version label.
+
+### Register the matching marketplace
+
+If host setup needs attention after the CLI is installed, fix the reported problem, then run the following from the same extracted bundle. You can also use it to add a second host.
+
+```sh
+kitsu agent setup --host claude --archive-dir .
+kitsu agent check --host claude
+```
+
+Setup verifies the plugin checksum and registers a persistent copy using the selected host. In a new terminal, run `kitsu agent check --host codex` or `--host claude` from the repository where you work. Review Codex hook trust in `/hooks`. Once ready, start a task with `kitsu task start "Add an order CSV export" --host codex`. [Start or resume a daily task](task-harness.md)
+
+<details>
+<summary>Installing an older preview whose installer lacks the host option</summary>
+
+Run the bundled installer with the exact tag shown in its native archive filename, for example `sh ./install.sh --archive-dir . --version TAG` or `.\install.ps1 -ArchiveDir . -Version TAG`. Then register the matching plugin manually.
+
+Choose a build containing `kitsu-plugin.zip` and keep the extracted marketplace in a permanent directory. From the unpacked artifact directory, check the plugin against the bundled manifest and extract it. Use a fresh destination for each build.
+
+On macOS or Linux, set `plugin_dir` to your destination:
+
+```sh
+(
+  set -eu
+  plugin_dir="$HOME/.local/share/kitsu/preview-plugins"
+  test ! -e "$plugin_dir/kitsu-marketplace"
+  line=$(awk '$2 == "kitsu-plugin.zip" { n++; row=$0 } END { if (n!=1) exit 1; print row }' SHA256SUMS)
+  if command -v sha256sum >/dev/null; then
+    echo "$line" | sha256sum -c -
+  else
+    echo "$line" | shasum -a 256 -c -
+  fi
+  mkdir -p "$plugin_dir"
+  unzip -q kitsu-plugin.zip -d "$plugin_dir"
+)
+```
+
+On Windows, in PowerShell:
+
+```powershell
+$pluginDir = Join-Path $env:LOCALAPPDATA "kitsu/preview-plugins"
+if (Test-Path "$pluginDir/kitsu-marketplace") { throw "Choose a fresh destination" }
+$lines = @(Select-String -Path SHA256SUMS -Pattern '^[0-9a-f]{64}  kitsu-plugin\.zip$')
+if ($lines.Count -ne 1) { throw "Expected one plugin checksum" }
+if ((Get-FileHash kitsu-plugin.zip).Hash -ne $lines[0].Line.Split(" ")[0]) { throw "Plugin checksum mismatch" }
+Expand-Archive kitsu-plugin.zip -DestinationPath $pluginDir
+```
+
+Register the absolute path to the extracted marketplace with your chosen host. Replace `/path/to/kitsu-marketplace` with that directory. The local marketplace supplies both skills, the role instructions and the host hook definitions.
+
+```sh
+codex plugin marketplace add /path/to/kitsu-marketplace
+codex plugin add kitsu@kitsu
+```
+
+```sh
+claude plugin marketplace add /path/to/kitsu-marketplace
+claude plugin install kitsu@kitsu
+```
+
+Open a new terminal in your working repository. Run `kitsu task open --help` to confirm the daily CLI is on PATH, then `kitsu agent check --host codex` or `--host claude`. In Codex review the definitions in `/hooks` to enable trusted execution. [Start or resume a daily task](task-harness.md)
+
+</details>
 
 ## Manual archive install
 
@@ -187,14 +241,18 @@ These manual recipes do not change `PATH`. Add the target directory to user `PAT
 terminal, and run `kitsu version`. Building the CLI is a separate
 [contributor option](development.md#build-from-source).
 
+The preview supporting delegated coding and pinned commit ranges used task-skill protocol 2. The source build with configurable daily review requires task-skill protocol 3. Update both the CLI and the registered marketplace when upgrading from the earlier daily preview. Existing task ledgers can still be resumed.
+
 ## What CI checks
 
-CI builds six platform archives, SBOMs, both installers, and `SHA256SUMS` into the
+CI builds six platform archives, their SBOMs, a matching host plugin, both installers, and `SHA256SUMS` into the
 `kitsu-archives` artifact without publishing a release. The Go test harness under
 `scenarios/installers` runs downloaded installer scripts with an isolated home and a `PATH`
 without Go or Git. It exercises local archives, platform selection, checksum rejection, updates,
-and `PATH` behavior. With `KITSU_INSTALL_ARCHIVES`, it also installs the real build archives.
-Linux/macOS run the shell installer; Windows runs both PowerShell 5.1 and 7.
+and `PATH` behavior. With `KITSU_INSTALL_ARCHIVES`, it also installs the real build archives. In a separate disposable Git repository the installed CLI opens a plan, records it, extends the task to implementation, resumes the plan in a new invocation and verifies a real output file.
+It also resumes verify-only tasks on passing and failing staged patches and checks that HEAD, the index and developer files survive. Fixture settings exercise plugin diagnostics even when host executables are absent. A separate subtest detects installed native clients, registers the local marketplace in a fresh profile and previews a task handoff. The log identifies the client version or the reason the native check was skipped. Linux and macOS use the shell installer. Windows runs both PowerShell 5.1 and 7.
+
+For release validation, dispatch the **CI** workflow at the candidate revision with `verify_native_hosts` enabled. The installer jobs provision pinned native Codex and Claude Code clients. They require a result from each host on amd64 and arm64 for Linux, macOS and Windows, including Windows PowerShell 5.1 and 7. The expected matrix contains 16 shell/host combinations. A missing client or missing row fails the requested evidence run. Each `kitsu-native-install-<runner>` artifact contains `results.json` and the Go test log. Check the reported revision, executable and plugin hashes, fresh install, reinstall and resumed task before claiming that combination. Normal CI can skip a client it lacks. [Workflow and pinned versions](../.github/workflows/ci.yml)
 
 After publication, the release workflow tests the actual release installer assets and checks
 the installed version and revision. Preparing installers and archives creates no tag or release.

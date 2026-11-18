@@ -210,7 +210,7 @@ names the files and says what to do:
 
 ```text
 == writes: sh -c echo r > coverage.out
-== writes: source_changed: the source changed during the run: coverage.out; when the check writes these files, list them in .gitignore or write them outside the working tree
+== writes: source_changed: the source changed during the run: coverage.out; inspect tracked edits; for generated outputs, use an ignored directory or write outside the working tree
    log: <repository>/.git/kitsu/logs/20261114T175338Z-db4d8cac.log
 not verified: 1 of 2 checks did not pass; fix what each log shows, then run `kitsu run` again
 ```

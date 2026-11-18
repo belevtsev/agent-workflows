@@ -1,0 +1,270 @@
+{
+  "case_id": "qs-sparse-array-limit",
+  "base_commit": "42eccf0f6292c502fb4bc175191f0812d5476769",
+  "input_source_sha256": "ddc766e885241ed004d614094bc50418d2429ae2b0ca8c3e572bda3cdf251822",
+  "manifest_sha256": "116dfddc2d233e7bffe72bf87e520dbf10710ce577f3aaca55778f7676bd74ce",
+  "production_sha256": "bd904eb7389f39f35432569077d5df4479d55adc205ba6e75222cb4daea27c1d",
+  "model": "gpt-6.2-sol",
+  "effort": "high",
+  "compact": false,
+  "budget": {
+    "captured_limit": 6000000,
+    "stop_at": 5000000,
+    "seconds_per_attempt": 720,
+    "paid_probes": 0,
+    "paid_retries": 0
+  },
+  "runs": [
+    {
+      "order": 1,
+      "arm": "kitsu",
+      "status": "stopped",
+      "solver_seconds": 658.508272509,
+      "setup_seconds": 0.365953684,
+      "grade_seconds": 0.810638017,
+      "clean_commit": false,
+      "candidate_tree": "5ac4dfb7110790669a239051ec07491f4fd9e862",
+      "sessions": [
+        {
+          "role": "coordinator",
+          "models": [
+            "gpt-6.2-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "tokens": 3762842,
+          "calls": {
+            "exec": 41,
+            "spawn_agent": 4,
+            "send_message": 4,
+            "wait_agent": 3
+          }
+        },
+        {
+          "role": "reviewer",
+          "models": [
+            "gpt-6.2-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "tokens": 335263,
+          "calls": {
+            "exec": 6,
+            "send_message": 4
+          }
+        },
+        {
+          "role": "reviewer",
+          "models": [
+            "gpt-6.2-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "tokens": 544540,
+          "calls": {
+            "exec": 8,
+            "send_message": 3
+          }
+        },
+        {
+          "role": "reviewer",
+          "models": [
+            "gpt-6.2-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "tokens": 303160,
+          "calls": {
+            "exec": 7,
+            "send_message": 2
+          }
+        },
+        {
+          "role": "reviewer",
+          "models": [
+            "gpt-6.2-sol"
+          ],
+          "efforts": [
+            "high"
+          ],
+          "tokens": 117982,
+          "calls": {
+            "exec": 3,
+            "send_message": 2
+          }
+        }
+      ],
+      "usage": {
+        "total": 5063787,
+        "input_uncached": 273426,
+        "input_total": 5029650,
+        "cache_read": 4756224,
+        "output": 34137,
+        "reasoning_output_tokens": 14417,
+        "complete": false
+      },
+      "cpu_seconds": 15.623672,
+      "peak_memory_bytes": 191524864,
+      "method_status": "unknown",
+      "method_findings": [],
+      "acceptance": {
+        "passed": 19,
+        "total": 19,
+        "scalar_append": true
+      },
+      "original_suite": true,
+      "grader_integrity": true,
+      "file_integrity_findings": [
+        "original test/control changed or removed: test/parse.js",
+        "original test/control changed or removed: test/utils.js"
+      ],
+      "steps": [
+        {
+          "action": "intake",
+          "findings": 0
+        },
+        {
+          "action": "review",
+          "findings": 5
+        },
+        {
+          "action": "repair",
+          "findings": 0
+        },
+        {
+          "action": "review",
+          "findings": 3
+        },
+        {
+          "action": "repair",
+          "findings": 0
+        },
+        {
+          "action": "review",
+          "findings": 1
+        },
+        {
+          "action": "repair",
+          "findings": 0
+        },
+        {
+          "action": "review",
+          "findings": 0
+        }
+      ],
+      "test_replay": {
+        "changed_test_files": [
+          "parse.js",
+          "utils.js"
+        ],
+        "original_test_files_with_missing_or_reordered_lines": [],
+        "outcomes": {
+          "partial-with-submitted-tests": {
+            "exit_code": 1,
+            "passed_assertions": 614,
+            "failed_assertions": 9,
+            "complete_tap_plan": false
+          },
+          "candidate": {
+            "exit_code": 0,
+            "passed_assertions": 1726,
+            "failed_assertions": 0,
+            "complete_tap_plan": true
+          }
+        }
+      }
+    },
+    {
+      "order": 2,
+      "arm": "codex",
+      "status": "not_launched",
+      "reason": "captured_soft_stop",
+      "usage": null,
+      "solver_seconds": null
+    }
+  ],
+  "captured_total": 5063787,
+  "stop_reason": "captured_soft_stop",
+  "uncounted_tail_possible": true,
+  "exploratory_reviewer_cases": {
+    "partial": {
+      "passed": 2,
+      "total": 12
+    },
+    "reference": {
+      "passed": 2,
+      "total": 12
+    },
+    "kitsu": {
+      "passed": 12,
+      "total": 12
+    }
+  },
+  "repair_snapshot_replay": [
+    {
+      "action": "intake",
+      "tree": "c7c6a280f857d51dc2aee013a69437217085630b",
+      "seconds_since_launch": 31.114,
+      "captured_by_event": 86231,
+      "frozen_passed": 18,
+      "exploratory_passed": 2,
+      "candidate_tape_assertions": 1686,
+      "final_suite_on_stage": {
+        "exit": 1,
+        "passed_assertions": 614,
+        "failed_assertions": 9,
+        "tap_plan": false
+      }
+    },
+    {
+      "action": "repair",
+      "tree": "0b206d9d3bd6345bce36ef2e7052ebf4940552fb",
+      "seconds_since_launch": 290.15,
+      "captured_by_event": 1218992,
+      "frozen_passed": 19,
+      "exploratory_passed": 12,
+      "candidate_tape_assertions": 1718,
+      "final_suite_on_stage": {
+        "exit": 1,
+        "passed_assertions": 630,
+        "failed_assertions": 1,
+        "tap_plan": false
+      }
+    },
+    {
+      "action": "repair",
+      "tree": "f742d985005635ccbd12e89c793a5235fd2fbc63",
+      "seconds_since_launch": 476.343,
+      "captured_by_event": 3030872,
+      "frozen_passed": 19,
+      "exploratory_passed": 12,
+      "candidate_tape_assertions": 1724,
+      "final_suite_on_stage": {
+        "exit": 1,
+        "passed_assertions": 1724,
+        "failed_assertions": 2,
+        "tap_plan": true
+      }
+    },
+    {
+      "action": "repair",
+      "tree": "5ac4dfb7110790669a239051ec07491f4fd9e862",
+      "seconds_since_launch": 612.403,
+      "captured_by_event": 4315187,
+      "frozen_passed": 19,
+      "exploratory_passed": 12,
+      "candidate_tape_assertions": 1726,
+      "final_suite_on_stage": {
+        "exit": 0,
+        "passed_assertions": 1726,
+        "failed_assertions": 0,
+        "tap_plan": true
+      }
+    }
+  ],
+  "review_approval_before_stop_ms": 117
+}

@@ -1,0 +1,1 @@
+I’m seeing double("3") return 6 when passing a string should raise TypeError. Can you diagnose it from this checkout and tell me what you can confirm? Please leave the code and Git state alone.

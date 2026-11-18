@@ -64,7 +64,8 @@ type Label struct {
 var stageRoles = []struct{ stage, role string }{
 	{"lookup", "lookup"}, {"spec", "spec-writer"}, {"spec-review", "reviewer"},
 	{"design", "architect"}, {"design-review", "reviewer"}, {"tests", "quality-engineer"},
-	{"code", "developer"}, {"review", "reviewer"}, {"commit", "git"},
+	{"code", "developer"}, {"implement", "developer"}, {"review", "reviewer"},
+	{"repair", "developer"}, {"commit", "git"},
 }
 
 // RoleOf is the role of a stage, empty for a stage no label may name.

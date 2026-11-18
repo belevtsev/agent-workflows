@@ -1,6 +1,7 @@
 package tokens_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,5 +100,82 @@ func TestTaskNamesAgreeWithTheCommands(t *testing.T) {
 		if _, ok := tokens.ParseLabel("kitsu-task: " + name + " code 1"); ok == refused {
 			t.Errorf("%q: kitsu change status refuses it %v (exit %d), a label with it is read %v", name, refused, r.Code, ok)
 		}
+	}
+}
+
+// Scenario: A repeated notice omits or cannot reread a transcript.
+func TestRepeatedNoticeKeepsCapturedWorkerAndCoordinatorUsage(t *testing.T) {
+	for _, host := range []string{"codex", "claude"} {
+		t.Run(host, func(t *testing.T) {
+			repo := demo(t)
+			var s session
+			var id, task string
+			var worker, parent int
+			if host == "codex" {
+				s, id, task = buildS2(t), s2Starts()[0].ID, "fix-empty-app"
+				worker, parent = s2Starts()[0].Tokens.total(), s2SessionTokens.total()
+			} else {
+				s, id, task = buildS1(t, variant{}), s1Starts()[0].ID, "add-greeting"
+				worker, parent = s1Starts()[0].Tokens.total(), s1SessionTokens.total()
+			}
+			send := func(n string) {
+				t.Helper()
+				if result := recordNotice(t, repo, host, n); result.Code != 0 {
+					t.Fatal(result.Output())
+				}
+			}
+			check := func(complete bool) {
+				t.Helper()
+				out := tokensJSON(t, repo, "--task", task)
+				wantNumber(t, out, "total", worker+parent)
+				wantNumber(t, out, "starts", 1)
+				if out["complete"] != complete {
+					t.Fatalf("complete = %v, want %v; report %v", out["complete"], complete, out)
+				}
+			}
+			var fields map[string]any
+			if err := json.Unmarshal([]byte(s.Notices[0]), &fields); err != nil {
+				t.Fatal(err)
+			}
+			send(s.Notices[0])
+			check(true)
+			fields["agent_transcript_path"] = nil
+			send(notice(fields))
+			check(true)
+
+			original := map[string][]byte{}
+			for _, path := range []string{s.Paths[id], s.Paths["session"]} {
+				data, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				original[path] = data
+				writeFile(t, path, strings.Repeat("x", len(data)-1)+"\n")
+			}
+			send(s.Notices[0])
+			check(false)
+			if out := tokensText(t, repo, "--task", task); !strings.HasPrefix(out, task+": at least ") {
+				t.Fatalf("task heading omitted lower bound: %s", out)
+			}
+			report := tokensJSON(t, repo, "--task", task)
+			wantNumber(t, entries(t, report, "roles")[0], "partial_starts", 1)
+			details := repo.Kitsu("usage", "show", "--task", task, "--diagnostics", "--json")
+			var diagnostics struct {
+				Captured struct {
+					Known  int
+					Status string
+				} `json:"captured_tokens"`
+			}
+			if err := json.Unmarshal([]byte(details.Stdout), &diagnostics); details.Code != 0 || err != nil ||
+				diagnostics.Captured.Known != worker+parent || diagnostics.Captured.Status != "lower_bound" {
+				t.Fatalf("diagnostics lost the lower bound: %s", details.Output())
+			}
+			for path, data := range original {
+				writeFile(t, path, string(data))
+			}
+			// The worker's transcript recovered at the same size. Only the parent is named.
+			send(s.Notices[len(s.Notices)-1])
+			check(true)
+		})
 	}
 }

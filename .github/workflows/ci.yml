@@ -10,9 +10,17 @@ on:
         description: Run the race detector on macOS and Windows too, and the tests that wait ten minutes
         type: boolean
         default: false
+      verify_native_hosts:
+        description: Require fresh install and reinstall evidence for the pinned Codex and Claude Code clients on every release platform
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+
+env:
+  KITSU_NATIVE_CODEX_VERSION: '0.169.0'
+  KITSU_NATIVE_CLAUDE_VERSION: '2.1.325'
 
 # Validate an obsolete pull request head only once.
 concurrency:
@@ -26,7 +34,9 @@ jobs:
   go:
     name: Native Go / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: ${{ inputs.thorough && 50 || 20 }}
+    # Windows runs the full native suite and then the hook cost measurement.
+    # The job also covers setup, package scheduling and the post-test benchmark.
+    timeout-minutes: ${{ inputs.thorough && 50 || matrix.os == 'windows-latest' && 35 || 20 }}
     strategy:
       fail-fast: false
       matrix:
@@ -199,6 +209,9 @@ jobs:
           for installer in install.sh install.ps1; do
             grep -q " $installer\$" dist/SHA256SUMS || { echo "SHA256SUMS does not list $installer"; exit 1; }
           done
+          cp .kitsu-release-plugin/kitsu-plugin.zip dist/
+          (cd dist && sha256sum --check --ignore-missing SHA256SUMS)
+          grep -q ' kitsu-plugin.zip$' dist/SHA256SUMS
           cp "$RUNNER_TEMP/release-notes.md" dist/release-notes.md
       - name: Keep the archives with the run
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -221,11 +234,11 @@ jobs:
     name: Install without Go / ${{ matrix.os }}
     needs: archives
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: ${{ inputs.verify_native_hosts && 25 || 10 }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: ${{ inputs.verify_native_hosts && fromJSON('["ubuntu-latest","macos-latest","windows-latest","ubuntu-24.04-arm","macos-15-intel","windows-11-arm"]') || fromJSON('["ubuntu-latest","macos-latest","windows-latest"]') }}
     env:
       GOWORK: 'off'
       KITSU_INSTALL_TAG: ${{ needs.archives.outputs.tag }}
@@ -249,6 +262,52 @@ jobs:
         env:
           KITSU_INSTALL_ARCHIVES: ${{ runner.temp }}/archives
         run: go test -count=1 -v ./scenarios/installers
+      - name: Provision pinned native clients
+        if: ${{ !cancelled() && inputs.verify_native_hosts }}
+        shell: pwsh
+        run: |
+          # npm distributes both vendors' native binaries as optional platform packages.
+          # Use those binaries directly because Windows handoff requires real .exe files.
+          $prefix = Join-Path $env:RUNNER_TEMP native-clients
+          $npm = if ($IsWindows) { 'npm.cmd' } else { 'npm' }
+          $arch = node -p process.arch
+          if ($arch -ne $env:RUNNER_ARCH.ToLowerInvariant()) {
+            throw "Expected a native Node runtime for $env:RUNNER_ARCH, got $arch."
+          }
+          & $npm install --prefix $prefix --registry https://registry.npmjs.org/ --no-audit --no-fund --include=optional --ignore-scripts `
+            "@openai/codex@$env:KITSU_NATIVE_CODEX_VERSION" "@anthropic-ai/claude-code@$env:KITSU_NATIVE_CLAUDE_VERSION"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $platform = (node -p process.platform) + "-$arch"
+          $suffix = if ($IsWindows) { '.exe' } else { '' }
+          $modules = Join-Path $prefix node_modules
+          $codex = @(Get-ChildItem -Path "$modules/@openai/codex-$platform/vendor/*/bin/codex$suffix" -File)
+          if ($codex.Count -ne 1) { throw "Expected one native Codex executable for $platform." }
+          $claude = Get-Item -LiteralPath "$modules/@anthropic-ai/claude-code-$platform/claude$suffix"
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value $codex[0].DirectoryName
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value $claude.DirectoryName
+      - name: Require native fresh install and reinstall evidence
+        if: ${{ !cancelled() && inputs.verify_native_hosts }}
+        shell: bash
+        env:
+          KITSU_INSTALL_ARCHIVES: ${{ runner.temp }}/archives
+          KITSU_NATIVE_INSTALL_EVIDENCE: ${{ runner.temp }}/native-install-evidence/results.json
+        run: |
+          evidence=$KITSU_NATIVE_INSTALL_EVIDENCE
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            evidence=$(cygpath -u "$evidence")
+          fi
+          output_dir=$(dirname "$evidence")
+          mkdir -p "$output_dir"
+          go test -count=1 -json -run '^TestReleaseArtifactsInstallMatchedPlugin$' ./scenarios/installers | tee "$output_dir/go-test.jsonl"
+          test -s "$evidence" || { echo 'The installer test did not produce native evidence.'; exit 1; }
+      - name: Keep the native results with the run
+        if: ${{ !cancelled() && inputs.verify_native_hosts }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: kitsu-native-install-${{ matrix.os }}
+          path: ${{ runner.temp }}/native-install-evidence
+          if-no-files-found: error
+          retention-days: 30
 
   plugins:
     name: Plugin manifests
@@ -261,6 +320,6 @@ jobs:
           persist-credentials: false
       # Pinned so a validator release cannot fail CI without a repository change.
       - name: Install Claude Code
-        run: npm install --global @anthropic-ai/claude-code@2.1.325
+        run: npm install --global "@anthropic-ai/claude-code@$KITSU_NATIVE_CLAUDE_VERSION"
       - name: Validate the plugin
         run: claude plugin validate .

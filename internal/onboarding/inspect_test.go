@@ -87,7 +87,7 @@ func (f fixture) install() {
 		f.inventory(2, "user", f.dir, f.pluginDir)
 	}
 	f.json(filepath.Join(f.pluginDir, "."+f.host+"-plugin", "plugin.json"), m)
-	f.write(filepath.Join(f.pluginDir, "skills", "task", "SKILL.md"), "---\nname: task\ndescription: Handle a Kitsu task.\n---\nCoordinate the task.\n", 0o644)
+	f.write(filepath.Join(f.pluginDir, "skills", "task", "SKILL.md"), "---\nname: task\ndescription: Handle a Kitsu task.\n---\n<!-- kitsu-task-harness: 3 -->\nCoordinate the task.\n", 0o644)
 	f.hooks("", "", false)
 }
 
@@ -268,13 +268,17 @@ func TestInspectHookProblems(t *testing.T) {
 }
 
 func TestInspectTaskSkillProblems(t *testing.T) {
-	for _, problem := range []string{"missing", "malformed", "user invocation disabled", "Codex policy disabled", "standalone copy"} {
+	for _, problem := range []string{"missing", "older task protocol", "previous daily protocol", "malformed", "user invocation disabled", "Codex policy disabled", "standalone copy"} {
 		t.Run(problem, func(t *testing.T) {
 			f := newFixture(t, "codex")
 			path := filepath.Join(f.pluginDir, "skills", "task", "SKILL.md")
 			switch problem {
 			case "malformed":
 				f.write(path, "---\nname: task\ndescription: [broken\n---", 0o644)
+			case "previous daily protocol":
+				f.write(path, "---\nname: task\ndescription: Previous daily preview.\n---\n<!-- kitsu-task-harness: 2 -->\nCoordinate the task.", 0o644)
+			case "older task protocol":
+				f.write(path, "---\nname: task\ndescription: Valid older task skill.\n---\nOriginal managed workflow.", 0o644)
 			case "user invocation disabled":
 				f.write(path, "---\nname: task\ndescription: Hidden.\nuser-invocable: false\n---\nBody", 0o644)
 			case "Codex policy disabled":

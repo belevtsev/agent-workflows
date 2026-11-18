@@ -33,6 +33,7 @@ type Entry struct {
 	// are unknown. With one of those the sums are at least what is shown.
 	Starts        int `json:"starts"`
 	UnknownStarts int `json:"unknown_starts,omitempty"`
+	PartialStarts int `json:"partial_starts,omitempty"`
 	Counts
 	// Total is unknown when the tokens of no start are known.
 	Total  Amount   `json:"total"`
@@ -46,6 +47,8 @@ func (e *Entry) add(s Start) {
 	}
 	if !s.Known {
 		e.UnknownStarts++
+	} else if s.Partial {
+		e.PartialStarts++
 	}
 	for model, counts := range s.Models {
 		e.Counts.add(counts)
@@ -65,7 +68,7 @@ type Flow struct {
 	Review       int64 `json:"review"`
 	Lookup       int64 `json:"lookup"`
 	Git          int64 `json:"git"`
-	Rework       int64 `json:"rework"` // a later round of a writing role
+	Rework       int64 `json:"rework"` // a repair or a later managed writing round
 }
 
 // Task is the report of one task.
@@ -142,7 +145,7 @@ func (f *Flow) part(s Start) *int64 {
 		return &f.Lookup
 	case role == "git":
 		return &f.Git
-	case slices.Contains(writing, s.Stage) && s.Round > 1:
+	case s.Stage == "repair" || slices.Contains(writing, s.Stage) && s.Round > 1:
 		return &f.Rework
 	}
 	return nil
@@ -259,9 +262,11 @@ func buildTask(name string, starts []Start, tasksOf map[string][]string, session
 	task := Task{Task: name, Complete: true}
 	roles, stages := map[string]*Entry{}, map[[2]string]*Entry{}
 	count := func(s Start, part *int64) {
-		if !s.Known {
+		if !s.Known || s.Partial {
 			task.Complete = false
 			task.UnknownRecords = append(task.UnknownRecords, s.Record)
+		}
+		if !s.Known {
 			return
 		}
 		n := sum(s)
@@ -308,7 +313,7 @@ func buildTask(name string, starts []Start, tasksOf map[string][]string, session
 			task.UnknownRecords = append(task.UnknownRecords, "the record of session "+id)
 			task.unknownSessions++
 		default:
-			if !session.Known {
+			if !session.Known || session.Partial {
 				task.unknownSessions++
 			}
 			count(session, &task.Flow.Coordination)

@@ -2,6 +2,7 @@ package installers
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -133,6 +134,8 @@ func TestShellPathSetupIsIdempotent(t *testing.T) {
 			for attempt := range 2 {
 				if output, err := run.run(true); err != nil {
 					t.Fatalf("install with PATH setup: %v\n%s", err, output)
+				} else if !strings.Contains(string(output), "Use kitsu in this shell now: export PATH=") {
+					t.Fatal("missing current-shell setup", string(output))
 				}
 				contents := readFile(t, profile)
 				if attempt == 0 {
@@ -210,28 +213,27 @@ func TestReleaseArtifactsInstallWithoutBuildTools(t *testing.T) {
 	if directory == "" {
 		t.Skip("set KITSU_INSTALL_ARCHIVES to test the actual release artifacts")
 	}
+	directory, err := filepath.Abs(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
 	version := os.Getenv("KITSU_INSTALL_TAG")
 	if version == "" {
 		version = preparedVersion
 	}
 	assets := map[string][]byte{}
-	for _, name := range []string{archiveName(version), "SHA256SUMS", "install.sh", "install.ps1"} {
+	for _, name := range []string{archiveName(version), pluginArchiveName, "SHA256SUMS", "install.sh", "install.ps1"} {
 		assets[name] = readFile(t, filepath.Join(directory, name))
 	}
-	for _, host := range nativeInstallers(t) {
-		t.Run(host.name, func(t *testing.T) {
-			base := serveAssets(t, assets)
-			run := newInstallRun(t, host, base)
-			run.env["KITSU_VERSION"] = version
-			script := filepath.Join(run.dir, host.script)
-			downloadInstaller(t, base, host.script, script)
-			if output, err := run.runScript(script, true); err != nil {
-				t.Fatalf("release artifact installation: %v\n%s", err, output)
+	for i, host := range nativeInstallers(t) {
+		t.Run(host.name+"/download", func(t *testing.T) {
+			installed, plugin := checkReleaseInstallation(t, host, version, serveAssets(t, assets), "")
+			if i == 0 {
+				checkNativeMarketplaces(t, installed, plugin)
 			}
-			output := run.installedVersion()
-			if !strings.Contains(output, "kitsu "+version) || !strings.Contains(output, "revision "+os.Getenv("KITSU_INSTALL_REVISION")) {
-				t.Fatalf("the installed binary does not identify this release:\n%s", output)
-			}
+		})
+		t.Run(host.name+"/offline", func(t *testing.T) {
+			checkReleaseInstallation(t, host, version, "http://127.0.0.1:1", directory)
 		})
 	}
 }
@@ -245,20 +247,54 @@ func TestPublishedReleaseInstaller(t *testing.T) {
 		t.Fatal("KITSU_INSTALL_TAG must identify the published release")
 	}
 	base := "https://github.com/belevtsev/kitsu/releases/download/" + version
-	for _, host := range nativeInstallers(t) {
+	for i, host := range nativeInstallers(t) {
 		t.Run(host.name, func(t *testing.T) {
-			run := newInstallRun(t, host, base)
-			run.env["KITSU_VERSION"] = version
-			script := filepath.Join(run.dir, host.script)
-			downloadInstaller(t, base, host.script, script)
-			if output, err := run.runScript(script, true); err != nil {
-				t.Fatalf("published installer: %v\n%s", err, output)
-			}
-			if output := run.installedVersion(); !strings.Contains(output, "kitsu "+version) {
-				t.Fatalf("the published installer selected another version: %s", output)
-			} else if revision := os.Getenv("KITSU_INSTALL_REVISION"); revision != "" && !strings.Contains(output, "revision "+revision) {
-				t.Fatalf("the published installer selected another commit: %s", output)
+			installed, plugin := checkReleaseInstallation(t, host, version, base, "")
+			if i == 0 {
+				checkNativeMarketplaces(t, installed, plugin)
 			}
 		})
 	}
+}
+
+func checkReleaseInstallation(t *testing.T, host installer, version, base, archiveDir string) (string, []byte) {
+	t.Helper()
+	run := newInstallRun(t, host, base)
+	run.env["KITSU_VERSION"] = version
+	load := func(name string, limit int64) []byte {
+		if archiveDir != "" {
+			return readFile(t, filepath.Join(archiveDir, name))
+		}
+		return fetchReleaseAsset(t, base, name, limit)
+	}
+	sums := load("SHA256SUMS", 1<<20)
+	script := filepath.Join(run.dir, host.script)
+	scriptData := load(host.script, 1<<20)
+	checkReleaseChecksum(t, sums, host.script, scriptData)
+	writeFile(t, script, scriptData)
+	plugin := load(pluginArchiveName, 32<<20)
+	checkReleaseChecksum(t, sums, pluginArchiveName, plugin)
+	var args []string
+	if archiveDir != "" {
+		flag := "--archive-dir"
+		if runtime.GOOS == "windows" {
+			flag = "-ArchiveDir"
+		}
+		args = []string{flag, archiveDir}
+	}
+	if output, err := run.runScript(script, archiveDir == "", args...); err != nil {
+		t.Fatalf("release artifact installation: %v\n%s", err, output)
+	}
+	identity := strings.Fields(run.installedVersion())
+	if len(identity) < 4 || identity[0] != "kitsu" || identity[1] != version || identity[2] != "revision" {
+		t.Fatalf("unexpected installed CLI identity: %v", identity)
+	}
+	if revision := os.Getenv("KITSU_INSTALL_REVISION"); revision != "" && identity[3] != revision {
+		t.Fatalf("installed CLI revision %s, want %s", identity[3], revision)
+	}
+	t.Logf("%s/%s installer=%s exit=0 tag=%s revision=%s CLI sha256=%x plugin sha256=%x",
+		runtime.GOOS, runtime.GOARCH, host.name, version, identity[3], sha256.Sum256(readFile(t, run.target)), sha256.Sum256(plugin))
+	checkInstalledMarketplace(t, run, plugin)
+	checkInstalledHarness(t, run)
+	return run.target, plugin
 }

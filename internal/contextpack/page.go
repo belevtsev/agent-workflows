@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 type cursor struct {
@@ -36,23 +37,26 @@ func Render(a Artifact, itemID, continuation string, budget int, hit bool) ([]by
 	if err != nil {
 		return nil, err
 	}
+	metadata, err := json.Marshal(p)
+	if err != nil {
+		return nil, fmt.Errorf("encode context page metadata: %w", err)
+	}
+	initialSize := len(metadata) + 1 // wire format ends in a newline
 	checks := (a.Kind == "checks" || a.Kind == "verification") && itemID == ""
 	if checks {
 		if data := completeCheckPage(p, originals, budget); data != nil {
 			return data, nil
 		}
 	}
-	data, _ := json.Marshal(p)
-	data = append(data, '\n')
-	if len(data) > budget {
-		return nil, fmt.Errorf("budget cannot hold required metadata and outcomes (%d bytes); increase --max-bytes", len(data))
+	if initialSize > budget {
+		return nil, fmt.Errorf("budget cannot hold required metadata and outcomes (%d bytes); increase --max-bytes", initialSize)
 	}
 	if checks {
 		for i := range originals {
 			originals[i].Lines = checkPreview(originals[i])
 		}
 	}
-	data = fillPage(&p, originals, offset, budget)
+	data := fillPage(&p, originals, offset, budget, initialSize)
 	if checks {
 		data = completeFittingChecks(&p, a.Items, budget)
 	}
@@ -62,10 +66,16 @@ func Render(a Artifact, itemID, continuation string, budget int, hit bool) ([]by
 	return data, nil
 }
 
-func fillPage(p *Page, originals []Item, offset, budget int) []byte {
-	encode := func() []byte { data, _ := json.Marshal(p); return append(data, '\n') }
-	data := encode()
-	// Round-robin allocation gives each operation evidence before spending the budget on one.
+func fillPage(p *Page, originals []Item, offset, budget, size int) []byte {
+	type addition struct {
+		ready bool
+		line  Line
+		next  string
+		bytes int
+	}
+	pending := make([]addition, len(originals))
+	// Keep round-robin order. A previously oversized addition may fit once
+	// another item's final cursor disappears. Measure each proposed line once.
 	for progress := true; progress; {
 		progress = false
 		for i, original := range originals {
@@ -74,32 +84,51 @@ func fillPage(p *Page, originals []Item, offset, budget int) []byte {
 			if position >= len(original.Lines) {
 				continue
 			}
-			previousNext := page.Next
-			line := original.Lines[position]
-			if page.Path != "" {
-				line.Path = ""
-			}
-			page.Lines = append(page.Lines, line)
-			page.Omitted--
-			page.Next = ""
-			if page.Omitted > 0 {
-				next := position + 1
-				if page.Preview {
-					next = 0
+			add := &pending[i]
+			if !add.ready {
+				line := original.Lines[position]
+				if page.Path != "" {
+					line.Path = ""
 				}
-				page.Next = nextCursor(p.ID, page.ID, next)
+				next := ""
+				if page.Omitted > 1 {
+					n := position + 1
+					if page.Preview {
+						n = 0
+					}
+					next = nextCursor(p.ID, page.ID, n)
+				}
+				encoded, _ := json.Marshal(line)
+				extra := 1 // comma between lines already in the array
+				if len(page.Lines) == 0 {
+					extra = len(`,"lines":[]`)
+				}
+				delta := len(encoded) + extra + positionSize(page.Omitted-1, next) - positionSize(page.Omitted, page.Next)
+				*add = addition{true, line, next, delta}
 			}
-			candidate := encode()
-			if len(candidate) > budget {
-				page.Lines = page.Lines[:len(page.Lines)-1]
-				page.Omitted++
-				page.Next = previousNext
+			if size+add.bytes > budget {
 				continue
 			}
-			data, progress = candidate, true
+			size += add.bytes
+			page.Lines = append(page.Lines, add.line)
+			page.Omitted--
+			page.Next = add.next
+			add.ready = false
+			progress = true
 		}
 	}
-	return data
+	data, _ := json.Marshal(p)
+	return append(data, '\n')
+}
+
+// Only the omission count and optional cursor change outside the lines array.
+// nextCursor produces raw URL-base64, which needs no JSON escaping.
+func positionSize(omitted int, next string) int {
+	size := len(strconv.Itoa(omitted))
+	if next != "" {
+		size += len(`,"next_cursor":""`) + len(next)
+	}
+	return size
 }
 
 func completeCheckPage(p Page, originals []Item, budget int) []byte {

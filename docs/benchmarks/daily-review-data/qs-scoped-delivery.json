@@ -1,0 +1,53 @@
+{
+  "task": "qs-sparse-array-limit",
+  "candidate": "5ac4dfb7110790669a239051ec07491f4fd9e862",
+  "ledger_sha256": "37da5c659648175cd88009c3e3a74cea7f9562c28baee562caefe9395c9d4d4a",
+  "kitsu_sha256": "e824864167fa49828281236dc15cfd365661d2178167a43171416474cafac116",
+  "model_calls": 0,
+  "compact": false,
+  "saved_reviews": 4,
+  "additional_reviews": 0,
+  "median_wall_seconds": {
+    "plain": 1.0818065,
+    "kitsu": 1.8326265
+  },
+  "runs": [
+    {
+      "pair": 1,
+      "arm": "plain",
+      "seconds": 1.096712,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 1,
+      "arm": "kitsu",
+      "seconds": 1.950914,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 2,
+      "arm": "kitsu",
+      "seconds": 1.714339,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    },
+    {
+      "pair": 2,
+      "arm": "plain",
+      "seconds": 1.066901,
+      "behavior_passed": 19,
+      "submitted_suite_passed": 1726,
+      "declared_suite_passed": true,
+      "clean_verified_commit": true
+    }
+  ],
+  "same_commit_branch_switch": "Recovered delivery branch; other branch stayed at parent"
+}

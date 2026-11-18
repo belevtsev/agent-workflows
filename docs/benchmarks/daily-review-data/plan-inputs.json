@@ -1,0 +1,63 @@
+{
+  "model_calls": 0,
+  "cli_sha256": {
+    "kitsu": "3a6f0325ba7c4fff75db8ab56707fe3ae62947e834d2e9ba3ed9ee40fa581b07",
+    "previous": "f08fee51d531bb284fde08c9a09de12521a39a2399275988684c238e94e19f60"
+  },
+  "results": [
+    {
+      "arm": "plain",
+      "changed": false,
+      "original_behavior": 6,
+      "current_behavior": 6,
+      "outcome": "done",
+      "workspace_preserved": true,
+      "correct": true
+    },
+    {
+      "arm": "kitsu",
+      "changed": false,
+      "original_behavior": 6,
+      "current_behavior": 6,
+      "outcome": "done",
+      "workspace_preserved": true,
+      "correct": true
+    },
+    {
+      "arm": "previous",
+      "changed": false,
+      "original_behavior": 6,
+      "current_behavior": 6,
+      "outcome": "done",
+      "workspace_preserved": true,
+      "correct": true
+    },
+    {
+      "arm": "plain",
+      "changed": true,
+      "original_behavior": 6,
+      "current_behavior": "TypeError",
+      "outcome": "changed",
+      "workspace_preserved": true,
+      "correct": true
+    },
+    {
+      "arm": "kitsu",
+      "changed": true,
+      "original_behavior": 6,
+      "current_behavior": "TypeError",
+      "outcome": "blocked",
+      "workspace_preserved": true,
+      "correct": true
+    },
+    {
+      "arm": "previous",
+      "changed": true,
+      "original_behavior": 6,
+      "current_behavior": "TypeError",
+      "outcome": "done",
+      "workspace_preserved": true,
+      "correct": false
+    }
+  ]
+}

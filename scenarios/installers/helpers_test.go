@@ -25,6 +25,13 @@ const preparedVersion = "v0.0.1"
 
 // The archived test executable acts as a native release binary on every OS.
 func TestMain(m *testing.M) {
+	if len(os.Args) == 4 && os.Args[1] == inventoryProcessFixture {
+		if err := inventoryFixture(os.Args[2], os.Args[3]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 	if len(os.Args) == 2 && os.Args[1] == "version" {
 		version := os.Getenv("KITSU_INSTALL_TEST_VERSION")
 		if version == "" {
@@ -33,28 +40,33 @@ func TestMain(m *testing.M) {
 		fmt.Printf("kitsu %s\nrevision fixture\n", version)
 		os.Exit(0)
 	}
+	if len(os.Args) > 1 && os.Args[1] == "agent" {
+		fmt.Printf("fixture agent arguments %q\n", os.Args[1:])
+		os.Exit(23)
+	}
 	os.Exit(m.Run())
 }
 
 type installer struct{ name, program, script string }
 
+func installerChoices() []installer {
+	if runtime.GOOS == "windows" {
+		return []installer{{name: "powershell", script: "install.ps1"}, {name: "pwsh", script: "install.ps1"}}
+	}
+	return []installer{{name: "sh", script: "install.sh"}}
+}
+
 func nativeInstallers(t *testing.T) []installer {
 	t.Helper()
-	if runtime.GOOS != "windows" {
-		program, err := exec.LookPath("sh")
-		if err != nil {
-			t.Fatal(err)
-		}
-		return []installer{{"sh", program, "install.sh"}}
-	}
 	var all []installer
-	for _, name := range []string{"powershell", "pwsh"} {
-		if program, err := exec.LookPath(name); err == nil {
-			all = append(all, installer{name, program, "install.ps1"})
+	for _, shell := range installerChoices() {
+		if program, err := exec.LookPath(shell.name); err == nil {
+			shell.program = program
+			all = append(all, shell)
 		}
 	}
 	if len(all) == 0 {
-		t.Fatal("Windows installer tests need PowerShell 5.1 or PowerShell 7")
+		t.Fatalf("no supported installer shell on %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
 	return all
 }
@@ -64,6 +76,13 @@ func binaryName() string {
 		return "kitsu.exe"
 	}
 	return "kitsu"
+}
+
+func defaultInstallTarget(home string) string {
+	if runtime.GOOS == "windows" {
+		return filepath.Join(home, "AppData", "Local", "kitsu", binaryName())
+	}
+	return filepath.Join(home, ".local", "bin", binaryName())
 }
 
 func archiveName(version string) string {
@@ -242,11 +261,7 @@ func newInstallRun(t *testing.T, host installer, base string) *installRun {
 	if err := os.MkdirAll(home, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(home, ".local", "bin", binaryName())
-	if runtime.GOOS == "windows" {
-		target = filepath.Join(home, "AppData", "Local", "kitsu", binaryName())
-	}
-	return &installRun{t: t, host: host, dir: dir, home: home, target: target, env: map[string]string{
+	return &installRun{t: t, host: host, dir: dir, home: home, target: defaultInstallTarget(home), env: map[string]string{
 		"HOME": home, "USERPROFILE": home, "LOCALAPPDATA": filepath.Join(home, "AppData", "Local"),
 		"PATH": installerPath(t), "SHELL": "/bin/zsh", "KITSU_DOWNLOAD_BASE": base,
 		"KITSU_NO_MODIFY_PATH": "1", "KITSU_INSTALL_TEST_VERSION": preparedVersion,
@@ -259,7 +274,7 @@ func (r *installRun) environment() []string {
 		key, _, _ := strings.Cut(entry, "=")
 		upper := strings.ToUpper(key)
 		if _, replaced := r.env[upper]; replaced || strings.HasPrefix(upper, "KITSU_") ||
-			strings.HasPrefix(upper, "XDG_") || upper == "ZDOTDIR" {
+			strings.HasPrefix(upper, "GIT_") || strings.HasPrefix(upper, "XDG_") || upper == "ZDOTDIR" {
 			continue
 		}
 		env = append(env, entry)
@@ -284,26 +299,32 @@ func (r *installRun) run(piped bool, args ...string) (string, error) {
 
 func (r *installRun) runScript(script string, piped bool, args ...string) (string, error) {
 	r.t.Helper()
-	ctx, cancel := context.WithTimeout(r.t.Context(), time.Minute)
+	return invokeInstaller(r.t, r.host, r.dir, r.environment(), script, piped, args...)
+}
+
+func invokeInstaller(t *testing.T, host installer, dir string, env []string, script string, piped bool, args ...string) (string, error) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 	var command *exec.Cmd
-	if runtime.GOOS == "windows" {
+	if host.script == "install.ps1" {
 		prefix := []string{"-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass"}
 		if piped {
-			r.env["KITSU_TEST_INSTALLER_SCRIPT"] = script
+			env = append(env, "KITSU_TEST_INSTALLER_SCRIPT="+script)
 			prefix = append(prefix, "-Command", "Get-Content -LiteralPath $env:KITSU_TEST_INSTALLER_SCRIPT -Raw | Invoke-Expression")
 		} else {
 			prefix = append(prefix, "-File", script)
 			prefix = append(prefix, args...)
 		}
-		command = exec.CommandContext(ctx, r.host.program, prefix...)
+		command = exec.CommandContext(ctx, host.program, prefix...)
 	} else if piped {
-		command = exec.CommandContext(ctx, r.host.program, append([]string{"-s", "--"}, args...)...)
-		command.Stdin = bytes.NewReader(readFile(r.t, script))
+		command = exec.CommandContext(ctx, host.program, append([]string{"-s", "--"}, args...)...)
+		command.Stdin = bytes.NewReader(readFile(t, script))
 	} else {
-		command = exec.CommandContext(ctx, r.host.program, append([]string{script}, args...)...)
+		command = exec.CommandContext(ctx, host.program, append([]string{script}, args...)...)
 	}
-	command.Dir, command.Env = r.dir, r.environment()
+	command.Dir, command.Env = dir, env
+	command.WaitDelay = 3 * time.Second
 	output, err := command.CombinedOutput()
 	return string(output), err
 }
@@ -319,7 +340,7 @@ func (r *installRun) installedVersion() string {
 	return string(output)
 }
 
-func downloadInstaller(t *testing.T, base, name, destination string) {
+func fetchReleaseAsset(t *testing.T, base, name string, limit int64) []byte {
 	t.Helper()
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, base+"/"+name, nil)
 	if err != nil {
@@ -332,11 +353,14 @@ func downloadInstaller(t *testing.T, base, name, destination string) {
 	}
 	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
-		t.Fatalf("installer download returned %s", response.Status)
+		t.Fatalf("download %s returned %s", name, response.Status)
 	}
-	data, err := io.ReadAll(io.LimitReader(response.Body, 1<<20))
+	data, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeFile(t, destination, data)
+	if int64(len(data)) > limit {
+		t.Fatalf("download %s exceeds %d bytes", name, limit)
+	}
+	return data
 }

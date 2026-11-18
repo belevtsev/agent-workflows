@@ -28,10 +28,11 @@ type Options struct {
 // Report describes configuration evidence, not authenticated or tested orchestration.
 // Ready means no known blocking failure; warnings can still require host review.
 type Report struct {
-	Host           string  `json:"host"`
-	Ready          bool    `json:"ready"`
-	HostExecutable string  `json:"host_executable"`
-	Checks         []Check `json:"checks"`
+	Host           string     `json:"host"`
+	Ready          bool       `json:"ready"`
+	HostExecutable string     `json:"host_executable"`
+	Checks         []Check    `json:"checks"`
+	Repository     *gitx.Repo `json:"-"` // The inspected checkout for interactive startup.
 }
 
 // Check is one read-only observation and the actions a user can take next.
@@ -72,10 +73,11 @@ func inspect(ctx context.Context, options Options, system string) (Report, error
 	}
 	report := Report{Host: options.Host, Ready: true, Checks: []Check{}}
 	report.add(cliCheck(options.Version))
-	report.HostExecutable = absoluteExecutable(options.Host)
+	var native bool
+	report.HostExecutable, native = HostExecutable(options.Host)
 	if report.HostExecutable == "" {
 		report.add(Check{ID: "host_cli", Status: "fail", Summary: "Host CLI is missing from absolute PATH entries", Actions: []string{"Install the " + options.Host + " CLI and add its directory to PATH."}})
-	} else if runtime.GOOS == "windows" && strings.ToLower(filepath.Ext(report.HostExecutable)) != ".exe" {
+	} else if !native {
 		report.add(Check{ID: "host_cli", Status: "fail", Summary: "Host CLI resolves to a shell wrapper", Detail: "Task launch needs a native executable for direct argument passing.", Actions: []string{"Install a native host .exe, or use kitsu task start --print to copy the prompt into your host."}})
 		report.HostExecutable = ""
 	} else {
@@ -83,8 +85,13 @@ func inspect(ctx context.Context, options Options, system string) (Report, error
 	}
 	repo, repoErr := gitx.Open(ctx, dir)
 	root := dir
-	if repoErr == nil && repo.Root != "" {
-		root = repo.Root
+	switch {
+	case repoErr == nil && repo.Root != "":
+		root, report.Repository = repo.Root, repo
+	case repoErr == nil:
+		report.add(Check{ID: "checkout", Status: "fail", Summary: "This directory has no working tree", Actions: []string{"Use git worktree list and enter the intended checkout."}})
+	case !errors.Is(repoErr, gitx.ErrNotRepo):
+		report.add(Check{ID: "checkout", Status: "fail", Summary: "Cannot inspect the Git checkout", Detail: repoErr.Error(), Actions: []string{"Run git status here and resolve the reported error."}})
 	}
 	state := readSettings(options.Host, home, root, dir, system)
 	if state.problem != "" {
@@ -151,6 +158,13 @@ func absoluteExecutable(name string) string {
 		}
 	}
 	return ""
+}
+
+// HostExecutable resolves a host from absolute PATH entries and identifies
+// whether it can be used for direct argument passing.
+func HostExecutable(host string) (path string, native bool) {
+	path = absoluteExecutable(host)
+	return path, path != "" && (runtime.GOOS != "windows" || strings.EqualFold(filepath.Ext(path), ".exe"))
 }
 
 func gitCheck(ctx context.Context, repo *gitx.Repo, err error) Check {

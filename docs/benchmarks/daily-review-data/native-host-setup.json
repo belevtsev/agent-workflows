@@ -1,0 +1,79 @@
+{
+  "os": "Linux",
+  "kitsu_binary_sha256": "18fbca3e076f1666f218618335f5cc3bae4b9d4c20c2ac3ac57cbffdf4f1f484",
+  "model_requests": 0,
+  "install": {
+    "source": "locally assembled archive",
+    "version": "v0.0.1-audit",
+    "installed_binary_sha256": "18fbca3e076f1666f218618335f5cc3bae4b9d4c20c2ac3ac57cbffdf4f1f484"
+  },
+  "codex": {
+    "version": "codex-cli 0.169.0",
+    "ready": true,
+    "checks": {
+      "kitsu_cli": "pass",
+      "host_cli": "pass",
+      "plugin": "pass",
+      "task_skill": "pass",
+      "hooks": "pass",
+      "hook_runtime": "warn",
+      "git_gate": "warn"
+    },
+    "handoff_preview": true,
+    "enabled_skills": [
+      "kitsu:kitsu",
+      "kitsu:task"
+    ],
+    "fresh_install_hook_trust": {
+      "preToolUse": "untrusted",
+      "sessionStart": "untrusted",
+      "sessionEnd": "untrusted",
+      "subagentStop": "untrusted"
+    }
+  },
+  "claude": {
+    "version": "2.1.325 (Claude Code)",
+    "ready": true,
+    "checks": {
+      "kitsu_cli": "pass",
+      "host_cli": "pass",
+      "plugin": "pass",
+      "task_skill": "pass",
+      "hooks": "pass",
+      "hook_runtime": "warn",
+      "git_gate": "warn"
+    },
+    "handoff_preview": true,
+    "commands": [
+      "kitsu:kitsu",
+      "kitsu:task"
+    ],
+    "agents": [
+      "kitsu:architect",
+      "kitsu:developer",
+      "kitsu:git",
+      "kitsu:lookup",
+      "kitsu:quality-engineer",
+      "kitsu:reviewer",
+      "kitsu:spec-writer"
+    ],
+    "session_start_exit": 0,
+    "projected_always_on_tokens": 297,
+    "task_skill_sha256": "f8a2ca1e9e637e0e7d8853860f85e4584bdfadecd1a30eff5d59719bef92662c"
+  },
+  "installed_cli_journey": {
+    "entry": "verify",
+    "resumed": "done",
+    "delivery": "committed",
+    "clean_checkout": true,
+    "host_judgment": "scripted"
+  },
+  "claude_metadata_before_edit": {
+    "projected_always_on_tokens": 448,
+    "estimator": "claude plugin details kitsu@kitsu",
+    "gate_skill_sha256": "27296097933cfdd1391a50521f3d8390a8601b9789e7077fd2ad1616ad5e3e41",
+    "skills": 2,
+    "roles": 7,
+    "hook_events": 4
+  }
+}

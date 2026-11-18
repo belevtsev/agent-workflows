@@ -1,6 +1,8 @@
 package tokens
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,8 +11,10 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/belevtsev/kitsu/v3/internal/change"
+	"github.com/belevtsev/kitsu/v3/internal/fslock"
 	"github.com/belevtsev/kitsu/v3/internal/roles"
 )
 
@@ -234,7 +238,7 @@ func TestRecordKeepsTheRoleOfTheNotice(t *testing.T) {
 		t.Fatal(err)
 	}
 	notice := Notice{Session: "s", AgentID: "a1", AgentTranscript: empty, AgentType: "kitsu:architect"}
-	if err := Record(filepath.Join(dir, "tokens"), Claude, notice); err != nil {
+	if err := Record(t.Context(), filepath.Join(dir, "tokens"), Claude, notice); err != nil {
 		t.Fatal(err)
 	}
 	starts, damaged, err := Load(filepath.Join(dir, "tokens"))
@@ -283,7 +287,7 @@ func TestNoticeWithoutARecordOfTheRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	notice := Notice{Session: "s", Transcript: main, AgentID: "a7", AgentType: "reviewer"}
-	if err := Record(filepath.Join(dir, "tokens"), Codex, notice); err != nil {
+	if err := Record(t.Context(), filepath.Join(dir, "tokens"), Codex, notice); err != nil {
 		t.Fatal(err)
 	}
 	starts, _, err := Load(filepath.Join(dir, "tokens"))
@@ -454,18 +458,18 @@ func TestRecordReadsStoredStartsAgain(t *testing.T) {
 	}
 	write(main, answer("s"))
 	write(agent, brief, answer("x"))
-	if err := Record(store, Claude, Notice{Session: "s", Transcript: main, AgentID: "a1", AgentTranscript: agent, AgentType: "developer"}); err != nil {
+	if err := Record(t.Context(), store, Claude, Notice{Session: "s", Transcript: main, AgentID: "a1", AgentTranscript: agent, AgentType: "developer"}); err != nil {
 		t.Fatal(err)
 	}
 	write(agent, brief, answer("x"), answer("y"))
-	if err := Record(store, Claude, Notice{Session: "s", Transcript: main}); err != nil {
+	if err := Record(t.Context(), store, Claude, Notice{Session: "s", Transcript: main}); err != nil {
 		t.Fatal(err)
 	}
 	if got := stored(); !got.Known || got.Task != "one" || got.Models["m"] != (Counts{Input: 2, Output: 4}) {
 		t.Errorf("after the later notice the start is %+v, want both answers", got)
 	}
 	write(agent, brief, "not json", answer("x"))
-	if err := Record(store, Claude, Notice{Session: "s", Transcript: main}); err != nil {
+	if err := Record(t.Context(), store, Claude, Notice{Session: "s", Transcript: main}); err != nil {
 		t.Fatal(err)
 	}
 	if got := stored(); !got.Known || got.Models["m"] != (Counts{Input: 2, Output: 4}) {
@@ -486,14 +490,14 @@ func TestRecordIgnoresInternalAgentsOfClaude(t *testing.T) {
 	}
 	for host, want := range map[string]int{Claude: 1, Codex: 2} {
 		store := filepath.Join(dir, host)
-		if err := Record(store, host, Notice{Session: "s", Transcript: main, AgentID: "aside", AgentTranscript: main}); err != nil {
+		if err := Record(t.Context(), store, host, Notice{Session: "s", Transcript: main, AgentID: "aside", AgentTranscript: main}); err != nil {
 			t.Fatal(err)
 		}
 		if starts, _, _ := Load(store); len(starts) != want {
 			t.Errorf("%s: stored %+v, want %d files", host, starts, want)
 		}
 	}
-	if err := Record(filepath.Join(dir, "none"), Claude, Notice{Session: "s", AgentID: "aside"}); err != nil {
+	if err := Record(t.Context(), filepath.Join(dir, "none"), Claude, Notice{Session: "s", AgentID: "aside"}); err != nil {
 		t.Errorf("a notice of an internal agent alone: %v", err)
 	}
 }
@@ -511,7 +515,7 @@ func TestRecordKeepsItsFoldersPrivate(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := filepath.Join(dir, "kitsu", "tokens")
-	if err := Record(store, Claude, Notice{Session: "s", AgentID: "a1", AgentTranscript: empty, AgentType: "kitsu:architect"}); err != nil {
+	if err := Record(t.Context(), store, Claude, Notice{Session: "s", AgentID: "a1", AgentTranscript: empty, AgentType: "kitsu:architect"}); err != nil {
 		t.Fatal(err)
 	}
 	files, err := filepath.Glob(filepath.Join(store, "s", "*.json"))
@@ -528,5 +532,66 @@ func TestRecordKeepsItsFoldersPrivate(t *testing.T) {
 		if got := info.Mode().Perm(); got != want {
 			t.Errorf("%s has the mode %o, want %o", path, got, want)
 		}
+	}
+}
+
+func TestTokenStoreInLiteralBracketDirectory(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "work[release]", "tokens")
+	s := Start{Version: 1, Host: Codex, Session: "parent", Agent: "agent-review", Task: "topic", Known: true}
+	if err := write(dir, s); err != nil {
+		t.Fatal(err)
+	}
+	starts, damaged, err := Load(dir)
+	if err != nil || len(damaged) != 0 || len(starts) != 1 || starts[0].Task != "topic" {
+		t.Fatalf("lost stored usage: starts=%v damaged=%v error=%v", starts, damaged, err)
+	}
+}
+
+func TestConcurrentNoticesUpdateOneWorker(t *testing.T) {
+	t.Parallel()
+	store := t.TempDir()
+	path := filepath.Join(t.TempDir(), "worker.jsonl")
+	answer := func(id string) string {
+		return fmt.Sprintf(`{"type":"assistant","message":{"id":%q,"model":"m","usage":{"input_tokens":1,"output_tokens":2}}}`+"\n", id)
+	}
+	if err := os.WriteFile(path, []byte(answer("first")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	full := Notice{Session: "s", AgentID: "a", AgentType: "developer", AgentTranscript: path}
+	if err := Record(t.Context(), store, Claude, full); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := fslock.Acquire(t.Context(), filepath.Join(store, "s", ".record.lock"), fslock.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+	err = Record(ctx, store, Claude, full)
+	if closeErr := lock.Close(); closeErr != nil {
+		t.Fatal(closeErr)
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("contended record returned %v", err)
+	}
+	if err := os.WriteFile(path, []byte(answer("first")+answer("last")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	missing := full
+	missing.AgentTranscript = ""
+	notices := []Notice{full, missing, full, missing}
+	results := make(chan error, len(notices))
+	for _, notice := range notices {
+		go func() { results <- Record(t.Context(), store, Claude, notice) }()
+	}
+	for range notices {
+		if err := <-results; err != nil {
+			t.Error(err)
+		}
+	}
+	starts, damaged, err := Load(store)
+	if err != nil || len(damaged) > 0 || len(starts) != 1 || starts[0].Partial || !starts[0].Known ||
+		starts[0].Models["m"] != (Counts{Input: 2, Output: 4}) {
+		t.Fatalf("concurrent notices yielded %+v, damaged %v, error %v", starts, damaged, err)
 	}
 }

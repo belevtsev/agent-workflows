@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Reviews a specification, a design or code that another role wrote, and reports findings. Started only by the coordinator of the kitsu task workflow, with a brief.
+description: Reviews a specification, a design or code that another role wrote, and reports findings. Requires a Kitsu coordinator brief.
 model: opus
 effort: max
 tools: Read, Grep, Glob, Bash, Skill

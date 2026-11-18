@@ -1,0 +1,77 @@
+{
+  "model_calls": 0,
+  "go": "go version go1.27.4 linux/amd64",
+  "compact": false,
+  "assertion_sha256": "7d6ce30ba26ad0c20222964ff96464093a69bf28c23a083ffa55b2484afae6d4",
+  "binaries": {
+    "previous": "30e4a8fd2ca6c8eeebf33acded06e3e3b17efff8972c18641f048cb67d9765b4",
+    "current": "bae7981747b343a3d27d650114d16f54a0521db0c6d26f8b698b7fca7d29d6f1"
+  },
+  "runs": [
+    {
+      "round": 1,
+      "arm": "plain",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 0.9133978960453533
+    },
+    {
+      "round": 1,
+      "arm": "previous",
+      "outcome": "blocked on finding",
+      "seconds": 0.4499244149774313
+    },
+    {
+      "round": 1,
+      "arm": "current",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 1.279565577977337
+    },
+    {
+      "round": 2,
+      "arm": "previous",
+      "outcome": "blocked on finding",
+      "seconds": 0.44742425001459196
+    },
+    {
+      "round": 2,
+      "arm": "current",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 1.278435927000828
+    },
+    {
+      "round": 2,
+      "arm": "plain",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 0.907588858040981
+    },
+    {
+      "round": 3,
+      "arm": "current",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 1.2803554270067252
+    },
+    {
+      "round": 3,
+      "arm": "plain",
+      "outcome": "delivered",
+      "tree": "e9fc42b13464c23980c971b6a13f59e5d8058786",
+      "seconds": 0.9106417379807681
+    },
+    {
+      "round": 3,
+      "arm": "previous",
+      "outcome": "blocked on finding",
+      "seconds": 0.44103606598218903
+    }
+  ],
+  "median_seconds": {
+    "plain": 0.9106417379807681,
+    "previous": 0.44742425001459196,
+    "current": 1.279565577977337
+  }
+}

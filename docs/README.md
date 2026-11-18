@@ -1,6 +1,6 @@
 # Documents
 
-Start with the task workflow and roles to coordinate coding agents. The Git gate is a supporting check.
+Start with the [daily task harness](task-harness.md) to plan, implement, review, verify or deliver work. The Git gate is a supporting check.
 
 | Document | What it holds |
 | --- | --- |
@@ -15,6 +15,10 @@ Start with the task workflow and roles to coordinate coding agents. The Git gate
 | [Coordinator state](coordinator-state.md) | Inspect bounded snapshots, expand original references and apply deltas from a known baseline. |
 | [Context and workflow research](context-research.md) | Primary-source comparisons, token/cost tradeoffs, priorities and a controlled evaluation protocol. |
 | [Codex compact pilot](codex-compact-pilot.md) | A controlled 24-run real-task comparison, independent quality checks and actual solver token accounting. |
+| [Daily harness product audit](benchmarks/kitsu-product-audit-2026-11-18.md) | Installation, workflow features, reproduced defects, the plain Codex comparison and release priorities. |
+| [Archived coding-task comparisons](benchmarks/archived-delivery-comparison.md) | Captured tokens, wall time, delivery and regression strength across ten saved attempts. |
+| [Grading developer requests](benchmarks/harness-request-decisions.md) | Raw requests, offline good and faulty controls, and instructions to replay the evidence. |
+| [Daily harness engineering handoff](benchmarks/kitsu-harness-agent-handoff.md) | Agent assignments, fixture ownership, acceptance criteria and the path from local preview to release decision. |
 | [Codex pilot results](benchmarks/codex-compact-pilot-report.md) | Completed Sol/high comparison: frozen test passes, confirmed additional defects, workflow cutoffs and incomplete token pairs. |
 | [Selective compact evaluation](benchmarks/selective-compact-report.md) | Separate offline replay, v2 charset eligibility and the status of four planned budgeted Sol/high canary runs. |
 | [The task workflow](workflow.md) | Coordinate a task through specification, design, tests, implementation, review, and commit, using a shared task record. |

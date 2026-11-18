@@ -3,6 +3,10 @@ version: 2
 
 project_name: kitsu
 
+before:
+  hooks:
+    - python3 .github/scripts/package-plugin.py .kitsu-release-plugin/kitsu-plugin.zip
+
 builds:
   - id: kitsu
     main: ./cmd/kitsu
@@ -36,6 +40,7 @@ checksum:
   extra_files:
     - glob: install.sh
     - glob: install.ps1
+    - glob: .kitsu-release-plugin/kitsu-plugin.zip
 
 # One SBOM per archive, made by syft, published with the release as
 # <archive>.sbom.json. The release job installs syft.
@@ -67,3 +72,4 @@ release:
   extra_files:
     - glob: install.sh
     - glob: install.ps1
+    - glob: .kitsu-release-plugin/kitsu-plugin.zip

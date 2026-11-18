@@ -1,6 +1,6 @@
 ---
 name: spec-writer
-description: Writes the requirements and their scenarios from the request and its sources. Started only by the coordinator of the kitsu task workflow, with a brief.
+description: Writes the requirements and their scenarios from the request and its sources. Requires a Kitsu coordinator brief.
 model: opus
 effort: high
 tools: Read, Grep, Glob, Edit, Write, Skill

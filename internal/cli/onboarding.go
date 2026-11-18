@@ -3,34 +3,32 @@ package cli
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/belevtsev/kitsu/v3/internal/onboarding"
 )
 
 type onboardingArgs struct {
-	host, request        string
-	json, print, compact bool
+	reviewLimits
+	host, request, until, resume        string
+	json, print, compact, requireReview bool
 }
 
 func parseOnboardingArgs(args []string, start bool) (onboardingArgs, error) {
 	var options onboardingArgs
 	flags := newFlags("agent check")
-	flags.Func("host", "", func(host string) error {
-		if options.host != "" {
-			return fmt.Errorf("select exactly one --host")
-		}
-		if !uxValidHost(host) {
-			return fmt.Errorf("host must be codex or claude")
-		}
-		options.host = host
-		return nil
-	})
+	bindOnboardingHost(flags, &options.host)
 	flags.BoolVar(&options.json, "json", false, "")
 	if start {
+		options.bindLimitFlags(flags)
+		flags.BoolVar(&options.requireReview, "require-review", false, "")
+		flags.StringVar(&options.resume, "resume", "", "")
+		taskUntil.bindChoice(flags, &options.until)
 		flags.BoolVar(&options.print, "print", false, "")
 		flags.BoolVar(&options.compact, "compact", false, "")
 	}
@@ -47,14 +45,53 @@ func parseOnboardingArgs(args []string, start bool) (onboardingArgs, error) {
 		}
 		return options, nil
 	}
+	if err := options.validateLimits(flags); err != nil {
+		return options, err
+	}
+	if options.reserve > 0 && options.limit == 0 {
+		return options, usagef("--finish-reserve requires --time-limit")
+	}
+	if options.resume != "" && options.requireReview {
+		return options, usagef("use task extend --require-review to add review to a saved task")
+	}
+	if options.resume != "" && options.reviewLimits != (reviewLimits{}) {
+		return options, usagef("use task extend to change a saved task limit")
+	}
+	return taskStartOptions(options, args, p)
+}
+
+func bindOnboardingHost(flags *flag.FlagSet, value *string) {
+	flags.Func("host", "", func(host string) error {
+		if *value != "" {
+			return errors.New("select exactly one --host")
+		}
+		if !uxValidHost(host) {
+			return errors.New("host must be codex or claude")
+		}
+		*value = host
+		return nil
+	})
+}
+
+func taskStartOptions(options onboardingArgs, args []string, p parsed) (onboardingArgs, error) {
 	requests := append(p.pos, p.rest...)
-	if len(requests) != 1 || strings.TrimSpace(requests[0]) == "" || strings.ContainsRune(requests[0], 0) {
-		return options, usagef("task start requires one nonempty request; quote the complete request")
+	if uxFlagPresent(args, "resume") {
+		if !taskName.MatchString(options.resume) || len(options.resume) > 100 || len(requests) != 0 || uxFlagPresent(args, "until") {
+			return options, usagef("--resume requires one saved task name and no new request or outcome")
+		}
+		options.request = "Resume with `kitsu task next " + options.resume + "`. Recover existing claims before starting workers."
+	} else {
+		if len(requests) != 1 || strings.TrimSpace(requests[0]) == "" || strings.ContainsRune(requests[0], 0) {
+			return options, usagef("task start requires one nonempty request; quote the complete request")
+		}
+		options.request = requests[0]
+	}
+	if options.requireReview && options.until == "plan" {
+		return options, usagef("--require-review requires a coding or review outcome")
 	}
 	if options.json && options.print {
 		return options, usagef("--print and --json are mutually exclusive")
 	}
-	options.request = requests[0]
 	return options, nil
 }
 
@@ -88,7 +125,11 @@ func runUXAgentCheck(ctx context.Context, cfg Config, args []string) error {
 		}
 	} else {
 		printOnboarding(cfg.Out, report)
-		fmt.Fprintf(cfg.Out, "\nStart: kitsu task start \"Describe the change\" --host %s\n", report.Host)
+		if report.Ready {
+			fmt.Fprintf(cfg.Out, "\nStart: kitsu task start \"Describe the change\" --host %s\n", report.Host)
+		} else {
+			fmt.Fprintln(cfg.Out, "\nFollow the setup steps above, then repeat agent check.")
+		}
 	}
 	if !report.Ready {
 		return exit(ExitNotVerified)
@@ -132,6 +173,29 @@ func prepareTaskHandoff(report onboarding.Report, request string) taskHandoff {
 	return taskHandoff{Report: report, Prompt: prompt, Argv: []string{program, prompt}}
 }
 
+// A preview has no pinned task. Give the host the flags that create its limits.
+func (o reviewLimits) handoffFlags() string {
+	var args []string
+	if o.limit > 0 {
+		args = append(args, "--time-limit", o.limit.String())
+	}
+	if o.reviews > 0 {
+		args = append(args, "--review-limit", strconv.Itoa(o.reviews))
+	}
+	if o.reserve > 0 {
+		args = append(args, "--finish-reserve", o.reserve.String())
+	}
+	return strings.Join(args, " ")
+}
+
+func (o onboardingArgs) resumeCommand(id, host string) string {
+	command := "kitsu task start --resume " + id + " --host " + host
+	if o.compact {
+		command += " --compact"
+	}
+	return command
+}
+
 func runUXTaskStart(ctx context.Context, cfg Config, args []string) error {
 	options, err := parseOnboardingArgs(args, true)
 	if err != nil {
@@ -141,9 +205,23 @@ func runUXTaskStart(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return err
 	}
-	handoff := prepareTaskHandoff(report, options.request)
+	request := options.request
+	if options.requireReview {
+		request = "Require independent review. Use --require-review when binding the task.\n\n" + request
+	}
+	if options.until != "" {
+		request = "Use the task harness. Requested stopping point: " + options.until + ".\n\n" + request
+	}
+	if options.reviewLimits != (reviewLimits{}) {
+		if options.print || options.json {
+			request = "Pass " + options.handoffFlags() + " to kitsu task open.\n\n" + request
+		} else {
+			request = "Startup applied " + options.handoffFlags() + ". Omit the limit flags when binding the saved task.\n\n" + request
+		}
+	}
+	handoff := prepareTaskHandoff(report, request)
 	if options.compact {
-		handoff.Prompt += "\n\nKitsu compact mode (selective opt-in): read the task skill's references/compact.md before starting roles. Prefer native host reads for short whole files and scoped native search with small output. Use context read/search/collect for broad or noisy retrieval and check run --compact for noisy declared checks; expand retained logs when needed. Use ordinary check output for quiet checks. Saved packets carry this selective policy into every fresh worker brief; do not copy coordinator guides or require their rereading unless selected or explicitly needed. Keep original full role instructions and selected skills uncompressed; preserve permissions, independent reviews and required evidence. Context artifacts cache local rendered text, not provider prompt cache; count all requests, responses and expansions when measuring."
+		handoff.Prompt += "\n\nKitsu compact mode (selective opt-in): use native reads for short files and compact output for noisy searches and logs. Expand retained evidence when needed. See references/compact.md for commands. Keep the requested workflow."
 		handoff.Argv[1] = handoff.Prompt
 	}
 	if options.json {
@@ -160,6 +238,21 @@ func runUXTaskStart(ctx context.Context, cfg Config, args []string) error {
 	}
 	if !onboardingTerminal(cfg) {
 		return usagef("task start requires terminal input, stdout and stderr; use --print or --json to prepare a handoff")
+	}
+	id, err := pinHostTask(ctx, cfg, options, report.Repository)
+	if err != nil {
+		return err
+	}
+	if id != "" {
+		fmt.Fprintf(cfg.Err, "Task %s. Resume with %s\n", id, options.resumeCommand(id, report.Host))
+		if options.resume == "" {
+			until := options.until
+			if until == "" {
+				until = "OUTCOME"
+			}
+			handoff.Prompt += "\n\nFor this new daily task, bind the saved request with kitsu task open " + id + " --entry STAGE --until " + until + " --brief. Choose the stage and outcome from the request and add its authorized scope flags. The original request is already saved."
+			handoff.Argv[1] = handoff.Prompt
+		}
 	}
 	fmt.Fprintf(cfg.Err, "\nOpening %s with the Kitsu task skill. Complete any host permission prompts in that session.\n", report.Host)
 	return launchTaskHost(ctx, cfg, handoff.Argv)

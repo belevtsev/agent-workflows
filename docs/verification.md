@@ -129,6 +129,8 @@ data. Use the original skill directory and its instructions; selection is
 neither proof of loading nor proof of compliance. Kitsu does not discover or
 execute skill scripts automatically and is not a service manager.
 
+For a forwarding or serialization fix, include a value that can be lost while the operation still succeeds. In the pflag comparison, two submitted suites accepted a parser that turned `--unknown=value` into `--unknown`. A test of the returned arguments catches the defect. Put that assertion in the repository when regression coverage is part of the request, so a later developer gets the same protection.
+
 | Project | Existing project command to declare | Behavior the command must assert |
 | --- | --- | --- |
 | Go service | `go test ./internal/login -run TestLogin` | Start the real handler or app through the project's fixture; assert session creation and rejection. |
@@ -137,8 +139,8 @@ execute skill scripts automatically and is not a service manager.
 
 These examples assume the named commands, fixtures and prerequisites already
 exist. Adapt the mapping and assertion to the repository; declaring a command
-does not install a tool or create missing coverage. See [selected skills](skills.md)
-and [the workflow](workflow.md#task-behavioral-verification).
+does not install a tool or create missing coverage. See [selected skills](../skills/task/references/managed.md#existing-skills)
+and [the managed verification workflow](../skills/task/references/verification.md).
 
 ## Offline checks without model calls
 
@@ -252,15 +254,15 @@ Calibration tests assess known labeled observations; generated equivalence
 tests assess preservation of the facts and invariants they compare. Neither
 establishes arbitrary program correctness, model-review quality or general
 quality equivalence between compact and ordinary workflows. Existing
-[delivery replay](benchmarks/compact-delivery-report.md) and
-[coordinator replay](coordinator-overhead.md#verify-locally) cover additional
+[delivery replay](https://github.com/belevtsev/kitsu/blob/e9bfb4173746b6a020c1c28d4c935d211d0f17ef/docs/benchmarks/compact-delivery-report.md) and
+[coordinator replay](https://github.com/belevtsev/kitsu/blob/e9bfb4173746b6a020c1c28d4c935d211d0f17ef/docs/coordinator-overhead.md#verify-locally) cover additional
 scripted lifecycle and accounting behavior.
 
 No further paid pilot is part of these checks. The
-[revised paid comparison](benchmarks/compact-delivery-paid-report.md) retains
+[revised paid comparison](https://github.com/belevtsev/kitsu/blob/e9bfb4173746b6a020c1c28d4c935d211d0f17ef/docs/benchmarks/compact-delivery-paid-report.md) retains
 its original one-pair token accounting and quality limitations. These new local
 tests do not revise that result or establish a broader token or billing benefit.
 
-The [OpenSpec verification record](../openspec/changes/calibrate-offline-verifiers/tests.md)
+The [OpenSpec verification record](https://github.com/belevtsev/kitsu/blob/e9bfb4173746b6a020c1c28d4c935d211d0f17ef/openspec/changes/calibrate-offline-verifiers/tests.md)
 maps scenarios to tests and records validation status. Repository-wide build,
-vet, lint and vulnerability checks follow [contributing](../CONTRIBUTING.md).
+vet, lint and vulnerability checks follow [contributing](https://github.com/belevtsev/kitsu/blob/main/CONTRIBUTING.md).
