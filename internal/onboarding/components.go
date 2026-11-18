@@ -118,7 +118,7 @@ type hookGroup struct {
 }
 
 func hooksCheck(p plugin, host string, s settings) Check {
-	check := Check{ID: "hooks", Status: "fail", Summary: "Required Kitsu hook configuration is unavailable", Actions: []string{"Repair or update the installed Kitsu hook bundle; inspect SessionStart, PreToolUse, SubagentStop and SessionEnd in /hooks."}}
+	check := Check{ID: "hooks", Status: "fail", Summary: "Required Kitsu hook configuration is unavailable", Actions: []string{"Repair or update the installed Kitsu hook bundle; inspect SessionStart, PreToolUse, SubagentStart, SubagentStop and SessionEnd in /hooks."}}
 	if s.disabled || s.managedOnly && !(host == "claude" && s.managed[p.id]) {
 		check.Detail = "Hooks are disabled or managed-only policy blocks this plugin's hooks."
 		check.Actions = []string{"Review effective hook settings and managed restrictions with the host or your administrator."}
@@ -150,7 +150,7 @@ func hooksCheck(p plugin, host string, s settings) Check {
 			events[event] = append(events[event], groups...)
 		}
 	}
-	for _, event := range []string{"SessionStart", "PreToolUse", "SubagentStop", "SessionEnd"} {
+	for _, event := range []string{"SessionStart", "PreToolUse", "SubagentStart", "SubagentStop", "SessionEnd"} {
 		command := "tokens record"
 		if event == "SessionStart" {
 			command = "context"
@@ -163,7 +163,7 @@ func hooksCheck(p plugin, host string, s settings) Check {
 			return check
 		}
 	}
-	check.Status, check.Summary = "pass", "Kitsu's four required hook events have command definitions"
+	check.Status, check.Summary = "pass", "Kitsu's five required hook events have command definitions"
 	check.Detail, check.Actions = "Installed hook bundle and local settings were inspected; hook trust, loading and execution remain unverified.", []string{}
 	return check
 }

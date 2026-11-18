@@ -108,7 +108,7 @@ func TestDelegatedWorkRecovery(t *testing.T) {
 			f.call(1, "claim", "--ticket", firstReview, "--actor", owner, "--worker", worker+"-replacement")
 			f.call(1, "claim", "--ticket", firstReview, "--actor", owner, "--worker", worker)
 			f.call(0, "claim", "--ticket", firstReview, "--actor", owner, "--worker", "independent-one")
-			f.record("review", "independent-one", "A partial fix remains.", "--finding", "app.txt:1 exact ready response is missing")
+			f.observedReview(host, owner, "independent-one", "A partial fix remains.", "--finding", "app.txt:1 exact ready response is missing")
 			f.want("repair")
 
 			prior = stageNext(&f).Candidate
@@ -121,7 +121,7 @@ func TestDelegatedWorkRecovery(t *testing.T) {
 			secondReview := recordDelegatedWork(&f, "repair", repairer, host, repair, second, "Corrected the exact response.")
 			f.call(1, "record", "review", "--ticket", secondReview, "--actor", repairer, "--note", "Self review")
 			f.call(0, "claim", "--ticket", secondReview, "--actor", owner, "--worker", "independent-two")
-			f.record("review", "independent-two", "The exact ready response now matches.")
+			f.observedReview(host, owner, "independent-two", "The exact ready response now matches.")
 			f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "the exact ready response", "--", "git", "grep", "^ready$", "--", "app.txt")
 			f.want("done")
 			stageHistory(&f, "intake", "implement", "review", "repair", "review", "test")

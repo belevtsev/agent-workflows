@@ -18,6 +18,7 @@
 | Recover a delegated implementation or repair | scenarios/harness/delegated_work_test.go | TestDelegatedWorkRecovery |
 | Recover a delegated implementation or repair | scenarios/harness/delegated_work_test.go | TestLinkedDeveloperCanReturnAfterDeadline |
 | Resolve reviewer settings at reservation | scenarios/harness/review_settings_test.go | TestReviewReservationResolvesHostSettingsOnce |
+| Verify a required review came from a native worker | scenarios/harness/native_review_test.go | TestRequiredReviewNeedsNativeWorkerOnCurrentCandidate |
 | Extend a partial review to delivery | scenarios/harness/harness_test.go | TestReviewScopeExtensionChecksTheWholeDeliveryCandidate |
 | Pin limits before launching a host | internal/cli/onboarding_terminal_linux_test.go | TestInteractiveHarnessPinsScopeAndResumesOriginalTask |
 | Bound independent review starts | scenarios/harness/review_limits_test.go | TestReviewDispatchLimitPreservesFindingsAndCanResume |

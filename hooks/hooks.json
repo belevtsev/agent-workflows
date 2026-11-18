@@ -26,6 +26,18 @@
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v kitsu 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" tokens record --host claude;; esac; true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "SubagentStop": [
       {
         "hooks": [

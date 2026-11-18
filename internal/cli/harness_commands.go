@@ -40,7 +40,7 @@ func harnessCommands() []uxCommand {
 		{path: "task confirm", args: "<task>", summary: "Check every push destination and requested PR, or recheck a completed delivery", flags: []uxFlag{ticket, uxOption("pr", "url", "published pull request URL"), brief, json}, examples: []string{"kitsu task confirm export-quoting --ticket TICKET --pr https://github.com/example/repo/pull/17", "kitsu task confirm export-quoting --brief"}, run: harnessCommand("confirm")},
 		{path: "task commit", args: "<task>", summary: "Commit the verified candidate already staged for authorized delivery", flags: []uxFlag{ticket, uxOption("message", "text", "commit message"), uxOption("include", "path", "explicitly include a pre-existing changed path; repeatable"), brief, json}, run: harnessCommand("commit")},
 		{path: "task next", args: "<task>", summary: "Resume from current evidence and show the next action", flags: []uxFlag{brief, json}, run: harnessCommand("next")},
-		{path: "task record", args: "<task> <action>", summary: "Record intake, a plan, implementation, repair or independent review", flags: []uxFlag{ticket, uxOption("claim-review", "host", "reserve the next independent review with this result", roles.Hosts...), uxOption("actor", "id", "native session identity"), uxOption("note", "text", "result and evidence or artifact reference"), uxOption("finding", "text", "unresolved review finding; repeatable"), brief, json}, examples: []string{`kitsu task record export-quoting intake --actor SESSION --ticket TICKET --note "Quoted fields should round-trip"`}, run: harnessCommand("record")},
+		{path: "task record", args: "<task> <action>", summary: "Record intake, a plan, implementation, repair or review", flags: []uxFlag{ticket, uxOption("claim-review", "host", "reserve the next independent review with this result", roles.Hosts...), uxOption("actor", "id", "native session identity"), uxOption("note", "text", "result and evidence or artifact reference"), uxOption("finding", "text", "unresolved review finding; repeatable"), uxOption("observed-review", "", "use the matching native review result captured by the host hooks"), brief, json}, examples: []string{`kitsu task record export-quoting intake --actor SESSION --ticket TICKET --note "Quoted fields should round-trip"`, "kitsu task record export-quoting review --ticket TICKET --observed-review --brief"}, run: harnessCommand("record")},
 		{path: "task test", args: "<task> [-- <program> [<argument>...]]", summary: "Execute the requested behavioral assertion and required repository checks", flags: []uxFlag{ticket, uxOption("expect", "text", "observable behavior asserted by this command"), uxOption("retry", "", "use the saved behavioral assertion on the current candidate"), uxOption("replace-reason", "text", "explain why a failing assertion needs a different command"), brief, json}, examples: []string{`kitsu task test export-quoting --ticket TICKET --expect "Quoted fields round-trip" -- go test ./csv`}, run: harnessCommand("test")},
 	}
 }
@@ -70,7 +70,7 @@ type harnessOptions struct {
 	findings, includes                                                            stringList
 	argv                                                                          []string
 	reviewLimits
-	json, brief, retry, defaultDeliveryEntry, stdin bool
+	json, brief, retry, defaultDeliveryEntry, stdin, observedReview bool
 }
 
 func parseHarness(verb string, args []string) (harnessOptions, error) {
@@ -122,6 +122,7 @@ func parseHarness(verb string, args []string) (harnessOptions, error) {
 		f.StringVar(&o.actor, "actor", "", "")
 		f.StringVar(&o.note, "note", "", "")
 		f.Var(&o.findings, "finding", "")
+		f.BoolVar(&o.observedReview, "observed-review", false, "")
 		f.StringVar(&o.ticket, "ticket", "", "")
 	case "test":
 		f.StringVar(&o.expect, "expect", "", "")
@@ -160,7 +161,7 @@ func validateHarnessOptions(verb string, p parsed, o harnessOptions) (harnessOpt
 	if verb == "record" {
 		n = 2
 	}
-	if len(p.pos) != n || !taskName.MatchString(p.pos[0]) || len(p.pos[0]) > 100 || p.dash != (verb == "test" && !o.retry) {
+	if len(p.pos) != n || !validHarnessID(p.pos[0]) || p.dash != (verb == "test" && !o.retry) {
 		return o, usagef("invalid task name or arguments for task %s", verb)
 	}
 	o.id = p.pos[0]
@@ -205,6 +206,8 @@ func (o harnessOptions) validateAssertionArgs() error {
 }
 
 func harnessFile(id string) string { return "task-harness-" + id + ".json" }
+
+func validHarnessID(id string) bool { return len(id) <= 100 && taskName.MatchString(id) }
 
 func harnessCommand(verb string) func(context.Context, Config, []string) error {
 	return func(ctx context.Context, cfg Config, args []string) error {
@@ -587,7 +590,7 @@ func (o reviewLimits) setLimits(task *harness.Task) error {
 	return nil
 }
 
-func recordHarness(task *harness.Task, o harnessOptions, view harnessView) error {
+func recordHarness(l *stageLedger, task *harness.Task, o harnessOptions, view harnessView) error {
 	if replay, err := replayedHarnessResult(task, o); replay {
 		return err
 	}
@@ -598,6 +601,14 @@ func recordHarness(task *harness.Task, o harnessOptions, view harnessView) error
 	if task.Claim != nil && task.Claim.Ticket != o.ticket {
 		return failf("source changed during the claimed action; reconcile and release the claim")
 	}
+	var native *harness.NativeReview
+	if o.action == "review" {
+		var err error
+		native, err = recordObservedReview(l, task, &o, view)
+		if err != nil {
+			return err
+		}
+	}
 	if err := checkHarnessActor(task, o.action, o.actor); err != nil {
 		return err
 	}
@@ -607,6 +618,7 @@ func recordHarness(task *harness.Task, o harnessOptions, view harnessView) error
 	}
 	reviewIndex := o.action == "review" && task.Scope.Until == "review" && task.Scope.ReviewBase == ""
 	event := harness.Event{Action: o.action, ReviewIndex: reviewIndex, Note: o.note, Actor: o.actor, Findings: o.findings, Ticket: o.ticket, Candidate: view.Candidate, At: time.Now().UTC()}
+	event.NativeReview = native
 	if task.Claim != nil {
 		event.Reviewer = task.Claim.Reviewer
 		event.Developer = task.Claim.Developer
@@ -738,7 +750,7 @@ func applyHarness(ctx context.Context, s *session, l *stageLedger, task *harness
 	case "extend":
 		return extendHarness(ctx, s, task, o)
 	case "record":
-		return recordHarness(task, o, view)
+		return recordHarness(l, task, o, view)
 	case "test":
 		return testHarnessAction(ctx, s, l, task, o, view)
 	}
@@ -753,7 +765,7 @@ func recordAndClaimReview(ctx context.Context, s *session, l *stageLedger, task 
 		reviewOwner = task.Claim.Owner
 	}
 	replay, _ := replayedHarnessResult(task, o)
-	if err := recordHarness(task, o, view); err != nil {
+	if err := recordHarness(l, task, o, view); err != nil {
 		return err
 	}
 	updated, err := observeHarness(ctx, s, task, o.json && !o.brief)
@@ -780,6 +792,9 @@ func replayedHarnessResult(task *harness.Task, o harnessOptions) (bool, error) {
 	for _, event := range task.Events {
 		if event.Ticket != o.ticket {
 			continue
+		}
+		if o.observedReview && event.Action == "review" && event.NativeReview != nil {
+			return true, nil
 		}
 		if event.Action == o.action && event.Note == o.note && event.Actor == o.actor && slices.Equal(event.Findings, o.findings) {
 			return true, nil
@@ -858,6 +873,12 @@ func (o *harnessOptions) validateResult(action string) error {
 	o.action = action
 	if o.host != "" && (!slices.Contains(roles.Hosts, o.host) || !slices.Contains([]string{"intake", "implement", "repair"}, action)) {
 		return usagef("--claim-review requires a codex or claude host on intake, implement or repair")
+	}
+	if o.observedReview {
+		if action != "review" || o.ticket == "" || o.actor != "" || o.note != "" || len(o.findings) != 0 {
+			return usagef("--observed-review requires the review ticket and uses the worker's saved result")
+		}
+		return nil
 	}
 	if strings.TrimSpace(o.note) == "" || strings.TrimSpace(o.actor) == "" || o.ticket == "" {
 		return usagef("record requires --note, --actor and --ticket")

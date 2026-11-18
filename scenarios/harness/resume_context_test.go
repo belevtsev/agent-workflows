@@ -228,7 +228,13 @@ func TestTerminalResumeCarriesScopeAndWorkerRecoveryWithoutUsage(t *testing.T) {
 	if after.Code != 0 || !strings.Contains(after.Stdout, "Native reviewer: linked-reviewer") {
 		t.Fatal("resume lost linked worker", after.Output())
 	}
-	f.record("review", "linked-reviewer", "Checked the response")
+	sendNativeReviewEvent(t, r, "codex", "SubagentStart", "host", "linked-reviewer", "")
+	report := reservedNativeReview(t, r, f.id, ticket)
+	report.Decision, report.Note = "approve", "Checked the response"
+	if got := nativeReviewEvent(t, r, "codex", "SubagentStop", "host", "linked-reviewer", reviewMessage(t, report)); got.Code != 1 || !strings.Contains(got.Output(), "tokens") {
+		t.Fatal("expected the damaged usage archive to fail independently", got.Output())
+	}
+	f.call(0, "record", "review", "--ticket", ticket, "--observed-review")
 	if f.state.Next != "verify" {
 		t.Fatal("failed to advance the original reservation")
 	}

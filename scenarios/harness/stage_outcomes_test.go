@@ -523,7 +523,7 @@ func TestStageOutcomePartialRepair(t *testing.T) {
 		t.Fatal("inadequate repair should retain the original failure", bad.Output())
 	}
 	const finding = "Major, label.go:2. The repaired Label(-3) is still -3, reproduced with the saved Go assertion."
-	f.record("review", "repair-reviewer-1", "The original failure still reproduces on the changed candidate.", "--finding", finding)
+	f.observedReview("codex", "coordinator", "repair-reviewer-1", "The original failure still reproduces on the changed candidate.", "--finding", finding)
 	f.want("repair")
 
 	const fixed = "package format\nfunc Label(n int) int { if n < 0 { return -n }; return n }\n"
@@ -537,7 +537,7 @@ func TestStageOutcomePartialRepair(t *testing.T) {
 	if got := r.Run("", argv[0], argv[1:]...); got.Code != 0 {
 		t.Fatal("fixed candidate still fails the independent review", got.Output())
 	}
-	f.record("review", "repair-reviewer-2", "Reproduced the regression on the first repair and confirmed Label(-3) on the new candidate.")
+	f.observedReview("codex", "coordinator", "repair-reviewer-2", "Reproduced the regression on the first repair and confirmed Label(-3) on the new candidate.")
 	f.want("verify")
 	f.call(0, "test", "--ticket", f.state.Ticket, "--retry")
 	f.want("done")

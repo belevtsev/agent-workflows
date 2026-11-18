@@ -91,6 +91,7 @@ func (s Snapshot) SameBase(other Snapshot) bool {
 func (s Snapshot) Parents() string { return strings.TrimSpace(s.Head + " " + s.MergeHeads) }
 
 type Event struct {
+	NativeReview            *NativeReview             `json:"native_review,omitempty"`
 	PriorRepositoryFailures []RunResult               `json:"prior_repository_failures,omitempty"`
 	ReconfirmedAt           time.Time                 `json:"reconfirmed_at,omitzero"`
 	Replaced                *Assertion                `json:"replaced_assertion,omitempty"`
@@ -184,6 +185,7 @@ func (p *Proof) FailedAssertion() *Assertion {
 }
 
 type Claim struct {
+	ReviewID  string                    `json:"review_id,omitempty"`
 	Worker    string                    `json:"worker,omitempty"`
 	Candidate *Snapshot                 `json:"candidate,omitempty"`
 	Reviewer  *roles.SpecialistSettings `json:"reviewer,omitempty"`

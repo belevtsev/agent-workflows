@@ -344,8 +344,11 @@ not in the hands of the plugin.
 | --- | --- | --- |
 | `SessionStart` | `kitsu context --host claude` | `kitsu context --host codex` |
 | `PreToolUse` | `kitsu guard --host claude`, for the tools `Bash`, `PowerShell`, `Edit`, `Write`, `MultiEdit` | `kitsu guard --host codex`, for the tools `Bash`, `apply_patch` |
+| `SubagentStart` | `kitsu tokens record --host claude` | `kitsu tokens record --host codex` |
 | `SubagentStop` | `kitsu tokens record --host claude` | `kitsu tokens record --host codex` |
 | `SessionEnd` | `kitsu tokens record --host claude` | `kitsu tokens record --host codex` |
+
+The subagent hooks bind a required daily review to its local host, parent session, separate worker and reserved candidate. Startup provides the session ID the coordinator uses when claiming the review. Usage collection continues on subagent completion and session end.
 
 ### Verify plugin hook setup
 

@@ -32,6 +32,7 @@ type harnessView struct {
 	TicketSource      *harness.TicketSource `json:"ticket_source,omitempty"`
 	ActorSessions     []tokens.Session      `json:"actor_session_usage,omitempty"`
 	ReviewPolicyError string                `json:"review_policy_error,omitempty"`
+	ReviewStatus      string                `json:"review_status,omitempty"`
 	RepositoryReview  bool                  `json:"repository_requires_review,omitempty"`
 	VerificationLog   *verificationLogRef   `json:"verification_log,omitempty"`
 	ManagedInterval   string                `json:"managed_interval,omitempty"`
@@ -210,7 +211,11 @@ func (v *harnessView) routeAction(ctx context.Context, s *session, t *harness.Ta
 		return err
 	}
 	v.RepositoryReview = required
+	v.setReviewStatus(t.Scope.RequireReview || required)
 	v.Next, v.Pause = t.Next(time.Now(), v.readiness())
+	if v.Next == "review" && v.ReviewStatus == "" {
+		v.ReviewStatus = "pending"
+	}
 	if invalid != nil {
 		v.ReviewPolicyError = "Cannot determine independent-review policy: " + invalid.Error() + ". Correct kitsu.toml or explicitly require review with kitsu task extend " + t.ID + " --require-review."
 		switch v.Next {
@@ -317,6 +322,9 @@ func printHarness(cfg Config, o harnessOptions, v harnessView) error {
 }
 
 func (v harnessView) printReview(out io.Writer) {
+	if v.ReviewStatus != "" {
+		fmt.Fprintln(out, "Review status:", v.ReviewStatus)
+	}
 	if v.Review == nil {
 		return
 	}
@@ -325,7 +333,11 @@ func (v harnessView) printReview(out io.Writer) {
 		fmt.Fprintln(out, "Current review:", decl.Plain(v.Review.Note))
 	}
 	if !v.ReviewCurrent {
-		fmt.Fprintf(out, "The latest review covers an earlier candidate. See kitsu task show %s --json for that review.\n", v.Task)
+		if v.ReviewStatus == "pending" && v.Review.NativeReview == nil {
+			fmt.Fprintln(out, "The saved review is agent-reported. Required review awaits host evidence.")
+		} else {
+			fmt.Fprintf(out, "The latest review covers an earlier candidate. See kitsu task show %s --json for that review.\n", v.Task)
+		}
 		label = "Earlier finding:"
 	}
 	for _, item := range v.Review.Findings {
@@ -385,6 +397,9 @@ func (v harnessView) brief() map[string]any {
 	}
 	if v.ReviewPolicyError != "" {
 		reply["review_policy_error"] = v.ReviewPolicyError
+	}
+	if v.ReviewStatus != "" {
+		reply["review_status"] = v.ReviewStatus
 	}
 	if v.ManagedInterval != "" {
 		reply["managed_interval"], reply["pending_daily_action"] = v.ManagedInterval, v.PendingDaily

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"crypto/rand"
 	"fmt"
 	"slices"
 	"strings"
@@ -50,6 +51,7 @@ func setSpecialist(root string, task *harness.Task, claim *harness.Claim, host s
 	}
 	if role == "reviewer" {
 		claim.Reviewer = settings
+		claim.ReviewID = rand.Text()
 		return nil
 	}
 	stage := view.Next
