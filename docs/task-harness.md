@@ -1,13 +1,16 @@
 # Take a coding task from its current state
 
-Start in the repository that holds your work. Choose the finish you need, such as a reviewed diff, a verified fix or a delivered commit. The task record keeps the current owner, unresolved findings and evidence so another session can continue. Install the matching CLI and plugin, then check your host. [Installation guide](release-install.md#register-the-matching-marketplace)
+Open the Git worktree that holds your change in Codex or Claude Code. Choose what you want back from this session. For example, if you have a staged CSV export change, ask Codex:
+
+> Use Kitsu’s task skill to review my staged export change. Repair any confirmed CSV quoting bugs, verify the behavior, and stop before committing. Give me the task ID and check results.
+
+In Claude Code, start the same request with `/kitsu:task`. The skill opens a task, records your scope, and uses the CLI for each step. For a design or diagnosis, ask for a plan. For a review only, ask for findings and say to stop after review. In a fresh conversation in the same worktree, ask the agent to resume the saved task by ID or find it by its request. [Install and check the plugin](release-install.md#check-the-host-and-start-a-task)
+
+You can also launch a host from your terminal:
 
 ```sh
-kitsu agent check --host codex
 kitsu task start "Review the staged export change, repair confirmed findings, and verify CSV quoting" --until verify --host codex
 ```
-
-For Claude Code use `--host claude`. From an open session, ask Codex to use the Kitsu task skill or invoke `/kitsu:task` in Claude. The host inspects the issue, design or diff and records the requested outcome before it edits. For a review only, say “review this diff” and select `--until review`. For a design, select `--until plan`. The interactive host setup and any permission prompts still apply. Use `--print` to preview the handoff.
 
 | Starting point | What to expect |
 | --- | --- |
