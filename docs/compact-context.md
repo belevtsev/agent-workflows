@@ -14,7 +14,9 @@ may reduce input tokens, but complete-task savings remain unestablished. The
 additional defects in both conditions and less workflow completion with compact mode
 under the tested time limit. Read the [research report](context-research.md) for alternatives.
 
-<img src="diagrams/compact-context.svg" alt="Opt-in compact mode lets the host read and search bounded evidence, prepare saved original briefs for fresh workers, finalize local write checks and inspect declared checks. Private evidence supports expansion; independent review and the normal gate retain authority." width="100%">
+<img src="diagrams/compact-context.svg" alt="Opt-in compact mode keeps short reads native and bounds noisy results. For a managed specialist, task prepare saves its assignment, the host starts the worker, and task finish checks its writes. Declared checks keep their usual evidence." width="100%">
+
+The middle column applies when the host dispatches a managed specialist. `task prepare` saves the assignment and opens its work interval. Plain `task brief` shows bounded metadata. Turning on compact output leaves the choice of workers and independent review with the workflow.
 
 ## Start with compact mode
 

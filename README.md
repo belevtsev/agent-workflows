@@ -15,7 +15,7 @@ Run one installer per agent you use. It downloads the Kitsu CLI and matching plu
 | **Codex** | [Install for Codex](#install-for-codex) | [Start](#quick-start) · [Resume](#resume-later) · [Prompt examples](#codex-chat-examples) |
 | **Claude Code** | [Install for Claude Code](#install-for-claude-code) | [Start](#first-task-in-claude-code) · [Resume](#resume-in-claude-code) · [Prompt examples](#claude-code-chat-examples) |
 
-[Latest release](https://github.com/belevtsev/kitsu/releases/latest) · [Pinned and offline installation](docs/release-install.md)
+[Latest release](https://github.com/belevtsev/kitsu/releases/latest) · [Pinned and offline installation](docs/release-install.md) · [How Kitsu works](#how-kitsu-works)
 
 ## Codex
 
@@ -216,6 +216,14 @@ When you’re ready for the fix, reply in the same chat.
 > /kitsu:task Verify my staged export fix. If the checks pass, commit it locally, push this branch, and open a PR for review.
 
 </details>
+
+## How Kitsu works
+
+<img src="docs/diagrams/daily-task.svg" alt="Ask for work or resume by task ID. Codex or Claude Code follows the next action from Kitsu, records the result locally, and reports back at your requested finish." width="100%">
+
+Ask for a plan and the agent can finish with a proposal. Ask for a verified fix and Kitsu runs the behavior check against the current code. The host starts an independent reviewer when you ask for one or your repository requires one.
+
+[Follow a bug ticket to its verified commit](docs/task-harness.md#deliver-a-bug-ticket) · [See how managed specialist roles work](docs/workflow.md#the-flow)
 
 <a name="the-roles"></a>
 

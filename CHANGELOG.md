@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Follow a task from chat to its saved state and a bug ticket to its verified commit in the [illustrated task guide](docs/task-harness.md#how-a-daily-task-runs).
+
 ## [0.0.2] - 2026-11-18
 
 Install the CLI and matching Codex or Claude Code plugin with one command on macOS, Linux or Windows. Both come from the same public release and are verified against its checksum manifest. [Installation commands](docs/release-install.md)

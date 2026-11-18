@@ -4,13 +4,21 @@ Open the Git worktree that holds your change in Codex or Claude Code. Choose wha
 
 > Use Kitsu’s task skill to review my staged export change. Repair any confirmed CSV quoting bugs, verify the behavior, and stop before committing. Give me the task ID and check results.
 
-In Claude Code, start the same request with `/kitsu:task`. The skill opens a task, records your scope, and uses the CLI for each step. For a design or diagnosis, ask for a plan. For a review only, ask for findings and say to stop after review. In a fresh conversation in the same worktree, ask the agent to resume the saved task by ID or find it by its request. [Install and check the plugin](release-install.md#check-the-host-and-start-a-task)
+In Claude Code, start the same request with `/kitsu:task`. For a design or diagnosis, ask for a plan. For a review only, ask for findings and say to stop after review. [Install and check the plugin](release-install.md#check-the-host-and-start-a-task)
 
 You can also launch a host from your terminal:
 
 ```sh
 kitsu task start "Review the staged export change, repair confirmed findings, and verify CSV quoting" --until verify --host codex
 ```
+
+## How a daily task runs
+
+<img src="diagrams/daily-task.svg" alt="The developer asks the host agent for work. The task skill opens a local record. Kitsu returns the next action, the host performs it, and Kitsu records the result. A new chat resumes from the same record until the requested outcome is reached." width="100%">
+
+Codex or Claude Code loads the task skill and coordinates the work. Kitsu's CLI saves the request, scope, findings and check results under this worktree's Git directory. Ask a fresh chat in the same worktree to resume your task ID. The agent reads `kitsu task next ID --brief` to recover the current action or return an already-finished result. If you lost the ID, ask it to list your saved tasks.
+
+For example, a plan for a CSV export can finish with acceptance examples. To verify a repair, the agent supplies an executable assertion such as exporting a field containing a comma and reading the value back. Kitsu runs the assertion and any declared repository checks and records which candidate passed. A local commit needs your authorization and a matching staged tree. A push or PR requires publication scope. [Independent review](#choose-independent-review) · [Managed specialist workflow](workflow.md#the-flow)
 
 | Starting point | What to expect |
 | --- | --- |
@@ -44,6 +52,10 @@ Choose the base you intend to compare. For a branch that diverged from main, use
 ## Deliver a bug ticket
 
 From the target repository, open a task from a public link, a Markdown file, or a tracker connected through MCP or a plugin. The command authorizes a local repair and commit on the current branch. Ticket text supplies the problem statement. Publishing a branch, posting to the tracker and closing the issue require separate developer action.
+
+<img src="diagrams/ticket-delivery.svg" alt="Kitsu saves the ticket source, records a failing reproduction, then reruns the same assertion after repair and on the verified local commit. A passing final run yields a source-linked receipt. A failing run leaves the log for inspection." width="100%">
+
+Follow one assertion through the diagram. It fails on the original bug, passes on the staged repair, then passes again on the delivered commit. Those three observations link the reported behavior to a particular Git commit.
 
 ```sh
 kitsu task bug wrapper-args --from https://tracker.example.org/tickets/wrapper-args.md
@@ -102,7 +114,7 @@ If a managed worker interval is active in the same worktree, an unfinished daily
 
 From a repository, interactive daily startup pins the working tree and prints the task ID before opening the host. A newly launched host receives the scope-binding command with the saved ID and requested finish. On an interrupted task, the host reads the current state before acting. A launch failure leaves the ID resumable. Previewing the handoff creates no task. If you pass limits with `--print` or `--json`, the prompt includes the limit flags for `task open`. An interactive launch saves those limits before the host opens. Its printed resume command includes `--compact` when you selected it. From an already open host, the task skill chooses a short ID at intake. The next-action view shows the latest result, claim, assertion and delivery state. The full view retains the request and earlier results. These records live in the worktree's private Git directory. Run `git worktree list` to locate the original checkout, enter its working directory, then run `kitsu task list` to confirm the ID. Both `kitsu agent check` and interactive startup report a Git metadata directory or an unreadable Git configuration before opening the host. Existing shared OpenSpec changes still use the [managed workflow](workflow.md).
 
-When reporting a delivered commit, read `commit_evidence` in the receipt. `verified_existing_commit` means the commit was already checked out when the current proof ran. `commit_matches_verified_tree` means Kitsu subsequently observed the committed tree on the verified parents. If the request required running checks before committing, report the order the evidence actually shows.
+When reporting a delivered commit, read `commit_evidence` from `kitsu task next ID --json`. `verified_existing_commit` means the commit was already checked out when the current proof ran. `commit_matches_verified_tree` means Kitsu subsequently observed the committed tree on the verified parents. For a delivered bug ticket, `kitsu task receipt ID --json` gives the source, commit and three check observations. Report the order the evidence shows.
 
 ## Drive the harness without opening a host
 

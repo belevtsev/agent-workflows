@@ -50,7 +50,7 @@ all operands, options, defaults, and examples without running a command.
 
 ## Opt into compact context
 
-`kitsu task show <task> --compact` returns a bounded coordinator snapshot.
+For a daily task, `kitsu task next <task> --brief` returns the current action. For a managed OpenSpec change, `kitsu task show <task> --compact` returns a bounded coordinator snapshot.
 Use `kitsu task show <task> --since <snapshot-id>` after a state change to receive
 only changed sections; it implies compact JSON. `--max-bytes` defaults to 16384.
 Ordinary `task show` and `task show --json` keep their existing output. See the
@@ -178,8 +178,8 @@ Host selection follows the [same preference order](#select-your-host-once) as ot
 
 ```sh
 kitsu task list
+kitsu task next add-order-export --brief
 kitsu task show add-order-export --json
-kitsu task check add-order-export
 kitsu role show developer
 kitsu skill list
 kitsu skill show project-review --json
@@ -187,7 +187,7 @@ kitsu check list
 kitsu usage show --task add-order-export
 ```
 
-Task listing includes full change folders and saved small-task histories. A small task has no
+Task listing includes daily tasks, full change folders and saved small-task histories. Use `kitsu task check <change>` to check an OpenSpec change folder. A small managed task has no
 complete stage record: Kitsu identifies saved history and leaves the workflow stage unknown.
 It does not turn a receipt into proof that tests, review, or approval happened.
 

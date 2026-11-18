@@ -1,0 +1,50 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "From a bug ticket to a verified local commit",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": ".archify/ticket-delivery.html",
+    "legend": {
+      "entries": {
+        "external": {"label": "Ticket source"},
+        "database": {"label": "Saved record"},
+        "frontend": {"label": "Agent edit"},
+        "backend": {"label": "Kitsu command"},
+        "security": {"label": "Failed check"}
+      }
+    }
+  },
+  "lanes": [
+    {"id": "reproduce", "label": "Reproduce"},
+    {"id": "verify", "label": "Repair"},
+    {"id": "confirm", "label": "Deliver"}
+  ],
+  "semanticChecks": {
+    "allowedRoots": ["ticket"],
+    "allowedTerminals": ["receipt", "log"],
+    "requiredEdges": [{"from": "failure", "to": "repair"}, {"from": "retry", "to": "commit"}, {"from": "on-commit", "to": "receipt"}]
+  },
+  "nodes": [
+    {"id": "ticket", "lane": "reproduce", "col": 0, "type": "external", "label": "Read the ticket", "sublabel": "Markdown, URL or host", "width": 144},
+    {"id": "snapshot", "lane": "reproduce", "col": 2, "type": "database", "label": "Save a snapshot", "sublabel": "Source and digest", "width": 144},
+    {"id": "failure", "lane": "reproduce", "col": 4, "type": "backend", "label": "Reproduce the bug", "sublabel": "Assertion must fail", "width": 144},
+    {"id": "repair", "lane": "verify", "col": 4, "type": "frontend", "icon": "backend", "label": "Repair and stage", "sublabel": "Add regression test", "width": 144},
+    {"id": "retry", "lane": "verify", "col": 2, "type": "backend", "label": "Retry the assertion", "sublabel": "Run declared checks", "width": 144},
+    {"id": "commit", "lane": "verify", "col": 0, "type": "backend", "label": "Commit verified tree", "sublabel": "To the saved target", "width": 144},
+    {"id": "on-commit", "lane": "confirm", "col": 0, "type": "backend", "label": "Rerun on commit", "sublabel": "Same saved assertion", "width": 144},
+    {"id": "receipt", "lane": "confirm", "col": 2, "type": "database", "label": "Delivery receipt", "sublabel": "Ticket, commit, logs", "width": 144},
+    {"id": "log", "lane": "confirm", "col": 4, "type": "security", "icon": "failure", "label": "Inspect failure log", "sublabel": "Task stays open", "width": 144}
+  ],
+  "edges": [
+    {"id": "import", "from": "ticket", "to": "snapshot"},
+    {"id": "test", "from": "snapshot", "to": "failure"},
+    {"id": "reproduced", "from": "failure", "to": "repair", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "repaired", "from": "repair", "to": "retry", "fromSide": "left", "toSide": "right"},
+    {"id": "verified", "from": "retry", "to": "commit", "label": "passed", "fromSide": "left", "toSide": "right"},
+    {"id": "committed", "from": "commit", "to": "on-commit", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "confirmed", "from": "on-commit", "to": "receipt", "label": "passed", "variant": "emphasis"},
+    {"id": "failed", "from": "on-commit", "to": "log", "label": "failed", "variant": "security", "role": "error", "fromSide": "bottom", "toSide": "bottom"}
+  ]
+}
