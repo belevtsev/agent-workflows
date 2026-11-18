@@ -36,6 +36,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- [Checkout discovery](docs/operations.md#where-kitsu-keeps-its-records) preserves newlines in Git paths and reports errors from damaged repository configuration.
+
 - [QE tool observations](docs/compact-response-cycles.md#use-the-qe-packets-recipes) stay unknown when the current directory is removed or replaced,
   including when macOS reports its stale path.
 
