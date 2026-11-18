@@ -139,7 +139,7 @@ func TestInputChangeDoesNotDispatchABehaviorRepair(t *testing.T) {
 	}
 }
 
-func TestLosingVerificationAfterCommitKeepsIndependentReview(t *testing.T) {
+func TestCompletedDeliveryKeepsItsCommitAfterLogsAndHistoryChange(t *testing.T) {
 	r := kitsutest.Demo(t)
 	f := flow{t: t, repo: r, id: "recover-ready"}
 	f.call(0, "open", "--require-review", "--request", "Review the fix and deliver a verified commit", "--entry", "implement", "--until", "deliver", "--commit", "--review-limit", "1")
@@ -151,18 +151,19 @@ func TestLosingVerificationAfterCommitKeepsIndependentReview(t *testing.T) {
 	r.Git("add", "change.txt")
 	f.call(0, "commit", "--ticket", f.state.Ticket, "--message", "Deliver fix")
 	f.want("done")
-	head := r.Git("rev-parse", "HEAD")
+	head, completed := r.Git("rev-parse", "HEAD"), f.state.Completion
 	r.Remove(".git/kitsu/logs/" + f.state.Proof.Run + ".log")
 	f.call(0, "next")
-	f.want("verify")
-	f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "unit behavior", "--", "sh", "unit.sh")
 	f.want("done")
-	if r.Git("rev-parse", "HEAD") != head || !f.state.Verified || f.state.Delivery != "committed" {
-		t.Fatal("recovery must preserve the delivered commit", f.state)
-	}
-	// Another identical-tree commit has a different parent and cannot inherit
-	// the original review. The one-start limit makes the pending review explicit.
+	// Neither reading the task nor attempting to extend it should grant
+	// authority to review or commit the new head.
 	r.Git("commit", "--allow-empty", "-qm", "Change history")
+	r.Git("checkout", "-qb", "new-work")
+	f.call(1, "extend", "--review-limit", "2")
 	f.call(0, "next")
-	f.want("paused")
+	f.want("done")
+	if completed == nil || f.state.Completion == nil || *f.state.Completion != *completed ||
+		f.state.Completion.Candidate.Head != head || !f.state.Completion.Reviewed || !f.state.Verified || f.state.Ticket != "" {
+		t.Fatal("later history changes reopened the delivery", f.state)
+	}
 }

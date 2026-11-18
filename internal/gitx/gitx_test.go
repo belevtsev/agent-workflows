@@ -1,13 +1,16 @@
 package gitx
 
 import (
+	"bytes"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 func open(t *testing.T, dir string) *Repo {
@@ -29,6 +32,42 @@ func committed(t *testing.T, files map[string]string) (string, *Repo) {
 	git(t, dir, "add", "-A")
 	git(t, dir, "commit", "-q", "-m", "first")
 	return dir, open(t, dir)
+}
+
+type delayedGitOutput struct {
+	delay time.Duration
+	data  bytes.Buffer
+}
+
+func (w *delayedGitOutput) Write(p []byte) (int, error) {
+	time.Sleep(w.delay)
+	return w.data.Write(p)
+}
+
+func TestGitDrainsDelayedIndexOutput(t *testing.T) {
+	dir, _ := committed(t, map[string]string{"tracked.txt": "fixture\n"})
+	out := &delayedGitOutput{delay: 250 * time.Millisecond}
+	_, err := run(t.Context(), call{dir: dir, stdout: out}, "ls-files", "-z")
+	if err != nil || out.data.String() != "tracked.txt\x00" {
+		t.Fatalf("git index output = %q, %v", out.data.String(), err)
+	}
+}
+
+func TestGitRejectsExpiredOutputWithoutReplayingAWrite(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a POSIX shell alias to leave the output pipe open")
+	}
+	dir := newRepo(t)
+	// After the local write the alias exits with a child holding its output.
+	result, err := run(t.Context(), call{dir: dir},
+		"-c", `alias.kitsu-mutate=!printf 'once\n' >>invocations && printf 'output\n'; sleep 5 &`, "kitsu-mutate")
+	if !errors.Is(err, exec.ErrWaitDelay) || result != nil {
+		t.Fatalf("got output %q and error %v, want incomplete output error", result, err)
+	}
+	writes, err := os.ReadFile(filepath.Join(dir, "invocations"))
+	if err != nil || string(writes) != "once\n" {
+		t.Fatalf("got writes %q and error %v, want one execution", writes, err)
+	}
 }
 
 func TestOpen(t *testing.T) {
@@ -396,5 +435,38 @@ func TestOpenReportsBrokenRepository(t *testing.T) {
 	var gitErr *Error
 	if repo != nil || errors.Is(err, ErrNotRepo) || !errors.As(err, &gitErr) {
 		t.Fatalf("Open returned repo=%v, error=%v; want the Git configuration error", repo, err)
+	}
+}
+
+func TestOpenRecoversFromInterruptedGitOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a POSIX Git shim")
+	}
+	dir := newRepo(t)
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bin := t.TempDir()
+	shim := `#!/bin/sh
+if [ ! -e "$KITSU_TEST_DRAIN_MARKER" ]; then
+  : > "$KITSU_TEST_DRAIN_MARKER"
+  printf '%s\n' "$PWD/.git"
+  sleep 5 &
+  exit 0
+fi
+exec "$KITSU_TEST_REAL_GIT" "$@"
+`
+	if err := os.WriteFile(filepath.Join(bin, "git"), []byte(shim), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("KITSU_TEST_DRAIN_MARKER", filepath.Join(bin, "started"))
+	t.Setenv("KITSU_TEST_REAL_GIT", realGit)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	// The first invocation exits cleanly without closing its output pipe.
+	repo := open(t, dir)
+	if repo.Root != dir || repo.GitDir != filepath.Join(dir, ".git") || repo.CommonDir != repo.GitDir {
+		t.Fatalf("incomplete discovery recovered the wrong repository: %+v", repo)
 	}
 }

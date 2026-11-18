@@ -29,7 +29,8 @@ func runContext(ctx context.Context, cfg Config, args []string) error {
 	}
 	dir, err := os.Getwd()
 	var notice struct {
-		Dir string `json:"cwd"`
+		Dir     string `json:"cwd"`
+		Session string `json:"session_id"`
 	}
 	if *host != "" && json.NewDecoder(cfg.In).Decode(&notice) == nil && notice.Dir != "" {
 		dir, err = notice.Dir, nil
@@ -42,6 +43,9 @@ func runContext(ctx context.Context, cfg Config, args []string) error {
 		return nil
 	}
 	fmt.Fprint(cfg.Out, workflowContext(*host))
+	if nativeSessionID.MatchString(notice.Session) {
+		fmt.Fprintf(cfg.Out, "Kitsu host session for review reservations: %s\n", notice.Session)
+	}
 	if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			fmt.Fprintln(cfg.Out, "This repository has no kitsu.toml declaration. Ask before declaring checks; passing check evidence has not been established.")
@@ -85,7 +89,7 @@ func contextText(hooks, mode string, configured bool) string {
 		state = "The hooks are installed. The gate only observes here: it records what it would deny and allows the operation.\n"
 	}
 	return intro + " allows a commit or a push only when every check declared in kitsu.toml has a recorded passing run on exactly the content that is committed or pushed.\n" +
-		"- `kitsu run` records missing checks on current content; run it before committing.\n" +
+		"- `kitsu run` records missing checks. Ask the developer to run `kitsu check trust` if approval is needed.\n" +
 		"- `kitsu status` shows missing evidence.\n" +
 		"- A denied commit or push needs passing evidence for the staged content; never bypass hooks.\n" + state
 }

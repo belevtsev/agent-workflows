@@ -59,6 +59,21 @@ Source: proposal.md and approved daily coding harness plan.
 - **WHEN** a reviewer identifies a defect in an existing fix
 - **THEN** authorized repair leads to a fresh review and a real behavioral check, and a matching committed candidate can be recovered after interruption.
 
+#### Scenario: Keep the opening check policy through delivery
+
+- **WHEN** a daily task opens on a candidate with a committed repository declaration, or on a repository awaiting its first commit
+- **THEN** the task pins the committed declaration or the opening tree's declaration, respectively. A removed or changed declaration blocks verification and commit until the opening policy is restored. The task can retain an older verification result when its recorded tree proves the same policy.
+
+#### Scenario: Require permission to change a failed verify-only candidate
+
+- **WHEN** verification fails on a supplied patch and the developer has yet to authorize a repair
+- **THEN** Kitsu preserves the failed candidate. It can retry the unchanged candidate. A changed candidate requires an explicit repair scope extension before Kitsu can verify or deliver it.
+
+#### Scenario: Approve declared checks from the developer's terminal
+
+- **WHEN** the Kitsu plugin recognizes a command that would run declared repository checks
+- **THEN** the plugin checks approval for the exact current declaration and common Git directory. `check trust` displays the commands and records approval interactively after confirming the declaration still matches. Direct CLI and CI execution remain available.
+
 #### Scenario: Incomplete detachment
 
 - **WHEN** a foreign hook still invokes Kitsu during an explicit purge
@@ -114,6 +129,11 @@ Source: proposal.md and approved daily coding harness plan.
 - **WHEN** a coordinator reserves a review for a specific host
 - **THEN** the reservation and review record retain that host's selected model, reasoning effort and skill source references, and resolution failure leaves the action unclaimed.
 
+#### Scenario: Verify a required review came from a native worker
+
+- **WHEN** the task or repository requires review of the current candidate
+- **THEN** the harness accepts a result only after the installed host records the distinct worker starting and completing under the reserving coordinator, and the result matches the reserved review and candidate. A coordinator can replay the observed result without starting another worker. An absent observation or changed candidate leaves review pending. The receipt identifies the observed host, coordinator and worker.
+
 #### Scenario: Extend a partial review to delivery
 
 - **WHEN** the requested delivery contains files outside a previously reviewed index or the review base changes before verification
@@ -152,7 +172,7 @@ Source: proposal.md and approved daily coding harness plan.
 #### Scenario: A hook rewrites the verified tree
 
 - **WHEN** a normal Git hook changes the tree recorded by a requested commit
-- **THEN** the command reports the mismatch and preserves the created commit for inspection.
+- **THEN** the CLI retains the observed commit and requires fresh verification of that exact tree. Kitsu reconciles the real index under Git's lock only when it still matches the pre-commit index.
 
 #### Scenario: Merge parents change during verification
 
@@ -235,10 +255,10 @@ Source: proposal.md and approved daily coding harness plan.
 - **WHEN** a normally exiting command reports a failure after changing the original candidate
 - **THEN** the task reports the input change, retains the child exit status and requests verification on stable inputs before dispatching a behavioral repair.
 
-#### Scenario: Recover verification on an already reviewed commit
+#### Scenario: Preserve a completed commit after checkout changes
 
-- **WHEN** a delivered candidate loses test evidence and its independent review still matches the original bytes, committed tree and expected parents
-- **THEN** the task can reverify the existing commit without consuming another review slot. A different parent requires a fresh review.
+- **WHEN** a completed delivery is resumed after the checkout changes or an original local log is removed
+- **THEN** the record still identifies the historical delivery. It issues no new action ticket, and legacy records report only known commit or tree identity.
 
 #### Scenario: Repeat the behavior that required repair
 
@@ -263,7 +283,7 @@ Source: proposal.md and approved daily coding harness plan.
 #### Scenario: Recheck a completed publication
 
 - **WHEN** a developer confirms a previously delivered task again
-- **THEN** confirmation reads every current push destination and the requested PR. Failure reopens publication while retaining the local verification, commit and historical confirmation. Local resume can show the last observation without contacting a remote.
+- **THEN** confirmation checks every current push destination and the requested PR for the saved commit. Failure records the latest observation while keeping the historical delivery complete. Local resume shows the latest observation without contacting a remote.
 
 #### Scenario: Confirm a PR from a mirrored push destination
 
@@ -350,6 +370,8 @@ Source: proposal.md and approved daily coding harness plan.
 
 The daily harness SHALL import a ticket from a supported URL, a local Markdown file, or Markdown supplied by a host tracker into an immutable local task snapshot. It SHALL link a real failing behavioral assertion, a recorded repair, a passing rerun and a successful assertion observed on the delivered commit in a retrievable receipt.
 
+Direct HTTP(S) imports SHALL connect only to public unicast destinations. Each connection, including one opened for a redirect, SHALL verify every result of its destination lookup and dial a validated IP address. The original hostname SHALL identify the HTTP request and HTTPS peer. Direct imports SHALL ignore HTTP proxy settings.
+
 Source: developer request for the first closed-loop delivery slice.
 
 #### Scenario: Resume and deliver the same ticket
@@ -372,7 +394,33 @@ Source: developer request for the first closed-loop delivery slice.
 - **WHEN** a developer opens a public link to a supported text document, then reopens the same task offline
 - **THEN** Kitsu captures the requested issue, writes a private Markdown copy with its canonical source link and regenerates it from the saved task. Failed intake creates no deliverable ticket.
 
+#### Scenario: Reject a non-public direct destination
+
+- **WHEN** a direct ticket URL or redirect uses a non-public IP, or its hostname resolves to any non-public address
+- **THEN** Kitsu refuses to connect to that destination and points the developer to the host connector and `--stdin`. Failed intake creates no task or ticket snapshot. A host can still supply Markdown with the same stable URL as its source reference.
+
 #### Scenario: Deliver a ticket supplied by a host tracker
 
 - **WHEN** the host reads a ticket through a configured MCP server or tracker plugin and supplies its Markdown and stable tracker reference on standard input
 - **THEN** Kitsu snapshots that text locally without contacting the source. Offline resume retains the original input and the verified delivery receipt identifies the same tracker reference.
+
+### Requirement: Export a shareable verification receipt
+
+`kitsu task receipt ID --markdown` SHALL render a saved daily verification result without changing repository or task state, running checks, contacting a ticket provider or producing a bug receipt. It SHALL limit portable output to the candidate, applicable review and declaration authority, safe check verdicts and ticket identity.
+
+Source: approved verified handoff plan.
+
+#### Scenario: Share a verified patch or exact commit
+
+- **WHEN** a daily task has verified a patch or a commit
+- **THEN** Markdown identifies the saved tree and explains whether the proof ran on an existing commit or Git subsequently committed the verified tree. An unavailable commit ID, local log or policy pin is identified as such. Later checkout changes are outside the saved observation.
+
+#### Scenario: Share a ticket-linked result without private details
+
+- **WHEN** a developer exports a task verified against a saved ticket
+- **THEN** the report contains the ticket source type and content digest when available. A recognized GitHub issue link is canonicalized and opaque source paths stay local. It identifies whether the on-commit receipt exists. Request text, check arguments and output, session IDs, local paths and URL credentials are omitted.
+
+#### Scenario: Withhold Markdown before verification succeeds
+
+- **WHEN** a task has no successful saved verification or a developer requests both Markdown and a different receipt format
+- **THEN** the command fails without rendering a success report or executing a check.

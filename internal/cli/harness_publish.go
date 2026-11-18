@@ -33,19 +33,27 @@ func confirmHarness(ctx context.Context, s *session, t *harness.Task, o harnessO
 	event := harness.Event{Action: "publish", Candidate: v.Candidate, Note: t.Scope.Publish, Link: o.note, Ticket: o.ticket, At: time.Now().UTC()}
 	if err != nil {
 		if recheck {
-			// Preserve the earlier observation. A failed live recheck leaves only
-			// publication outstanding, including when the remote is unavailable.
+			// A live recheck records a new observation without changing the delivery.
 			event.Action = "publication_unconfirmed"
 			t.Events = append(t.Events, event)
 		}
 		return errors.Join(errPublicationUnconfirmed, err)
 	}
 	if recheck {
-		t.Latest("publish").ReconfirmedAt = event.At
+		refreshPublication(t, event)
 	} else {
 		t.Events = append(t.Events, event)
+		t.Completion = v.deliveryCompletion(event.At)
 	}
 	return nil
+}
+
+func refreshPublication(t *harness.Task, event harness.Event) {
+	if latest := t.Latest("publish", "publication_unconfirmed"); latest != nil && latest.Action == "publish" {
+		latest.ReconfirmedAt = event.At
+		return
+	}
+	t.Events = append(t.Events, event)
 }
 
 func observePublication(ctx context.Context, s *session, scope harness.Scope, link, want string) error {

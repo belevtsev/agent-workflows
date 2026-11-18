@@ -70,7 +70,7 @@ kitsu task bug export-14 --from mcp://support/EXP-14 --stdin < ticket.md
 
 The host handles tracker access. Kitsu records the supplied text and source reference. Use a permanent link without credentials or temporary access tokens. Resume offline with `kitsu task next export-14`.
 
-For a direct HTTP(S) link, Kitsu makes an anonymous request and accepts UTF-8 Markdown, plain text, or a server-rendered HTML page with readable content in a main or article element. Review the imported snapshot at intake. For private or client-rendered tickets, let your configured MCP server or plugin supply the Markdown with `--stdin`.
+For a direct HTTP(S) link, Kitsu makes an anonymous connection to a public IP address. Each redirect gets the same destination check, and direct imports ignore HTTP proxy settings. The reader accepts UTF-8 Markdown, plain text, or server-rendered HTML with readable content in a main or article element. Review the imported snapshot at intake. For an internal, authenticated, proxy-only, or client-rendered ticket, let your configured host connector supply the Markdown with `--stdin`. You can keep the private URL as the source reference in that command.
 
 Opening any supported ticket prints the path to a private Markdown snapshot in the worktree's Git directory. JSON exposes it as `ticket_markdown`. It includes the canonical source link and saved request. Repeat the same open command to regenerate it offline. The delivery receipt always links to the original source.
 
@@ -86,6 +86,8 @@ The receipt contains the source URL (a file URI for Markdown), title and digest,
 ## Choose independent review
 
 For new daily tasks, “implement, test and commit” uses one coordinator by default. If a reviewer finds a defect in the implementation or a behavior test fails after review, the developer can correct the work under the original implementation scope. For a review finish, Kitsu records the findings and stops. Reviewing or verifying a supplied patch requires explicit repair scope before editing it. When the correction changes the candidate, required review and the saved assertion run again before delivery. An explicit review entry or review finish reserves an independent reviewer. To require that same review during implementation, use a plain-language request, pass `--require-review` to `task start` or `task open`, or add it later with `task extend ID --require-review`. A review limit caps starts and does not request one. Use an explicit `--entry implement` when opening an implementation task directly. With only `--until deliver`, a new task starts by verifying the existing candidate.
+
+For a required review, the plugin records `SubagentStart` and `SubagentStop` from a separate native reviewer under the reserving Codex or Claude Code session. The worker's final JSON refers to the reserved review and candidate. The coordinator records it with `kitsu task record ID review --ticket TICKET --observed-review --brief`. The `host_observed` result records what the local host reported. `agent_reported` describes an optional CLI result supplied directly. If the hooks are missing or the worker returns an unmatched result, required review stays pending. Verify the [plugin hook setup](hooks.md#verify-plugin-hook-setup) and recover the reserved worker before retrying.
 
 To require review for the repository, put the following top-level key before any TOML tables in `kitsu.toml`.
 
@@ -114,7 +116,19 @@ If a managed worker interval is active in the same worktree, an unfinished daily
 
 From a repository, interactive daily startup pins the working tree and prints the task ID before opening the host. A newly launched host receives the scope-binding command with the saved ID and requested finish. On an interrupted task, the host reads the current state before acting. A launch failure leaves the ID resumable. Previewing the handoff creates no task. If you pass limits with `--print` or `--json`, the prompt includes the limit flags for `task open`. An interactive launch saves those limits before the host opens. Its printed resume command includes `--compact` when you selected it. From an already open host, the task skill chooses a short ID at intake. The next-action view shows the latest result, claim, assertion and delivery state. The full view retains the request and earlier results. These records live in the worktree's private Git directory. Run `git worktree list` to locate the original checkout, enter its working directory, then run `kitsu task list` to confirm the ID. Both `kitsu agent check` and interactive startup report a Git metadata directory or an unreadable Git configuration before opening the host. Existing shared OpenSpec changes still use the [managed workflow](workflow.md).
 
-When reporting a delivered commit, read `commit_evidence` from `kitsu task next ID --json`. `verified_existing_commit` means the commit was already checked out when the current proof ran. `commit_matches_verified_tree` means Kitsu subsequently observed the committed tree on the verified parents. For a delivered bug ticket, `kitsu task receipt ID --json` gives the source, commit and three check observations. Report the order the evidence shows.
+### Share a verification receipt
+
+```sh
+kitsu task receipt export-quoting --markdown > verification.md
+```
+
+Paste the receipt into a PR or ticket after verifying a working patch or commit. It identifies the saved tree, exact commit when known, verification order, repository checks, review and ticket. Later checkout changes leave that observation intact. Recognized GitHub issue links are canonical. For other sources, the task name, source type and content digest identify the saved ticket. Full source references, raw logs, arguments, notes, action tickets, session IDs and local paths stay in the local record.
+
+The declaration fingerprint identifies the bytes pinned at intake. The review row distinguishes a saved host-observed review from an agent report and applies only to the verified candidate. Older records may have a verified tree with no exact commit ID or declaration pin.
+
+Markdown reads saved evidence without running checks. For a ticket-linked bug, use `kitsu task receipt ID --json` on the delivered commit to run the final behavior check and save the complete local receipt. A later Markdown export includes that result.
+
+Use `commit_evidence` in `kitsu task next ID --json` for the programmatic verification order. `verified_existing_commit` means the commit was already checked out when the proof ran. `commit_matches_verified_tree` means Kitsu later observed the matching tree on the verified parents.
 
 ## Drive the harness without opening a host
 
@@ -149,6 +163,10 @@ Use `repair` for a repair result. The host starts the worker between the first t
 
 ### Retry verification
 
+The task pins the exact `kitsu.toml` from its opening commit, or its opening tree before the first commit. The next-action view identifies that policy as `repository_policy`. If the candidate changes or removes it, restore the opening declaration to continue. To adopt a reviewed policy, open a new task from a commit that includes it.
+
+For a verify-only request such as “commit if it passes,” a failed assertion or declared check permits a retry on the same worktree, index and Git parents. Changing that candidate requires the developer to authorize repair with `kitsu task extend ID --repair`.
+
 A verification receipt identifies the staged tree as well as the working files and commit parents. If someone stages or unstages a file, use the verification ticket from `kitsu task next ID` and run `kitsu task test ID --ticket TICKET --retry` to check the new index. The saved command may itself inspect staged contents. Kitsu checks the index before and after each assertion and repository check. A change observed during a command leaves the task unverified.
 
 For commit-scoped work, stage the authorized files before running verification to run the checks once. If you stage the entire verified working tree afterward, the original commit ticket can run the saved checks against the new index and proceed when they pass. A failed assertion or declared check keeps the branch at its original commit. A partially staged tree still requires inspection.
@@ -182,7 +200,11 @@ If `next` is `reconcile`, Kitsu still has an outstanding claim for another candi
 
 ## Delivery and limits
 
-Only request `--commit` with `--until deliver` when a commit is in scope. After verification, inspect and stage the task-owned files. Use the commit ticket from verification directly. Use `kitsu task commit ID --ticket TICKET --message TEXT`. Each pre-existing edit included in the commit needs an explicit `--include PATH`. A partial index cannot certify a commit whose tree differs from the verified candidate. Leave unrelated work intact and deliver the verified working change when a separate commit would mix ownership. After interruption, `task next` checks the committed tree and its ordered parents. This includes the extra parents of a pending merge. A merge still needs a commit when its file contents already match HEAD. If a Git hook changes the committed tree or moves the checkout during `git commit`, Git may already have written a commit when Kitsu reports the mismatch. Inspect both branch tips and the created commit, then resume with `task next` before attempting another commit.
+Only request `--commit` with `--until deliver` when a commit is in scope. After verification, inspect and stage the task-owned files. Use the verification ticket with `kitsu task commit ID --ticket TICKET --message TEXT`. Each pre-existing edit needs an explicit `--include PATH`. The staged tree must match the verified tree. Leave unrelated work intact and deliver the verified working change when a separate commit would mix ownership.
+
+After interruption, `task next` checks the exact commit tree and ordered parents. A pending merge needs a commit even when its files match HEAD. If a hook changes the committed tree, Kitsu reports the commit it observed and requires fresh verification of that commit. Kitsu reconciles the real index only while it still matches the original index under Git's index lock. If your staging or checkout moved, inspect Git and return to the recorded candidate before resuming. Open a new task for further edits.
+
+After verified delivery, `task next ID --brief` returns the historical `completed_delivery` with the commit, tree and verification outcome. Older records may identify only the committed tree. Later checkout changes leave the saved delivery complete. Start a new task to review, verify or commit later work.
 
 Use `--time-limit 10m` at intake to pause actions after a deadline. Verification commands inherit the deadline. Hosts own their native workers and their cancellation. After reconciling any outstanding claim, `task extend ID --time-limit 5m` grants a new window. JSON reports observed sessions, repairs, elapsed time and time to the first result. Captured tokens sum available task-attributed host notices. A reviewer-only total can omit the interactive coordinator. A null value means usage is unavailable. Missing host notices prevent a complete cost comparison.
 
@@ -192,11 +214,11 @@ When the next required review cannot start, `task next ID --brief` returns `paus
 
 A new commit-scoped task pins its destination branch when opened or extended. Interactive startup saves the starting checkout before launching the host. When resuming, use `kitsu task next ID --brief` to see `commit_target`, such as `refs/heads/feature` or `HEAD` for a detached checkout. On another branch the task can report `blocked` with `current_commit_target` and no ticket, even when both branches point to the same commit. Return to the recorded checkout to reuse applicable evidence. If a check changed branches, rerun it there. For an intentionally different delivery destination, start a newly authorized task. If the original branch already received the verified commit, Kitsu checks its tree and parents before acknowledging it. An older task can recover its destination from its saved proof. A record that never captured a branch cannot establish an earlier destination.
 
-If a commit response was lost, check `task next`. When it already reports committed, replaying the original commit ticket can acknowledge that Git result even while publication is pending. If Git advanced before Kitsu saved its commit event, the recovered commit hash appears as `observed_commit` on the original test event in `task show ID --json`. The publication ticket remains usable.
+If a commit response was lost, check `task next`. When it already reports committed, replaying the original commit ticket can acknowledge the Git result even while publication is pending. `task show ID --json` identifies the recovered commit in the completed delivery or the original test event. Pending publication is tied to that commit.
 
 For a requested push, pin `--publish-to origin/topic` when opening or extending a delivery task. For a GitHub PR also pin `--pr-base main`. The host performs the authorized push or PR creation and checks for existing work after an interruption. At the publish action, run `kitsu task confirm ID --ticket TICKET`, adding `--pr https://github.com/OWNER/REPO/pull/NUMBER` for a PR. This command reads the configured push destination and checks the advertised branch hash. For a PR it also queries the installed authenticated GitHub CLI for the open PR URL, head branch and commit, and requested base. When a remote has several push destinations, every destination must advertise the verified commit. A PR can originate from any of their matching repositories.
 
-After delivery, `kitsu task next ID --brief` reads the saved `last_publication` receipt locally. It includes the remote and branch, commit, observation time and PR URL when requested. To check the remotes and saved PR live again, run `kitsu task confirm ID --brief`. If a branch moved or disappeared, the PR closed, or a destination could not be reached, the recheck reports the error. The failure receipt supplies the next action and ticket. The task keeps its local verification and commit. Inspect the destination before deciding whether any push is appropriate. After connectivity or publication is restored, use the new ticket to confirm, adding `--pr URL` for a requested PR.
+After delivery, `kitsu task next ID --brief` reads the saved `last_publication` observation locally. It includes the remote and branch, commit, observation time and PR URL when requested. Run `kitsu task confirm ID --brief` to check those destinations for the saved commit. A moved branch, closed PR or unavailable remote records an `unconfirmed` observation and returns an error. The original delivery remains complete and requires no ticket to check again.
 
 ### Deliver selected staged files
 

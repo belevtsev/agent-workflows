@@ -8,6 +8,9 @@
 | A coding ticket survives edits on its original base | scenarios/harness/work_ticket_test.go | TestWorkTicketSurvivesEditsButNotANewBase |
 | Review an existing candidate | scenarios/harness/harness_test.go | TestCppReviewOnlyPreservesIndexAndWorkingTree |
 | Repair and recover | scenarios/harness/harness_test.go | TestGoExistingFixRepairVerificationAndRecovery |
+| Keep the opening check policy through delivery | scenarios/harness/verified_policy_test.go | TestChangedDeclarationBlocksVerificationAndCommit |
+| Require permission to change a failed verify-only candidate | scenarios/harness/verified_policy_test.go | TestChangedVerifyOnlyCandidateNeedsRepairAuthority |
+| Approve declared checks from the developer's terminal | internal/cli/ux_check_trust_test.go | TestReviewExactCheckDeclarationBeforeAgentExecution |
 | Confirm publication | scenarios/harness/harness_test.go | TestPublishChecksActualBranchBeforeCompleting |
 | Identify when the verified commit already existed | scenarios/harness/commit_history_test.go | TestDeliveryDistinguishesTheCommitAlreadyPresentAtVerification |
 | A staging-only change reopens review | scenarios/harness/harness_test.go | TestStagedReviewChangesWithIndexOnly |
@@ -18,6 +21,7 @@
 | Recover a delegated implementation or repair | scenarios/harness/delegated_work_test.go | TestDelegatedWorkRecovery |
 | Recover a delegated implementation or repair | scenarios/harness/delegated_work_test.go | TestLinkedDeveloperCanReturnAfterDeadline |
 | Resolve reviewer settings at reservation | scenarios/harness/review_settings_test.go | TestReviewReservationResolvesHostSettingsOnce |
+| Verify a required review came from a native worker | scenarios/harness/native_review_test.go | TestRequiredReviewNeedsNativeWorkerOnCurrentCandidate |
 | Extend a partial review to delivery | scenarios/harness/harness_test.go | TestReviewScopeExtensionChecksTheWholeDeliveryCandidate |
 | Pin limits before launching a host | internal/cli/onboarding_terminal_linux_test.go | TestInteractiveHarnessPinsScopeAndResumesOriginalTask |
 | Bound independent review starts | scenarios/harness/review_limits_test.go | TestReviewDispatchLimitPreservesFindingsAndCanResume |
@@ -25,7 +29,8 @@
 | Reserve review with a result | scenarios/harness/review_limits_test.go | TestRecordAndClaimReviewSurvivesRetries |
 | A commit has an unexpected merge parent | scenarios/harness/commit_history_test.go | TestUnreviewedMergeParentCannotCompleteDelivery |
 | Finish a pending merge | scenarios/harness/commit_history_test.go | TestPendingMergeMustActuallyBeCommitted |
-| A hook rewrites the verified tree | scenarios/harness/commit_history_test.go | TestCommitHookChangingIndexCannotRecordVerifiedDelivery |
+| A hook rewrites the verified tree | scenarios/harness/commit_history_test.go | TestCommitHookTreeRequiresFreshEvidenceAndKeepsTheCommit |
+| A hook rewrites the verified tree | scenarios/harness/commit_history_test.go | TestCommitHookPreservesStagingChangedDuringCommit |
 | Merge parents change during verification | scenarios/harness/commit_history_test.go | TestChangingMergeParentsDuringVerificationRequiresAnotherAssertion |
 | Brief verification names the executed check | scenarios/harness/verification_output_test.go | TestBriefVerificationPointsToExecutedLog |
 | Stream full verification output | scenarios/harness/verification_output_test.go | TestFullVerificationStillStreamsDiagnostics |
@@ -48,7 +53,8 @@
 | Reverify earlier daily evidence | scenarios/harness/verification_candidate_test.go | TestLegacyVerificationGetsFreshPerRunEvidence |
 | Staging changes after an assertion | scenarios/harness/verification_index_test.go | TestVerifyStagedContentsAfterIndexOnlyChange |
 | Diagnose an unstable check before repair | scenarios/harness/verification_candidate_test.go | TestInputChangeDoesNotDispatchABehaviorRepair |
-| Recover verification on an already reviewed commit | scenarios/harness/verification_candidate_test.go | TestLosingVerificationAfterCommitKeepsIndependentReview |
+| Preserve a completed commit after checkout changes | scenarios/harness/verification_candidate_test.go | TestCompletedDeliveryKeepsItsCommitAfterLogsAndHistoryChange |
+| Preserve a completed commit after checkout changes | scenarios/harness/commit_history_test.go | TestLegacyCommitDeliveryStaysComplete |
 | Repeat the behavior that required repair | scenarios/harness/assertion_recovery_test.go | TestRepairCannotSilentlyReplaceItsFailingAssertion |
 | Correct a mistaken assertion | scenarios/harness/assertion_recovery_test.go | TestAssertionCorrectionRetainsOriginalFailure |
 | Reconcile an outstanding reviewer after rollback | scenarios/harness/claim_recovery_test.go | TestOutstandingReviewerSurvivesCandidateRollback |
@@ -75,7 +81,18 @@
 | Repair a reproduced failure and verify the commit | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Withhold an unsupported receipt | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Import a public ticket link and reopen its Markdown offline | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
+| Reject a non-public direct destination | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
+| Classify address ranges | internal/tickets/transport_test.go | TestPublicTicketAddress |
+| Connect only to validated IPs | internal/tickets/transport_test.go | TestPublicTicketDialUsesOnlyValidatedLiterals |
+| Validate each redirect destination and use a direct connection | internal/tickets/transport_test.go | TestPublicTicketChecksEveryRedirect |
+| Verify the original request hostname over TLS with a pinned connection | internal/tickets/transport_test.go | TestPublicTicketUsesOriginalTLSIdentity |
 | Deliver a ticket supplied by a host tracker | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Fetch and validate public ticket content | internal/tickets/public_test.go | TestPublicTicket |
+| Share a verified patch or exact commit | scenarios/harness/shareable_receipt_test.go | TestMarkdownReceiptExportsOnlyTheSavedVerifiedPatch |
+| Share a verified patch or exact commit | scenarios/harness/shareable_receipt_test.go | TestMarkdownReceiptDistinguishesVerificationOrderAndLegacyCommit |
+| Share a verified patch or exact commit | scenarios/harness/native_review_test.go | TestRequiredReviewNeedsNativeWorkerOnCurrentCandidate |
+| Share a ticket-linked result without private details | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
+| Withhold Markdown before verification succeeds | scenarios/harness/shareable_receipt_test.go | TestMarkdownReceiptRequiresSavedSuccessfulVerification |
+| Withhold Markdown before verification succeeds | scenarios/harness/shareable_receipt_test.go | TestMarkdownReceiptRejectsFailedRepositoryCheck |
 
 Go, JavaScript and C++ fixture commands execute locally. Host judgments are scripted. Published release checks execute on native CI runners when a release is available. Interactive host quality, speed and token costs require separate observations.

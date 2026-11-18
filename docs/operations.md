@@ -61,6 +61,7 @@ The preferred surface is:
 | `adviser ask` | Consult positional `<adviser>` with `--task`, `--role`, `--stage`, and `--request`; opt-in still applies. |
 | `adviser accept`, `adviser reject`, `adviser defer` | Record `<id> --task <task> --reason <text>` with optional `--choice <id>`. |
 | `check list`, `check add`, `check run`, `check stats` | Inspect checks, add `<id> -- <program> [args...]`, run `[<id>...]`, or report recorded runs. |
+| `check trust` | Inspect and approve this exact declaration's commands for use by the agent plugin. |
 | `gate init`, `gate status`, `gate uninstall` | Install hooks, inspect evidence, or detach hooks and retain records. Use `--purge` to delete the shared check and token store after a complete detach. |
 | `usage show`, `usage record` | Report `--task <task>` or read a notice from stdin with explicit `--host`. |
 | `config show`, `config get` | Inspect CLI preferences and their origins; get the `host` key. |
@@ -566,12 +567,7 @@ denied. Outside a git repository the hook denies with 3.
 
 ## kitsu guard
 
-Reads the notice that Claude Code or Codex gives a hook before a tool call, and
-answers in two cases only: a shell command that skips git's hooks or turns the
-gate off, and an edit of `kitsu.toml`, of a git hook, of the git configuration or
-of a record of `kitsu`. It never judges a commit or a push. The guard is a
-reminder for an agent; the git hooks decide. The agent plugin runs it; see
-[Hooks](hooks.md#hooks-of-the-agent-plugin).
+Reads the notice that Claude Code or Codex gives a hook before a tool call. It checks for developer approval before recognized Kitsu check execution and guards edits to local gate settings, hooks, configuration and records. Git hooks decide whether to accept a commit or push. See [Hooks](hooks.md#hooks-of-the-agent-plugin).
 
 ```text
 kitsu guard [--host claude|codex]
@@ -581,6 +577,8 @@ kitsu guard [--host claude|codex]
 | --- | --- |
 | `--host claude` | The default. The answer asks the user. |
 | `--host codex` | The answer denies the call with the reason, because Codex does not ask from a hook. The reason adds that the user can run the call themselves. |
+
+Both hosts deny check execution when the declaration still needs developer approval. Run `kitsu check trust` in your terminal and inspect its commands before approving.
 
 The notice is a JSON object on standard input with `tool_name`, `cwd` and
 `tool_input`. The guard reads `command` of the tools `Bash` and `PowerShell`,

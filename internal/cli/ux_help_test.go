@@ -142,7 +142,7 @@ func TestUXCanonicalMutationsAndAliasesReceiveGuardProtection(t *testing.T) {
 	} {
 		call := toolCall{Tool: "Bash", Dir: root}
 		call.Input.Command = command
-		if why := guardReason(t.Context(), call); why == "" {
+		if why, _ := guardReason(t.Context(), call); why == "" {
 			t.Errorf("mutation bypassed guard: %s", command)
 		}
 	}
@@ -155,7 +155,7 @@ func TestUXCanonicalMutationsAndAliasesReceiveGuardProtection(t *testing.T) {
 	} {
 		call := toolCall{Tool: "Bash", Dir: root}
 		call.Input.Command = command
-		if why := guardReason(t.Context(), call); why != "" {
+		if why, _ := guardReason(t.Context(), call); why != "" {
 			t.Errorf("read-only request blocked: %s: %s", command, why)
 		}
 	}

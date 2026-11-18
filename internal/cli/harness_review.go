@@ -85,6 +85,7 @@ func printReservedReview(ctx context.Context, cfg Config, id, ticket string) err
 	if t.Claim.Reviewer != nil {
 		input["reviewer"] = t.Claim.Reviewer
 	}
+	addNativeReviewInput(input, &t, c, assignment+guidance)
 	if !t.Deadline.IsZero() {
 		input["review_return_by"] = t.Deadline.Add(-t.FinishReserve)
 	}

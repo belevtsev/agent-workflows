@@ -83,9 +83,9 @@ class Checkout:
                         GIT_COMMITTER_NAME="Fixture", GIT_COMMITTER_EMAIL="fixture@example.invalid",
                         GIT_AUTHOR_DATE="2020-01-01T00:00:00Z", GIT_COMMITTER_DATE="2020-01-01T00:00:00Z")
 
-    def run(self, *argv, tag=None, exits=(0,), cwd=None, env=None):
+    def run(self, *argv, tag=None, exits=(0,), cwd=None, env=None, stdin=None):
         working_dir = cwd or self.repo
-        p = subprocess.run(argv, cwd=working_dir, env=env or self.env,
+        p = subprocess.run(argv, cwd=working_dir, env=env or self.env, input=stdin,
                            encoding="utf-8", errors="replace", capture_output=True, timeout=45)
         reply = dict(argv=list(map(str, argv)), cwd=str(working_dir), exit=p.returncode, stdout=p.stdout, stderr=p.stderr)
         if tag:
@@ -161,9 +161,25 @@ class Checkout:
         result = self.run(self.binary, *claim["review_input"][1:], tag="review-input")
         return json.loads(result["stdout"])
 
-    def record_review(self, state, who, finding=None):
+    def record_review(self, state, review_input, who, finding=None, *, owner="offline-coordinator",
+                      note=None, brief=False):
+        note = note or finding or "The checked behavior agrees with README.md."
+        template = review_input.get("native_review_result")
+        if template is not None:
+            # The fixture simulates the native hook lifecycle only in its disposable checkout.
+            notice = dict(cwd=str(self.repo), session_id=owner, agent_id=who, agent_type="kitsu:reviewer")
+            report = dict(template, note=note, decision="findings" if finding else "approve",
+                          findings=[finding] if finding else [])
+            self.run(self.binary, "usage", "record", "--host", "codex", tag="scripted-review-start",
+                     stdin=json.dumps(dict(notice, hook_event_name="SubagentStart")))
+            self.run(self.binary, "usage", "record", "--host", "codex", tag="scripted-review-stop",
+                     stdin=json.dumps(dict(notice, hook_event_name="SubagentStop",
+                                           last_assistant_message=json.dumps(report))))
+            return self.task("record", "review", "--ticket", state["ticket"], "--observed-review", brief=brief)
+
         options = ("--finding", finding) if finding else ()
-        return self.record(state, "review", finding or "The checked behavior agrees with README.md.", *options, actor=who)
+        return self.task("record", "review", "--ticket", state["ticket"], "--actor", who, "--note", note,
+                         *options, brief=brief)
 
     def evidence(self, state, tag):
         proof = state.get("behavioral_assertion")
@@ -274,14 +290,14 @@ def repair(checkout, route):
         state = checkout.test(state, expected=5)
         checkout.write("double.js", INADEQUATE, observe=True)
         state = checkout.record(state, "repair", "Reject values other than strings and numbers.")
-        checkout.reserve_review(state, "offline-reviewer-1")
+        reserved = checkout.reserve_review(state, "offline-reviewer-1")
         checkout.probe()
-        state = checkout.record_review(state, "offline-reviewer-1", FINDING)
+        state = checkout.record_review(state, reserved, "offline-reviewer-1", FINDING)
         checkout.write("double.js", FIXED, observe=True)
         state = checkout.record(state, "repair", "Reject all non-numbers.")
-        checkout.reserve_review(state, "offline-reviewer-2")
+        reserved = checkout.reserve_review(state, "offline-reviewer-2")
         checkout.probe()
-        state = checkout.record_review(state, "offline-reviewer-2")
+        state = checkout.record_review(state, reserved, "offline-reviewer-2")
         checkout.test(state, retry=True)
     else:
         state = checkout.open("implement", "implement")
@@ -325,7 +341,7 @@ def review(checkout, route):
     if not named:
         actual = checkout.probe()
     found = route == "false-finding" or actual["actual"] == 6 and route != "empty-diff"
-    checkout.record_review(state, worker, FINDING if found else None)
+    checkout.record_review(state, reserved, worker, FINDING if found else None)
     finding = dict(path="double.js", line=2, input="3", expected="TypeError", actual=6) if found else None
     return dict(finish="reviewed", comparison=comparison, findings=[finding] if found else [])
 

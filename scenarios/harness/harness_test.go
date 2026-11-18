@@ -8,14 +8,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/belevtsev/kitsu/v3/internal/harness"
 	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 type state struct {
 	Next, Ticket, Delivery string
-	CommitTarget           string `json:"commit_target"`
-	Verified               bool
-	Proof                  *struct {
+	Scope                  struct {
+		RequireReview bool `json:"require_review"`
+	}
+	RepositoryReview bool                `json:"repository_requires_review"`
+	CommitTarget     string              `json:"commit_target"`
+	Completion       *harness.Completion `json:"completed_delivery"`
+	Verified         bool
+	Proof            *struct {
 		Run     string `json:"run_id"`
 		Outcome string
 	} `json:"behavioral_assertion"`
@@ -57,8 +63,32 @@ func (f *flow) record(action, actor, note string, extra ...string) {
 }
 func (f *flow) review(actor, note string, extra ...string) {
 	f.t.Helper()
-	f.call(0, "claim", "--actor", "host", "--ticket", f.state.Ticket)
+	claim := []string{"claim", "--actor", "host", "--ticket", f.state.Ticket}
+	required := f.state.Scope.RequireReview || f.state.RepositoryReview
+	if required {
+		claim = append(claim, "--host", "codex")
+	}
+	f.call(0, claim...)
+	if required {
+		f.observedReview("codex", "host", actor, note, extra...)
+		return
+	}
 	f.record("review", actor, note, extra...)
+}
+
+func (f *flow) observedReview(host, parent, worker, note string, extra ...string) {
+	f.t.Helper()
+	f.want("review")
+	var findings []string
+	for i, arg := range extra {
+		if arg == "--finding" && i+1 < len(extra) {
+			findings = append(findings, extra[i+1])
+		}
+	}
+	ticket := f.state.Ticket
+	sendNativeReviewEvent(f.t, f.repo, host, "SubagentStart", parent, worker, "")
+	finishNativeFixture(f.t, f.repo, f.id, ticket, host, parent, worker, note, findings...)
+	f.call(0, "record", "review", "--ticket", ticket, "--observed-review")
 }
 
 func TestGoExistingFixRepairVerificationAndRecovery(t *testing.T) {
@@ -127,9 +157,9 @@ func TestNegative(t *testing.T){if Label(-2)!=2{t.Fatal("negative")}}
 	}
 	r.Write("label.go", "package format\nfunc Label(x int) int {return x}\n")
 	f.call(0, "next")
-	f.want("review")
-	if f.state.Verified {
-		t.Fatal("stale evidence certified another candidate")
+	f.want("done")
+	if !f.state.Verified || f.state.Ticket != "" || f.state.Completion == nil || f.state.Completion.Candidate.Head != r.Git("rev-parse", "HEAD") {
+		t.Fatal("later edits reopened the historical delivery", f.state)
 	}
 }
 
@@ -194,17 +224,19 @@ func TestCppReviewOnlyPreservesIndexAndWorkingTree(t *testing.T) {
 
 func TestDeclaredChecksAndEvidenceRecovery(t *testing.T) {
 	r := kitsutest.Demo(t)
+	r.Write("lint.sh", "test ! -e .git/BAD\n")
+	r.Git("commit", "-qam", "Set up a temporary environmental failure")
 	f := flow{t: t, repo: r, id: "verify-gate"}
 	f.call(0, "open", "--request", "Verify repository behavior", "--until", "verify")
 	f.record("intake", "host", "Original unit and lint requirements also apply")
-	r.Write("BAD", "force full-suite failure")
+	r.Write(".git/BAD", "force full-suite failure without changing the candidate")
 	f.call(0, "next")
 	f.call(5, "test", "--ticket", f.state.Ticket, "--expect", "fixture unit behavior", "--", "sh", "unit.sh")
 	f.want("verify")
 	if f.state.Verified {
 		t.Fatal("passing targeted assertion masked failing gate")
 	}
-	r.Remove("BAD")
+	r.Remove(".git/BAD")
 	f.call(0, "next")
 	f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "fixture unit behavior", "--", "sh", "unit.sh")
 	f.want("done")
@@ -288,8 +320,14 @@ func TestPublishChecksActualBranchBeforeCompleting(t *testing.T) {
 	f.want("done")
 	f.call(0, "confirm", "--ticket", ticket)
 	f.call(1, "confirm", "--ticket", ticket, "--pr", "https://github.com/example/other/pull/1")
-	f.call(0, "extend", "--pr-base", "main")
-	f.want("publish")
+	f.call(1, "extend", "--pr-base", "main")
+	f.call(0, "next")
+	f.want("done")
+
+	f = flow{t: t, repo: r, id: "publish-pr"}
+	f.call(0, "open", "--request", "Verify and confirm the requested PR", "--entry", "verify", "--until", "deliver", "--publish-to", "upstream/topic", "--pr-base", "main")
+	f.record("intake", "host", "Check the unit behavior and confirm the PR")
+	f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "fixture unit behavior", "--", "sh", "unit.sh")
 	f.call(2, "confirm", "--ticket", f.state.Ticket, "--pr", "invalid")
 }
 
@@ -422,7 +460,7 @@ func TestReviewScopeExtensionChecksTheWholeDeliveryCandidate(t *testing.T) {
 	f.want("done")
 	f.call(0, "extend", "--until", "deliver", "--commit")
 	f.want("review")
-	received := r.Kitsu("task", "claim", f.id, "--actor", "host", "--ticket", f.state.Ticket, "--brief")
+	received := r.Kitsu("task", "claim", f.id, "--actor", "host", "--ticket", f.state.Ticket, "--host", "codex", "--brief")
 	var expanded struct {
 		Changes      []string `json:"review_changes"`
 		ScopeChanged bool     `json:"review_scope_changed"`
@@ -433,11 +471,11 @@ func TestReviewScopeExtensionChecksTheWholeDeliveryCandidate(t *testing.T) {
 	if diff := r.Git(expanded.Changes[1:]...); !strings.Contains(diff, "untracked.txt") || strings.Contains(diff, "staged.txt") {
 		t.Fatalf("incremental review did not identify the previously excluded file: %s", diff)
 	}
-	f.record("review", "full-reviewer", "Checked both changed files")
+	f.observedReview("codex", "host", "full-reviewer", "Checked both changed files")
 	r.Git("commit", "--allow-empty", "--only", "-qm", "Intervening base change")
 	f.call(0, "next")
 	f.want("review")
-	reservation := r.Kitsu("task", "claim", f.id, "--actor", "host", "--ticket", f.state.Ticket, "--brief")
+	reservation := r.Kitsu("task", "claim", f.id, "--actor", "host", "--ticket", f.state.Ticket, "--host", "codex", "--brief")
 	var receipt struct {
 		Changes     []string `json:"review_changes"`
 		BaseChanged bool     `json:"review_base_changed"`
@@ -448,7 +486,7 @@ func TestReviewScopeExtensionChecksTheWholeDeliveryCandidate(t *testing.T) {
 	if diff := r.Git(receipt.Changes[1:]...); diff != "" {
 		t.Fatalf("the worktree stayed identical across the base change: %s", diff)
 	}
-	f.record("review", "new-base-reviewer", "Checked the diff against the new base")
+	f.observedReview("codex", "host", "new-base-reviewer", "Checked the diff against the new base")
 	f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "Run unit suite", "--", "sh", "unit.sh")
 	r.Git("add", "untracked.txt")
 	f.call(0, "commit", "--ticket", f.state.Ticket, "--message", "Deliver reviewed change", "--include", "staged.txt", "--include", "untracked.txt")

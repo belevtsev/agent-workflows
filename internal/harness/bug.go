@@ -36,6 +36,7 @@ type DeliveryReceipt struct {
 	Argv             []string            `json:"argv"`
 	Reproduction     FailureEvidence     `json:"reproduction"`
 	BeforeCommit     CheckRun            `json:"before_commit"`
+	BeforeCommitTree string              `json:"before_commit_tree,omitempty"`
 	OnCommit         CheckRun            `json:"on_commit"`
 	RepositoryChecks string              `json:"repository_checks"`
 	RepositoryRuns   map[string]CheckRun `json:"repository_runs,omitempty"`

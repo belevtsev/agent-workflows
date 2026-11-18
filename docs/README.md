@@ -20,6 +20,7 @@ Start with the [daily task harness](task-harness.md) to plan, implement, review,
 | [Archived coding-task comparisons](benchmarks/archived-delivery-comparison.md) | Captured tokens, wall time, delivery and regression strength across ten saved attempts. |
 | [Grading developer requests](benchmarks/harness-request-decisions.md) | Raw requests, offline good and faulty controls, and instructions to replay the evidence. |
 | [Daily harness engineering handoff](benchmarks/kitsu-harness-agent-handoff.md) | Agent assignments, fixture ownership, acceptance criteria and the path from local preview to release decision. |
+| [Verified handoff preview](verified-handoff-preview.md) | Run a partial-patch handoff in both provider directions, check the exact receipt and collect developer acceptance evidence. |
 | [Codex pilot results](benchmarks/codex-compact-pilot-report.md) | Completed Sol/high comparison: frozen test passes, confirmed additional defects, workflow cutoffs and incomplete token pairs. |
 | [Selective compact evaluation](benchmarks/selective-compact-report.md) | Separate offline replay, v2 charset eligibility and the status of four planned budgeted Sol/high canary runs. |
 | [The task workflow](workflow.md) | Coordinate a task through specification, design, tests, implementation, review, and commit, using a shared task record. |

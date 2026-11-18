@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -49,6 +50,22 @@ func Location(from string, supplied bool) (harness.TicketSource, error) {
 }
 
 func isWebLink(u *url.URL) bool { return u.Scheme == "https" || u.Scheme == "http" }
+
+var githubIssuePath = regexp.MustCompile(`^/[A-Za-z0-9-]+/[A-Za-z0-9_.-]*[A-Za-z0-9_-][A-Za-z0-9_.-]*/issues/[1-9][0-9]*$`)
+
+// CanonicalIssueLink recognizes stable issue paths for shareable exports.
+// Other ticket sources can contain private data and stay in the local record.
+func CanonicalIssueLink(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.User != nil || u.Scheme != "https" || !strings.EqualFold(u.Host, "github.com") {
+		return ""
+	}
+	path := strings.TrimSuffix(u.Path, "/")
+	if len(path) > 512 || !githubIssuePath.MatchString(path) {
+		return ""
+	}
+	return "https://github.com" + path
+}
 
 // Read captures the source text and a digest for the immutable task request.
 func Read(ctx context.Context, from string, source harness.TicketSource, input io.Reader) (harness.TicketSource, string, error) {

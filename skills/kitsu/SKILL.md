@@ -20,7 +20,8 @@ and evidence behavior. `kitsu help --all` lists both surfaces.
 1. **Look first.** Run `kitsu status` before you change anything, so you know whether a later
    failure is yours.
 2. **Run before you commit.** `kitsu run` executes only the checks whose files changed, so run it
-   after each step of the work, not only at the end.
+   after each step of the work. If the plugin requires approval, wait for the developer to run
+   `kitsu check trust` in their terminal.
 3. **Never go around the gate.** No `--no-verify`, no change to a hook, nothing written under
    `.git/kitsu/`. A commit that skipped the gate looks the same as one that passed it, and the
    user can no longer tell which of your commits were checked.

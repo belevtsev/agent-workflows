@@ -4,7 +4,11 @@
 
 # Kitsu
 
-Kitsu is a plugin for **Codex** and **Claude Code**. Ask your agent to plan a change, fix a bug, or review a patch. Kitsu saves the request, findings, and check results in your Git worktree so you can resume by task ID in a fresh chat.
+Kitsu is a plugin for **Codex** and **Claude Code** that saves a coding task and its evidence in your Git worktree.
+
+Start with a partial CSV fix. Ask Codex to reproduce the remaining quoting bug and save the task ID. Open Claude Code in the **same worktree** and resume that ID to repair, verify and commit the fix with your approval. You can start in either host.
+
+**Preview.** Export a shareable Markdown receipt with `kitsu task receipt ID --markdown`. It identifies the exact verified commit and the recorded checks. Try both directions with the [verified handoff preview guide](docs/verified-handoff-preview.md).
 
 ## Install
 
@@ -233,7 +237,7 @@ When you’re ready for the fix, reply in the same chat.
 
 ## How Kitsu works
 
-<img src="docs/diagrams/daily-task.svg" alt="Ask for work or resume by task ID. Codex or Claude Code follows the next action from Kitsu, records the result locally, and reports back at your requested finish." width="100%">
+<img src="docs/diagrams/daily-task.svg" alt="Ask for work in Codex or Claude Code. The Kitsu CLI saves the request, scope and task ID. Switch hosts or resume in the same worktree. The host follows the saved next action and records results. After a verified commit, export its receipt." width="100%">
 
 Ask for a plan and the agent can finish with a proposal. Ask for a verified fix and Kitsu runs the behavior check against the current code. The host starts an independent reviewer when you ask for one or your repository requires one.
 

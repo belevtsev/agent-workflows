@@ -26,6 +26,18 @@
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v kitsu 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" tokens record --host codex;; esac; true'",
+            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& cd \\& cd /d %SystemRoot% && kitsu tokens record --host codex 2>nul & exit /b 0",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "SubagentStop": [
       {
         "hooks": [

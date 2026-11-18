@@ -1,16 +1,19 @@
 package gitx
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/belevtsev/kitsu/v3/internal/proc"
 )
@@ -37,16 +40,61 @@ func (r *Repo) DeliveredAt(ctx context.Context, target, head string) (bool, erro
 	return found && commit == head, err
 }
 
-// CommitStaged uses a private copy of the verified index. A concurrent staging
-// operation cannot put unrelated content in this commit. Git runs its normal
-// commit hooks against that index and the user's real index stays intact.
-func (r *Repo) CommitStaged(ctx context.Context, tmp, tree, head, mergeHeads, target, message string) error {
+type CommittedCandidate struct {
+	Commit string
+	Tree   string
+}
+
+// CommitStaged runs hooks against a copy of the verified index. If a hook
+// changes the commit's tree, the real index can adopt that tree only while it
+// still matches the original copy. A returned commit may need fresh checks.
+func (r *Repo) CommitStaged(ctx context.Context, tmp, tree, head, mergeHeads, target, message string) (CommittedCandidate, error) {
 	path, cleanup, err := r.copyIndex(tmp)
 	if err != nil {
-		return err
+		return CommittedCandidate{}, err
 	}
 	defer cleanup()
+	original, err := readIndexBytes(path)
+	if err != nil {
+		return CommittedCandidate{}, err
+	}
 	env := []string{"GIT_INDEX_FILE=" + path}
+	if err := r.checkStagedCommit(ctx, env, tree, head, mergeHeads, target); err != nil {
+		return CommittedCandidate{}, err
+	}
+	if _, err := r.git(ctx, env, "commit", "-m", message); err != nil {
+		return CommittedCandidate{}, err
+	}
+	after, err := r.CommitTarget(ctx)
+	if err != nil {
+		return CommittedCandidate{}, fmt.Errorf("inspect commit target: %w", err)
+	}
+	if after != target {
+		return CommittedCandidate{}, fmt.Errorf("checkout changed during commit from %s to %s; inspect both destinations before continuing", target, after)
+	}
+	commit, found, err := r.CommitOf(ctx, target)
+	if err != nil {
+		return CommittedCandidate{}, err
+	}
+	if !found || commit == head {
+		return CommittedCandidate{}, fmt.Errorf("could not observe the new commit on %s", target)
+	}
+	actualTree, parents, err := r.CommitContents(ctx, commit)
+	if err != nil {
+		return CommittedCandidate{}, fmt.Errorf("inspect new commit: %w", err)
+	}
+	if parents != strings.TrimSpace(head+" "+mergeHeads) {
+		return CommittedCandidate{}, fmt.Errorf("the commit was created but its parents changed; inspect HEAD before continuing")
+	}
+	result := CommittedCandidate{Commit: commit, Tree: actualTree}
+	if actualTree == tree {
+		return result, nil
+	}
+	err = r.reconcileCommitIndex(ctx, path, original, tree, target, result)
+	return result, errors.Join(fmt.Errorf("the committed tree changed. Inspect %s and run task next", commit), err)
+}
+
+func (r *Repo) checkStagedCommit(ctx context.Context, env []string, tree, head, mergeHeads, target string) error {
 	staged, err := r.git(ctx, env, "write-tree")
 	if err != nil {
 		return err
@@ -69,23 +117,101 @@ func (r *Repo) CommitStaged(ctx context.Context, tmp, tree, head, mergeHeads, ta
 	if current != head || merging != mergeHeads || staged != tree {
 		return fmt.Errorf("HEAD or staged candidate changed before commit")
 	}
-	if _, err := r.git(ctx, env, "commit", "-m", message); err != nil {
+	return nil
+}
+
+func readIndexBytes(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		err = nil
+	}
+	return data, err
+}
+
+func (r *Repo) reconcileCommitIndex(ctx context.Context, copyPath string, original []byte, before, target string, result CommittedCandidate) error {
+	// Rebuild from the original index so a post-commit hook can never add
+	// uncommitted entries to the replacement.
+	env := []string{"GIT_INDEX_FILE=" + copyPath}
+	if original == nil {
+		if _, err := r.git(ctx, env, "read-tree", "-i", before); err != nil {
+			return err
+		}
+	} else if err := os.WriteFile(copyPath, original, 0o600); err != nil {
 		return err
 	}
-	after, err := r.CommitTarget(ctx)
+	if _, err := r.git(ctx, env, "read-tree", "-i", "-m", before, result.Tree); err != nil {
+		return err
+	}
+	updated, err := r.git(ctx, env, "write-tree")
+	if err != nil || updated != result.Tree {
+		return errors.Join(err, errors.New("could not recreate the committed index"))
+	}
+	replacement, err := os.ReadFile(copyPath)
 	if err != nil {
-		return fmt.Errorf("inspect commit target: %w", err)
+		return err
 	}
-	if after != target {
-		return fmt.Errorf("checkout changed during commit from %s to %s; inspect both destinations before continuing", target, after)
-	}
-	actualTree, parents, err := r.CommitContents(ctx, target)
+	prepared, err := os.Stat(copyPath)
 	if err != nil {
-		return fmt.Errorf("inspect new commit: %w", err)
+		return err
 	}
-	if actualTree != tree || parents != strings.TrimSpace(head+" "+mergeHeads) {
-		return fmt.Errorf("the commit was created but its tree or parents changed; inspect HEAD and run task next before continuing")
+	return r.replaceCommittedIndex(ctx, original, replacement, prepared.ModTime(), target, result.Commit)
+}
+
+func (r *Repo) replaceCommittedIndex(ctx context.Context, original, replacement []byte, modified time.Time, target, commit string) error {
+	index := r.indexPath()
+	lock := index + ".lock"
+	f, err := os.OpenFile(lock, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o666)
+	if err != nil {
+		return fmt.Errorf("could not lock the index, so staging was preserved: %w", err)
 	}
+	replaced := false
+	defer func() {
+		_ = f.Close()
+		if !replaced {
+			_ = os.Remove(lock)
+		}
+	}()
+	info, err := os.Lstat(index)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	if info != nil && !info.Mode().IsRegular() {
+		return errors.New("the real index is not a regular file, so staging was preserved")
+	}
+	current, err := readIndexBytes(index)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(original, current) {
+		return errors.New("the real index changed during commit, so staging was preserved")
+	}
+	checkedOut, err := r.CommitTarget(ctx)
+	if err != nil {
+		return err
+	}
+	head, _, err := r.CommitOf(ctx, target)
+	if err != nil || head != commit || checkedOut != target {
+		return errors.Join(err, errors.New("the target moved after commit, so staging was preserved"))
+	}
+	if info != nil {
+		if err := f.Chmod(info.Mode().Perm()); err != nil {
+			return err
+		}
+	}
+	if _, err := f.Write(replacement); err != nil {
+		return err
+	}
+	if err := errors.Join(f.Sync(), f.Close()); err != nil {
+		return err
+	}
+	// Keep Git's index timestamp so it rechecks potentially changed worktree files.
+	if err := os.Chtimes(lock, modified, modified); err != nil {
+		return err
+	}
+	if err := os.Rename(lock, index); err != nil {
+		return err
+	}
+	replaced = true
 	return nil
 }
 

@@ -275,8 +275,9 @@ func (j *interruptedJourney) firstReview(failed journeyView) journeyView {
 		j.t.Fatal("fresh coordinator lost the linked worker", linked.Claim)
 	}
 	j.checkReviewInput(linked, "Escape embedded quotes in comma-bearing fields", failed.Proof.Run, nil)
-	review := []string{"review", "--ticket", linked.Ticket, "--actor", linked.Claim.Worker,
-		"--note", "Comma fields round-trip; an isolated quote still fails", "--finding", journeyFinding}
+	finishNativeFixture(j.t, j.repo, journeyID, linked.Ticket, "codex", linked.Claim.Owner, worker,
+		"Comma fields round-trip; an isolated quote still fails", journeyFinding)
+	review := []string{"review", "--ticket", linked.Ticket, "--observed-review"}
 	result := j.call(0, "record", review...)
 	result = j.restart("recorded review finding", "review", result).View
 	j.want(result, "repair")
@@ -314,7 +315,8 @@ func (j *interruptedJourney) secondReview(repair journeyView, failedRun string) 
 	linked := j.linkWorker(reserved, j.launchWorker(reserved))
 	j.checkReviewInput(linked, note, failedRun, []string{journeyFinding})
 	j.call(1, "record", "review", "--ticket", linked.Ticket, "--actor", "reviewer-1", "--note", "Stale worker")
-	review := []string{"review", "--ticket", linked.Ticket, "--actor", linked.Claim.Worker, "--note", "All CSV round-trip cases passed"}
+	finishNativeFixture(j.t, j.repo, journeyID, linked.Ticket, "codex", j.actor, linked.Claim.Worker, "All CSV round-trip cases passed")
+	review := []string{"review", "--ticket", linked.Ticket, "--observed-review"}
 	approved := j.call(0, "record", review...)
 	if j.testProgram != "" {
 		if replay := j.call(0, "record", review...); replay.Ticket != approved.Ticket {
@@ -451,6 +453,7 @@ func (j *interruptedJourney) launchWorker(view journeyView) string {
 	if writeErr != nil || closeErr != nil {
 		j.t.Fatal(writeErr, closeErr)
 	}
+	sendNativeReviewEvent(j.t, j.repo, "codex", "SubagentStart", j.actor, worker, "")
 	return worker
 }
 

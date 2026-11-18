@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Follow a task from chat to its saved state and a bug ticket to its verified commit in the [illustrated task guide](docs/task-harness.md#how-a-daily-task-runs).
+- Review and approve repository check commands for agent sessions with [`kitsu check trust`](docs/cli.md#approve-repository-checks).
+- Required daily reviews record the native Codex or Claude Code worker and the exact candidate it inspected.
+- Share saved patch or commit verification with [`kitsu task receipt ID --markdown`](docs/task-harness.md#share-a-verification-receipt).
+- A shorter task skill supports the [same-worktree handoff preview](docs/verified-handoff-preview.md) across Codex and Claude Code.
+- Direct ticket imports connect only to public addresses. Use a host connector to [supply a private ticket](docs/task-harness.md#deliver-a-bug-ticket).
 
 ### Fixed
 
@@ -19,6 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Require initialized submodules for new [check evidence](docs/evidence.md#the-same-content). Rerun checks once on trees that contain submodules after upgrading.
 
 - Help for `check add` and `task test` now puts Kitsu options before `--`. The [verification example](docs/cli-reference.md#kitsu-check-add) shows how to save a required check.
+- Completed commits and publication confirmations remain historical after a branch moves. Formatter hooks that change a commit require fresh verification and preserve concurrent staging.
+- Daily tasks keep their opening check policy and require repair authority before testing a changed verify-only candidate after a failure.
+- Git commands allow output more time to drain on busy runners, including when reading the index.
 
 ## [0.0.2] - 2026-11-18
 

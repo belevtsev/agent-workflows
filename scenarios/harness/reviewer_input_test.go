@@ -33,7 +33,7 @@ func TestReviewerReadsReservedInputAcrossRepairs(t *testing.T) {
 		t.Fatal(got.Output())
 	}
 	findings := []string{"An empty first field is discarded", "A delimiter inside a field is split"}
-	f.record("review", "first-reviewer", "Two failing examples", "--finding", findings[0], "--finding", findings[1])
+	f.observedReview("codex", "host", "first-reviewer", "Two failing examples", "--finding", findings[0], "--finding", findings[1])
 	if r.Kitsu(first...).Code == 0 {
 		t.Fatal("accepted completed reservation")
 	}

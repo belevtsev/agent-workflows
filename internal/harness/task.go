@@ -91,6 +91,7 @@ func (s Snapshot) SameBase(other Snapshot) bool {
 func (s Snapshot) Parents() string { return strings.TrimSpace(s.Head + " " + s.MergeHeads) }
 
 type Event struct {
+	NativeReview            *NativeReview             `json:"native_review,omitempty"`
 	PriorRepositoryFailures []RunResult               `json:"prior_repository_failures,omitempty"`
 	ReconfirmedAt           time.Time                 `json:"reconfirmed_at,omitzero"`
 	Replaced                *Assertion                `json:"replaced_assertion,omitempty"`
@@ -147,6 +148,7 @@ type Assertion struct {
 }
 
 type Proof struct {
+	RepositoryPolicy  string     `json:"repository_policy,omitempty"`
 	PriorCommitTicket string     `json:"prior_commit_ticket,omitempty"`
 	IndexChecked      bool       `json:"index_checked,omitempty"`
 	CompletionTicket  string     `json:"completion_ticket,omitempty"`
@@ -184,6 +186,7 @@ func (p *Proof) FailedAssertion() *Assertion {
 }
 
 type Claim struct {
+	ReviewID  string                    `json:"review_id,omitempty"`
 	Worker    string                    `json:"worker,omitempty"`
 	Candidate *Snapshot                 `json:"candidate,omitempty"`
 	Reviewer  *roles.SpecialistSettings `json:"reviewer,omitempty"`
@@ -204,16 +207,20 @@ type DeveloperAssignment struct {
 }
 
 type Task struct {
-	Bug                *BugDelivery  `json:"bug,omitempty"`
-	CommitTarget       string        `json:"commit_target,omitempty"` // Captured at launch or when commit scope is granted.
-	ReviewLimit        int           `json:"review_limit,omitempty"`
-	ReviewStarts       int           `json:"review_starts,omitempty"`
-	DeveloperStarts    int           `json:"developer_starts,omitempty"`
-	ReleasedDevelopers []string      `json:"released_developer_workers,omitempty"`
-	FinishReserve      time.Duration `json:"finish_reserve_ns,omitempty"`
-	PendingScope       bool          `json:"pending_scope,omitempty"`
-	Claim              *Claim        `json:"claim,omitempty"`
-	Generation         int           `json:"generation,omitempty"`
+	RepositoryPolicy   string         `json:"repository_policy,omitempty"`
+	VerifyOnlyFailure  *Snapshot      `json:"verify_only_failure,omitempty"`
+	Bug                *BugDelivery   `json:"bug,omitempty"`
+	Completion         *Completion    `json:"completed_delivery,omitempty"`
+	CommitAttempt      *CommitAttempt `json:"commit_attempt,omitempty"`
+	CommitTarget       string         `json:"commit_target,omitempty"` // Captured at launch or when commit scope is granted.
+	ReviewLimit        int            `json:"review_limit,omitempty"`
+	ReviewStarts       int            `json:"review_starts,omitempty"`
+	DeveloperStarts    int            `json:"developer_starts,omitempty"`
+	ReleasedDevelopers []string       `json:"released_developer_workers,omitempty"`
+	FinishReserve      time.Duration  `json:"finish_reserve_ns,omitempty"`
+	PendingScope       bool           `json:"pending_scope,omitempty"`
+	Claim              *Claim         `json:"claim,omitempty"`
+	Generation         int            `json:"generation,omitempty"`
 
 	Version  int       `json:"version"`
 	ID       string    `json:"task"`
@@ -254,7 +261,27 @@ func (t *Task) RecordAssertion(p *Proof, reason string) {
 		t.Bug.Reproduction = &red
 	}
 	t.Proof = p
+	t.PinVerifyOnlyFailure()
 	t.Events = append(t.Events, e)
+}
+
+// PinVerifyOnlyFailure preserves the failed candidate even after a transient
+// problem clears. A verify-only request can retry that exact candidate.
+func (t *Task) PinVerifyOnlyFailure() {
+	if t.VerifyOnlyFailure == nil && t.Scope.Entry == "verify" && !t.Scope.Repair && t.Proof != nil && (t.Proof.FailedAssertion() != nil || t.Proof.FailedCheck != "") {
+		t.VerifyOnlyFailure = &t.Proof.Candidate
+	}
+}
+
+func (t *Task) NeedsRepairAuthority(candidate Snapshot) bool {
+	if t.Scope.Entry != "verify" || t.Scope.Repair {
+		return false
+	}
+	if t.VerifyOnlyFailure != nil {
+		return candidate != *t.VerifyOnlyFailure
+	}
+	p := t.Proof // Older tasks can recover the most recent failure.
+	return p != nil && (p.FailedAssertion() != nil || p.FailedCheck != "") && candidate != p.Candidate
 }
 
 // ArchiveGateFailure moves a superseded repository result into the history of
@@ -350,6 +377,9 @@ func (t *Task) next(state Readiness) string {
 	}
 	if t.Scope.Until == "plan" {
 		return "done"
+	}
+	if !state.Committed && t.NeedsRepairAuthority(state.Candidate) {
+		return "blocked"
 	}
 	if action := t.bugAction(); action != "" {
 		return action

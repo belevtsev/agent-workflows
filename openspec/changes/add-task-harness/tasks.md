@@ -5,3 +5,4 @@
 - [x] 1.3 Preserve evidence on removal, replay developer journeys and document operation. Size: S. Depends on: 1.2. Check: test. Source: Verify and reconcile delivery.
 
 - [x] 1.4 Import the ticket and retain failing, repaired and committed behavior evidence. Size: M. Depends on: 1.2. Check: test. Source: Deliver a ticket-linked bug fix.
+- [x] 1.5 Export saved verification as shareable Markdown and exercise privacy and legacy behavior through the CLI. Size: S. Depends on: 1.2, 1.4. Check: test. Source: Export a shareable verification receipt.
