@@ -440,6 +440,32 @@ These are local process times with scripted actors and zero model requests. For 
 
 Two product defects surfaced during review. A newly requested commit could acquire a fresh ticket after switching to another branch at the same HEAD. A check that switched branches could even produce a completed verification on the new branch. New tasks pin the authorized destination, block on a different branch and withhold verification if a check moves it. The other defect affected terminal output. After a candidate changed, `task next` could print the previous approval or finding as current. It now labels the earlier review, keeps its findings available and points to the saved record. [Branch regressions](../../scenarios/harness/commit_authority_test.go) · [Review output regression](../../scenarios/harness/resume_context_test.go)
 
+## Does the committed plugin still contain its task guide?
+
+This offline comparison starts with a packaging bug that drops nested Markdown files from the marketplace ZIP. The request authorizes a local commit only if the staged plugin contains both the task skill and its guide. The driver runs the real packaging program on the exported index, then rebuilds every delivered commit in a fresh checkout. Plain Git runs the same assertion again if its staged tree changes. The two Kitsu arms use their public CLI and the original commit ticket.
+
+| What was staged | Plain Git | Daily harness at 358f331 | Verification fix at eef17cc |
+| --- | --- | --- | --- |
+| Good script staged before verification | Delivered 3/3 | Delivered 3/3 | Delivered 3/3 |
+| Different good script staged after verification | Delivered 3/3 | Delivered 3/3 | Delivered 3/3 |
+| Broken script staged after verification | Stopped 3/3 | Committed a broken plugin 3/3 | Stopped 3/3 |
+
+All three arms produced identical commits in each passing scenario. On the corrected harness, staging before verification took a median 0.317 seconds and one assertion. Restaging a different good version took 0.483 seconds and two assertions. Each timing starts after setup and ends at commit or refusal, before independent grading. These scripted runs used zero model calls. [Run-level results and executable hashes](daily-review-data/verification-index.json)
+
+To reproduce from the checkout containing this report on Linux or macOS, use Git, Python 3.9+ and the project's Go toolchain. The driver creates its fixtures in the system temporary directory. It writes the report to the output path you supply.
+
+```sh
+scratch=$(mktemp -d)
+git worktree add --detach "$scratch/base" 358f331
+git worktree add --detach "$scratch/fix" eef17cc
+(cd "$scratch/base" && GOWORK=off go build -o "$scratch/kitsu-base" ./cmd/kitsu)
+(cd "$scratch/fix" && GOWORK=off go build -o "$scratch/kitsu-fix" ./cmd/kitsu)
+python3 -B docs/benchmarks/verification-index.py "$scratch/fix" \
+    "$scratch/kitsu-base" "$scratch/kitsu-fix" "$scratch/results.json"
+git worktree remove "$scratch/base"
+git worktree remove "$scratch/fix"
+```
+
 ## Release and product decisions
 
 An offline cross-check applied the archived review's three exploratory qs cases to the saved plain, managed and daily implementations. Each case ran with both values of `allowSparse` and `throwOnLimitExceeded`. The probe compares the candidate's behavior at the requested array limit with its own behavior at a larger limit on the same sparse input. Library hashes matched the [archived candidate controls](daily-review-data/qs-archived-quality.json).
