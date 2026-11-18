@@ -150,7 +150,7 @@ no other run showed.
 ## Releases
 
 Kitsu versioning starts at `v0.0.1` after the 17 November 2026 reset. The installer defaults,
-plugin manifests, CI archive labels and release-install examples all use that version.
+plugin manifests, CI archive labels and tagged install examples must agree on the version being released.
 
 A release is made when the owner pushes a `v*` tag. `.github/workflows/release.yml`
 then does four things, each only when the one before it passed:
@@ -161,7 +161,7 @@ then does four things, each only when the one before it passed:
 2. It runs the tests with the race detector, the lint and the vulnerability
    check.
 3. It builds with `.goreleaser.yaml` the archives for linux, darwin and windows
-   on amd64 and arm64, an SBOM for each, both installer scripts, and `SHA256SUMS`, uploads them to a
+   on amd64 and arm64, an SBOM for each, the matching plugin, both installer scripts, and `SHA256SUMS`, uploads them to a
    draft release on GitHub, attests the build of each archive, and only then
    makes the release public. A tag with a
    hyphen, such as `v0.0.2-beta.1`, becomes a pre-release. The text of the

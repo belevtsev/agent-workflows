@@ -14,9 +14,9 @@ _kitsu_profile_stage=
 usage() {
 	printf '%s\n' \
 		'Usage: install.sh [--version TAG] [--install-dir DIR] [--no-modify-path]' \
-		'                  [--archive-dir DIR [--host codex|claude]]' \
+		'                  [--archive-dir DIR] [--host codex|claude]' \
 		'' \
-		'Remote installs default to v0.0.1. The default install directory is $HOME/.local/bin.' \
+		'With --host, install the latest CLI and matching plugin. CLI-only downloads default to v0.0.2. The default install directory is $HOME/.local/bin.' \
 		'Environment: KITSU_VERSION, KITSU_INSTALL_DIR, KITSU_NO_MODIFY_PATH=1,' \
 		'             KITSU_ARCHIVE_DIR, KITSU_DOWNLOAD_BASE.' \
 		'With an archive directory, the installer uses the single archive tag for this platform in SHA256SUMS unless a version is provided.'
@@ -116,11 +116,11 @@ done
 
 case "$_kitsu_agent_host" in
 	'') ;;
-	codex|claude) [ -n "$_kitsu_archive_dir" ] || argument_error '--host requires --archive-dir' ;;
+	codex|claude) ;;
 	*) argument_error '--host must be codex or claude' ;;
 esac
-if [ -z "$_kitsu_archive_dir" ]; then
-	_kitsu_version=${_kitsu_version:-v0.0.1}
+if [ -z "$_kitsu_archive_dir$_kitsu_agent_host" ]; then
+	_kitsu_version=${_kitsu_version:-v0.0.2}
 fi
 [ -z "$_kitsu_version" ] || validate_version
 case "$_kitsu_no_modify_path" in
@@ -226,10 +226,21 @@ download() {
 	fi
 }
 
+verify_checksum() {
+	if [ "$_kitsu_checksum" = sha256sum ]; then
+		_kitsu_digest_line=$(sha256sum <"$1") || fail "cannot compute the checksum of $3"
+	else
+		_kitsu_digest_line=$(shasum -a 256 <"$1") || fail "cannot compute the checksum of $3"
+	fi
+	[ "${_kitsu_digest_line%% *}" = "$2" ] || fail "checksum mismatch for $3"
+}
+
 umask 077
 _kitsu_work=$(mktemp -d "${TMPDIR:-/tmp}/kitsu-install.XXXXXX") ||
 	fail 'cannot create a temporary directory'
 _kitsu_work=$(cd "$_kitsu_work" && pwd -P) || fail 'cannot open the temporary directory'
+_kitsu_remote_host=
+_kitsu_official_latest=
 if [ -n "$_kitsu_archive_dir" ]; then
 	case "$_kitsu_archive_dir" in
 		/*) ;;
@@ -242,6 +253,11 @@ if [ -n "$_kitsu_archive_dir" ]; then
 		fail 'the archive directory does not contain a readable SHA256SUMS'
 else
 	_kitsu_base=${KITSU_DOWNLOAD_BASE:-https://github.com/belevtsev/kitsu/releases/download/$_kitsu_version}
+	_kitsu_remote_host=$_kitsu_agent_host
+	if [ -z "${KITSU_DOWNLOAD_BASE:-}$_kitsu_version" ]; then
+		_kitsu_base=https://github.com/belevtsev/kitsu/releases/latest/download
+		_kitsu_official_latest=1
+	fi
 	_kitsu_base=${_kitsu_base%/}
 	_kitsu_http=0
 	validate_download_base
@@ -298,6 +314,9 @@ if [ -z "$_kitsu_version" ]; then
 	_kitsu_version=${_kitsu_version%"$_kitsu_archive_suffix"}
 	validate_version
 fi
+if [ -n "$_kitsu_official_latest" ]; then
+	_kitsu_base=https://github.com/belevtsev/kitsu/releases/download/$_kitsu_version
+fi
 printf 'Installing kitsu %s for %s/%s...\n' "$_kitsu_version" "$_kitsu_os" "$_kitsu_arch"
 if [ -n "$_kitsu_archive_dir" ]; then
 	cp "$_kitsu_archive_dir/$_kitsu_archive" "$_kitsu_work/archive.tar.gz" ||
@@ -306,13 +325,18 @@ else
 	download "$_kitsu_base/$_kitsu_archive" "$_kitsu_work/archive.tar.gz" ||
 		fail "cannot download $_kitsu_archive; check that this release has an archive for $_kitsu_os/$_kitsu_arch"
 fi
-if [ "$_kitsu_checksum" = sha256sum ]; then
-	_kitsu_digest_line=$(sha256sum <"$_kitsu_work/archive.tar.gz") || fail 'cannot compute the archive checksum'
-else
-	_kitsu_digest_line=$(shasum -a 256 <"$_kitsu_work/archive.tar.gz") || fail 'cannot compute the archive checksum'
+verify_checksum "$_kitsu_work/archive.tar.gz" "$_kitsu_expected" "$_kitsu_archive"
+_kitsu_plugin_dir=$_kitsu_archive_dir
+if [ -n "$_kitsu_remote_host" ]; then
+	_kitsu_plugin_hash=$(awk '
+		{ sub(/\r$/, ""); name=$2; sub(/^\*/, "", name) }
+		name=="kitsu-plugin.zip" { count++; digest=$1; if (NF!=2) bad=1 }
+		END { if (bad || count!=1 || length(digest)!=64 || digest ~ /[^0-9a-fA-F]/) exit 1; print tolower(digest) }
+	' "$_kitsu_work/SHA256SUMS") || fail 'SHA256SUMS must list kitsu-plugin.zip exactly once with a valid checksum'
+	_kitsu_plugin_dir=$_kitsu_work
+	download "$_kitsu_base/kitsu-plugin.zip" "$_kitsu_plugin_dir/kitsu-plugin.zip" || fail 'cannot download kitsu-plugin.zip'
+	verify_checksum "$_kitsu_plugin_dir/kitsu-plugin.zip" "$_kitsu_plugin_hash" kitsu-plugin.zip
 fi
-_kitsu_actual=$(printf '%s\n' "$_kitsu_digest_line" | awk 'NR == 1 { print tolower($1); exit }')
-[ "$_kitsu_actual" = "$_kitsu_expected" ] || fail "checksum mismatch for $_kitsu_archive"
 
 # List before extracting: the selected member must be unique, regular and executable.
 # Extracting only that member to stdout never creates archive-controlled paths.
@@ -437,9 +461,11 @@ configure_path() {
 printf 'Installed kitsu %s at %s.\n' "$_kitsu_version" "$_kitsu_target"
 configure_path
 if [ -n "$_kitsu_agent_host" ]; then
-	"$_kitsu_target" agent setup --host "$_kitsu_agent_host" --archive-dir "$_kitsu_archive_dir" ||
+	"$_kitsu_target" agent setup --host "$_kitsu_agent_host" --archive-dir "$_kitsu_plugin_dir" || {
+		[ -z "$_kitsu_remote_host" ] || fail "$_kitsu_agent_host setup failed. After fixing the reported problem, rerun the installer with --host $_kitsu_agent_host."
 		fail "$_kitsu_agent_host setup failed. Retry with this command.
 $(quote_shell_argument "$_kitsu_target") agent setup --host $_kitsu_agent_host --archive-dir $(quote_shell_argument "$_kitsu_archive_dir")"
+	}
 fi
 printf 'Open a new terminal or restart your shell for PATH changes to take effect.\n'
 printf 'Run "%s version" to check the installed version.\n' "$_kitsu_target"

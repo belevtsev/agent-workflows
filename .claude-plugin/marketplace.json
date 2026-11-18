@@ -4,7 +4,7 @@
   "owner": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
   "metadata": {
     "description": "Kitsu: coding-agent coordination with role instructions, shared task records and token reports, plus a Git check-evidence gate.",
-    "version": "0.0.1"
+    "version": "0.0.2"
   },
   "plugins": [
     {

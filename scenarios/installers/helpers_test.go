@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-const preparedVersion = "v0.0.1"
+const preparedVersion = "v0.0.2"
 
 // The archived test executable acts as a native release binary on every OS.
 func TestMain(m *testing.M) {
@@ -42,6 +42,14 @@ func TestMain(m *testing.M) {
 	}
 	if len(os.Args) > 1 && os.Args[1] == "agent" {
 		fmt.Printf("fixture agent arguments %q\n", os.Args[1:])
+		if host := os.Getenv("KITSU_TEST_SETUP_HOST"); host != "" && len(os.Args) == 7 &&
+			os.Args[2] == "setup" && os.Args[3] == "--host" && os.Args[4] == host && os.Args[5] == "--archive-dir" {
+			plugin, err := os.ReadFile(filepath.Join(os.Args[6], "kitsu-plugin.zip"))
+			sums, manifestErr := os.ReadFile(filepath.Join(os.Args[6], "SHA256SUMS"))
+			if err == nil && manifestErr == nil && string(plugin) == "paired plugin" && bytes.Contains(sums, checksumLine("kitsu-plugin.zip", plugin)) {
+				os.Exit(0)
+			}
+		}
 		os.Exit(23)
 	}
 	os.Exit(m.Run())

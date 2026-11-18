@@ -1,6 +1,6 @@
 {
   "name": "kitsu",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Coordinate coding tasks from an idea, an existing design or an unfinished patch. Kitsu records the requested outcome, specialist handoffs, review findings, executed checks and delivery status.",
   "author": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
   "homepage": "https://github.com/belevtsev/kitsu",

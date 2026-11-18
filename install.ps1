@@ -7,7 +7,7 @@ Requires PowerShell 5.1 or newer. No Go toolchain or administrator access is nee
 ArchiveDir can install a CI build before publication.
 .PARAMETER Version
 Archive version label. Defaults to KITSU_VERSION. When neither is provided, a local install uses
-the single archive tag for this platform in SHA256SUMS and a remote install uses v0.0.1.
+the single archive tag for this platform. Remote host installs select the latest pair; CLI-only installs use v0.0.2.
 .PARAMETER InstallDir
 Destination directory. Defaults to KITSU_INSTALL_DIR, then LOCALAPPDATA\kitsu.
 .PARAMETER NoModifyPath
@@ -15,7 +15,7 @@ Leaves both user PATH and the current session PATH unchanged. Also set by KITSU_
 .PARAMETER ArchiveDir
 Reads the archive and SHA256SUMS locally, without network access. Defaults to KITSU_ARCHIVE_DIR.
 .PARAMETER AgentHost
-Runs Kitsu agent setup for codex or claude. Requires ArchiveDir.
+Installs the matching plugin and runs Kitsu agent setup for codex or claude.
 .EXAMPLE
 irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 | iex
 .EXAMPLE
@@ -217,7 +217,7 @@ param(
 
     function Assert-KitsuReleaseTag([string]$Tag) {
         if ($Tag -notmatch '\Av[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?(?:\+[0-9A-Za-z][0-9A-Za-z.-]*)?\z') {
-            throw 'Version must be a v-prefixed release tag, such as v0.0.1.'
+            throw 'Version must be a v-prefixed release tag, such as v0.0.2.'
         }
     }
 
@@ -225,8 +225,9 @@ param(
     # Invoke-Expression applies parameter attributes even for omitted arguments.
     if ($HostSpecified -and $SelectedHost -notin 'codex', 'claude') { throw '-AgentHost must be codex or claude.' }
     $isLocal = -not [string]::IsNullOrEmpty($LocalArchives)
-    if ($SelectedHost -and -not $isLocal) { throw '-AgentHost requires -ArchiveDir.' }
-    if (-not $isLocal -and -not $ReleaseVersion) { $ReleaseVersion = 'v0.0.1' }
+    $remoteHost = $SelectedHost -and -not $isLocal
+    $officialLatest = $remoteHost -and -not $ReleaseVersion -and -not $env:KITSU_DOWNLOAD_BASE
+    if (-not $isLocal -and -not $SelectedHost -and -not $ReleaseVersion) { $ReleaseVersion = 'v0.0.2' }
     if ($ReleaseVersion) { Assert-KitsuReleaseTag $ReleaseVersion }
     $architecture = Get-KitsuArchitecture
     if ([string]::IsNullOrEmpty($DestinationDir)) {
@@ -254,6 +255,7 @@ param(
         else {
             $source = $env:KITSU_DOWNLOAD_BASE
             if ([string]::IsNullOrEmpty($source)) { $source = "https://github.com/belevtsev/kitsu/releases/download/$ReleaseVersion" }
+            if ($officialLatest) { $source = 'https://github.com/belevtsev/kitsu/releases/latest/download' }
             $baseUri = [uri]$source
             Assert-KitsuDownloadUri $baseUri
             if ($baseUri.Query) { throw 'KITSU_DOWNLOAD_BASE must be a release directory URL without a query.' }
@@ -267,6 +269,9 @@ param(
         }
         Save-KitsuAsset $client $source 'SHA256SUMS' $manifestFile
         if ((Get-Item -LiteralPath $manifestFile).Length -gt 1MB) { throw 'SHA256SUMS is too large.' }
+        $pluginDir = $source
+        $pluginRows = 0
+        $pluginHash = ''
         $matchingRows = 0
         $selectedArchive = ''
         $expected = ''
@@ -274,6 +279,11 @@ param(
             $row = [regex]::Match($line, '^(\S+)[ \t]+\*?(.+)$')
             if (-not $row.Success) { continue }
             $name = $row.Groups[2].Value
+            if ($name -ceq 'kitsu-plugin.zip') {
+                $pluginRows++
+                $pluginHash = $row.Groups[1].Value
+                continue
+            }
             if ($archiveName) {
                 if ($name -cne $archiveName) { continue }
             }
@@ -296,6 +306,19 @@ param(
         if ($matchingRows -ne 1) { throw "SHA256SUMS must list $archiveName exactly once." }
         if ($expected -notmatch '\A[0-9a-fA-F]{64}\z') { throw "Invalid SHA-256 row for $archiveName." }
         $archiveFile = Join-Path $work $archiveName
+        if ($officialLatest) {
+            $source = "https://github.com/belevtsev/kitsu/releases/download/$ReleaseVersion"
+        }
+        if ($remoteHost) {
+            if ($pluginRows -ne 1 -or $pluginHash -notmatch '^[0-9a-fA-F]{64}$') {
+                throw 'SHA256SUMS must list kitsu-plugin.zip exactly once with a valid checksum.'
+            }
+            $pluginDir = $work
+            Save-KitsuAsset $client $source 'kitsu-plugin.zip' (Join-Path $pluginDir 'kitsu-plugin.zip')
+            if ((Get-KitsuSHA256 (Join-Path $pluginDir 'kitsu-plugin.zip')) -ine $pluginHash) {
+                throw 'Checksum mismatch for kitsu-plugin.zip.'
+            }
+        }
         Save-KitsuAsset $client $source $archiveName $archiveFile
         $actual = Get-KitsuSHA256 $archiveFile
         if ($actual -ine $expected) { throw "The checksum of $archiveName does not match SHA256SUMS." }
@@ -355,10 +378,11 @@ param(
         if ($SelectedHost) {
             $SelectedHost = $SelectedHost.ToLowerInvariant()
             try {
-                & $destination agent setup --host $SelectedHost --archive-dir $source
+                & $destination agent setup --host $SelectedHost --archive-dir $pluginDir
                 if ($LASTEXITCODE -ne 0) { throw "Kitsu exited with code $LASTEXITCODE." }
             }
             catch {
+                if ($remoteHost) { throw "$SelectedHost setup failed. After fixing the reported problem, rerun the installer with -AgentHost $SelectedHost. $($_.Exception.Message)" }
                 $retryExecutable = $destination.Replace("'", "''")
                 $retryArchiveDir = $source.Replace("'", "''")
                 [Console]::Error.WriteLine("Retry with this command.`n& '$retryExecutable' agent setup --host $SelectedHost --archive-dir '$retryArchiveDir'")
