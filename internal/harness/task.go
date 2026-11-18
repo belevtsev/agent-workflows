@@ -204,6 +204,7 @@ type DeveloperAssignment struct {
 }
 
 type Task struct {
+	Bug                *BugDelivery  `json:"bug,omitempty"`
 	CommitTarget       string        `json:"commit_target,omitempty"` // Captured at launch or when commit scope is granted.
 	ReviewLimit        int           `json:"review_limit,omitempty"`
 	ReviewStarts       int           `json:"review_starts,omitempty"`
@@ -247,6 +248,10 @@ func (t *Task) RecordAssertion(p *Proof, reason string) {
 	}
 	if p.Outcome != "passed" && p.Outcome != "failed" {
 		p.PriorFailure = prior
+	}
+	if t.Bug != nil && t.Bug.Reproduction == nil && p.Outcome == "failed" && p.ExitStatus != nil && *p.ExitStatus != 0 {
+		red := *p
+		t.Bug.Reproduction = &red
 	}
 	t.Proof = p
 	t.Events = append(t.Events, e)
@@ -346,6 +351,9 @@ func (t *Task) next(state Readiness) string {
 	if t.Scope.Until == "plan" {
 		return "done"
 	}
+	if action := t.bugAction(); action != "" {
+		return action
+	}
 	implement := t.Scope.Entry == "implement" || t.Scope.Entry == "plan"
 	if implement && t.Latest("implement") == nil {
 		return "implement"
@@ -366,6 +374,9 @@ func (t *Task) next(state Readiness) string {
 func (t *Task) deliveryAction(current Snapshot, committed bool) string {
 	if !committed && t.Scope.Commit {
 		return "commit"
+	}
+	if t.Bug != nil && committed && t.Bug.Receipt == nil {
+		return "receipt"
 	}
 	if t.Scope.Publish != "" {
 		if !committed {

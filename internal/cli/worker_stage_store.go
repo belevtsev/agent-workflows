@@ -168,11 +168,15 @@ func (l *stageLedger) read(name string, value any) error {
 }
 
 func (l *stageLedger) write(name string, value any) error {
-	if err := l.verify(); err != nil {
-		return err
-	}
 	data, err := json.Marshal(value)
 	if err != nil {
+		return err
+	}
+	return l.writeBytes(name, data)
+}
+
+func (l *stageLedger) writeBytes(name string, data []byte) error {
+	if err := l.verify(); err != nil {
 		return err
 	}
 	if len(data) > contextpack.MaxArtifact {

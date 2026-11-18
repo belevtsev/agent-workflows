@@ -345,3 +345,34 @@ Source: proposal.md and approved daily coding harness plan.
 
 - **WHEN** a developer resumes an interrupted task in Codex or Claude
 - **THEN** the host handoff directs it to the ordinary next-action view. That view exposes the saved scope, relevant work, review currency, worker recovery identity, applicable deadlines and ticket without a token archive read. Full JSON still includes the accounting result and exact candidate identities.
+
+### Requirement: Deliver a ticket-linked bug fix
+
+The daily harness SHALL import a ticket from a supported URL, a local Markdown file, or Markdown supplied by a host tracker into an immutable local task snapshot. It SHALL link a real failing behavioral assertion, a recorded repair, a passing rerun and a successful assertion observed on the delivered commit in a retrievable receipt.
+
+Source: developer request for the first closed-loop delivery slice.
+
+#### Scenario: Resume and deliver the same ticket
+
+- **WHEN** a developer opens a bug task from an issue or file and resumes after its source changes or disappears
+- **THEN** the task retains its original request and source identity and a different source cannot replace it.
+
+#### Scenario: Repair a reproduced failure and verify the commit
+
+- **WHEN** the saved behavior fails, a developer records a changed repair and the same assertion and applicable repository checks pass
+- **THEN** Kitsu permits local commit delivery, verifies the assertion on that commit, and retains its revision, source and evidence.
+
+#### Scenario: Withhold an unsupported receipt
+
+- **WHEN** reproduction is missing, a different command is substituted, or the post-commit assertion fails
+- **THEN** Kitsu withholds a successful receipt. A saved successful receipt remains available after the checkout moves.
+
+#### Scenario: Import a public ticket link and reopen its Markdown offline
+
+- **WHEN** a developer opens a public link to a supported text document, then reopens the same task offline
+- **THEN** Kitsu captures the requested issue, writes a private Markdown copy with its canonical source link and regenerates it from the saved task. Failed intake creates no deliverable ticket.
+
+#### Scenario: Deliver a ticket supplied by a host tracker
+
+- **WHEN** the host reads a ticket through a configured MCP server or tracker plugin and supplies its Markdown and stable tracker reference on standard input
+- **THEN** Kitsu snapshots that text locally without contacting the source. Offline resume retains the original input and the verified delivery receipt identifies the same tracker reference.

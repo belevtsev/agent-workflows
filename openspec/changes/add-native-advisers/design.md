@@ -62,7 +62,7 @@ wrapping. No monetary prices or inferred token counts are introduced.
 | Dispositions and current-content checkpoints retain their authority | test |
 | Native usage stays separate from host totals and missing data stays unknown | test |
 | Host files match source instructions within existing prompt budgets | test |
-| Only native advisers import network libraries; gate and tokens retain offline dependencies | test |
+| Native advisers and explicit ticket imports can use HTTP. The gate and token collector retain offline dependencies | test |
 
 The adviser production-code budget increases from 3,500 to 4,000 lines for the native protocol,
 response validation, and usage reporting. Other implementation and prompt budgets are unchanged.

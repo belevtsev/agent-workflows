@@ -38,6 +38,36 @@ kitsu task start --resume review-export --host codex
 
 Choose the base you intend to compare. For a branch that diverged from main, use the merge base as the starting revision when you want the branch's changes since divergence. The reviewer receives the resolved commit IDs and commands to inspect their log and diff. Another session can recover that comparison after a branch moves while the original Git objects are available locally. Open a new task to review updated endpoints. For an ordinary staged or working-tree review, omit the two revision options. The first reviewer receives a `review_diff` command for the reserved working tree. When the index holds different content on a review-only task, `review_staged_diff` shows exactly what was staged. Use the comparison the developer requested. Both commands continue to address the reserved objects after the checkout changes.
 
+## Deliver a bug ticket
+
+From the target repository, open a task from a public link, a Markdown file, or a tracker connected through MCP or a plugin. The command authorizes a local repair and commit on the current branch. Ticket text supplies the problem statement. Publishing a branch, posting to the tracker and closing the issue require separate developer action.
+
+```sh
+kitsu task bug wrapper-args --from https://tracker.example.org/tickets/wrapper-args.md
+kitsu task start --resume wrapper-args --host codex
+```
+
+For a tracker exposed through MCP or a host plugin, ask Codex or Claude Code to read the ticket with your configured server. For example, “Read EXP-14 from our support tracker and use Kitsu to reproduce, repair and verify it.” The host passes the returned title and description as Markdown on standard input. Use the ticket's stable browser link, or an `mcp://SERVER/TICKET-ID` or `plugin://PLUGIN/TICKET-ID` reference when the server only returns an ID. A file exported by another tool works the same way:
+
+```sh
+kitsu task bug export-14 --from mcp://support/EXP-14 --stdin < ticket.md
+```
+
+The host handles tracker access. Kitsu records the supplied text and source reference. Use a permanent link without credentials or temporary access tokens. Resume offline with `kitsu task next export-14`.
+
+For a direct HTTP(S) link, Kitsu makes an anonymous request and accepts UTF-8 Markdown, plain text, or a server-rendered HTML page with readable content in a main or article element. Review the imported snapshot at intake. For private or client-rendered tickets, let your configured MCP server or plugin supply the Markdown with `--stdin`.
+
+Opening any supported ticket prints the path to a private Markdown snapshot in the worktree's Git directory. JSON exposes it as `ticket_markdown`. It includes the canonical source link and saved request. Repeat the same open command to regenerate it offline. The delivery receipt always links to the original source.
+
+For a local ticket use `--from ./tickets/wrapper-args.md`. Use `--host claude` for Claude Code. A Markdown import needs only a readable UTF-8 file. Kitsu saves the text and source digest once. Reopening the same task and source reuses the saved version, even offline. Choose a new task ID to use a revised ticket. `task next ID` shows the saved request, source and next action. Add `--require-review` when opening the task for an independent review. Repository review requirements still apply.
+
+1. Record intake with the observable bug. Run the reproduction through `task test ID --ticket TICKET --expect "expected behavior" -- PROGRAM ARGS`. If you add a reproducer to the checkout, refresh the verification ticket with `task next ID` before running it. Choose a command whose nonzero exit demonstrates the particular defect. Inspect its output. A missing program or a green first check leaves reproduction open.
+2. Repair the code, preserve existing edits, add regression coverage and stage the intended files. Record the changed candidate with `task record ID repair --actor SESSION --ticket TICKET --note "what changed"`. Follow independent review if required.
+3. At verification, use `task test ID --ticket TICKET --retry`. Kitsu reruns the same reproduction and the repository checks. At the commit action run `task commit ID --ticket TICKET --message "Fix wrapper argument handling"`. Use `--include PATH` to authorize a relevant edit that already existed at intake.
+4. Run `kitsu task receipt ID --json` with the delivered commit checked out. Kitsu executes the saved behavior assertion again, checks the working files, index, commit and target, and saves the receipt on success. A failed run prints the path to its log. Repeating the command after success retrieves the historical receipt, including after the branch advances.
+
+The receipt contains the source URL (a file URI for Markdown), title and digest, Git target, commit and tree, expected behavior, argument vector and log references for all three observations. Repository check references identify evidence from verification before commit. An undeclared check suite is labeled `undeclared`. Use the receipt as the delivery summary when reporting back to the ticket.
+
 ## Choose independent review
 
 For new daily tasks, “implement, test and commit” uses one coordinator by default. If a reviewer finds a defect in the implementation or a behavior test fails after review, the developer can correct the work under the original implementation scope. For a review finish, Kitsu records the findings and stops. Reviewing or verifying a supplied patch requires explicit repair scope before editing it. When the correction changes the candidate, required review and the saved assertion run again before delivery. An explicit review entry or review finish reserves an independent reviewer. To require that same review during implementation, use a plain-language request, pass `--require-review` to `task start` or `task open`, or add it later with `task extend ID --require-review`. A review limit caps starts and does not request one. Use an explicit `--entry implement` when opening an implementation task directly. With only `--until deliver`, a new task starts by verifying the existing candidate.

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -50,21 +51,22 @@ func linkedPackages(t *testing.T, goos string, targets ...string) []linkedPackag
 	return packages
 }
 
-// Native advisers are the only first-party package allowed to import network
-// libraries. Standard HTTP/TLS dependencies and Windows address types are expected.
-func TestNetworkImportsStayInNativeAdvisers(t *testing.T) {
+// List direct imports so an HTTP client added elsewhere requires an explicit decision.
+func TestCLINetworkImportBoundaries(t *testing.T) {
+	allowed := map[string][]string{
+		module + "internal/advisers":      {"net/http", "net/url"}, // Provider API clients.
+		module + "internal/tickets":       {"net/http", "net/url"}, // Public ticket links.
+		"github.com/charmbracelet/x/ansi": {"net/url"},             // Terminal hyperlink formatting.
+		"golang.org/x/sys/windows":        {"net"},                 // Windows address types.
+	}
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		for _, pkg := range linkedPackages(t, goos, "./cmd/kitsu") {
-			if pkg.Standard || pkg.ImportPath == "github.com/belevtsev/kitsu/v3/internal/advisers" || pkg.ImportPath == "golang.org/x/sys/windows" {
+			if pkg.Standard {
 				continue
 			}
 			for _, imported := range pkg.Imports {
-				// Terminal OSC formatting uses URL escaping, not a network client.
-				if pkg.ImportPath == "github.com/charmbracelet/x/ansi" && imported == "net/url" {
-					continue
-				}
-				if networkPackage(imported) {
-					t.Errorf("%s: %s imports network package %s outside native advisers", goos, pkg.ImportPath, imported)
+				if networkPackage(imported) && !slices.Contains(allowed[pkg.ImportPath], imported) {
+					t.Errorf("%s: %s imports undeclared network dependency %s", goos, pkg.ImportPath, imported)
 				}
 			}
 		}
