@@ -237,10 +237,7 @@ func load(file string) (s Start, ok bool) {
 // Load reads every start stored under dir, in the order of their paths. A
 // file that cannot be read is named in damaged.
 func Load(dir string) (starts []Start, damaged []string, err error) {
-	folders, err := os.ReadDir(dir)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil, nil
-	}
+	folders, err := archiveEntries(dir)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -264,10 +261,7 @@ func Load(dir string) (starts []Start, damaged []string, err error) {
 }
 
 func sessionFiles(dir string) ([]string, error) {
-	entries, err := os.ReadDir(dir)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
-	}
+	entries, err := archiveEntries(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -278,4 +272,20 @@ func sessionFiles(dir string) ([]string, error) {
 		}
 	}
 	return files, nil
+}
+
+func archiveEntries(dir string) ([]os.DirEntry, error) {
+	// Directory enumeration can return no entries for a regular file on Windows.
+	info, err := os.Stat(dir)
+	var entries []os.DirEntry
+	if err == nil {
+		if !info.IsDir() {
+			return nil, fmt.Errorf("token archive path %q is not a directory", dir)
+		}
+		entries, err = os.ReadDir(dir)
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	return entries, err
 }

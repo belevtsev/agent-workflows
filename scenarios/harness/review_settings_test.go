@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
@@ -79,8 +80,8 @@ func TestBriefReviewCanProceedWithoutReadableUsageHistory(t *testing.T) {
 	f.record("intake", "coordinator", "Inspect changes")
 	// A malformed optional usage archive should only affect views that request it.
 	r.Write(".git/kitsu/tokens", "not a directory")
-	if got := r.Kitsu("task", "next", f.id, "--json"); got.Code == 0 {
-		t.Fatal("full usage view reported readable historical usage")
+	if got := r.Kitsu("task", "next", f.id, "--json"); got.Code != 1 || !strings.Contains(got.Output(), "is not a directory") {
+		t.Fatalf("full usage view did not identify the malformed archive: exit %d\n%s", got.Code, got.Output())
 	}
 	result := r.Kitsu("task", "claim", f.id, "--ticket", f.state.Ticket, "--actor", "coordinator", "--host", "codex", "--brief")
 	if result.Code != 0 {

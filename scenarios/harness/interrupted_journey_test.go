@@ -42,6 +42,13 @@ esac
   *) printf '%s\n' "$1" ;;
 esac
 `
+	journeyAssertion = `value=$(sh export.sh 'x"y') || exit
+printf 'observed export: %s\n' "$value"
+test "$value" = '"x""y"'
+`
+	journeyReadField = `IFS= read -r field || exit
+exec sh export.sh "$field"
+`
 )
 
 type journeyCandidate struct{ Tree, Raw, Index, Head string }
@@ -128,6 +135,8 @@ func newInterruptedJourney(t *testing.T, restarted bool) (*interruptedJourney, f
 	developer.Write(".gitignore", "build/\n")
 	developer.Write("README.md", "# CSV export\n")
 	developer.Write("export.sh", "printf '%s\\n' \"$1\"\n")
+	developer.Write("assert-quote.sh", journeyAssertion)
+	developer.Write("read-field.sh", journeyReadField)
 	developer.Write("unit.sh", "test \"$(sh export.sh plain)\" = plain\n")
 	developer.Write("lint.sh", "sh -n export.sh\n")
 	developer.Write("kitsu.toml", strings.Replace(kitsutest.DemoDeclaration, "src/**", "export.sh", 1))
@@ -182,9 +191,7 @@ func (j *interruptedJourney) run() journeyDelivery {
 	verify := j.call(0, "record", "intake", "--actor", j.actor, "--ticket", intake.Ticket, "--note", journeyCriteria)
 	j.want(verify, "verify")
 
-	argv := []string{"sh", "-c", `value=$(sh export.sh 'x"y') || exit
-printf 'observed export: %s\n' "$value"
-test "$value" = '"x""y"'`}
+	argv := []string{"sh", "assert-quote.sh"}
 	failed := j.call(5, "test", append([]string{"--ticket", verify.Ticket, "--expect", journeyExpect, "--"}, argv...)...)
 	failed = j.restart("failing assertion", "test", failed).View
 	j.want(failed, "repair")
@@ -319,7 +326,8 @@ func (j *interruptedJourney) checkPublicCSV(wantFailures ...string) {
 	j.t.Helper()
 	var failures []string
 	for _, value := range []string{"plain", "x,y", `x"y`, `x,"y"`} {
-		result := j.repo.Run("", "sh", "export.sh", value)
+		// Let the shell pass quoted fields to the exporter, including on Windows.
+		result := j.repo.Run(value+"\n", "sh", "read-field.sh")
 		if result.Code != 0 {
 			j.t.Fatalf("public export command for %q exited %d: %s", value, result.Code, result.Output())
 		}

@@ -1,0 +1,124 @@
+{
+  "workflow_url": "https://github.com/belevtsev/kitsu/actions/runs/44281399393",
+  "install_journeys": 32,
+  "requested_finish": "verify staged patch",
+  "model_requests_in_scenarios": 0,
+  "run": "44281399393",
+  "commit": "5b905fc218c25659610db678d7a14a749fd6bddc",
+  "plugin_sha256": "d7ef477569ece44f126c981c72e165f2e1d239563342d31462b66f8a26a10131",
+  "count": 16,
+  "passed_rows": [
+    {
+      "os": "darwin",
+      "arch": "amd64",
+      "shell": "sh",
+      "host": "claude",
+      "version": "2.1.325 (Claude Code)"
+    },
+    {
+      "os": "darwin",
+      "arch": "amd64",
+      "shell": "sh",
+      "host": "codex",
+      "version": "codex-cli 0.169.0"
+    },
+    {
+      "os": "darwin",
+      "arch": "arm64",
+      "shell": "sh",
+      "host": "claude",
+      "version": "2.1.325 (Claude Code)"
+    },
+    {
+      "os": "darwin",
+      "arch": "arm64",
+      "shell": "sh",
+      "host": "codex",
+      "version": "codex-cli 0.169.0"
+    },
+    {
+      "os": "linux",
+      "arch": "amd64",
+      "shell": "sh",
+      "host": "claude",
+      "version": "2.1.325 (Claude Code)"
+    },
+    {
+      "os": "linux",
+      "arch": "amd64",
+      "shell": "sh",
+      "host": "codex",
+      "version": "codex-cli 0.169.0"
+    },
+    {
+      "os": "linux",
+      "arch": "arm64",
+      "shell": "sh",
+      "host": "claude",
+      "version": "2.1.325 (Claude Code)"
+    },
+    {
+      "os": "linux",
+      "arch": "arm64",
+      "shell": "sh",
+      "host": "codex",
+      "version": "codex-cli 0.169.0"
+    },
+    {
+      "os": "windows",
+      "arch": "amd64",
+      "shell": "powershell",
+      "host": "claude",
+      "version": "2.1.325 (Claude Code)"
+    },
+    {
+      "os": "windows",
+      "arch": "amd64",
+      "shell": "powershell",
+      "host": "codex",
+      "version": "codex-cli 0.169.0"
+    },
+    {
+      "os": "windows",
+      "arch": "amd64",
+      "shell": "pwsh",
+      "host": "claude",
+      "version": "2.1.325 (Claude Code)"
+    },
+    {
+      "os": "windows",
+      "arch": "amd64",
+      "shell": "pwsh",
+      "host": "codex",
+      "version": "codex-cli 0.169.0"
+    },
+    {
+      "os": "windows",
+      "arch": "arm64",
+      "shell": "powershell",
+      "host": "claude",
+      "version": "2.1.325 (Claude Code)"
+    },
+    {
+      "os": "windows",
+      "arch": "arm64",
+      "shell": "powershell",
+      "host": "codex",
+      "version": "codex-cli 0.169.0"
+    },
+    {
+      "os": "windows",
+      "arch": "arm64",
+      "shell": "pwsh",
+      "host": "claude",
+      "version": "2.1.325 (Claude Code)"
+    },
+    {
+      "os": "windows",
+      "arch": "arm64",
+      "shell": "pwsh",
+      "host": "codex",
+      "version": "codex-cli 0.169.0"
+    }
+  ]
+}
