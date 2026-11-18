@@ -348,7 +348,7 @@ Source: proposal.md and approved daily coding harness plan.
 
 ### Requirement: Deliver a ticket-linked bug fix
 
-The daily harness SHALL import a GitHub issue, Jira Cloud issue or Markdown file into an immutable local task snapshot. It SHALL link a real failing behavioral assertion, a recorded repair, a passing rerun and a successful assertion observed on the delivered commit in a retrievable receipt.
+The daily harness SHALL import a ticket from a supported URL, a local Markdown file, or Markdown supplied by a host tracker into an immutable local task snapshot. It SHALL link a real failing behavioral assertion, a recorded repair, a passing rerun and a successful assertion observed on the delivered commit in a retrievable receipt.
 
 Source: developer request for the first closed-loop delivery slice.
 

@@ -16,11 +16,11 @@ import (
 )
 
 var (
-	jiraSite  = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.atlassian\.net$`)
-	jiraIssue = regexp.MustCompile(`^/browse/[A-Z][A-Z0-9_]*-[1-9][0-9]*$`)
+	jiraCloudHost  = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.atlassian\.net$`)
+	jiraBrowsePath = regexp.MustCompile(`^/browse/[A-Z][A-Z0-9_]*-[1-9][0-9]*$`)
 )
 
-func readJira(ctx context.Context, source harness.TicketSource) (harness.TicketSource, string, error) {
+func readJiraCloudIssue(ctx context.Context, source harness.TicketSource) (harness.TicketSource, string, error) {
 	site, key, ok := strings.Cut(source.URL, "/browse/")
 	if !ok {
 		return source, "", fmt.Errorf("invalid Jira issue URL")
@@ -29,7 +29,7 @@ func readJira(ctx context.Context, source harness.TicketSource) (harness.TicketS
 	if err != nil {
 		return source, "", err
 	}
-	if err := jiraAuth(req, site); err != nil {
+	if err := setJiraCloudAuth(req, site); err != nil {
 		return source, "", err
 	}
 	req.Header.Set("Accept", "application/json")
@@ -64,7 +64,7 @@ func readJira(ctx context.Context, source harness.TicketSource) (harness.TicketS
 	return source, issue.Fields.Summary + "\n\n" + issue.Fields.Description, nil
 }
 
-func jiraAuth(req *http.Request, site string) error {
+func setJiraCloudAuth(req *http.Request, site string) error {
 	email, token := os.Getenv("KITSU_JIRA_EMAIL"), os.Getenv("KITSU_JIRA_API_TOKEN")
 	if email == "" && token == "" {
 		return nil

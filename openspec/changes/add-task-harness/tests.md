@@ -74,7 +74,7 @@
 | Resume and deliver the same ticket | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Repair a reproduced failure and verify the commit | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Withhold an unsupported receipt | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
-| Import a site-bound Jira ticket and reopen its Markdown offline | internal/tickets/jira_test.go | TestJiraIssue |
+| Import a site-bound Jira ticket and reopen its Markdown offline | internal/tickets/jira_cloud_test.go | TestReadJiraCloudIssue |
 | Deliver a ticket supplied by a host tracker | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Read an authenticated GitHub issue | internal/tickets/source_test.go | TestGitHubTicketImport |
 

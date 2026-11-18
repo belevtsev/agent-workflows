@@ -10,7 +10,7 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/harness"
 )
 
-func TestJiraIssue(t *testing.T) {
+func TestReadJiraCloudIssue(t *testing.T) {
 	const body = `{"key":"APP-42","fields":{"summary":"Broken output","description":"Step 1\nStep 2","updated":"today"}}`
 	for _, tc := range []struct {
 		name, body string
@@ -62,7 +62,7 @@ func TestJiraIssue(t *testing.T) {
 		})
 	}
 }
-func TestJiraSourceURL(t *testing.T) {
+func TestJiraCloudIssueURL(t *testing.T) {
 	const target = "https://acme.atlassian.net/browse/APP-42"
 	src, err := Location(target+"/?from=board#detail", false)
 	if err != nil || src.Kind != "jira" || src.URL != target {

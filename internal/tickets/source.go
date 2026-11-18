@@ -38,10 +38,10 @@ func Location(from string, supplied bool) (harness.TicketSource, error) {
 		switch {
 		case host == "github.com" && u.RawQuery == "" && u.Fragment == "" && issuePath.MatchString(path):
 			return harness.TicketSource{Kind: "github", URL: "https://" + host + path}, nil
-		case jiraSite.MatchString(host) && jiraIssue.MatchString(path):
+		case jiraCloudHost.MatchString(host) && jiraBrowsePath.MatchString(path):
 			return harness.TicketSource{Kind: "jira", URL: "https://" + host + path}, nil
 		default:
-			return harness.TicketSource{}, fmt.Errorf("use a GitHub issue URL, a Jira Cloud /browse/KEY-123 URL or a Markdown file; for another tracker, provide the ticket text with --stdin")
+			return harness.TicketSource{}, fmt.Errorf("no built-in reader for this ticket URL; read it with your tracker and pass its Markdown with --stdin")
 		}
 	}
 	path, err := filepath.Abs(from)
@@ -51,7 +51,7 @@ func Location(from string, supplied bool) (harness.TicketSource, error) {
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".md", ".markdown":
 	default:
-		return harness.TicketSource{}, fmt.Errorf("--from requires a GitHub or Jira Cloud issue URL or a .md or .markdown file")
+		return harness.TicketSource{}, fmt.Errorf("--from requires a ticket URL or a .md or .markdown file")
 	}
 	name := filepath.ToSlash(path)
 	if !strings.HasPrefix(name, "/") {
@@ -75,9 +75,9 @@ func Read(ctx context.Context, from string, source harness.TicketSource, input i
 	var err error
 	switch source.Kind {
 	case "github":
-		source, text, err = readGitHub(ctx, source)
+		source, text, err = readGitHubIssue(ctx, source)
 	case "jira":
-		source, text, err = readJira(ctx, source)
+		source, text, err = readJiraCloudIssue(ctx, source)
 	case "markdown", "supplied":
 		if source.Kind == "markdown" {
 			f, err := openMarkdown(from)
@@ -127,7 +127,7 @@ func openMarkdown(path string) (*os.File, error) {
 	return os.Open(path)
 }
 
-func readGitHub(ctx context.Context, source harness.TicketSource) (harness.TicketSource, string, error) {
+func readGitHubIssue(ctx context.Context, source harness.TicketSource) (harness.TicketSource, string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	result := proc.Run(ctx, proc.Spec{Path: "gh", Args: []string{"issue", "view", source.URL, "--json", "url,title,body,updatedAt"}, Env: os.Environ(), StdoutLimit: 6*maxTicketBytes + 4096, StderrLimit: 4096})
