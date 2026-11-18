@@ -10,8 +10,7 @@ None are enabled by default. Roles continue without advisers when none are allow
 Optional [existing skills](skills.md) add instructions from their original directories. They
 also change no role job, write limit, tool grant, review, or approval rule.
 
-The roles have run with a model in two scratch repositories only, on one small task each. See
-[What is not known](#what-is-not-known).
+The [early role trial](#what-is-not-known) used two scratch repositories. Later [Codex comparisons](benchmarks/archived-delivery-comparison.md) report delivery, resource use and verification on specific tasks.
 
 The order of the work, the record of a task and `kitsu task` are in
 [the task workflow](workflow.md). The token count is in [tokens](tokens.md).
@@ -186,8 +185,7 @@ working tree.
 
 ### The coordinator
 
-The coordinator is the developer's own session, not a role. Its instructions are
-`kitsu role text coordinator`, shipped on Claude Code as the skill `/kitsu:task`. Run
+The developer's host session coordinates the work. For managed work, the task skill loads the instructions printed by `kitsu role text coordinator`. A normal plugin request follows the [daily workflow](task-harness.md#how-a-daily-task-runs). Run
 `kitsu agent check --host codex` or `--host claude` to inspect local setup, then
 `kitsu task start "<coding request>" --host <host>` to explicitly launch that host with the task
 skill. For an existing desktop session, add `--print` and paste its handoff. Print and JSON
@@ -486,8 +484,7 @@ The files a host reads are generated from them:
 - `agents/<role>.md`, one for each role: a header with `name`, `description` (the job), `model`
   and `effort` (the defaults for Claude Code) and `tools`, then a comment that the file is
   generated, then the role's text.
-- `skills/task/SKILL.md`: a header with `name: task` and a description, the same comment, then the
-  coordinator's text.
+- `skills/task/SKILL.md` contains the daily task instructions. The managed coordinator text is shipped in `skills/task/references/managed.md`.
 
 A test of this repository makes these files from the texts and fails when a file on disk differs,
 or when `agents/` holds a file that belongs to no role. The failure message names the file and the
@@ -501,9 +498,7 @@ of them within 60,000, and search the texts for the names of languages and build
 The plugin of this repository ships, for Claude Code, the seven role files under `agents/`, the
 skill under `skills/task/`, and the hooks in `hooks/hooks.json`. `.claude-plugin/plugin.json`
 names none of these paths; they are in the folders a Claude Code plugin uses for agents, skills
-and hooks. The coordinator's instructions start the roles as the agents
-`kitsu:<role>`, and the developer starts the workflow with the skill
-`/kitsu:task`. The `tools` list of a role file is for Claude Code to apply; `kitsu` does
+and hooks. Ask `/kitsu:task` to use the managed role workflow and the coordinator starts specialists as `kitsu:<role>`. The `tools` list of a role file is for Claude Code to apply; `kitsu` does
 not apply it.
 
 `kitsu task start "<request>" --host claude` opens an interactive Claude Code session with that
@@ -523,7 +518,7 @@ What is stated, and nothing more:
 - The proposal records that the Codex documentation does not say how a role is started on a given
   model; that question is open and is the owner's to settle.
 
-Nothing was run on Codex: not the skill, not a role, not the hooks.
+The early trial used Claude Code. Later Codex runs are recorded in the [coding task comparisons](benchmarks/archived-delivery-comparison.md).
 
 ## What is not known
 

@@ -138,7 +138,7 @@ it runs local preflight, requires terminal stdin/stdout/stderr, then starts the 
 `codex` or `claude` in the current directory. The prompt is a process argument, never a shell
 program. The host controls authentication, models, permissions, and role execution; local checks
 cannot prove its session behavior. Claude Code receives `/kitsu:task`; Codex is told to load the
-installed Kitsu task skill. No task folder, receipt, stage, or usage record is created by the handoff.
+installed Kitsu task skill. A new interactive daily launch in a Git worktree saves the request and a resumable task ID after preflight, before opening the host.
 
 `--print` and `--json` are mutually exclusive handoff-only modes. They require no terminals or
 installed host CLI, execute nothing, and return the prepared prompt and local diagnostics even

@@ -1,0 +1,56 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "How a daily Kitsu task runs and resumes",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": ".archify/daily-task.html",
+    "legend": {
+      "entries": {
+        "external": {"label": "Developer"},
+        "backend": {"label": "Host agent"},
+        "frontend": {"label": "Kitsu CLI"},
+        "database": {"label": "Worktree record"}
+      }
+    }
+  },
+  "lanes": [
+    {"id": "chat", "label": "Your chat"},
+    {"id": "host", "label": "Agent host"},
+    {"id": "local", "label": "Kitsu CLI"}
+  ],
+  "semanticChecks": {
+    "allowedRoots": ["ask", "resume"],
+    "allowedTerminals": ["result"],
+    "requiredEdges": [
+      {"from": "resume", "to": "next"},
+      {"from": "next", "to": "result"},
+      {"from": "record", "to": "next"},
+      {"from": "finish", "to": "result"}
+    ]
+  },
+  "nodes": [
+    {"id": "ask", "lane": "chat", "col": 0, "type": "external", "icon": "person", "label": "Ask for work", "sublabel": "choose a finish"},
+    {"id": "resume", "lane": "chat", "col": 1, "type": "external", "icon": "person", "label": "Resume in chat", "sublabel": "give the task ID"},
+    {"id": "result", "lane": "chat", "col": 5, "type": "external", "icon": "person", "label": "Get the result", "sublabel": "result or blocker", "width": 106},
+    {"id": "skill", "lane": "host", "col": 0, "type": "backend", "label": "Kitsu task skill", "sublabel": "Codex / Claude Code"},
+    {"id": "work", "lane": "host", "col": 3, "type": "backend", "label": "Work on task", "sublabel": "reviewer if required", "width": 120},
+    {"id": "saved", "lane": "local", "col": 0, "type": "database", "label": "Saved task", "sublabel": "request, scope, ID"},
+    {"id": "next", "lane": "local", "col": 1, "type": "frontend", "icon": "backend", "label": "task next", "sublabel": "current action"},
+    {"id": "record", "lane": "local", "col": 3, "type": "database", "label": "Record result", "sublabel": "notes or test logs", "width": 110},
+    {"id": "finish", "lane": "local", "col": 5, "type": "frontend", "icon": "backend", "label": "Check finish", "sublabel": "scope and proof"}
+  ],
+  "edges": [
+    {"id": "ask-skill", "from": "ask", "to": "skill", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "skill-saved", "from": "skill", "to": "saved", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "saved-next", "from": "saved", "to": "next"},
+    {"id": "resume-next", "from": "resume", "to": "next", "label": "same worktree", "variant": "dashed", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "saved-status", "from": "next", "to": "result", "label": "saved outcome", "variant": "dashed", "fromSide": "right", "toSide": "left"},
+    {"id": "next-work", "from": "next", "to": "work", "fromSide": "right", "toSide": "left"},
+    {"id": "work-record", "from": "work", "to": "record", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "record-next", "from": "record", "to": "next", "label": "more to do", "fromSide": "bottom", "toSide": "bottom", "role": "return", "variant": "dashed"},
+    {"id": "record-finish", "from": "record", "to": "finish"},
+    {"id": "finish-result", "from": "finish", "to": "result", "variant": "emphasis", "fromSide": "top", "toSide": "bottom"}
+  ]
+}

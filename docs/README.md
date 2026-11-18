@@ -16,6 +16,7 @@ Start with the [daily task harness](task-harness.md) to plan, implement, review,
 | [Context and workflow research](context-research.md) | Primary-source comparisons, token/cost tradeoffs, priorities and a controlled evaluation protocol. |
 | [Codex compact pilot](codex-compact-pilot.md) | A controlled 24-run real-task comparison, independent quality checks and actual solver token accounting. |
 | [Daily harness product audit](benchmarks/kitsu-product-audit-2026-11-18.md) | Installation, workflow features, reproduced defects, the plain Codex comparison and release priorities. |
+| [Documentation and diagram audit](benchmarks/documentation-audit-2026-11-18.md) | Examples checked against the released CLI, diagram findings and commands to correct. |
 | [Archived coding-task comparisons](benchmarks/archived-delivery-comparison.md) | Captured tokens, wall time, delivery and regression strength across ten saved attempts. |
 | [Grading developer requests](benchmarks/harness-request-decisions.md) | Raw requests, offline good and faulty controls, and instructions to replay the evidence. |
 | [Daily harness engineering handoff](benchmarks/kitsu-harness-agent-handoff.md) | Agent assignments, fixture ownership, acceptance criteria and the path from local preview to release decision. |

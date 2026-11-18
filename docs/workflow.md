@@ -1,23 +1,18 @@
 # The task workflow
 
-<img src="diagrams/overview.svg" alt="How the coordinator, specialist roles, task records, and Git checks fit together." width="100%">
+Use the **managed role workflow** when you ask Kitsu to coordinate specialists or resume an existing OpenSpec change. An ordinary Codex or Claude Code request uses the [daily task harness](task-harness.md#how-a-daily-task-runs).
 
-The task workflow coordinates one coding task through specification, design, tests, implementation,
-review, and commit using seven [roles](roles.md). A shared task record connects their work;
-the Git gate supplies a check before commits and pushes. The workflow has two parts:
+<img src="diagrams/overview.svg" alt="In the managed workflow, the host selects specialists. Kitsu tracks role settings, task files, usage and check evidence. Advisers and compact context are opt-in." width="100%">
 
-- **Instructions for a model.** The coordinator's text (`kitsu role text coordinator`, the skill
-  `/kitsu:task` on Claude Code) and the seven role texts say who does what and in which
-  order. A model follows them or does not; `kitsu` does not run the steps.
+The host selects from seven [roles](roles.md) for the stages the task needs. A shared task record connects their work, and the Git gate checks commits and pushes.
+
+- **Instructions for the host.** The task skill loads the [managed coordinator instructions](../skills/task/references/managed.md). The host starts the roles and runs the tools. Read the same instructions with `kitsu role text coordinator`.
 - **Commands that check files.** `kitsu task show` and `kitsu task check` read the record of a
   task under `openspec/changes/<task>/`, `kitsu role check` compares what a role changed with its
   limit, and the gate decides about commits. [What kitsu checks](#what-kitsu-checks) lists exactly what
   is enforced.
 
-A model has run the skill `task` in three sessions only, on two small tasks in scratch
-repositories, and it started roles in two of them; see
-[what is not known](roles.md#what-is-not-known). Whether the workflow gives better results than
-one agent working alone is not measured; see [the evaluation](evaluation.md).
+The [early Claude Code trial](roles.md#what-is-not-known) covered two small tasks. Later [Codex comparisons](benchmarks/archived-delivery-comparison.md) record task completion, wall time, tokens and regression results for the specific workflows tested.
 
 [Compact mode](compact-context.md) is an opt-in way to collect scoped repository evidence,
 prepare each fresh worker with `kitsu task prepare`, finalize its saved write-check interval
@@ -46,14 +41,9 @@ This section restates the coordinator's instructions and the task-flow specifica
 here is an instruction to the coordinator or to a role. `kitsu` enforces only what the next section,
 [What kitsu checks](#what-kitsu-checks), lists.
 
-<img src="diagrams/task-workflow.svg" alt="The task workflow. Full tasks start with specification and design, each independently reviewed and approved by you. Both paths continue through tests, code, review and a gated commit. Repository opt-in behavioral verification follows finished worker intervals: plan targets and gaps, verify targets, publish a summary, then satisfy full checks using local evidence. Experimental advisers remain off by default; explicit access and binding allow consultation and recorded decisions without replacing approval." width="100%">
+<img src="diagrams/task-workflow.svg" alt="The full managed path goes through spec review and developer approval, then design review and developer approval. The small path joins at tests. Both reach final review before the Git role commits. Review findings go back to the author, and tests-only changes can go directly from tests to review." width="100%">
 
-The picture holds the order of the roles, their reviews and checks, and the optional adviser
-handoff. Advisers are experimental and off by default. The [adviser flow](advisers.md) shows
-configuration and the separate opt-in for required checkpoints, which run before the corresponding
-stage proceeds. Specification and design always need your approval on the full path. The picture
-leaves out `kitsu task check` after `spec-writer` and `architect`, and `kitsu check run` after each start
-of `developer`. The text below holds every step.
+Read the full path from the top and the small path from “Small path.” Each review can send work back for correction. The coordinator runs `kitsu task check` after specification and design, and `kitsu check run` after each implementation round. [Adviser checkpoints](advisers.md) and the [Git gate](hooks.md) have their own diagrams.
 
 ### Before the first role
 

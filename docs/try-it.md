@@ -354,8 +354,8 @@ without a host: five runs, recorded in
    [`kitsu`](../skills/kitsu/SKILL.md) it should run `kitsu status` first, run
    `kitsu run` after the change, commit through the hook, and quote the last
    line of `kitsu run` in its answer.
-5. Ask for a small task with `/kitsu:task`, for example a new
-   check and a file it guards. Watch whether it writes a record under
+5. Ask `/kitsu:task` to use the **full managed role workflow**, for example to design a new
+   check and add a file it guards. Watch whether it writes a record under
    `openspec/changes/<task>/`, whether it stops for your approval of the
    specification, and whether each role starts with the model `kitsu roles`
    prints.

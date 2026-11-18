@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Kitsu: roles, task verification, advisers, usage and the Git gate",
+    "title": "How the managed workflow coordinates roles and records evidence",
     "locale": "en",
     "quality_profile": "showcase",
     "output": ".archify/overview.html",
@@ -18,7 +18,7 @@
   "layout": {"mode": "grid", "cols": 4, "cellW": 150, "cellH": 58, "gapX": 44, "gapY": 48, "origin": [40, 80]},
   "components": [
     {"id": "roles", "type": "backend", "label": "kitsu role list", "sublabel": "kitsu-roles.toml", "row": 0, "col": 0, "size": [150, 58]},
-    {"id": "agent", "type": "external", "label": "Your coding agent", "sublabel": "starts seven roles", "row": 1, "col": 0, "size": [150, 58]},
+    {"id": "agent", "type": "external", "label": "Your coding agent", "sublabel": "selects specialists", "row": 1, "col": 0, "size": [150, 58]},
     {"id": "change", "type": "frontend", "label": "Task record", "sublabel": "specs, reviews, verify", "row": 2, "col": 0, "size": [150, 58]},
     {"id": "change-check", "type": "backend", "label": "kitsu task check", "sublabel": "record structure", "row": 3, "col": 0, "size": [150, 58]},
     {"id": "adviser-settings", "type": "frontend", "label": "Explicit opt-in", "sublabel": "none by default", "row": 0, "col": 1, "size": [150, 58]},
@@ -65,7 +65,7 @@
     {"id": "context-inspect", "from": "context-artifacts", "to": "context-expand", "label": "expand"},
     {"id": "context-handoff", "from": "context-expand", "to": "context-brief", "label": "prepare", "variant": "emphasis"},
     {"id": "verify-priority", "from": "verify-plan", "to": "verify-task", "label": "targeted first"},
-    {"id": "verify-publish", "from": "verify-task", "to": "verify-summary", "label": "targets pass"},
-    {"id": "verify-before-final", "from": "verify-summary", "to": "verify-final", "label": "before checks", "variant": "emphasis"}
+    {"id": "verify-publish", "from": "verify-task", "to": "verify-summary", "label": "record attempt"},
+    {"id": "verify-before-final", "from": "verify-summary", "to": "verify-final", "label": "if targets pass", "variant": "emphasis"}
   ]
 }

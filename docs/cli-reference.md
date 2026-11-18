@@ -493,7 +493,7 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ### kitsu task test
 
 ```text
-usage: kitsu task test <task> [-- <program> [<argument>...]] [options]
+usage: kitsu task test <task> [options] [-- <program> [<argument>...]]
 
 Execute the requested behavioral assertion and required repository checks.
 
@@ -1523,7 +1523,7 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ### kitsu check add
 
 ```text
-usage: kitsu check add <id> -- <program> [<argument>...] [options]
+usage: kitsu check add <id> [options] -- <program> [<argument>...]
 
 Declare a repository check without invoking a shell.
 
@@ -1545,6 +1545,7 @@ Options:
 
 Examples:
   kitsu check add test -- go test ./...
+  kitsu check add readme --when README.md --expect "README.md is tracked" --verify -- git ls-files --error-unmatch -- README.md
 
 Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
