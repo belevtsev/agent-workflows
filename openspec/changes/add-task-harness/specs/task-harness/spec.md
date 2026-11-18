@@ -350,6 +350,8 @@ Source: proposal.md and approved daily coding harness plan.
 
 The daily harness SHALL import a ticket from a supported URL, a local Markdown file, or Markdown supplied by a host tracker into an immutable local task snapshot. It SHALL link a real failing behavioral assertion, a recorded repair, a passing rerun and a successful assertion observed on the delivered commit in a retrievable receipt.
 
+Direct HTTP(S) imports SHALL connect only to public unicast destinations. Each connection, including one opened for a redirect, SHALL verify every result of its destination lookup and dial a validated IP address. The original hostname SHALL identify the HTTP request and HTTPS peer. Direct imports SHALL ignore HTTP proxy settings.
+
 Source: developer request for the first closed-loop delivery slice.
 
 #### Scenario: Resume and deliver the same ticket
@@ -371,6 +373,11 @@ Source: developer request for the first closed-loop delivery slice.
 
 - **WHEN** a developer opens a public link to a supported text document, then reopens the same task offline
 - **THEN** Kitsu captures the requested issue, writes a private Markdown copy with its canonical source link and regenerates it from the saved task. Failed intake creates no deliverable ticket.
+
+#### Scenario: Reject a non-public direct destination
+
+- **WHEN** a direct ticket URL or redirect uses a non-public IP, or its hostname resolves to any non-public address
+- **THEN** Kitsu refuses to connect to that destination and points the developer to the host connector and `--stdin`. Failed intake creates no task or ticket snapshot. A host can still supply Markdown with the same stable URL as its source reference.
 
 #### Scenario: Deliver a ticket supplied by a host tracker
 

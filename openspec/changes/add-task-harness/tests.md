@@ -75,6 +75,11 @@
 | Repair a reproduced failure and verify the commit | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Withhold an unsupported receipt | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Import a public ticket link and reopen its Markdown offline | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
+| Reject a non-public direct destination | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
+| Classify address ranges | internal/tickets/transport_test.go | TestPublicTicketAddress |
+| Connect only to validated IPs | internal/tickets/transport_test.go | TestPublicTicketDialUsesOnlyValidatedLiterals |
+| Validate each redirect destination and use a direct connection | internal/tickets/transport_test.go | TestPublicTicketChecksEveryRedirect |
+| Verify the original request hostname over TLS with a pinned connection | internal/tickets/transport_test.go | TestPublicTicketUsesOriginalTLSIdentity |
 | Deliver a ticket supplied by a host tracker | scenarios/harness/bug_delivery_test.go | TestTicketLinkedDelivery |
 | Fetch and validate public ticket content | internal/tickets/public_test.go | TestPublicTicket |
 

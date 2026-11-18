@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- [Direct ticket imports](docs/task-harness.md#deliver-a-bug-ticket) connect only to public addresses. Use a host connector for internal tickets.
+
 - Help for `check add` and `task test` now puts Kitsu options before `--`. The [verification example](docs/cli-reference.md#kitsu-check-add) shows how to save a required check.
 
 ## [0.0.2] - 2026-11-18
