@@ -1,51 +1,45 @@
 name: Release
 
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Semantic version tag already prepared in docs/release-install.md
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
+env:
+  RELEASE_TAG: ${{ inputs.tag }}
+  GOWORK: 'off'
+
 jobs:
-  # A tag is released only from the configured repository when its commit is
-  # on main and a CI run for exactly that commit passed.
   guard:
-    name: Repository matches and commit passed CI on main
+    name: Check protected main and the exact successful CI revision
+    if: github.repository == 'belevtsev/kitsu' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read
       actions: read
     steps:
-      - name: Refuse publication outside the Kitsu repository
-        run: |
-          if [ "$GITHUB_REPOSITORY" != "belevtsev/kitsu" ]; then
-            echo "Kitsu releases must run in belevtsev/kitsu."
-            exit 1
-          fi
-      - name: Check out the tagged commit with the history of main
+      - name: Check out the protected revision with history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Refuse a commit that is not on main or did not pass CI
+      - name: Verify the revision, CI and intended tag
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: sh .github/scripts/release-guard.sh "$GITHUB_SHA"
-      # The last job follows the install instruction of the release-install document, after the
-      # release is public. A release-install document that names another tag is refused here.
-      - name: Refuse a tag that the release-install document does not install
-        run: |
-          if ! grep -qxF "tag=$GITHUB_REF_NAME" docs/release-install.md || ! grep -qxF "\$tag = \"$GITHUB_REF_NAME\"" docs/release-install.md; then
-            echo "The install instructions of docs/release-install.md do not install $GITHUB_REF_NAME."
-            exit 1
-          fi
+        run: sh .github/scripts/release-guard.sh "$GITHUB_SHA" "$RELEASE_TAG"
 
   # The same tools and versions as the jobs of ci.yml.
   verify:
@@ -58,15 +52,16 @@ jobs:
     env:
       GOWORK: 'off'
     steps:
-      - name: Check out the tagged commit
+      - name: Check out the protected revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Set up pinned Go with dependency cache
+      - name: Set up pinned Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-          cache: true
+          cache: false
       - name: Test with the race detector
         run: go test -race -count=1 ./...
       - name: Lint
@@ -74,6 +69,7 @@ jobs:
         with:
           version: v2.15.0
           install-mode: goinstall
+          skip-cache: true
       - name: Lint the darwin build
         env:
           GOOS: darwin
@@ -95,91 +91,160 @@ jobs:
           GOOS: windows
         run: govulncheck ./...
 
-  # Only this job can write: it publishes the release and the attestations.
-  release:
-    name: Publish Kitsu for ${{ github.ref_name }}
-    needs: verify
+  build:
+    name: Build and package the release locally
+    needs: guard
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-    env:
-      GOWORK: 'off'
+    timeout-minutes: 25
+    outputs:
+      artifact_id: ${{ steps.bundle.outputs.artifact-id }}
     steps:
-      - name: Check out the tagged commit with history for the changelog
+      - name: Check out the protected revision with history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Set up pinned Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-          cache: true
-      # goreleaser runs syft to make one SBOM per archive.
+          cache: false
       - name: Install pinned syft
         uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           syft-version: v1.55.0
-      # The text of the release is the section of the changelog.
-      - name: Take the release notes from the changelog
-        run: sh .github/scripts/release-notes.sh "$GITHUB_REF_NAME" > "$RUNNER_TEMP/release-notes.md"
-      - name: Build archives, SBOMs and SHA256SUMS, and upload them to a draft release
+      - name: Prepare the local tag and release notes
+        run: |
+          if ! git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            git tag "$RELEASE_TAG" "$GITHUB_SHA"
+          fi
+          test "$(git rev-parse "refs/tags/$RELEASE_TAG")" = "$GITHUB_SHA"
+          sh .github/scripts/release-notes.sh "$RELEASE_TAG" > "$RUNNER_TEMP/release-notes.md"
+      - name: Build six platform archives and their SBOMs
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           distribution: goreleaser
           version: v2.18.3
-          args: release --clean --release-notes ${{ runner.temp }}/release-notes.md
+          args: release --skip=publish --clean --release-notes ${{ runner.temp }}/release-notes.md
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-          # A commit can carry two tags; this run releases the one that started it.
-          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}
-      - name: Attest the build of each archive
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+          GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
+      - name: Assemble the exact installer bundle
+        run: go run ./internal/releasecmd prepare "$RELEASE_TAG" "$RUNNER_TEMP/kitsu-release"
+      - name: Keep the bundle for the remaining jobs
+        id: bundle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          subject-path: |
-            dist/*.tar.gz
-            dist/*.zip
-            .kitsu-release-plugin/kitsu-plugin.zip
-            install.sh
-            install.ps1
-      # .goreleaser.yaml makes the release a draft. It becomes public only
-      # here, so a failed attestation leaves nothing public.
-      - name: Publish the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: gh release edit "$GITHUB_REF_NAME" --draft=false
+          name: kitsu-release-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/kitsu-release/
+          if-no-files-found: error
+          retention-days: 30
 
-  # Download each installer from the published release and exercise it with
-  # neither Go nor Git on PATH, including both supported PowerShell versions.
   install:
-    name: Install ${{ github.ref_name }} without Go / ${{ matrix.os }}
-    needs: release
+    name: Install the release bundle / ${{ matrix.os }}
+    needs: build
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    permissions:
-      contents: read
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-15-intel, macos-latest, windows-latest, windows-11-arm]
     env:
-      GOWORK: 'off'
-      KITSU_INSTALL_TAG: ${{ github.ref_name }}
+      KITSU_INSTALL_TAG: ${{ inputs.tag }}
       KITSU_INSTALL_REVISION: ${{ github.sha }}
-      KITSU_INSTALL_PUBLISHED: '1'
     steps:
-      - name: Check out the tagged commit
+      - name: Check out the test harness
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Set up pinned Go for the test harness
+      - name: Set up pinned Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-          cache: true
-      - name: Install the published release without build tools
-        run: go test -count=1 -v -run TestPublishedReleaseInstaller ./scenarios/installers
+          cache: false
+      - name: Download the release bundle by artifact ID
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact_id }}
+          path: ${{ runner.temp }}/kitsu-release
+      - name: Install the staged CLI and plugin without build tools
+        env:
+          KITSU_INSTALL_ARCHIVES: ${{ runner.temp }}/kitsu-release
+        run: go test -count=1 -v -run '^TestReleaseArtifactsInstallWithoutBuildTools$' ./scenarios/installers
+
+  attest:
+    name: Attest the verified bundle
+    needs: [build, verify, install]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out the bundle validator
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Download the verified bundle by artifact ID
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact_id }}
+          path: ${{ runner.temp }}/kitsu-release
+      - name: Set up pinned Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Verify the checksum manifest
+        run: go run ./internal/releasecmd verify "$RELEASE_TAG" "$RUNNER_TEMP/kitsu-release"
+      - name: Attest the installers, archives, plugin and manifest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            ${{ runner.temp }}/kitsu-release/install.sh
+            ${{ runner.temp }}/kitsu-release/install.ps1
+            ${{ runner.temp }}/kitsu-release/*.tar.gz
+            ${{ runner.temp }}/kitsu-release/*.zip
+            ${{ runner.temp }}/kitsu-release/SHA256SUMS
+
+  publish:
+    name: Publish the verified draft
+    needs: [build, attest]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: release
+    steps:
+      - name: Check out the publisher from the protected revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Download the attested bundle by artifact ID
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact_id }}
+          path: ${{ runner.temp }}/kitsu-release
+      - name: Set up pinned Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Build the publisher without the release token
+        run: go build -o "$RUNNER_TEMP/kitsu-release-tool" ./internal/releasecmd
+      - name: Get a short-lived token for the release app
+        id: release-app
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          client-id: ${{ vars.KITSU_RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.KITSU_RELEASE_APP_PRIVATE_KEY }}
+          permission-administration: read
+          permission-contents: write
+      - name: Create the tag and draft, verify uploads, and publish
+        env:
+          GH_TOKEN: ${{ steps.release-app.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          "$RUNNER_TEMP/kitsu-release-tool" publish "$RELEASE_TAG" "$RUNNER_TEMP/kitsu-release" "$GITHUB_SHA"

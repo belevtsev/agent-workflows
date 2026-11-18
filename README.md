@@ -26,7 +26,14 @@ With Git and the `codex` command installed, run one command in your terminal. [S
 **macOS or Linux**
 
 ```sh
-curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.sh | sh -s -- --host codex
+(
+  installer=$(mktemp) &&
+    trap 'rm -f "$installer"' 0 &&
+    curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.sh -o "$installer" &&
+    grep -Fq 'to check the installed version.' "$installer" &&
+    sh -n "$installer" &&
+    sh "$installer" --host codex
+)
 ```
 
 **Windows PowerShell**
@@ -127,7 +134,14 @@ With Git and the `claude` command installed, run one command in your terminal. [
 **macOS or Linux**
 
 ```sh
-curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.sh | sh -s -- --host claude
+(
+  installer=$(mktemp) &&
+    trap 'rm -f "$installer"' 0 &&
+    curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.sh -o "$installer" &&
+    grep -Fq 'to check the installed version.' "$installer" &&
+    sh -n "$installer" &&
+    sh "$installer" --host claude
+)
 ```
 
 **Windows PowerShell**

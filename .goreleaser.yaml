@@ -1,4 +1,4 @@
-# Release archives for kitsu, built by .github/workflows/release.yml on v* tags.
+# Release archives built by CI and the protected release workflow.
 version: 2
 
 project_name: kitsu
@@ -60,16 +60,6 @@ changelog:
       - '^test(\([^)]*\))?:'
       - '^chore(\([^)]*\))?:'
 
-# A draft: release.yml makes it public after it has attested the archives.
+# The protected release workflow publishes the verified bundle.
 release:
-  github:
-    owner: belevtsev
-    name: kitsu
-  draft: true
-  # A second run for the same tag replaces the draft of the first.
-  replace_existing_draft: true
-  prerelease: auto
-  extra_files:
-    - glob: install.sh
-    - glob: install.ps1
-    - glob: .kitsu-release-plugin/kitsu-plugin.zip
+  disable: true

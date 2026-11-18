@@ -85,6 +85,38 @@ func TestInstallFailuresPreserveExistingBinary(t *testing.T) {
 	}
 }
 
+func TestTruncatedShellInstallerPreservesInstallation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("requires the POSIX installer")
+	}
+	script := readFile(t, filepath.Join("..", "..", "install.sh"))
+	base := serveAssets(t, fixtureAssets(t, preparedVersion))
+	for _, point := range []string{"# Parse the entire", "configure_path\nif", "\n}\n"} {
+		t.Run(point, func(t *testing.T) {
+			end := bytes.LastIndex(script, []byte(point))
+			if end < 0 {
+				t.Fatalf("truncation point %q missing from the installer", point)
+			}
+			run := newInstallRun(t, nativeInstallers(t)[0], base)
+			run.env["KITSU_NO_MODIFY_PATH"] = "0"
+			profile := filepath.Join(run.home, ".zshrc")
+			original := []byte("existing binary")
+			setup := []byte("# existing shell configuration\n")
+			writeFile(t, run.target, original)
+			writeFile(t, profile, setup)
+			prefix := filepath.Join(run.dir, "truncated.sh")
+			writeFile(t, prefix, script[:end])
+			output, err := run.runScript(prefix, true)
+			if err == nil {
+				t.Fatalf("incomplete installer reported success: %s", output)
+			}
+			if !bytes.Equal(readFile(t, run.target), original) || !bytes.Equal(readFile(t, profile), setup) {
+				t.Fatal("incomplete installer changed the binary or shell setup")
+			}
+		})
+	}
+}
+
 func TestInstallPinnedVersionAndOfflineArchives(t *testing.T) {
 	const version = "v3.0.1"
 	assets := fixtureAssets(t, version)

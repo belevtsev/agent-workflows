@@ -11,7 +11,14 @@ With Git and Codex or Claude Code installed, run the command for your platform. 
 **macOS or Linux**
 
 ```sh
-curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.sh | sh -s -- --host codex
+(
+  installer=$(mktemp) &&
+    trap 'rm -f "$installer"' 0 &&
+    curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.sh -o "$installer" &&
+    grep -Fq 'to check the installed version.' "$installer" &&
+    sh -n "$installer" &&
+    sh "$installer" --host codex
+)
 ```
 
 **Windows PowerShell**
@@ -20,7 +27,7 @@ curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.s
 & ([scriptblock]::Create([Net.WebClient]::new().DownloadString('https://github.com/belevtsev/kitsu/releases/latest/download/install.ps1'))) -AgentHost codex
 ```
 
-The installer downloads the CLI and matching plugin from the latest public release, verifies both checksums, and registers the plugin with your agent. Downloads are anonymous.
+The installer downloads the CLI and matching plugin from the latest public release, verifies both checksums, and registers the plugin with your agent. Downloads are anonymous. On macOS and Linux the command stages the whole installer before running it.
 
 The default locations are `$HOME/.local/bin/kitsu` on macOS/Linux and `%LOCALAPPDATA%\kitsu\kitsu.exe` on Windows. Open a new terminal and run `kitsu version` for the installed tag and revision. Windows hooks use Git for Windows.
 
@@ -228,6 +235,23 @@ terminal, and run `kitsu version`. Building the CLI is a separate
 
 The preview supporting delegated coding and pinned commit ranges used task-skill protocol 2. The source build with configurable daily review requires task-skill protocol 3. Update both the CLI and the registered marketplace when upgrading from the earlier daily preview. Existing task ledgers can still be resumed.
 
+## Verify release provenance
+
+For releases made by the protected **Release** workflow, you can use GitHub CLI to check that
+`SHA256SUMS` came from a build on Kitsu's `main`. Run this in the directory where you downloaded
+the manifest and the assets you want to verify.
+
+```sh
+gh attestation verify SHA256SUMS --repo belevtsev/kitsu \
+  --signer-workflow belevtsev/kitsu/.github/workflows/release.yml --source-ref refs/heads/main
+```
+
+Match the verification output's source commit with the commit for the selected release tag.
+Use the SHA-256 digest in the verified manifest to check the downloaded installer, archive or
+plugin before executing or extracting it. Earlier releases such as `v0.0.2` used the previous
+workflow and do not have this manifest attestation.
+[GitHub CLI attestation verification](https://cli.github.com/manual/gh_attestation_verify)
+
 ## What CI checks
 
 CI builds six platform archives, their SBOMs, a matching host plugin, both installers, and `SHA256SUMS` into the
@@ -239,5 +263,5 @@ It also resumes verify-only tasks on passing and failing staged patches and chec
 
 For release validation, dispatch the **CI** workflow at the candidate revision with `verify_native_hosts` enabled. The installer jobs provision pinned native Codex and Claude Code clients. They require a result from each host on amd64 and arm64 for Linux, macOS and Windows, including Windows PowerShell 5.1 and 7. The expected matrix contains 16 shell/host combinations. A missing client or missing row fails the requested evidence run. Each `kitsu-native-install-<runner>` artifact contains `results.json` and the Go test log. Check the reported revision, executable and plugin hashes, fresh install, reinstall and resumed task before claiming that combination. Normal CI can skip a client it lacks. [Workflow and pinned versions](../.github/workflows/ci.yml)
 
-After publication, the release workflow tests the actual release installer assets and checks
-the installed version and revision. Preparing installers and archives creates no tag or release.
+The release workflow tests the exact publication bundle on all six platforms and checks the
+installed version and revision before publishing. See [releases](development.md#releases).
