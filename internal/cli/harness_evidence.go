@@ -28,6 +28,7 @@ type verificationLogRef struct {
 }
 
 type harnessView struct {
+	TicketMarkdown    string                `json:"ticket_markdown,omitempty"`
 	TicketSource      *harness.TicketSource `json:"ticket_source,omitempty"`
 	ActorSessions     []tokens.Session      `json:"actor_session_usage,omitempty"`
 	ReviewPolicyError string                `json:"review_policy_error,omitempty"`
@@ -272,6 +273,9 @@ func printHarness(cfg Config, o harnessOptions, v harnessView) error {
 	if v.ReviewPolicyError != "" {
 		fmt.Fprintln(cfg.Out, decl.Plain(v.ReviewPolicyError))
 	}
+	if v.TicketMarkdown != "" {
+		fmt.Fprintln(cfg.Out, "Ticket Markdown:", decl.Plain(v.TicketMarkdown))
+	}
 	if v.TicketSource != nil {
 		fmt.Fprintln(cfg.Out, "Source ticket:", decl.Plain(v.TicketSource.URL))
 		if v.Next == "receipt" || v.Next == "done" {
@@ -373,6 +377,9 @@ func (v harnessView) verificationLog() *verificationLogRef {
 // Full results, findings and inputs stay in task show across interruptions.
 func (v harnessView) brief() map[string]any {
 	reply := map[string]any{"task": v.Task, "next": v.Next, "verified": v.Verified, "repository_checks": v.Gate, "delivery": v.Delivery, "details": []string{"kitsu", "task", "show", v.Task, "--json"}}
+	if v.TicketMarkdown != "" {
+		reply["ticket_markdown"] = v.TicketMarkdown
+	}
 	if v.TicketSource != nil && (v.Next == "receipt" || v.Next == "done") {
 		reply["delivery_receipt"] = []string{"kitsu", "task", "receipt", v.Task, "--json"}
 	}

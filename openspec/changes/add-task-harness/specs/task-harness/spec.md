@@ -348,7 +348,7 @@ Source: proposal.md and approved daily coding harness plan.
 
 ### Requirement: Deliver a ticket-linked bug fix
 
-The daily harness SHALL import a GitHub issue or Markdown file into an immutable local task snapshot. It SHALL link a real failing behavioral assertion, a recorded repair, a passing rerun and a successful assertion observed on the delivered commit in a retrievable receipt.
+The daily harness SHALL import a GitHub issue, Jira Cloud issue or Markdown file into an immutable local task snapshot. It SHALL link a real failing behavioral assertion, a recorded repair, a passing rerun and a successful assertion observed on the delivered commit in a retrievable receipt.
 
 Source: developer request for the first closed-loop delivery slice.
 
@@ -366,3 +366,8 @@ Source: developer request for the first closed-loop delivery slice.
 
 - **WHEN** reproduction is missing, a different command is substituted, or the post-commit assertion fails
 - **THEN** Kitsu withholds a successful receipt. A saved successful receipt remains available after the checkout moves.
+
+#### Scenario: Import a site-bound Jira ticket and reopen its Markdown offline
+
+- **WHEN** a developer opens a Jira Cloud browse URL using credentials for that site, then reopens the same task offline
+- **THEN** Kitsu captures the requested issue, writes a private Markdown copy with its canonical source link and regenerates it from the saved task. Failed intake creates no deliverable ticket.

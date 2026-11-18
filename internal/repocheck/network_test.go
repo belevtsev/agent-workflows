@@ -50,7 +50,7 @@ func linkedPackages(t *testing.T, goos string, targets ...string) []linkedPackag
 	return packages
 }
 
-// Native advisers are the only first-party package allowed to import network
+// Native advisers and explicit ticket imports are allowed to import network
 // libraries. Standard HTTP/TLS dependencies and Windows address types are expected.
 func TestNetworkImportsStayInNativeAdvisers(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
@@ -61,6 +61,9 @@ func TestNetworkImportsStayInNativeAdvisers(t *testing.T) {
 			for _, imported := range pkg.Imports {
 				// Terminal formatting and ticket source identifiers use local URL parsing and escaping.
 				if (pkg.ImportPath == "github.com/charmbracelet/x/ansi" || pkg.ImportPath == "github.com/belevtsev/kitsu/v3/internal/tickets") && imported == "net/url" {
+					continue
+				}
+				if pkg.ImportPath == "github.com/belevtsev/kitsu/v3/internal/tickets" && imported == "net/http" {
 					continue
 				}
 				if networkPackage(imported) {

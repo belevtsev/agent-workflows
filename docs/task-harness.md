@@ -40,12 +40,20 @@ Choose the base you intend to compare. For a branch that diverged from main, use
 
 ## Deliver a bug ticket
 
-From the target repository, open a task using a GitHub issue URL or a Markdown file. The command authorizes a local repair and commit on the current branch. Ticket text supplies the problem statement. Publishing a branch, posting to the tracker and closing the issue require separate developer action.
+From the target repository, open a task using a GitHub issue URL, Jira Cloud issue URL or a Markdown file. The command authorizes a local repair and commit on the current branch. Ticket text supplies the problem statement. Publishing a branch, posting to the tracker and closing the issue require separate developer action.
 
 ```sh
 kitsu task bug wrapper-args --from https://github.com/spf13/pflag/issues/537
 kitsu task start --resume wrapper-args --host codex
 ```
+
+To read a Jira Cloud issue, paste its browser link. For private issues, set `KITSU_JIRA_SITE` to the HTTPS site origin (for example `https://acme.atlassian.net`), `KITSU_JIRA_EMAIL` to your account email, and `KITSU_JIRA_API_TOKEN` to a site-compatible API token through your shell or secret manager. Public issues can be imported anonymously. This uses the site's read-only issue endpoint and preserves Jira's description text. [Atlassian authentication guide](https://developer.atlassian.com/cloud/jira/platform/basic-auth-for-rest-apis/)
+
+```sh
+kitsu task bug acme-123 --from https://acme.atlassian.net/browse/ACME-123
+```
+
+Opening any supported ticket prints the path to a private Markdown snapshot in the worktree's Git directory. JSON exposes it as `ticket_markdown`. It includes the canonical source link and saved request. Repeat the same open command to regenerate it offline. The delivery receipt always links to the original source.
 
 For a local ticket use `--from ./tickets/wrapper-args.md`. Use `--host claude` for Claude Code. GitHub import uses your installed `gh` CLI and its existing issue access. A Markdown import needs only a readable UTF-8 file. Kitsu saves the text and source digest once. Reopening the same task and source reuses the saved version, even offline. Choose a new task ID to use a revised ticket. `task next ID` shows the saved request, source and next action. Add `--require-review` when opening the task for an independent review. Repository review requirements still apply.
 

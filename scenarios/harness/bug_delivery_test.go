@@ -22,10 +22,22 @@ func TestTicketLinkedDelivery(t *testing.T) {
 	}
 	f := flow{t: t, repo: r, id: "ticket-fix"}
 	f.call(0, "bug", "--from", source)
+	snapshot := r.Path(".git/kitsu-stages/ticket-ticket-fix.md")
+	data, err := os.ReadFile(snapshot)
+	if err != nil || !strings.Contains(string(data), "Export%20bug.md>") || !strings.Contains(string(data), "# Export is broken") {
+		t.Fatal(string(data), err)
+	}
+	if err := os.Remove(snapshot); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.Remove(source); err != nil {
 		t.Fatal(err)
 	}
 	f.call(0, "bug", "--from", source) // retry without access to the original
+	regenerated, err := os.ReadFile(snapshot)
+	if err != nil || string(regenerated) != string(data) {
+		t.Fatal("offline snapshot changed", err)
+	}
 	f.call(1, "bug", "--from", source+".md")
 	f.record("intake", "coordinator", "The public output must be ready.")
 	f.want("verify")
