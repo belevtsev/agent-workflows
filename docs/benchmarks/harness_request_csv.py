@@ -315,9 +315,10 @@ def delegate(checkout, arm, ready, route):
     if not result["passed"]:
         raise RuntimeError(f"Independent scripted review detected a mismatch: {result}")
     if kitsu:
-        ready = checkout.task("record", "review", "--ticket", ready["ticket"], "--actor", reviewer, "--note",
-                              "Read the pinned export diff and confirmed the exact candidate round-trips the quote.",
-                              brief=True)
+        ready = checkout.record_review(
+            ready, review, reviewer, owner=OWNER, brief=True,
+            note="Read the pinned export diff and confirmed the exact candidate round-trips the quote.",
+        )
     return ready
 
 
