@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Release archives include the [license for Go networking and HTML dependencies](THIRD_PARTY.md).
+
 - Require initialized submodules for new [check evidence](docs/evidence.md#the-same-content). Rerun checks once on trees that contain submodules after upgrading.
 
 - Help for `check add` and `task test` now puts Kitsu options before `--`. The [verification example](docs/cli-reference.md#kitsu-check-add) shows how to save a required check.
