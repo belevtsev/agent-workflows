@@ -509,7 +509,7 @@ or an answer: a search of the stored files for a sentence of a brief finds nothi
 
 Token collection sends nothing from the machine. Dependency tests keep the gate, host token
 collector, and skill inventory offline and restrict first-party network imports to native
-advisers. Optional adviser APIs and CLI commands may contact providers using the context the
+advisers and explicit ticket imports. Optional adviser APIs and CLI commands may contact providers using the context the
 coordinator explicitly supplied; their shared task records contain prompts and answers.
 Host token files are not committed: they are inside the git directory, not the working tree.
 
