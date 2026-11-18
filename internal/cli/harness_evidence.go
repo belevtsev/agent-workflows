@@ -428,7 +428,7 @@ func (v harnessView) addBriefClaim(reply map[string]any) {
 
 func harnessProofValid(s *session, t *harness.Task) (bool, error) {
 	p := t.Proof
-	if !p.PerRunInputs || p.Outcome != store.Passed || !validProofLocation(p) || !filepath.IsLocal(p.Run) || filepath.Base(p.Run) != p.Run {
+	if (!p.PerRunInputs || !p.IndexChecked) || p.Outcome != store.Passed || !validProofLocation(p) || !filepath.IsLocal(p.Run) || filepath.Base(p.Run) != p.Run {
 		return false, nil
 	}
 	records, damaged, err := s.store.Records(p.CheckID, p.Key)
@@ -484,7 +484,7 @@ func runHarnessTest(ctx context.Context, s *session, l *stageLedger, t *harness.
 	c := v.Candidate
 	p := t.Proof
 	reuse := false
-	if p != nil && c.SameBase(p.Candidate) && c.SameSource(p.Candidate) && slices.Equal(o.argv, p.Argv) && o.expect == p.Expect {
+	if p != nil && c.Index == p.Candidate.Index && c.SameBase(p.Candidate) && c.SameSource(p.Candidate) && slices.Equal(o.argv, p.Argv) && o.expect == p.Expect {
 		var err error
 		reuse, err = harnessProofValid(s, t)
 		if err != nil {
@@ -525,7 +525,7 @@ func finishHarnessTest(ctx context.Context, s *session, t *harness.Task, c harne
 	if err != nil {
 		return err
 	}
-	if !c.SameSource(after) || !c.SameBase(after) {
+	if c.Index != after.Index || !c.SameSource(after) || !c.SameBase(after) {
 		return failf("candidate changed during verification; run task next")
 	}
 	if err := s.checkHarnessCommitTarget(ctx, t.CommitTarget); err != nil {
@@ -551,7 +551,7 @@ func executeHarnessAssertion(ctx context.Context, s *session, t *harness.Task, o
 	if err != nil {
 		return nil, err
 	}
-	p := &harness.Proof{PerRunInputs: true, CheckID: check.ID, Ticket: o.ticket, Candidate: c, Key: key, Run: record.RunID, Outcome: record.Outcome, ExitStatus: record.ExitStatus, Detail: sourceChangeSummary(record), Expect: o.expect, Argv: o.argv}
+	p := &harness.Proof{IndexChecked: true, PerRunInputs: true, CheckID: check.ID, Ticket: o.ticket, Candidate: c, Key: key, Run: record.RunID, Outcome: record.Outcome, ExitStatus: record.ExitStatus, Detail: sourceChangeSummary(record), Expect: o.expect, Argv: o.argv}
 	p.LogDigest, err = taskVerificationLog(s, p.Run)
 	if err != nil {
 		return nil, err
@@ -610,12 +610,12 @@ func (v *harnessView) observeDelivery(ctx context.Context, s *session, t *harnes
 	if p == nil {
 		return nil
 	}
-	if !c.SameSource(p.Candidate) {
+	if !c.SameSource(p.Candidate) || p.Candidate.Index != c.Index {
 		v.Behavior = "stale"
 		return nil
 	}
 	v.Behavior = p.Outcome
-	if p.Outcome == store.Passed && !p.PerRunInputs {
+	if p.Outcome == store.Passed && (!p.PerRunInputs || !p.IndexChecked) {
 		v.Behavior = "fresh per-run evidence required"
 		return nil
 	}

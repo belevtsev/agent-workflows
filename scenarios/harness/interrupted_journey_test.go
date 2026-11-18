@@ -208,6 +208,9 @@ func (j *interruptedJourney) run() journeyDelivery {
 	if approved.Proof == nil || approved.Proof.Run != failed.Proof.Run || approved.Proof.Candidate.Tree == approved.Candidate.Tree {
 		j.t.Fatal("the repaired candidate lost its original failing assertion")
 	}
+	j.repo.Git("add", "export.sh")
+	approved = j.call(0, "next")
+	j.want(approved, "verify")
 	retry := []string{"--ticket", approved.Ticket, "--retry"}
 	verified := j.call(0, "test", retry...)
 	verified = j.restart("accepted evidence", "test", verified).View
@@ -221,7 +224,6 @@ func (j *interruptedJourney) run() journeyDelivery {
 		j.want(j.call(0, "test", retry...), "commit")
 	}
 
-	j.repo.Git("add", "export.sh")
 	commit := []string{"--ticket", verified.Ticket, "--message", journeyCommit}
 	j.call(1, "commit", commit...)
 	if j.repo.Git("rev-parse", "HEAD") != base || j.repo.Git("write-tree") != verified.Candidate.Tree {

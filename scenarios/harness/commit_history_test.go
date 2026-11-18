@@ -22,11 +22,12 @@ func TestCommitReceiptCanBeReplayedWhilePublicationIsPending(t *testing.T) {
 			f.call(0, "open", "--entry", "verify", "--until", "deliver", "--commit", "--publish-to", "fixture/delivery",
 				"--request", "Verify, commit and confirm the answer")
 			f.record("intake", "coordinator", "The answer must be 42")
+			r.Git("add", "answer.txt")
+			f.call(0, "next")
 			f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "answer is 42", "--", "git", "grep", "--no-index", "-e", "^42$", "--", "answer.txt")
 			f.want("commit")
 			proof, ticket := f.state.Proof.Run, f.state.Ticket
 			const message = "Deliver the checked answer"
-			r.Git("add", "answer.txt")
 			interrupted := mode == "interrupted after Git"
 			if interrupted {
 				// Git has finished, but Kitsu's commit result was never saved.

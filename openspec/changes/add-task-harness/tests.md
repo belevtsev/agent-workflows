@@ -46,6 +46,7 @@
 | Recover after repository retry evidence expires | scenarios/harness/repository_retry_test.go | TestCompletedRepositoryRetryTicketExpiresWithEvidence |
 | Retain the failure that led to a source repair | scenarios/harness/repository_retry_test.go | TestRepositoryCheckFailureSurvivesSourceRepair |
 | Reverify earlier daily evidence | scenarios/harness/verification_candidate_test.go | TestLegacyVerificationGetsFreshPerRunEvidence |
+| Staging changes after an assertion | scenarios/harness/verification_index_test.go | TestVerifyStagedContentsAfterIndexOnlyChange |
 | Diagnose an unstable check before repair | scenarios/harness/verification_candidate_test.go | TestInputChangeDoesNotDispatchABehaviorRepair |
 | Recover verification on an already reviewed commit | scenarios/harness/verification_candidate_test.go | TestLosingVerificationAfterCommitKeepsIndependentReview |
 | Repeat the behavior that required repair | scenarios/harness/assertion_recovery_test.go | TestRepairCannotSilentlyReplaceItsFailingAssertion |

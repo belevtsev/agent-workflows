@@ -678,8 +678,8 @@ func TestStageOutcomeVerifiedDelivery(t *testing.T) {
 		)
 		resumed.want("done")
 		finished := stageNext(&resumed)
-		sameProof := finished.Proof != nil && finished.Proof.Run == run && finished.Proof.Candidate.Tree == tree
-		if finished.Delivery != "committed" || !finished.Verified || !sameProof {
+		stagedProof := finished.Proof != nil && finished.Proof.Run != run && finished.Proof.Candidate.Tree == tree && finished.Proof.Candidate.Index == tree
+		if finished.Delivery != "committed" || !finished.Verified || !stagedProof {
 			t.Fatalf("wrong verified delivery: %+v", finished)
 		}
 		head := r.Git("rev-parse", "HEAD")
@@ -698,12 +698,12 @@ func TestStageOutcomeVerifiedDelivery(t *testing.T) {
 		if got := r.Git("status", "--porcelain"); got != "" || r.Read(scratch) != developerWork {
 			t.Fatalf("delivery affected unrelated developer work, status %q", got)
 		}
-		if len(r.RecordFiles("unit")) != 1 {
-			t.Fatal("scope extension needlessly reran verification")
+		if len(r.RecordFiles("unit")) != 2 {
+			t.Fatal("staging the change must run the repository check against the new index")
 		}
-		stageHistory(&resumed, "intake", "test", "commit")
+		stageHistory(&resumed, "intake", "test", "test", "commit")
 		gradeStageDouble(t, r, js, true)
-		t.Logf("start %s, reused proof %s, delivered %s with tree %s and excluded scratch file", start.head, run, head, tree)
+		t.Logf("start %s, original proof %s, delivered %s with tree %s and excluded scratch file", start.head, run, head, tree)
 	})
 
 	t.Run("conflicting staged notes are preserved", func(t *testing.T) {
@@ -726,7 +726,7 @@ func TestStageOutcomeVerifiedDelivery(t *testing.T) {
 		}
 		before.check(t, r)
 		f.call(0, "next")
-		f.want("commit")
+		f.want("verify")
 		stageHistory(f, "intake", "test")
 		t.Logf("start %s, mixed index blocked with exit 1, original staged and working bytes intact", before.head)
 	})

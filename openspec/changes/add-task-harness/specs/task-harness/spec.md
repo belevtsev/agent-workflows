@@ -221,8 +221,14 @@ Source: proposal.md and approved daily coding harness plan.
 
 #### Scenario: Reverify earlier daily evidence
 
-- **WHEN** an earlier task has a passing receipt that predates per-run observation of original bytes and commit parents
+- **WHEN** an earlier task has a passing receipt that predates per-run observation of original bytes, staged contents and commit parents
 - **THEN** the task keeps its history and requires fresh local evidence before reporting current verification.
+
+#### Scenario: Staging changes after an assertion
+
+- **WHEN** the index changes after verification while the working files and Git parents stay the same
+- **THEN** the old receipt remains available in the history and the current verification requires fresh evidence for the new index, including after extending a verified task to delivery.
+- **AND** a commit ticket issued before staging the whole verified tree can execute the saved assertion and required checks on that index. A failure leaves HEAD and staged entries intact. Stage the files before testing to avoid a second run.
 
 #### Scenario: Diagnose an unstable check before repair
 

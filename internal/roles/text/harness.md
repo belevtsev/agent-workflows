@@ -41,7 +41,7 @@ Compact mode is opt-in for noisy observations. Honor the model, reasoning, skill
    --ticket ORIGINAL` if a new attempt is needed. Report a missing independent
    reviewer as a blocker. Never invent a worker or identity.
 5. At verify use `kitsu task test ID --brief --ticket TICKET --expect BEHAVIOR -- PROGRAM ARGS`.
-   Reuse matching saved task proof on resume. A note saying tests passed still needs an executable assertion.
+   For a requested commit, stage authorized files before testing to avoid repeating checks. Reuse matching saved task proof on resume. A note saying tests passed still needs an executable assertion.
    Cover the reported failure through the requested public entry points. When inputs must pass through unchanged, assert their exact values and order. For “verify and commit if it passes,” a failed assertion with no repair authority ends the attempt: report the failure and leave the source and index intact. A retry ticket permits another check.
    When callers can change state during the operation, check the transition and its observable result. Kitsu also runs
    declared checks. Read `verification_log.path` on failure. After repair, rerun the saved assertion with `task test ID --brief --ticket TICKET --retry`. When correcting a mistaken assertion, explain the change with --replace-reason.
