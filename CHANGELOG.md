@@ -104,7 +104,7 @@ earlier `cw` releases remain documented below as historical source revisions.
   and checks; a [separate evaluation](docs/benchmarks/selective-compact-report.md) counts expansions, retries and bounded canary usage.
 - [Role defaults](docs/roles.md#the-roles-at-a-glance) use different models and reasoning efforts for lookup,
   specification, architecture, tests, implementation, review, and Git work on both supported hosts.
-- Lead with [coding-agent coordination](README.md#the-roles) in the documentation, plugin descriptions and CLI help; the Git gate supports that workflow.
+- Lead with [coding-agent coordination](docs/workflow.md) in the documentation, plugin descriptions and CLI help; the Git gate supports that workflow.
 
 ### Fixed
 

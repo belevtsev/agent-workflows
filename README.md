@@ -2,11 +2,11 @@
 
 <img src="docs/brand/kitsu-mascot.png" alt="Kitsu’s Pomeranian mascot in a red beanie" width="128" align="right">
 
-Kitsu guides **Codex and Claude Code** through a coding task in your Git repository. Give your agent a bug, a feature request, or a diff and tell it where to stop. Kitsu keeps the task record so you can resume in a fresh session and see which checks actually passed.
+Kitsu coordinates coding tasks in **Codex** and **Claude Code**. Ask your agent to plan a feature, review a diff, or fix a bug. Kitsu saves the request, findings, and check results in your Git repository so you can pick up where the last session stopped.
 
 ## Install
 
-With Git and Codex or Claude Code installed, run the command for your platform. Replace `codex` with `claude` for Claude Code.
+You need Git and the coding agent you use. Run one command to install the CLI and its matching plugin. The examples use `codex`. Substitute `claude` throughout for Claude Code.
 
 **macOS or Linux**
 
@@ -20,33 +20,30 @@ curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.s
 & ([scriptblock]::Create([Net.WebClient]::new().DownloadString('https://github.com/belevtsev/kitsu/releases/latest/download/install.ps1'))) -AgentHost codex
 ```
 
-The installer downloads the CLI and matching plugin from the latest public release, verifies both checksums, and registers the plugin with your agent. [Versions and offline installs](docs/release-install.md)
+[Other install options](docs/release-install.md)
 
 ## Quick start
 
-Open a new terminal in your project’s Git repository. Try a read-only task that works with a clean checkout:
+Open a new terminal in your project’s Git repository and ask for a plan:
 
 ```sh
-kitsu task start "Find how this project runs its tests and propose one missing smoke test" --until plan --host codex
+kitsu task start "Trace how this project handles invalid input and propose one regression test" --until plan --host codex
 ```
 
-Kitsu opens your agent with the request. In Codex, review and trust the plugin hooks in `/hooks`. For Claude Code, use `--host claude`. If startup needs attention, run `kitsu agent check` with the same host flag.
+Kitsu prints a task ID and a resume command, then opens your agent. Expect a proposed test you can review before changing any code. In Codex, review Kitsu’s hooks in `/hooks` on first use.
 
-Already in an agent session? Ask Codex to “Use Kitsu to review my staged changes,” or type `/kitsu:task` with your request in Claude Code.
+To return later, use the printed resume command. Lost the task ID? Run `kitsu task list`. If startup fails, run `kitsu agent check --host codex`.
 
-## Fix a bug from a ticket
+<a name="the-roles"></a>
 
-Start with a Markdown ticket or public URL. This workflow authorizes a local repair and commit. Private tickets can come from your host’s MCP server or plugin. [Ticket guide](docs/task-harness.md#deliver-a-bug-ticket)
+## Choose a workflow
 
-```sh
-kitsu task bug csv-fix --from ./tickets/csv.md
-kitsu task start --resume csv-fix --host codex
-```
+| What you need | What you get |
+| --- | --- |
+| [Fix a bug from a ticket](docs/task-harness.md#deliver-a-bug-ticket) | A receipt linking the ticket, failing reproduction, repaired commit, and verification result. |
+| [Review a committed change](docs/task-harness.md#review-a-committed-change) | Findings tied to the commit range you asked the agent to inspect. |
+| [Coordinate specialist roles](docs/workflow.md) | A shared task record for handoffs between architecture, implementation, testing, and review. |
 
-After delivery, `kitsu task receipt csv-fix` shows the source ticket, failing reproduction, and passing check on the repaired commit. After an interruption, `kitsu task list` shows your task IDs and `kitsu task next csv-fix` shows where to continue.
+Already in an agent session? Ask Codex to “use Kitsu to review my staged changes,” or enter `/kitsu:task` with your request in Claude Code.
 
-## The roles
-
-For larger changes, the [managed workflow](docs/workflow.md) coordinates specialists for lookup, specification, architecture, tests, implementation, review, and Git. You can [choose models per role](docs/roles.md) and [reuse your existing skills](docs/skills.md).
-
-[Daily workflow guide](docs/task-harness.md) · [CLI reference](docs/cli-reference.md) · [Git gate setup](docs/quickstart.md) · [All documentation](docs/README.md) · [MIT license](LICENSE)
+[All guides](docs/README.md) · [CLI reference](docs/cli-reference.md) · [Report a problem](https://github.com/belevtsev/kitsu/issues) · [Contribute](CONTRIBUTING.md) · [License](LICENSE)
