@@ -946,7 +946,7 @@ preparation returns 0 when its report is produced; inspect `ready` and component
 `kitsu` keeps local gate evidence and measured host usage under `kitsu/` in the common git directory. In a
 plain clone that is `.git/kitsu/`. All linked worktrees of a repository share the
 common git directory, so they share the records: a run made in one worktree
-counts in another for the same content.
+counts in another for the same content. Kitsu preserves embedded newlines in checkout and Git directory names when resolving these paths. If Git cannot read the repository configuration, Kitsu reports the Git error.
 
 Shared adviser bindings, prompts, answers, and dispositions live in the worktree instead:
 `openspec/changes/<task>/advisers/` on the full path or
