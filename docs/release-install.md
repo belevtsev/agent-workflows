@@ -28,7 +28,7 @@ The defaults are `$HOME/.local/bin/kitsu` on macOS/Linux and
 Kitsu uses Git to work in a repository; Windows hooks use the shell supplied by Git for Windows.
 
 The installer adds its directory to user `PATH` unless you opt out. Rerunning it does not add
-duplicate entries. The release command installs the CLI. Add the [agent plugin](../README.md#for-a-coding-agent)
+duplicate entries. The release command installs the CLI. Add the [agent plugin](https://github.com/belevtsev/kitsu/blob/v0.0.1/README.md#for-a-coding-agent)
 through your host's marketplace. Provider CLIs and Git are installed separately.
 
 ## Check the host and start a task
@@ -125,6 +125,34 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -ArchiveDir . 
 ```
 
 Omit the host option for a CLI-only install. With one matching platform archive in the manifest, the installer can discover a preview tag. When multiple tags match, select one with `--version TAG` or `-Version TAG`. Use scripts and archives from the same download. For an update, rerun the command from the new bundle. Check the revision from `kitsu version` against the CI run because two builds can share a version label.
+
+### Download and install from the terminal
+
+With Git and your host installed and the GitHub CLI (`gh`) signed in, these commands download the artifact from the latest successful push build on `main` and run its bundled installer. Replace `codex` with `claude` for Claude Code.
+
+**macOS or Linux**
+
+```sh
+bundle=$(mktemp -d) &&
+run=$(gh run list -R belevtsev/kitsu --workflow ci.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId') &&
+test -n "$run" &&
+gh run download "$run" -R belevtsev/kitsu -n kitsu-archives -D "$bundle" &&
+sh "$bundle/install.sh" --archive-dir "$bundle" --host codex
+```
+
+<details>
+<summary><strong>Windows (PowerShell)</strong></summary>
+
+```powershell
+$bundle = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
+$run = gh run list -R belevtsev/kitsu --workflow ci.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId'
+if (!$run) { throw "Could not find a successful Kitsu build." }
+gh run download $run -R belevtsev/kitsu -n kitsu-archives -D $bundle
+if ($LASTEXITCODE -ne 0) { throw "Could not download the Kitsu bundle." }
+powershell -NoProfile -ExecutionPolicy Bypass -File "$bundle/install.ps1" -ArchiveDir $bundle -AgentHost codex
+```
+
+</details>
 
 ### Register the matching marketplace
 

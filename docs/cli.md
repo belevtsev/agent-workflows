@@ -114,7 +114,7 @@ Removing the supporting gate keeps the CLI host preference.
 
 ## Check setup and start a task
 
-After [installing the CLI](release-install.md) and [adding the host plugin](../README.md#for-a-coding-agent),
+After [installing the CLI](release-install.md) and [adding the host plugin](release-install.md#register-the-matching-marketplace),
 inspect local setup from the directory where you want to work:
 
 ```sh

@@ -181,7 +181,7 @@ reviewed archive commit, as described in [The archive](workflow.md#the-archive).
 
 Remove or disable the old `agent-workflows` plugin registration in each agent host, then
 install the new `kitsu` plugin through the host's marketplace using the
-[plugin instructions](../README.md#for-a-coding-agent). Restart the session so its hooks and
+[plugin instructions](release-install.md#register-the-matching-marketplace). Restart the session so its hooks and
 role text come from the new namespace. Do not keep both plugins active. Update saved task
 briefs to `kitsu-task:` and role/skill references to the names in the table above. Existing
 `cw-task:` transcripts and old token totals remain historical; Kitsu does not import them.

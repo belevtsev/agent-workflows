@@ -1,5 +1,7 @@
 # The task workflow
 
+<img src="diagrams/overview.svg" alt="How the coordinator, specialist roles, task records, and Git checks fit together." width="100%">
+
 The task workflow coordinates one coding task through specification, design, tests, implementation,
 review, and commit using seven [roles](roles.md). A shared task record connects their work;
 the Git gate supplies a check before commits and pushes. The workflow has two parts:

@@ -259,11 +259,17 @@ histories for one task are an error.
 The request is one UTF-8 JSON document with `version`, `kind`, `question`, and optional `context`.
 Version 2 also supports the native score and boolean requests described above.
 An `advice` request has no choices. A `decision` request has at least two distinct choices, each
-with a nonempty `id` and `text`:
+with a nonempty `id` and `text`.
 
-This example assumes the full task's `proposal.md` and `design.md` already exist; binding creates
-neither file. For a task without those files, start with the
-[context-free advice example](../README.md#ask-an-adviser).
+To ask a question without attaching files to a bound task:
+
+```sh
+kitsu adviser ask codex --task add-order-csv-export --role coordinator --stage code --request - <<'JSON'
+{"version":1,"kind":"advice","question":"What failure cases should an order CSV export cover?"}
+JSON
+```
+
+For a decision with context, the following example uses a full task with an existing `proposal.md` and `design.md`.
 
 ```json
 {
