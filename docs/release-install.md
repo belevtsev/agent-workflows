@@ -26,18 +26,12 @@ The default locations are `$HOME/.local/bin/kitsu` on macOS/Linux and `%LOCALAPP
 
 ## Check the host and start a task
 
-From your working repository, run:
+After installing, restart Codex or Claude Code so it picks up the plugin and the updated PATH. Open your project’s Git worktree in a fresh session.
 
-```sh
-kitsu agent check --host codex
-kitsu task start "Add an order CSV export" --host codex
-```
+- **Codex:** Open `/hooks` and review and trust Kitsu’s hook definitions. In chat, ask “Use Kitsu’s task skill to plan an order CSV export and give me the task ID.”
+- **Claude Code:** Enter `/kitsu:task Plan an order CSV export and give me the task ID.`
 
-Use `--host claude` for Claude Code. The first command reads local PATH, host, plugin, task
-skill, and hook setup without executing the host or changing configuration. Follow any next
-steps; on Codex, manually review and trust Kitsu's current definitions in `/hooks`.
-The second command explicitly opens the interactive host after local preflight. Confirm
-authentication, model availability, hook execution, and skill loading in that session.
+If your agent cannot find Kitsu, run `kitsu agent check --host codex` in the project’s terminal (use `claude` for Claude Code). This checks the local CLI, plugin, skill, and hook setup and prints any next steps. To launch a new session directly from the terminal, run `kitsu task start "Plan an order CSV export" --until plan --host codex`.
 
 For a desktop session or a machine without the host CLI, add `--print` to prepare a prompt to
 paste; `--json` also exposes diagnostics and proposed argv. Both modes execute nothing and

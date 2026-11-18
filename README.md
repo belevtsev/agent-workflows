@@ -2,11 +2,11 @@
 
 <img src="docs/brand/kitsu-mascot.png" alt="Kitsu’s Pomeranian mascot in a red beanie" width="128" align="right">
 
-Kitsu coordinates coding tasks in **Codex** and **Claude Code**. Ask your agent to plan a feature, review a diff, or fix a bug. Kitsu saves the request, findings, and check results in your Git repository so you can pick up where the last session stopped.
+Kitsu is a plugin for **Codex** and **Claude Code**. In your usual coding session, ask your agent to plan a feature, review a diff, or fix a bug. The agent uses the Kitsu CLI to keep a local task record with your request, findings, and check results. You can pick up the work in a fresh conversation.
 
 ## Install
 
-You need Git and the coding agent you use. Run one command to install the CLI and its matching plugin. The examples use `codex`. Substitute `claude` throughout for Claude Code.
+You need Git and the coding agent you use. Run the command for your platform once to install the CLI and register its matching plugin. For Claude Code, replace `codex` with `claude` in the install command.
 
 **macOS or Linux**
 
@@ -24,15 +24,15 @@ curl -fsSL https://github.com/belevtsev/kitsu/releases/latest/download/install.s
 
 ## Quick start
 
-Open a new terminal in your project’s Git repository and ask for a plan:
+Open your project in Codex and start a fresh conversation. On first use, open `/hooks` to review and trust the Kitsu hooks. Then paste this into **Codex chat**:
 
-```sh
-kitsu task start "Trace how this project handles invalid input and propose one regression test" --until plan --host codex
-```
+> Use Kitsu’s task skill to trace how this project handles invalid input. Propose one regression test, stop after the plan, and give me the task ID.
 
-Kitsu prints a task ID and a resume command, then opens your agent. Expect a proposed test you can review before changing any code. In Codex, review Kitsu’s hooks in `/hooks` on first use.
+Codex opens a local Kitsu task, inspects the project, and returns a plan you can review before any code changes. To pick up the work in a new chat, open the same Git worktree and ask:
 
-To return later, use the printed resume command. Lost the task ID? Run `kitsu task list`. If startup fails, run `kitsu agent check --host codex`.
+> Use Kitsu to find my invalid-input task and show me the saved plan and next step.
+
+In **Claude Code**, enter `/kitsu:task` followed by your request. If the plugin is missing after installation, restart your agent and follow the [setup checks](docs/release-install.md#check-the-host-and-start-a-task).
 
 <a name="the-roles"></a>
 
@@ -44,6 +44,6 @@ To return later, use the printed resume command. Lost the task ID? Run `kitsu ta
 | [Review a committed change](docs/task-harness.md#review-a-committed-change) | Findings tied to the commit range you asked the agent to inspect. |
 | [Coordinate specialist roles](docs/workflow.md) | A shared task record for handoffs between architecture, implementation, testing, and review. |
 
-Already in an agent session? Ask Codex to “use Kitsu to review my staged changes,” or enter `/kitsu:task` with your request in Claude Code.
+Prefer to launch the agent from your terminal? Use [`kitsu task start`](docs/cli.md#check-setup-and-start-a-task).
 
 [All guides](docs/README.md) · [CLI reference](docs/cli-reference.md) · [Report a problem](https://github.com/belevtsev/kitsu/issues) · [Contribute](CONTRIBUTING.md) · [License](LICENSE)
