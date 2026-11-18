@@ -75,23 +75,22 @@ func TestASubmoduleThatHidesAFileIsRefused(t *testing.T) {
 }
 
 // Requirement "Working tree that cannot be recorded", scenario "A submodule
-// that is not checked out but holds files".
-func TestASubmoduleThatIsNotCheckedOutButHoldsFilesIsRefused(t *testing.T) {
+// that is not checked out".
+func TestASubmoduleThatIsNotCheckedOutIsRefused(t *testing.T) {
 	t.Parallel()
 	repo := withSubmodule(t)
 	repo.Git("submodule", "deinit", "-q", "-f", "vendor/lib")
 	if entries, err := os.ReadDir(repo.Path("vendor/lib")); err != nil || len(entries) != 0 {
 		t.Fatalf("after git submodule deinit, vendor/lib holds %v, %v; want an empty folder", entries, err)
 	}
-	// Not checked out and empty: nothing on disk differs.
-	if result := repo.Kitsu("status"); result.Code != 5 {
-		t.Fatalf("kitsu status with vendor/lib not checked out exited %d, want 5:\n%s", result.Code, result.Output())
+	for _, command := range []string{"run", "status"} {
+		requireRefused(t, repo.Kitsu(command), "", "vendor/lib", "is a submodule that is not checked out")
 	}
 
 	repo.Write("vendor/lib/plain.txt", "a file of no tree\n")
 	for _, command := range []string{"run", "status"} {
 		result := repo.Kitsu(command)
-		requireRefused(t, result, "", "vendor/lib", "is a submodule that is not checked out, yet its folder holds files")
+		requireRefused(t, result, "", "vendor/lib", "is a submodule that is not checked out")
 	}
 	if len(repo.RecordFiles("unit"))+len(repo.RecordFiles("lint")) > 0 {
 		t.Errorf("a run was recorded")
