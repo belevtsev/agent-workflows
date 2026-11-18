@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Review and approve repository check commands for agent sessions with [`kitsu check trust`](docs/cli.md#approve-repository-checks).
 - Required daily reviews record the native Codex or Claude Code worker and the exact candidate it inspected.
 - Share saved patch or commit verification with [`kitsu task receipt ID --markdown`](docs/task-harness.md#share-a-verification-receipt).
+- A shorter task skill supports the [same-worktree handoff preview](docs/verified-handoff-preview.md) across Codex and Claude Code.
 
 ### Fixed
 
