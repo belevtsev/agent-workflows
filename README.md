@@ -49,13 +49,20 @@ Lost the ID? Ask your agent to list your saved Kitsu tasks.
 
 <a name="the-roles"></a>
 
-## Choose a workflow
+## Start at any stage
 
-| What you need | What you get |
+Pick the row that matches your work. In Codex, start your message with “Use Kitsu’s task skill.” In Claude Code, start it with `/kitsu:task`.
+
+| Starting point | Chat prompt |
 | --- | --- |
-| [Fix a bug from a ticket](docs/task-harness.md#deliver-a-bug-ticket) | A receipt linking the ticket, failing reproduction, repaired commit, and verification result. |
-| [Review a committed change](docs/task-harness.md#review-a-committed-change) | Findings tied to the commit range you asked the agent to inspect. |
-| [Coordinate specialist roles](docs/workflow.md) | A shared task record for handoffs between architecture, implementation, testing, and review. |
+| Ticket | Read the issue I linked. Summarize the expected behavior and what we still need to learn. Stop before editing. |
+| Architecture | Compare streaming and buffering for our CSV export. Recommend one and explain the trade-off. Stop at the design. |
+| Implementation | Implement the approved streaming design. Add a test for an empty export and leave the changes uncommitted. |
+| Review | Independently review my staged CSV export patch. Report findings with file locations and stop before editing. |
+| Verification | Run the exporter on a field containing a comma. Check that the CSV round-trips and report the result. Leave the patch as it is. |
+| Delivery | Verify my staged export fix. If the checks pass, commit it locally, push this branch, and open a PR for review. |
+
+[Bug tickets and delivery receipts](docs/task-harness.md#deliver-a-bug-ticket) · [Specialist roles and handoffs](docs/workflow.md)
 
 Prefer to launch the agent from your terminal? Use [`kitsu task start`](docs/cli.md#check-setup-and-start-a-task).
 
