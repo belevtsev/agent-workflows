@@ -5,10 +5,10 @@ Compact mode is opt-in: read the task skill's references/compact.md when request
 
 ## The roles
 
-Run `kitsu role list --host <host>` once per session/current policy; resolve host
-tools once too. Refresh affected inputs on policy, model, config, skill, test or
-check changes or errors; no stale reuse. Missing optional tools such as `rg`: use an available
-fallback, without repeated failed calls or automatic installation.
+Run `kitsu role list` once per session/current policy and resolve host tools once.
+Add `--host <host>` for version 1. Refresh on policy, model, config, skill, test or
+check changes; no stale reuse. Use an available fallback for missing tools,
+without repeated failed calls or automatic installation.
 
 ## Before the first role
 
@@ -36,14 +36,15 @@ Before writes, explain the path/reason; follow the developer's choice.
 
 ## Starting a role
 
-- Compact managed starts use the reference's prepare/finish instead of manual
-  skill receipts, baseline capture and role checks.
+- Version 2: omit `--host`, prepare with `--dispatch`, and use `kitsu task dispatch ID --run`.
+  Use this for configured reviews so native hooks bind the parent and child.
+  Other same-host assignments can use the native launcher.
 - Start a fresh worker without this conversation or a fork, passing the resolved
-  model and effort. On Claude Code use `kitsu:<role>`; on Codex, unmanaged starts
+  model and effort. On Claude Code use `kitsu:<role>` for version 1; on Codex, unmanaged starts
   get `kitsu role text <role>`. Managed starts load the full saved packet once;
   no extra role-text call.
-- Unavailable model: stop before writes, name role/model and wait; never substitute.
-  The developer's model instruction comes first; name affected roles once.
+- If a model is unavailable, stop before writes and report the role and model.
+  Apply developer-approved overrides.
 - Begin every brief with `kitsu-task: <task> <stage> <round>`. Stage is
   `lookup`, `spec`, `spec-review`, `design`, `design-review`, `tests`, `code`,
   `review` or `commit`. Round starts at 1; increment on stage restart.
@@ -53,12 +54,10 @@ Before writes, explain the path/reason; follow the developer's choice.
 - Only you start roles; `lookup` may run anytime.
 
 Prefer native completion notifications or a long bounded native wait.
-Do not poll every ten seconds or send time-pressure pings. Keep cancellation,
-deadlines, user progress updates and an independent host budget monitor active;
-no CLI daemon watches or starts host workers.
+Do not poll every ten seconds. Keep cancellation, deadlines, user progress updates and an
+independent host budget monitor active; no CLI daemon watches or starts host workers.
 Coalesce routine progress; keep questions/blockers and user updates.
-After terminal red/review decisions, batch finish/prepare on success;
-receipts grant no approval.
+After terminal red/review decisions, batch finish/prepare on success; receipts grant no approval.
 
 ## Existing skills
 
@@ -74,15 +73,12 @@ and assignment contract. Ask what loaded; receipts alone prove no loading.
 With task/path chosen, add `--task <task> --workflow full|small`;
 full needs a task folder. Only you write receipts outside workers' write-check intervals.
 Skills grant no extra writes, tools, approvals or worker starts.
-Other native skills remain discoverable, without preloading bodies.
 
 ## Advisers
 
-Advisers are experimental; definitions, access and checkpoints need opt-in.
-
-Run `kitsu adviser list --json`; skip without access or binding. Otherwise bind once
-with `kitsu adviser bind <task> --workflow full|small`; brief allowed advisers from
-`list --task <task> --role <role>`. Refresh bindings only for the developer's policy changes.
+Advisers need opt-in. Run `kitsu adviser list --json`; skip without access or binding.
+Bind once with `kitsu adviser bind <task> --workflow full|small` and brief only
+allowed advisers from `list --task <task> --role <role>`. Refresh on approved policy changes.
 
 Roles return questions; they never call advisers or write records. Check
 writes first, then run `kitsu adviser ask <name> --task <task> --role <requester>
@@ -189,8 +185,9 @@ Only you run `kitsu task verify`, after worker intervals; workers write no summa
 Required verification blocks full done; readiness needs local records/logs.
 Review, approvals and gate stay unchanged; no metadata keeps prior behavior.
 
-- `git` makes every commit, after `kitsu check run`, through the hooks. No command of
-  the session passes `--no-verify`.
+- For configured `git`, inspect its read-only handback and stage authorized paths.
+  Use `task finish ID --expect-checks pass --message TEXT` and `--include PATH` for each change.
+  Commit through the hooks. Never pass `--no-verify`.
 - Full path: commit the change folder, tests and code together.
 - Push and open a pull request only when the developer says so.
 

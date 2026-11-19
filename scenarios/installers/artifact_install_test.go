@@ -173,6 +173,9 @@ func checkMatchedArtifactInstall(t *testing.T, profile nativeProfile, shell inst
 			t.Fatalf("%s with %s: %v\n%s", name, shell.script, err, output)
 		}
 		attempt.ExitCode = new(0)
+		if host := strings.TrimSpace(string(profile.command(profile.kitsu, "config", "get", "host"))); host != profile.host.name {
+			t.Fatalf("%s: saved host = %q, want %q", name, host, profile.host.name)
+		}
 		identity := strings.Fields(string(profile.command(profile.kitsu, "version")))
 		if len(identity) < 4 || identity[0] != "kitsu" || identity[1] != row.Tag || identity[2] != "revision" ||
 			(row.Revision != "" && identity[3] != row.Revision) {

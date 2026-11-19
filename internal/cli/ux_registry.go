@@ -24,6 +24,7 @@ func uxCommands() []uxCommand {
 		{path: "task verify", args: "<task>", summary: "Run prioritized regressions, record historical evidence, then finish required checks", flags: []uxFlag{uxOption("from", "rev", "starting revision; required initially, then reuse the pinned base"), workflow, json, uxOption("compact", "", "return an explicit bounded JSON report with retained log references"), uxOption("max-bytes", "bytes", "compact response limit; default 16384, range 512 to 1048576")}, examples: []string{"kitsu task verify fix-login --from HEAD", "kitsu task verify fix-login --compact"}, run: runTaskVerify},
 		{path: "role list", summary: "List role models, reasoning, skills and adviser access", flags: []uxFlag{host, task, json}, run: uxLegacy("roles"), host: true},
 		{path: "role show", args: "<role>", summary: "Show one role's effective settings and write limits", flags: []uxFlag{host, task, json}, run: runUXRoleShow, host: true},
+		{path: "role init", summary: "Create repository role assignments from your installed host or --host", flags: []uxFlag{host, json}, run: runRoleInit, guard: "policy"},
 		{path: "role set", args: "<role>", summary: "Change only the supplied role settings", flags: []uxFlag{host, uxOption("model", "model", "set the exact host model id; availability depends on your account"), uxOption("reasoning", "effort", "set reasoning effort; omitted fields stay unchanged"), uxOption("skills", "references", "replace skill selections; an empty value suppresses inheritance"), root, global, json}, run: uxLegacy("roles", "set"), host: true, requiredHost: true, guard: "policy"},
 		{path: "role edit", args: "<role>", summary: "Interactively edit a role with a preview before saving", flags: []uxFlag{host, global, root, accessible}, run: runUXRoleEdit, guard: "policy"},
 		{path: "role reset", args: "<role>", summary: "Remove role overrides in this scope; restore model defaults and inherited skills", flags: []uxFlag{host, global, json}, run: uxLegacy("roles", "reset"), host: true, requiredHost: true, guard: "policy"},
@@ -65,6 +66,7 @@ func uxCommands() []uxCommand {
 		{path: "usage record", summary: "Record a host token notice from standard input", flags: []uxFlag{uxOption("host", "codex|claude", "required notice format; explicit host avoids protocol guessing", "codex", "claude")}, run: runUXUsageRecord},
 	}
 	list = append(list, harnessCommands()...)
+	list = append(list, workflowCommand())
 	list = append(list, compactCommands()...)
 	list = append(list, workerCommands()...)
 	list = append(list, usageBudgetCommands()...)

@@ -136,6 +136,15 @@ func uxCompletionHost(ctx context.Context, state uxCompleteState) string {
 	if values := state.values["host"]; len(values) > 0 {
 		return values[len(values)-1]
 	}
+	command := state.command.path
+	role := uxCompletionRole(state)
+	personal, _ := strconv.ParseBool(uxCompletionLast(state.values["global"]))
+	if !personal && roles.Known(role) && (strings.HasPrefix(command, "role ") || strings.HasPrefix(command, "skill ")) {
+		config, err := roles.Load(uxCompletionRoot(ctx))
+		if err == nil && config.Version == roles.WorkflowConfigVersion {
+			return config.ConfiguredHost(role)
+		}
+	}
 	host, _, err := uxHostPreference(ctx)
 	if err != nil {
 		return ""

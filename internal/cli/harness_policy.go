@@ -58,6 +58,9 @@ func prepareHarnessVerification(ctx context.Context, s *session, task *harness.T
 	if err := checkHarnessPolicy(ctx, s, task, candidate.Tree); err != nil {
 		return failf("%v", err)
 	}
+	if err := requireWorkflowAssertion(ctx, s, task, candidate); err != nil {
+		return err
+	}
 	if task.NeedsRepairAuthority(candidate) {
 		return failf("candidate changed after failed verification. Authorize repair with kitsu task extend %s --repair", task.ID)
 	}

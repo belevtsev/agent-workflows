@@ -6,6 +6,7 @@ Start with the [daily task harness](task-harness.md) to plan, implement, review,
 | --- | --- |
 | [CLI guide](cli.md) | Check CLI/plugin/hook setup, start a coordinated task, save host preferences, use editors and completion. |
 | [CLI command reference](cli-reference.md) | Generated command help with operands, options, defaults, and examples. |
+| [Configured role workflow](configured-workflow.md) | Assign each role to Codex or Claude Code, run and resume a daily task, and dispatch configured OpenSpec specialists. |
 | [Compact context](compact-context.md) | Opt into selective native reads, collection for noisy retrieval, original worker briefs and bounded checks; expand retained evidence. |
 | [Coordinator handoffs](coordinator-overhead.md) | Generate native dispatch descriptions, retain bounded worker claims and avoid repeated managed bookkeeping; verify locally. |
 | [Compact delivery replay](benchmarks/compact-delivery-report.md) | Offline checks of original instruction fidelity, packet reuse and quiet-check selection; no model calls or token-saving claim. |

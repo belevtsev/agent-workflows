@@ -52,6 +52,16 @@ func TestMain(m *testing.M) {
 		}
 		os.Exit(23)
 	}
+	if len(os.Args) == 6 && os.Args[1] == "config" {
+		want := os.Getenv("KITSU_TEST_SETUP_HOST")
+		home, err := os.UserHomeDir()
+		if err == nil && want != "" && strings.Join(os.Args[2:], " ") == "set host "+want+" --global" {
+			if err := os.WriteFile(filepath.Join(home, "installed-host"), []byte(want), 0o600); err == nil {
+				os.Exit(0)
+			}
+		}
+		os.Exit(24)
+	}
 	os.Exit(m.Run())
 }
 

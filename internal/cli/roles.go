@@ -49,10 +49,17 @@ func runRoles(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return failf("%v", err)
 	}
-	if *host != "" {
-		return printHostRoles(cfg, all, config, *host, access, *asJSON)
+	if config.Version == roles.WorkflowConfigVersion {
+		return printConfiguredRoles(cfg, all, config, *host, access, *asJSON)
 	}
-	if *asJSON {
+	return printLegacyRoles(cfg, all, config, *host, access, *asJSON)
+}
+
+func printLegacyRoles(cfg Config, all []roles.Role, config *roles.Config, host string, access map[string][]string, asJSON bool) error {
+	if host != "" {
+		return printHostRoles(cfg, all, config, host, access, asJSON)
+	}
+	if asJSON {
 		return printRolesJSON(cfg, all, config, access)
 	}
 	var table strings.Builder
@@ -81,6 +88,63 @@ func runRoles(ctx context.Context, cfg Config, args []string) error {
 	return nil
 }
 
+type configuredRoleView struct {
+	Role   string `json:"role"`
+	Host   string `json:"host"`
+	Job    string `json:"job"`
+	Writes string `json:"writes"`
+	roles.Model
+	Skills   []string `json:"skills"`
+	Advisers []string `json:"advisers"`
+}
+
+func viewConfiguredRole(config *roles.Config, role roles.Role, access map[string][]string) configuredRoleView {
+	host := config.ConfiguredHost(role.ID)
+	return configuredRoleView{
+		Role: role.ID, Host: host, Job: role.Job, Writes: role.Writes, Model: role.Models[host],
+		Skills: selectedSkills(config, host, role.ID), Advisers: allowedAdviserList(access, role.ID),
+	}
+}
+
+func printConfiguredRoles(cfg Config, all []roles.Role, config *roles.Config, host string, access map[string][]string, asJSON bool) error {
+	rows := make([]configuredRoleView, 0, len(all))
+	for _, role := range all {
+		if host == "" || config.ConfiguredHost(role.ID) == host {
+			rows = append(rows, viewConfiguredRole(config, role, access))
+		}
+	}
+	if asJSON {
+		return printJSON(cfg, struct {
+			Version int                  `json:"version"`
+			Roles   []configuredRoleView `json:"roles"`
+		}{Version: config.Version, Roles: rows})
+	}
+	var table strings.Builder
+	w := tabwriter.NewWriter(&table, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "ROLE\tHOST\tMODEL\tREASONING")
+	for _, row := range rows {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", row.Role, row.Host, row.Model.Model, roleEffortText(row.Effort))
+	}
+	if err := w.Flush(); err != nil {
+		return err
+	}
+	lines := strings.Split(table.String(), "\n")
+	writeRoleLine(cfg.Out, lines[0])
+	for i, row := range rows {
+		writeRoleLine(cfg.Out, lines[i+1])
+		writeRoleLine(cfg.Out, "    Skills: "+skillListText(row.Skills))
+		writeRoleLine(cfg.Out, "    Advisers: "+adviserListText(access, row.Role))
+	}
+	return nil
+}
+
+func roleEffortText(effort string) string {
+	if effort == "" {
+		return "host default"
+	}
+	return effort
+}
+
 // rolesConfig reads kitsu-roles.toml of the repository the command runs in.
 // Outside a repository the roles have their defaults.
 func rolesConfig(ctx context.Context) (*roles.Config, error) {
@@ -101,6 +165,35 @@ func rolesConfig(ctx context.Context) (*roles.Config, error) {
 		return nil, failf("%v", err)
 	}
 	return config, nil
+}
+
+// The legacy CLI host preference cannot select a version 2 repository role.
+func uxUsesConfiguredRoleHost(ctx context.Context, command string, args []string) bool {
+	switch command {
+	case "role list", "role show", "role set", "role reset", "skill resolve", "skill attach", "skill detach", "skill clear", "skill reset":
+	default:
+		return false
+	}
+	flags := newFlags(command)
+	global := flags.Bool("global", false, "")
+	role := flags.String("role", "", "")
+	for _, name := range []string{"host", "model", "reasoning", "skills", "root", "task", "workflow"} {
+		flags.String(name, "", "")
+	}
+	flags.Bool("json", false, "")
+	p, err := parseArgs(flags, args)
+	if err != nil || *global {
+		return false
+	}
+	roleOperand := strings.HasPrefix(command, "role ") || command == "skill resolve"
+	if roleOperand && len(p.pos) > 0 {
+		*role = p.pos[0]
+	}
+	if *role == roles.Coordinator && command != "role list" {
+		return false
+	}
+	config, err := rolesConfig(ctx)
+	return err != nil || config.Version == roles.WorkflowConfigVersion
 }
 
 func printRolesJSON(cfg Config, all []roles.Role, config *roles.Config, access map[string][]string) error {

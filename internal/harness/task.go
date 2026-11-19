@@ -16,6 +16,7 @@ var Entries = []string{"plan", "implement", "review", "verify"}
 var Outcomes = append(slices.Clone(Entries), "deliver")
 
 const CurrentVersion = 2
+const WorkflowVersion = 3
 
 type Scope struct {
 	RequireReview bool   `json:"require_review,omitempty"`
@@ -207,6 +208,7 @@ type DeveloperAssignment struct {
 }
 
 type Task struct {
+	Workflow           *Workflow      `json:"workflow,omitempty"`
 	RepositoryPolicy   string         `json:"repository_policy,omitempty"`
 	VerifyOnlyFailure  *Snapshot      `json:"verify_only_failure,omitempty"`
 	Bug                *BugDelivery   `json:"bug,omitempty"`
@@ -372,6 +374,9 @@ func (t *Task) next(state Readiness) string {
 	if t.Latest("intake") == nil {
 		return "intake"
 	}
+	if t.Workflow != nil {
+		return t.workflowNext(state)
+	}
 	if t.Scope.Entry == "plan" && t.Latest("plan") == nil {
 		return "plan"
 	}
@@ -475,9 +480,19 @@ func (t *Task) reviewAction(state Readiness, required, implement bool) string {
 
 // Valid checks the record identity before the task can affect a checkout.
 func (t *Task) Valid(id string) bool {
-	if t.ID != id || (t.Version != 1 && t.Version != CurrentVersion) || t.ReviewLimit < 0 || t.ReviewStarts < 0 || t.DeveloperStarts < 0 || t.FinishReserve < 0 || (t.FinishReserve > 0 && t.Deadline.IsZero()) {
+	if t.ID != id || t.ReviewLimit < 0 || t.ReviewStarts < 0 || t.DeveloperStarts < 0 || t.FinishReserve < 0 || (t.FinishReserve > 0 && t.Deadline.IsZero()) {
 		return false
 	}
+	if t.Version == WorkflowVersion {
+		return !t.PendingScope && t.Workflow != nil && t.Workflow.Valid() && ValidateWorkflowScope(t.Scope) == nil
+	}
+	if t.Workflow != nil || t.Version != 1 && t.Version != CurrentVersion {
+		return false
+	}
+	return t.validLegacyScope()
+}
+
+func (t *Task) validLegacyScope() bool {
 	if t.PendingScope {
 		return t.Scope.Entry == "" && (t.Scope.Until == "" || slices.Contains(Outcomes, t.Scope.Until)) && len(t.Events) == 0 && t.Scope.ReviewBase == "" && t.Scope.ReviewHead == ""
 	}

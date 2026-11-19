@@ -31,7 +31,7 @@ func LoadPersonal() (*Config, error) {
 	}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
-		return &Config{Skills: map[string]map[string][]string{}}, nil
+		return &Config{Version: 1, Skills: map[string]map[string][]string{}}, nil
 	}
 	if err != nil {
 		return nil, err
@@ -49,6 +49,9 @@ func mergeSkills(personal, repository *Config) {
 			repository.Skills[host] = map[string][]string{}
 		}
 		for role, refs := range selections {
+			if repository.Version == WorkflowConfigVersion && role != Coordinator && repository.ConfiguredHost(role) != host {
+				continue
+			}
 			if _, exists := repository.Skills[host][role]; !exists {
 				repository.Skills[host][role] = refs
 			}
@@ -56,17 +59,17 @@ func mergeSkills(personal, repository *Config) {
 	}
 }
 
-func (p *parser) skillList(host, role string, value any, line int) {
+func (p *parser) skillList(host, role, table string, value any, line int) {
 	list, ok := value.([]any)
 	if !ok {
-		p.fail(line, "`skills` under [%s.%s] must be an array of references", host, role)
+		p.fail(line, "`skills` under [%s] must be an array of references", table)
 		return
 	}
 	refs, seen := []string{}, map[string]bool{}
 	for _, item := range list {
 		ref, ok := item.(string)
 		if !ok || !validSkillRef(ref) || seen[ref] {
-			p.fail(line, "`skills` under [%s.%s] has an invalid or duplicate reference %v", host, role, item)
+			p.fail(line, "`skills` under [%s] has an invalid or duplicate reference %v", table, item)
 			continue
 		}
 		seen[ref], refs = true, append(refs, ref)

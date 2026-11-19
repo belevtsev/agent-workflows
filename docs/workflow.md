@@ -2,7 +2,9 @@
 
 Use the **managed role workflow** when you ask Kitsu to coordinate specialists or resume an existing OpenSpec change. An ordinary Codex or Claude Code request uses the [daily task harness](task-harness.md#how-a-daily-task-runs).
 
-<img src="diagrams/overview.svg" alt="In the managed workflow, the host selects specialists. Kitsu tracks role settings, task files, usage and check evidence. Advisers and compact context are opt-in." width="100%">
+<img src="diagrams/overview.svg" alt="With the configured workflow, Kitsu uses repository role assignments or the saved installation default. Start in either host. Kitsu saves the task, dispatches each role to its selected host and verifies the candidate before reporting evidence." width="100%">
+
+[Set up the configured workflow](configured-workflow.md) to choose each specialist’s host, model, and reasoning.
 
 The host selects from seven [roles](roles.md) for the stages the task needs. A shared task record connects their work, and the Git gate checks commits and pushes.
 
@@ -17,7 +19,7 @@ The [early Claude Code trial](roles.md#what-is-not-known) covered two small task
 [Compact mode](compact-context.md) is an opt-in way to collect scoped repository evidence,
 prepare each fresh worker with `kitsu task prepare`, finalize its saved write-check interval
 with `kitsu task finish`, and inspect bounded declared-check results. Saved briefs go directly
-to the native host; the CLI starts no worker and certifies no review or task completion.
+to the native host. With version 2 role assignments, `kitsu task dispatch ID --run` can execute one prepared worker and save its handback. The coordinator still records reviews and developer approvals. [Run a configured managed role](configured-workflow.md#run-a-managed-openspec-role)
 It keeps both paths and their approval/review conditions. The coordinator loads the
 [on-demand instructions](../skills/task/references/compact.md) only when requested; byte and
 call comparisons do not establish a total task-token saving.
@@ -38,8 +40,7 @@ the brief. A saved selection does not prove that the host loaded or followed it.
 ## The flow
 
 This section restates the coordinator's instructions and the task-flow specification. Every step
-here is an instruction to the coordinator or to a role. `kitsu` enforces only what the next section,
-[What kitsu checks](#what-kitsu-checks), lists.
+here guides the coordinator or a role. Configured full dispatches also validate OpenSpec stage readiness. [What kitsu checks](#what-kitsu-checks)
 
 <img src="diagrams/task-workflow.svg" alt="The full managed path goes through spec review and developer approval, then design review and developer approval. The small path joins at tests. Both reach final review before the Git role commits. Review findings go back to the author, and tests-only changes can go directly from tests to review." width="100%">
 

@@ -102,29 +102,42 @@ func Known(id string) bool {
 	return false
 }
 
-// All lists the roles with the models the configuration gives them. A nil
-// configuration gives the defaults.
+// All lists the roles with the models the configuration gives them. Version 2
+// lists only assigned roles and hosts. A nil configuration gives the defaults.
 func All(cfg *Config) []Role {
-	out := make([]Role, len(defaults))
-	for i, r := range defaults {
-		models := map[string]Model{}
-		for _, host := range Hosts {
-			m := r.Models[host]
-			if cfg != nil {
-				set := cfg.Models[host][r.ID]
-				if set.Model != "" {
-					m.Model = set.Model
-				}
-				if set.Effort != "" {
-					m.Effort = set.Effort
-				}
+	out := make([]Role, 0, len(defaults))
+	for _, role := range defaults {
+		hosts := Hosts
+		if cfg != nil && cfg.Version == WorkflowConfigVersion {
+			host := cfg.ConfiguredHost(role.ID)
+			if host == "" {
+				continue
 			}
-			models[host] = m
+			hosts = []string{host}
 		}
-		r.Models = models
-		out[i] = r
+		models := make(map[string]Model, len(hosts))
+		for _, host := range hosts {
+			models[host] = cfg.roleModel(role, host)
+		}
+		role.Models = models
+		out = append(out, role)
 	}
 	return out
+}
+
+func (c *Config) roleModel(role Role, host string) Model {
+	model := role.Models[host]
+	if c == nil {
+		return model
+	}
+	selected := c.Models[host][role.ID]
+	if selected.Model != "" {
+		model.Model = selected.Model
+	}
+	if c.Version == WorkflowConfigVersion || selected.Effort != "" {
+		model.Effort = selected.Effort
+	}
+	return model
 }
 
 // Reasons a limit cannot be checked.

@@ -18,8 +18,13 @@ import (
 // FileName is the roles file at the root of a repository. It is optional.
 const FileName = "kitsu-roles.toml"
 
+// WorkflowConfigVersion assigns each repository specialist to one host.
+const WorkflowConfigVersion = 2
+
 // Config holds repository policy and effective role selections.
 type Config struct {
+	// Version identifies the repository schema. Version 1 uses host tables.
+	Version int
 	// Tests are the patterns of the test paths; nil when the file names
 	// none.
 	Tests []string
@@ -28,7 +33,17 @@ type Config struct {
 	Models map[string]map[string]Model
 	// Skills holds selected references by host and role. An absent role inherits
 	// personal choices; an explicit empty list suppresses them.
-	Skills map[string]map[string][]string
+	Skills      map[string]map[string][]string
+	assignments map[string]string
+}
+
+// ConfiguredHost returns the repository's assigned host for a specialist.
+// Legacy configuration and an omitted optional specialist return an empty host.
+func (c *Config) ConfiguredHost(role string) string {
+	if c == nil || c.Version != WorkflowConfigVersion {
+		return ""
+	}
+	return c.assignments[role]
 }
 
 // Problem is one broken rule of the roles file.
@@ -57,15 +72,37 @@ func (e *Error) Error() string {
 // Load reads repository policy and merges its skill selections over personal
 // choices. An empty root reads only personal choices; missing files are empty.
 func Load(root string) (*Config, error) {
+	return load(root, nil)
+}
+
+// LoadWithWorkflowDefault uses a one-host policy when the repository has no roles file.
+func LoadWithWorkflowDefault(root, host string) (*Config, error) {
+	return load(root, WorkflowTemplate(host))
+}
+
+// WorkflowTemplate assigns the required specialists to one host.
+func WorkflowTemplate(host string) []byte {
+	data := fmt.Appendf(nil, "version = %d\n", WorkflowConfigVersion)
+	for _, role := range IDs() {
+		if role != "git" {
+			data = fmt.Appendf(data, "\n[roles.%s]\nhost = %q\n", role, host)
+		}
+	}
+	return data
+}
+
+func load(root string, fallback []byte) (*Config, error) {
 	personal, err := LoadPersonal()
 	if err != nil || root == "" {
 		return personal, err
 	}
 	data, err := os.ReadFile(filepath.Join(root, FileName))
 	if errors.Is(err, fs.ErrNotExist) {
-		return personal, nil
-	}
-	if err != nil {
+		if fallback == nil {
+			return personal, nil
+		}
+		data = fallback
+	} else if err != nil {
 		return nil, err
 	}
 	repository, err := Parse(data)
@@ -93,15 +130,31 @@ func parseConfig(data []byte, personal bool) (*Config, error) {
 		}
 		return nil, &Error{Problems: []Problem{{Text: "not valid TOML: " + err.Error()}}}
 	}
-	p := parser{data: data, personal: personal, cfg: &Config{Models: map[string]map[string]Model{}, Skills: map[string]map[string][]string{}}}
-	if v, ok := raw["version"].(int64); !ok || v != 1 {
+	p := parser{data: data, personal: personal, cfg: &Config{
+		Models: map[string]map[string]Model{}, Skills: map[string]map[string][]string{},
+	}}
+	version, _ := raw["version"].(int64)
+	switch {
+	case version == 1:
+		p.cfg.Version = 1
+	case version == WorkflowConfigVersion && !personal:
+		p.cfg.Version = WorkflowConfigVersion
+		p.cfg.assignments = map[string]string{}
+	case personal:
 		p.fail(p.line(`version\s*=`), "`version` must be 1")
+	default:
+		p.fail(p.line(`version\s*=`), "`version` must be 1 or 2")
 	}
 	for _, key := range sortedKeys(raw) {
 		switch {
 		case key == "version":
 		case key == "paths" && !personal:
 			p.paths(raw[key])
+		case key == "roles" && p.cfg.Version == WorkflowConfigVersion:
+			p.configuredRoles(raw[key])
+		case p.cfg.Version == WorkflowConfigVersion:
+			p.fail(p.line(`\[?\s*`+regexp.QuoteMeta(key)+`\b`),
+				"unknown key `%s`; version 2 holds `version`, `[paths]`, and `[roles.<role>]` tables", key)
 		case slices.Contains(Hosts, key):
 			p.host(key, raw[key])
 		default:
@@ -112,10 +165,23 @@ func parseConfig(data []byte, personal bool) (*Config, error) {
 			p.fail(p.line(`\[?\s*`+regexp.QuoteMeta(key)+`\b`), "unknown key `%s`; the file holds %s", key, allowed)
 		}
 	}
+	if p.cfg.Version == WorkflowConfigVersion {
+		p.requireConfiguredRoles(raw["roles"])
+	}
 	if len(p.problems) > 0 {
 		return nil, &Error{Problems: p.problems}
 	}
 	return p.cfg, nil
+}
+
+func (p *parser) requireConfiguredRoles(value any) {
+	table, _ := value.(map[string]any)
+	line := p.line(`\[?\s*roles\b`)
+	for _, role := range IDs() {
+		if _, found := table[role]; !found && role != "git" {
+			p.fail(line, "version 2 requires a host assignment in [roles.%s]", role)
+		}
+	}
 }
 
 type parser struct {
@@ -195,28 +261,65 @@ func (p *parser) host(host string, value any) {
 			p.fail(header, "`%s.%s` must be a table with role settings", host, role)
 			continue
 		}
-		var m Model
-		for _, key := range sortedKeys(fields) {
-			if key == "skills" {
-				p.skillList(host, role, fields[key], header)
-				continue
-			}
-			text, isText := fields[key].(string)
-			switch {
-			case p.personal || role == Coordinator:
-				p.fail(header, "[%s.%s] permits only `skills` in this scope", host, role)
-			case key != "model" && key != "effort":
-				p.fail(header, "unknown key `%s` under [%s.%s]; it holds `model`, `effort`, and `skills`", key, host, role)
-			case !isText || text == "":
-				p.fail(header, "`%s` under [%s.%s] must be a text that is not empty", key, host, role)
-			case key == "model":
-				m.Model = text
-			default:
-				m.Effort = text
-			}
-		}
-		p.cfg.Models[host][role] = m
+		p.role(host, role, host+"."+role, fields, header)
 	}
+}
+
+func (p *parser) configuredRoles(value any) {
+	table, ok := value.(map[string]any)
+	if !ok {
+		p.fail(p.line(`roles\b`), "`roles` must hold specialist tables: [roles.<role>]")
+		return
+	}
+	for _, role := range sortedKeys(table) {
+		name := "roles." + role
+		header := p.line(`\[\s*roles\s*\.\s*"?` + regexp.QuoteMeta(role) + `"?\s*\]`)
+		if !Known(role) {
+			p.fail(header, "unknown specialist `%s`; the roles are %s", role, strings.Join(IDs(), ", "))
+			continue
+		}
+		fields, ok := table[role].(map[string]any)
+		if !ok {
+			p.fail(header, "`%s` must be a table with role settings", name)
+			continue
+		}
+		host, _ := fields["host"].(string)
+		if !slices.Contains(Hosts, host) {
+			p.fail(header, "`host` under [%s] must be `codex` or `claude`", name)
+			continue
+		}
+		p.cfg.assignments[role] = host
+		p.role(host, role, name, fields, header)
+	}
+}
+
+func (p *parser) role(host, role, table string, fields map[string]any, line int) {
+	if p.cfg.Models[host] == nil {
+		p.cfg.Models[host] = map[string]Model{}
+		p.cfg.Skills[host] = map[string][]string{}
+	}
+	var model Model
+	for _, key := range sortedKeys(fields) {
+		if key == "skills" {
+			p.skillList(host, role, table, fields[key], line)
+			continue
+		}
+		value, isText := fields[key].(string)
+		switch {
+		case key == "host" && p.cfg.Version == WorkflowConfigVersion:
+		case p.personal || role == Coordinator:
+			p.fail(line, "[%s] permits only `skills` in this scope", table)
+		case key != "model" && key != "effort":
+			p.fail(line, "unknown key `%s` under [%s]", key, table)
+		case !isText || value == "" || p.cfg.Version == WorkflowConfigVersion && strings.TrimSpace(value) == "":
+			p.fail(line, "`%s` under [%s] must be a text that is not empty", key, table)
+		case key == "model":
+			model.Model = value
+		default:
+			model.Effort = value
+		}
+	}
+	p.cfg.Models[host][role] = model
 }
 
 func sortedKeys[V any](m map[string]V) []string {

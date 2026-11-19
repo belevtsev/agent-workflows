@@ -12,6 +12,8 @@ You can also launch a host from your terminal:
 kitsu task start "Review the staged export change, repair confirmed findings, and verify CSV quoting" --until verify --host codex
 ```
 
+Use `kitsu task run "Fix CSV quoting" --until verify` to run the configured workflow. It uses version 2 of `kitsu-roles.toml` or the saved default host when the repository has no roles file. [Configure role assignments and resume a run](configured-workflow.md)
+
 ## How a daily task runs
 
 <img src="diagrams/daily-task.svg" alt="The developer asks the host agent for work. The task skill opens a local record. Kitsu returns the next action, the host performs it, and Kitsu records the result. A new chat resumes from the same record until the requested outcome is reached." width="100%">

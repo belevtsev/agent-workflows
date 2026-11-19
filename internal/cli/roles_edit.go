@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io/fs"
 	"os"
@@ -14,6 +13,25 @@ import (
 )
 
 func runRolesEdit(ctx context.Context, cfg Config, args []string, reset bool) error {
+	change, asJSON, err := parseRoleSelection(args, reset)
+	if err != nil {
+		return err
+	}
+	config, path, err := editRoleSelection(ctx, cfg, change)
+	if err != nil {
+		if ExitCode(err) == ExitUsage {
+			return err
+		}
+		return failf("role settings were not changed: %v", err)
+	}
+	host := change.host
+	if config.Version == roles.WorkflowConfigVersion {
+		host = config.ConfiguredHost(change.role)
+	}
+	return printSkillRoleSelection(cfg, host, change.role, config, path, change.personal, asJSON)
+}
+
+func parseRoleSelection(args []string, reset bool) (roleSelectionChange, bool, error) {
 	flags := newFlags("roles set")
 	host := flags.String("host", "", "")
 	asJSON := flags.Bool("json", false, "")
@@ -30,31 +48,23 @@ func runRolesEdit(ctx context.Context, cfg Config, args []string, reset bool) er
 	}
 	p, err := parseArgs(flags, args)
 	if err != nil {
-		return err
+		return roleSelectionChange{}, false, err
 	}
-	if len(p.pos) != 1 || p.dash || (*host != "claude" && *host != "codex") {
-		return usagef("%s", usage)
+	if len(p.pos) != 1 || p.dash || uxFlagSet(flags, "host") && !uxValidHost(*host) {
+		return roleSelectionChange{}, false, usagef("%s", usage)
 	}
-	role := p.pos[0]
-	var empty string
-	var skillsSet bool
-	flags.Visit(func(f *flag.Flag) {
-		skillsSet = skillsSet || f.Name == "skills"
-		if (f.Name == "model" || f.Name == "reasoning") && strings.TrimSpace(f.Value.String()) == "" {
-			empty = f.Name
-		}
-	})
-	if err := validateRoleEdit(role, roles.Model{Model: model, Effort: reasoning}, empty, reset, *global, skillsSet); err != nil {
-		return err
+	if uxFlagSet(flags, "model") && strings.TrimSpace(model) == "" {
+		return roleSelectionChange{}, false, usagef("--model must not be empty; use `kitsu role reset` to restore defaults")
 	}
-	if len(roots) > 0 && !skillsSet {
-		return usagef("--root requires --skills")
+	change := roleSelectionChange{
+		host: *host, role: p.pos[0], model: roles.Model{Model: model, Effort: reasoning},
+		selection: selected, roots: roots, reset: reset, personal: *global,
+		skillsSet: uxFlagSet(flags, "skills"), resetEffort: uxFlagSet(flags, "reasoning") && strings.TrimSpace(reasoning) == "",
 	}
-	config, path, err := editRoleSelection(ctx, cfg, *host, role, roles.Model{Model: model, Effort: reasoning}, selected, skillsSet, roots, reset, *global)
-	if err != nil {
-		return failf("role settings were not changed: %v", err)
+	if len(roots) > 0 && !change.skillsSet {
+		return roleSelectionChange{}, false, usagef("--root requires --skills")
 	}
-	return printSkillRoleSelection(cfg, *host, role, config, path, *global, *asJSON)
+	return change, *asJSON, nil
 }
 
 func (s *session) editRoles(ctx context.Context, host, role string, model roles.Model, reset bool) (*roles.Config, error) {

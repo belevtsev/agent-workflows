@@ -247,9 +247,15 @@ func runHarnessCommand(ctx context.Context, s *session, l *stageLedger, verb str
 	} else if active != "" && verb != "next" {
 		return failf("finish the active managed interval %s first", active)
 	}
+	if err := checkOtherWorkflow(l, o.id, verb); err != nil {
+		return err
+	}
 	task, err := loadHarness(ctx, s, l, o, verb)
 	if err != nil {
 		return err
+	}
+	if task.Workflow != nil && !slices.Contains([]string{"next", "receipt", "extend", "confirm"}, verb) {
+		return failf("continue the configured assignment with kitsu task run --resume %s", task.ID)
 	}
 	if verb == "receipt" {
 		return bugReceipt(ctx, s, l, &task, o)
@@ -266,21 +272,37 @@ func runHarnessCommand(ctx context.Context, s *session, l *stageLedger, verb str
 	if readOnly {
 		return printOpenedHarness(s, l, &task, o, verb, active, view)
 	}
-	if verb == "record" && o.host != "" {
-		return recordAndClaimReview(ctx, s, l, &task, o, view)
+	return saveHarnessAction(ctx, s, l, &task, o, verb, view, full)
+}
+
+func checkOtherWorkflow(l *stageLedger, id, verb string) error {
+	if verb == "next" || verb == "receipt" {
+		return nil
 	}
-	actionErr := applyHarness(ctx, s, l, &task, o, verb, view)
+	if active, err := workflowActiveTask(l, id); err != nil {
+		return err
+	} else if active != "" {
+		return failf("finish the configured assignment for %s first", active)
+	}
+	return nil
+}
+
+func saveHarnessAction(ctx context.Context, s *session, l *stageLedger, task *harness.Task, o harnessOptions, verb string, view harnessView, full bool) error {
+	if verb == "record" && o.host != "" {
+		return recordAndClaimReview(ctx, s, l, task, o, view)
+	}
+	actionErr := applyHarness(ctx, s, l, task, o, verb, view)
 	if actionErr != nil && !errors.Is(actionErr, errPublicationUnconfirmed) {
 		return actionErr
 	}
 	if err := l.write(harnessFile(o.id), task); err != nil {
 		return err
 	}
-	view, err = observeHarness(ctx, s, &task, full)
+	view, err := observeHarness(ctx, s, task, full)
 	if err != nil {
 		return err
 	}
-	if err := saveObservedDelivery(l, &task, view); err != nil {
+	if err := saveObservedDelivery(l, task, view); err != nil {
 		return err
 	}
 	view.ClaimCreated = verb == "claim" && o.worker == ""
@@ -551,9 +573,13 @@ func extendHarness(ctx context.Context, s *session, task *harness.Task, o harnes
 		}
 		return o.setLimits(task)
 	}
-	if task.Claim != nil {
+	if task.Claim != nil || task.Workflow != nil && task.Workflow.Active != nil {
 		return failf("reconcile the active claim before extending scope")
 	}
+	return extendHarnessScope(ctx, s, task, o)
+}
+
+func extendHarnessScope(ctx context.Context, s *session, task *harness.Task, o harnessOptions) error {
 	previousCommit := task.Scope.Commit
 	task.Scope.RequireReview = task.Scope.RequireReview || o.scope.RequireReview || (task.Scope.Until == "review" && o.scope.Until != "" && o.scope.Until != "review")
 	if o.scope.Until != "" {
@@ -567,12 +593,28 @@ func extendHarness(ctx context.Context, s *session, task *harness.Task, o harnes
 	if err := extendDeliveryScope(&task.Scope, o.scope); err != nil {
 		return err
 	}
+	if err := validateWorkflowExtension(task, o.scope); err != nil {
+		return err
+	}
 	if !previousCommit && task.Scope.Commit {
 		if err := pinHarnessCommitTarget(ctx, s, task); err != nil {
 			return err
 		}
 	}
 	return o.setLimits(task)
+}
+
+func validateWorkflowExtension(task *harness.Task, scope harness.Scope) error {
+	if task.Workflow == nil {
+		return nil
+	}
+	if err := harness.ValidateWorkflowScope(task.Scope); err != nil {
+		return usagef("%v", err)
+	}
+	if review := task.Latest("review"); scope.Repair && review != nil && len(review.Findings) > 0 {
+		return routeWorkflowFindings(task, review.Findings)
+	}
+	return nil
 }
 
 func (o reviewLimits) setLimits(task *harness.Task) error {

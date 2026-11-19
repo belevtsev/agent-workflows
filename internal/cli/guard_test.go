@@ -73,6 +73,33 @@ func TestGuardRoleSettingCommands(t *testing.T) {
 	}
 }
 
+func TestGuardAllowsDirectConfiguredRoleSettings(t *testing.T) {
+	_, root := guardRepo(t, "")
+	uxTestWrite(t, filepath.Join(root, "kitsu-roles.toml"), workflowRoleFixture)
+	for _, tc := range []struct {
+		command string
+		allowed bool
+	}{
+		{"kitsu role init --json", true},
+		{"kitsu role set reviewer --host claude --model opus --reasoning high --json", true},
+		{"kitsu role set developer --reasoning ''", true},
+		{"kitsu.exe role set reviewer --host codex", true},
+		{"kitsu role set reviewer --host claude --global", false},
+		{"kitsu role set reviewer --skills custom --root outside", false},
+		{"kitsu role set reviewer --host claude && kitsu check trust", false},
+		{"kitsu role set reviewer --model ${MODEL}", false},
+		{"kitsu config set host codex --global", false},
+	} {
+		t.Run(tc.command, func(t *testing.T) {
+			call := toolCall{Tool: "Bash", Dir: root}
+			call.Input.Command = tc.command
+			if reason, _ := guardReason(t.Context(), call); (reason == "") != tc.allowed {
+				t.Fatalf("allowed=%v, got %q", tc.allowed, reason)
+			}
+		})
+	}
+}
+
 func checkEdits(t *testing.T, repo *gitx.Repo, cases []editCase) {
 	t.Helper()
 	for _, c := range cases {

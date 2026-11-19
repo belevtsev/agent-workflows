@@ -30,9 +30,12 @@ type nativeReviewReport struct {
 }
 
 type nativeReviewObservation struct {
-	Started []string              `json:"started"`
-	Source  *harness.NativeReview `json:"source,omitempty"`
-	Result  *nativeReviewReport   `json:"result,omitempty"`
+	Model    string                `json:"observed_model,omitempty"`
+	Effort   string                `json:"observed_effort,omitempty"`
+	Started  []string              `json:"started"`
+	Source   *harness.NativeReview `json:"source,omitempty"`
+	Result   *nativeReviewReport   `json:"result,omitempty"`
+	Conflict bool                  `json:"conflict,omitempty"`
 }
 
 func addNativeReviewInput(input map[string]any, task *harness.Task, candidate harness.Snapshot, assignment string) {
@@ -56,17 +59,6 @@ func observeNativeReview(ctx context.Context, repo *gitx.Repo, host string, noti
 	if !nativeSessionID.MatchString(notice.Session) || !nativeSessionID.MatchString(notice.AgentID) || notice.Session == notice.AgentID {
 		return nil
 	}
-	var report nativeReviewReport
-	if notice.Event == "SubagentStop" {
-		if len(notice.LastAssistant) == 0 || len(notice.LastAssistant) > 16<<10 {
-			return nil
-		}
-		decoder := json.NewDecoder(strings.NewReader(notice.LastAssistant))
-		decoder.DisallowUnknownFields()
-		if decoder.Decode(&report) != nil || decoder.Decode(new(any)) != io.EOF || !report.valid() {
-			return nil
-		}
-	}
 	if _, err := os.Lstat(filepath.Join(repo.GitDir, "kitsu-stages")); errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
@@ -75,8 +67,20 @@ func observeNativeReview(ctx context.Context, repo *gitx.Repo, host string, noti
 		return err
 	}
 	defer ledger.close()
+	if err := observeWorkflowNative(ledger, host, notice); err != nil {
+		return err
+	}
 	if notice.Event == "SubagentStart" {
 		return observeReviewStart(ledger, host, notice)
+	}
+	var report nativeReviewReport
+	if len(notice.LastAssistant) == 0 || len(notice.LastAssistant) > 16<<10 {
+		return nil
+	}
+	decoder := json.NewDecoder(strings.NewReader(notice.LastAssistant))
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(&report) != nil || decoder.Decode(new(any)) != io.EOF || !report.valid() {
+		return nil
 	}
 	return observeReviewStop(ledger, host, notice, report)
 }
@@ -85,7 +89,15 @@ func nativeClaimFor(t *harness.Task, host string, notice tokens.Notice) bool {
 	c := t.Claim
 	return c != nil && c.Candidate != nil && nativeSessionID.MatchString(c.ReviewID) && c.Reviewer != nil &&
 		c.Reviewer.Host == host && c.Owner == notice.Session &&
-		checkHarnessActor(t, "review", notice.AgentID) == nil
+		checkHarnessActor(t, "review", notice.AgentID) == nil && nativeReviewPrepared(t)
+}
+
+func nativeReviewPrepared(t *harness.Task) bool {
+	if t.Workflow == nil || t.Workflow.Active == nil {
+		return true
+	}
+	a := t.Workflow.Active
+	return !a.Native || a.NativePrepared
 }
 
 func observeReviewStart(l *stageLedger, host string, notice tokens.Notice) error {
@@ -106,6 +118,10 @@ func observeReviewStart(l *stageLedger, host string, notice tokens.Notice) error
 		var observed nativeReviewObservation
 		if err := l.read(name, &observed); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return err
+		}
+		if task.Workflow != nil && len(observed.Started) != 0 && !slices.Contains(observed.Started, notice.AgentID) {
+			observed.Conflict = true
+			return l.write(name, observed)
 		}
 		if observed.Result == nil && len(observed.Started) < 32 && !slices.Contains(observed.Started, notice.AgentID) {
 			observed.Started = append(observed.Started, notice.AgentID)
@@ -135,10 +151,11 @@ func observeReviewStop(l *stageLedger, host string, notice tokens.Notice, report
 		}
 		return err
 	}
-	if !slices.Contains(observed.Started, notice.AgentID) || observed.Result != nil {
+	if observed.Conflict || !slices.Contains(observed.Started, notice.AgentID) || observed.Result != nil {
 		return nil
 	}
 	observed.Source = &harness.NativeReview{Host: host, Parent: notice.Session, Worker: notice.AgentID}
+	observed.Model, observed.Effort = workflowNoticeSettings(notice)
 	observed.Result = &report
 	return l.write(name, observed)
 }
@@ -152,11 +169,14 @@ func recordObservedReview(l *stageLedger, task *harness.Task, o *harnessOptions,
 			return nil, err
 		}
 	}
-	if observed.Result == nil || observed.Source == nil {
+	if observed.Conflict || observed.Result == nil || observed.Source == nil {
 		if required {
 			return nil, failf("review is pending. Check the installed SubagentStart and SubagentStop hooks or resume the reserved worker")
 		}
 		return nil, nil
+	}
+	if err := validateObservedWorkflowReview(task, observed); err != nil {
+		return nil, err
 	}
 	result := observed.Result
 	if !o.observedReview && (o.actor != observed.Source.Worker || o.note != result.Note || !slices.Equal(o.findings, result.Findings)) {
@@ -164,6 +184,18 @@ func recordObservedReview(l *stageLedger, task *harness.Task, o *harnessOptions,
 	}
 	o.actor, o.note, o.findings = observed.Source.Worker, result.Note, result.Findings
 	return observed.Source, nil
+}
+
+func validateObservedWorkflowReview(task *harness.Task, observed nativeReviewObservation) error {
+	if task.Workflow == nil || task.Workflow.Active == nil {
+		return nil
+	}
+	a := task.Workflow.Active
+	a.ObservedModel, a.ObservedEffort = observed.Model, observed.Effort
+	if !observedWorkflowSettingsMatch(task.Workflow.Roles["reviewer"], observed.Model, observed.Effort) {
+		return failf("native reviewer reported different settings for the assigned role")
+	}
+	return nil
 }
 
 func (v *harnessView) setReviewStatus(required bool) {

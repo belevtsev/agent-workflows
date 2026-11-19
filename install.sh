@@ -12,6 +12,7 @@ _kitsu_install_dir=${KITSU_INSTALL_DIR:-}
 _kitsu_no_modify_path=${KITSU_NO_MODIFY_PATH:-0}
 _kitsu_archive_dir=${KITSU_ARCHIVE_DIR:-}
 _kitsu_agent_host=
+_kitsu_cli_only=0
 _kitsu_work=
 _kitsu_stage=
 _kitsu_profile_stage=
@@ -19,9 +20,11 @@ _kitsu_profile_stage=
 usage() {
 	printf '%s\n' \
 		'Usage: install.sh [--version TAG] [--install-dir DIR] [--no-modify-path]' \
-		'                  [--archive-dir DIR] [--host codex|claude]' \
+		'                  [--archive-dir DIR] [--host codex|claude | --cli-only]' \
 		'' \
-		'With --host, install the latest CLI and matching plugin. CLI-only downloads default to v0.0.2. The default install directory is $HOME/.local/bin.' \
+		'Choose Codex or Claude Code in a terminal, or supply --host for automation.' \
+		'Install the latest CLI and matching plugin, and save the selected host as your default.' \
+		'CLI-only downloads default to v0.0.2. The default install directory is $HOME/.local/bin.' \
 		'Environment: KITSU_VERSION, KITSU_INSTALL_DIR, KITSU_NO_MODIFY_PATH=1,' \
 		'             KITSU_ARCHIVE_DIR, KITSU_DOWNLOAD_BASE.' \
 		'With an archive directory, the installer uses the single archive tag for this platform in SHA256SUMS unless a version is provided.'
@@ -57,6 +60,18 @@ quote_shell_argument() {
 		set -- "${1#*\'}"
 	done
 	printf "%s'" "$1"
+}
+
+choose_agent_host() {
+	while :; do
+		printf '%s' 'Choose a Kitsu host [1 Codex, 2 Claude Code, 3 CLI only]: ' >&2
+		IFS= read -r _kitsu_choice || return 0
+		case "$_kitsu_choice" in
+			1|codex) _kitsu_agent_host=codex; return 0 ;;
+			2|claude) _kitsu_agent_host=claude; return 0 ;;
+			3|'') return 0 ;;
+		esac
+	done
 }
 
 while [ "$#" -gt 0 ]; do
@@ -101,6 +116,10 @@ while [ "$#" -gt 0 ]; do
 			[ -n "$_kitsu_agent_host" ] || argument_error '--host requires a value'
 			shift
 			;;
+		--cli-only)
+			_kitsu_cli_only=1
+			shift
+			;;
 		--no-modify-path)
 			_kitsu_no_modify_path=1
 			shift
@@ -124,6 +143,12 @@ case "$_kitsu_agent_host" in
 	codex|claude) ;;
 	*) argument_error '--host must be codex or claude' ;;
 esac
+if [ "$_kitsu_cli_only" -eq 1 ] && [ -n "$_kitsu_agent_host" ]; then
+	argument_error '--cli-only and --host cannot be used together'
+fi
+if [ "$_kitsu_cli_only" -eq 0 ] && [ -z "$_kitsu_agent_host" ] && [ -t 2 ] && ( : </dev/tty ) 2>/dev/null; then
+	choose_agent_host </dev/tty
+fi
 if [ -z "$_kitsu_archive_dir$_kitsu_agent_host" ]; then
 	_kitsu_version=${_kitsu_version:-v0.0.2}
 fi
@@ -471,6 +496,9 @@ if [ -n "$_kitsu_agent_host" ]; then
 		fail "$_kitsu_agent_host setup failed. Retry with this command.
 $(quote_shell_argument "$_kitsu_target") agent setup --host $_kitsu_agent_host --archive-dir $(quote_shell_argument "$_kitsu_archive_dir")"
 	}
+	"$_kitsu_target" config set host "$_kitsu_agent_host" --global ||
+		fail "the plugin is set up, but saving the default host failed. Retry with this command.
+$(quote_shell_argument "$_kitsu_target") config set host $_kitsu_agent_host --global"
 fi
 printf 'Open a new terminal or restart your shell for PATH changes to take effect.\n'
 printf 'Run "%s version" to check the installed version.\n' "$_kitsu_target"

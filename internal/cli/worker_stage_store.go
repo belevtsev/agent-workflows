@@ -35,14 +35,19 @@ type stageRecord struct {
 	Sources  map[string]string   `json:"raw_sources"`
 	Prepared preparedWorkerBrief `json:"prepared"`
 	Prompt   string              `json:"native_prompt,omitempty"`
+	Managed  *managedStage       `json:"configured_stage,omitempty"`
 }
 
 func openStageLedger(ctx context.Context, s *session) (*stageLedger, error) {
+	return openStageLedgerWait(ctx, s, fslock.NoWait)
+}
+
+func openStageLedgerWait(ctx context.Context, s *session, wait time.Duration) (*stageLedger, error) {
 	gitRoot, err := os.OpenRoot(s.repo.GitDir)
 	if err != nil {
 		return nil, err
 	}
-	lock, err := stageLedgerLock(ctx, gitRoot, s.repo.GitDir)
+	lock, err := privateStageLock(ctx, gitRoot, s.repo.GitDir, "kitsu-stages.lock", wait)
 	if err != nil {
 		_ = gitRoot.Close()
 		return nil, fmt.Errorf("stage ledger busy or unsafe: %w", err)
@@ -64,8 +69,7 @@ func (l *stageLedger) close() {
 	_ = l.gitRoot.Close()
 }
 
-func stageLedgerLock(ctx context.Context, gitRoot *os.Root, gitDir string) (*fslock.Lock, error) {
-	const name = "kitsu-stages.lock"
+func privateStageLock(ctx context.Context, gitRoot *os.Root, gitDir, name string, wait time.Duration) (*fslock.Lock, error) {
 	f, err := gitRoot.OpenFile(name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err == nil {
 		err = f.Close()
@@ -86,7 +90,7 @@ func stageLedgerLock(ctx context.Context, gitRoot *os.Root, gitDir string) (*fsl
 	}
 	// Create only through the pinned root. Absolute-path acquisition must never
 	// create a lock in a directory substituted by a concurrent rename/symlink.
-	return fslock.Acquire(ctx, filepath.Join(gitDir, name), fslock.Options{Wait: fslock.NoWait, NoCreate: true, Check: check})
+	return fslock.Acquire(ctx, filepath.Join(gitDir, name), fslock.Options{Wait: wait, NoCreate: true, Check: check})
 }
 
 func stageLedgerRoot(gitRoot *os.Root) (*os.Root, os.FileInfo, error) {

@@ -140,9 +140,9 @@ func TestPowerShellInstallerParameterValidation(t *testing.T) {
 func TestInstallerAgentHostValidation(t *testing.T) {
 	base := serveAssets(t, fixtureAssets(t, preparedVersion))
 	for _, host := range nativeInstallers(t) {
-		archiveFlag, hostFlag := "--archive-dir", "--host"
+		archiveFlag, hostFlag, cliOnlyFlag := "--archive-dir", "--host", "--cli-only"
 		if runtime.GOOS == "windows" {
-			archiveFlag, hostFlag = "-ArchiveDir", "-AgentHost"
+			archiveFlag, hostFlag, cliOnlyFlag = "-ArchiveDir", "-AgentHost", "-CliOnly"
 		}
 		for _, test := range []struct {
 			name string
@@ -151,6 +151,7 @@ func TestInstallerAgentHostValidation(t *testing.T) {
 		}{
 			{name: "missing plugin", args: []string{hostFlag, "codex"}, want: "kitsu-plugin.zip"},
 			{name: "validates host", args: []string{archiveFlag, "nonexistent", hostFlag, "other"}, want: hostFlag},
+			{name: "conflicting host options", args: []string{cliOnlyFlag, hostFlag, "codex"}, want: cliOnlyFlag},
 		} {
 			t.Run(host.name+"/"+test.name, func(t *testing.T) {
 				run := newInstallRun(t, host, base)
@@ -187,6 +188,9 @@ func TestInstallerAgentFailurePreservesCLIAndShowsRetry(t *testing.T) {
 			output, err := run.run(false, archiveFlag, archives, hostFlag, "claude")
 			if err == nil {
 				t.Fatalf("agent setup failure did not fail the installer:\n%s", output)
+			}
+			if _, err := os.Stat(filepath.Join(run.home, "installed-host")); !os.IsNotExist(err) {
+				t.Fatalf("saving a default after setup failure: %v", err)
 			}
 			wantArgs := []string{"agent", "setup", "--host", "claude", "--archive-dir", absoluteArchives}
 			if !strings.Contains(output, fmt.Sprintf("fixture agent arguments %q", wantArgs)) {

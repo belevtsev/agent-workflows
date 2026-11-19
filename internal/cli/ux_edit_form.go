@@ -18,7 +18,7 @@ import (
 var uxEditorHelp = map[string]string{
 	"host":      "Choose codex or claude. A role editor uses this host for this edit only; it does not save a host preference. In config edit, inherit/unset removes this scope's preference.",
 	"model":     "Suggestions include current and built-in models. Type a custom model name if needed; Ctrl+E accepts a suggestion. Unchanged values keep existing overrides. Use role reset to restore defaults.",
-	"reasoning": "Suggestions include current and built-in effort values. Custom host-supported values are allowed. Unchanged effort keeps its existing override; the coordinator uses host-session settings.",
+	"reasoning": "Suggestions include current and built-in effort values. Custom host-supported values are allowed. In version 2, leave this empty to use the assigned host's default.",
 	"skills":    "Press / to search names, IDs and descriptions; Space toggles a selection. Disabled or manual-only sources show a reason and cannot be saved. Clearing all selections writes an empty list; unchanged selections keep inheritance. Skills supplement native host skills and do not grant permissions.",
 	"save":      "Review the destination and proposed settings, then choose Save or Cancel. Save revalidates sources and refuses configuration changed while the editor was open. Ctrl+C cancels without saving.",
 }
@@ -88,11 +88,14 @@ func uxEditorFields(draft *UXEditor, accessible bool) []huh.Field {
 	}
 	fields := []huh.Field{}
 	if !draft.Global && draft.Role != roles.Coordinator {
+		effort := huh.NewInput().Key("reasoning").Title(uxFieldTitle("reasoning", "Reasoning", accessible)).Description(uxEditorHelp["reasoning"]).
+			Suggestions(draft.ReasoningChoices).Value(&draft.Reasoning)
+		if !draft.NativeEffort {
+			effort.Validate(uxNonemptyInput)
+		}
 		fields = append(fields,
 			huh.NewInput().Key("model").Title(uxFieldTitle("model", "Model", accessible)).Description(uxEditorHelp["model"]).
-				Suggestions(draft.Models).Value(&draft.Model).Validate(uxNonemptyInput),
-			huh.NewInput().Key("reasoning").Title(uxFieldTitle("reasoning", "Reasoning", accessible)).Description(uxEditorHelp["reasoning"]).
-				Suggestions(draft.ReasoningChoices).Value(&draft.Reasoning).Validate(uxNonemptyInput))
+				Suggestions(draft.Models).Value(&draft.Model).Validate(uxNonemptyInput), effort)
 	}
 	options, unavailable := uxSkillOptions(draft)
 	if len(options) > 0 {

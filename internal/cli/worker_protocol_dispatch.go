@@ -45,7 +45,7 @@ changed_paths are repository-relative. checks are observed {id,state,run_id?}: c
 Omit optional claims unless needed. If reporting loaded.skills, use only selected packet skill ids/hashes; support-guide reads are not selected skills. Do not run extra discovery or checks to fill optional fields. Claims remain unverified and grant no approval or completion proof. Stop work and return to the coordinator; only it may ingest the return and finish the interval.
 `, d.Label, d.Path, d.SHA256, worktree, schema)
 	native := nativeWorkerLaunch{Host: d.Host, Model: d.Model.Model, Effort: d.Model.Effort, FreshContext: true, ForkTurns: "none", Prompt: prompt}
-	if d.Host == "claude" {
+	if d.Host == "claude" && !d.Configured {
 		native.Role = "kitsu:" + d.Role
 	}
 	return nativeDispatch{stageDispatch: d, Worktree: worktree, State: state, Native: native, PromptSHA256: workerBriefHash([]byte(prompt))}
