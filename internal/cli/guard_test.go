@@ -121,6 +121,7 @@ func TestEditReason(t *testing.T) {
 		{"kitsu.toml", root, "kitsu.toml"},
 		{"kitsu-advisers.toml", root, "adviser commands"}, // creation, before the file exists
 		{"kitsu-roles.toml", root, "role models"},
+		{".claude/settings.json", root, "protected host"},
 		{"sub/kitsu-advisers.toml", root, ""},
 		{"kitsu-advisers.toml.backup", root, ""},
 		{"../kitsu.toml", filepath.Join(root, "sub"), "kitsu.toml"},
@@ -147,6 +148,14 @@ func TestEditReason(t *testing.T) {
 		if err := os.Symlink("kitsu.toml", alias); err != nil {
 			t.Fatal(err)
 		}
+		// A protected host path can also name a file with a specific diagnostic.
+		hostConfig := filepath.Join(root, ".claude")
+		if err := os.Mkdir(hostConfig, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink("../kitsu.toml", filepath.Join(hostConfig, "alias.toml")); err != nil {
+			t.Fatal(err)
+		}
 		cases = append(cases, []editCase{
 			{".git/kitsu/new/dir/x", link, "records of kitsu"},
 			{".git/hooks/new/dir/x", link, "git hook"},
@@ -154,6 +163,7 @@ func TestEditReason(t *testing.T) {
 			{"new/dir/kitsu.toml", link, ""},
 			{"kitsu.toml", link, "kitsu.toml"},
 			{"alias.toml", root, "kitsu.toml"},
+			{".claude/alias.toml", root, "kitsu.toml"},
 		}...)
 	} else {
 		t.Logf("no symbolic link could be made, so those cases are left out: %v", err)

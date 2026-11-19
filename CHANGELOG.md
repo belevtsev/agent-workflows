@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- [Supervised imports](docs/workflow-runner.md) preserve returned bytes across Git line-ending settings. The guard gives specific diagnostics for aliases of protected files.
 - [Installers](docs/release-install.md) use the latest release for CLI-only installs and preserve the personal host unless explicitly replaced.
 - The [pre-push hook](docs/hooks.md#pre-push) rejects malformed ref updates and records empty input as a no-op.
 

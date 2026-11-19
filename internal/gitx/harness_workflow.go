@@ -73,11 +73,31 @@ func (r *Repo) WorkflowPathIgnored(ctx context.Context, name string) (bool, erro
 // ApplyWorkflowFiles imports the checked regular-file delta as one binary
 // patch. Git's default application refuses the entire patch on a mismatch.
 func (r *Repo) ApplyWorkflowFiles(ctx context.Context, before, after []WorkflowFile) error {
-	dir, err := os.MkdirTemp("", "kitsu-runner-import-")
+	tmp, err := os.MkdirTemp("", "kitsu-runner-import-")
 	if err != nil {
 		return err
 	}
-	defer func() { _ = os.RemoveAll(dir) }()
+	defer func() { _ = os.RemoveAll(tmp) }()
+	dir, err := filepath.Abs(tmp)
+	if err != nil {
+		return err
+	}
+	env := []string{"GIT_CONFIG_GLOBAL=" + os.DevNull, "GIT_CONFIG_NOSYSTEM=1", "GIT_ATTR_NOSYSTEM=1"}
+	scratch := call{dir: dir, foreign: true, env: env}
+	if _, err := run(ctx, scratch, "init", "--quiet", "--template="); err != nil {
+		return err
+	}
+	// Git converts files while applying patches. Give it a private repository
+	// whose highest-priority attributes preserve the runner's approved bytes.
+	gitDir := filepath.Join(dir, ".git")
+	info := filepath.Join(gitDir, "info")
+	if err := os.MkdirAll(info, 0o700); err != nil {
+		return err
+	}
+	attributes := "* -text -crlf !eol !filter -ident !working-tree-encoding\n"
+	if err := os.WriteFile(filepath.Join(info, "attributes"), []byte(attributes), 0o600); err != nil {
+		return err
+	}
 	for _, set := range []struct {
 		name  string
 		files []WorkflowFile
@@ -103,7 +123,7 @@ func (r *Repo) ApplyWorkflowFiles(ctx context.Context, before, after []WorkflowF
 			}
 		}
 	}
-	patch, err := run(ctx, call{dir: dir, foreign: true, env: []string{"GIT_CONFIG_GLOBAL=" + os.DevNull, "GIT_CONFIG_NOSYSTEM=1"}},
+	patch, err := run(ctx, scratch,
 		"-c", "core.autocrlf=false", "diff", "--no-index", "--no-prefix", "--no-renames", "--binary",
 		"--no-ext-diff", "--no-textconv", "--", "before", "after")
 	var result *Error
@@ -117,7 +137,9 @@ func (r *Repo) ApplyWorkflowFiles(ctx context.Context, before, after []WorkflowF
 	if err := os.WriteFile(name, patch, 0o600); err != nil {
 		return err
 	}
-	_, err = r.git(ctx, nil, "-c", "apply.ignoreWhitespace=none", "apply", "-p1", "--binary", "--whitespace=nowarn", "--", name)
+	_, err = run(ctx, call{dir: r.dir, foreign: true, env: env},
+		"--git-dir="+gitDir, "--work-tree="+r.Root, "-c", "core.autocrlf=false", "-c", "apply.ignoreWhitespace=none",
+		"apply", "-p1", "--binary", "--whitespace=nowarn", "--", name)
 	return err
 }
 

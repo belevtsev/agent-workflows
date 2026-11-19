@@ -160,10 +160,6 @@ func editReason(ctx context.Context, repo *gitx.Repo, dir string, paths []string
 				return g[1]
 			}
 		}
-		if rel, err := filepath.Rel(repo.Root, path); err == nil && filepath.IsLocal(rel) &&
-			!strings.HasPrefix(filepath.ToSlash(rel), ".git/") && roles.ProtectedWorkflowPath(filepath.ToSlash(rel)) {
-			return "This edit changes a protected host, workflow, or Git control path."
-		}
 		for at, above := filepath.Clean(path), ""; at != above; at, above = filepath.Dir(at), at {
 			info, err := os.Stat(at)
 			for _, g := range guarded {
@@ -171,6 +167,11 @@ func editReason(ctx context.Context, repo *gitx.Repo, dir string, paths []string
 					return g[1]
 				}
 			}
+		}
+		// Keep the specific diagnostic for aliases of a known guarded path.
+		if rel, err := filepath.Rel(repo.Root, path); err == nil && filepath.IsLocal(rel) &&
+			!strings.HasPrefix(filepath.ToSlash(rel), ".git/") && roles.ProtectedWorkflowPath(filepath.ToSlash(rel)) {
+			return "This edit changes a protected host, workflow, or Git control path."
 		}
 	}
 	return ""
