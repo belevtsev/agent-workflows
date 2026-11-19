@@ -24,19 +24,20 @@ const maxWorkerAssignment = 1 << 20
 
 // workerDispatch is a reference for a native host, never authority to spawn it.
 type workerDispatch struct {
-	Version   int         `json:"version"`
-	Label     string      `json:"label"`
-	Task      string      `json:"task"`
-	Workflow  string      `json:"workflow"`
-	Role      string      `json:"role"`
-	Stage     string      `json:"stage"`
-	Round     int         `json:"round"`
-	Host      string      `json:"host"`
-	Path      string      `json:"path"`
-	SHA256    string      `json:"sha256"`
-	Model     roles.Model `json:"model"`
-	Baseline  string      `json:"baseline"`
-	Selection string      `json:"selection_id"`
+	Version    int         `json:"version"`
+	Label      string      `json:"label"`
+	Task       string      `json:"task"`
+	Workflow   string      `json:"workflow"`
+	Role       string      `json:"role"`
+	Stage      string      `json:"stage"`
+	Round      int         `json:"round"`
+	Host       string      `json:"host"`
+	Configured bool        `json:"configured_routing,omitempty"`
+	Path       string      `json:"path"`
+	SHA256     string      `json:"sha256"`
+	Model      roles.Model `json:"model"`
+	Baseline   string      `json:"baseline"`
+	Selection  string      `json:"selection_id"`
 }
 
 type preparedWorkerBrief struct {
@@ -115,7 +116,7 @@ func prepareWorkerBrief(ctx context.Context, cfg Config, b workerBrief, assignme
 func workerBriefDispatch(b workerBrief, path, hash string) workerDispatch {
 	return workerDispatch{
 		Version: 1, Label: b.Label, Task: b.Task, Workflow: b.Workflow, Role: b.Role,
-		Stage: b.Stage, Round: b.Round, Host: b.Host, Path: path,
+		Stage: b.Stage, Round: b.Round, Host: b.Host, Configured: b.Configured, Path: path,
 		SHA256: hash, Model: b.Model, Baseline: b.Baseline, Selection: b.Selection,
 	}
 }

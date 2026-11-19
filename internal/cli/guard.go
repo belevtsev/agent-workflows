@@ -17,11 +17,17 @@ import (
 // Code and Codex use the same field names. The input holds a shell command,
 // the path of a file edit, or a Codex patch as the command.
 type toolCall struct {
-	Tool  string `json:"tool_name"`
-	Dir   string `json:"cwd"`
-	Input struct {
-		Command any    `json:"command"`
-		Path    string `json:"file_path"`
+	Tool    string `json:"tool_name"`
+	Dir     string `json:"cwd"`
+	Session string `json:"session_id"`
+	Input   struct {
+		Command     any    `json:"command"`
+		Path        string `json:"file_path"`
+		Model       string `json:"model"`
+		Effort      string `json:"effort"`
+		Reasoning   string `json:"reasoning_effort"`
+		ForkContext *bool  `json:"fork_context"`
+		ForkTurns   string `json:"fork_turns"`
 	} `json:"tool_input"`
 }
 
@@ -42,6 +48,9 @@ func runGuard(ctx context.Context, cfg Config, args []string) error {
 		return nil // a notice the guard cannot read is one it does not act on
 	}
 	reason, developerOnly := guardReason(ctx, call)
+	if native := guardWorkflowSpawn(ctx, *host, call); native != "" {
+		reason, developerOnly = native, true
+	}
 	if reason == "" {
 		return nil
 	}
@@ -94,7 +103,7 @@ func guardReason(ctx context.Context, call toolCall) (string, bool) {
 		if why := guardCheckTrust(ctx, repo, command); why != "" {
 			return why, true
 		}
-		if how := uxChangesPolicy(command); how != "" {
+		if how := uxChangesPolicy(command); how != "" && !uxRepositoryRoleCommand(repo.Root, command) {
 			return "This command " + how + ".", false
 		}
 		if how := shellwords.SkipsHooks(command); how != "" {

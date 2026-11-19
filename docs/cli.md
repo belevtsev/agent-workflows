@@ -198,6 +198,8 @@ immutable receipt and still leaves loading unverified. See [skills](skills.md).
 
 ## Change one setting explicitly
 
+Create a shared role file with `kitsu role init`. This uses the saved install host. Set a role's host, model and reasoning together with `kitsu role set developer --host claude --model sonnet --reasoning high`, or update individual fields in an existing version 2 file. [Configure roles from either plugin or the terminal](configured-workflow.md#configure-the-roles)
+
 Use `set` in scripts to change only supplied fields:
 
 ```sh

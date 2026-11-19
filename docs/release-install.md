@@ -29,6 +29,8 @@ With Git and Codex or Claude Code installed, run the command for your platform. 
 
 The installer downloads the CLI and matching plugin from the latest public release, verifies both checksums, and registers the plugin with your agent. Downloads are anonymous. On macOS and Linux the command stages the whole installer before running it.
 
+The preview installers also save the chosen host for new configured tasks. Run them in a terminal with the host flag omitted to choose Codex, Claude Code, or the CLI alone. For unattended setup, pass the host flag explicitly. To set a default after a v0.0.2 install, run `kitsu config set host codex --global` or substitute `claude`. [Choose a host per role](configured-workflow.md#configure-the-roles)
+
 The default locations are `$HOME/.local/bin/kitsu` on macOS/Linux and `%LOCALAPPDATA%\kitsu\kitsu.exe` on Windows. Open a new terminal and run `kitsu version` for the installed tag and revision. Windows hooks use Git for Windows.
 
 ## Check the host and start a task
@@ -70,7 +72,8 @@ CI build, use the bundled installer and pass its artifact directory.
 | macOS/Linux flag | PowerShell parameter | Environment default | Purpose |
 | --- | --- | --- | --- |
 | `--version TAG` | `-Version TAG` | `KITSU_VERSION` | Pin the requested tag. CLI-only remote installs default to `v0.0.2`. |
-| `--host codex\|claude` | `-AgentHost codex\|claude` | — | Install and register the plugin paired with the platform CLI. |
+| `--host codex\|claude` | `-AgentHost codex\|claude` | — | Install the matching plugin and save the selected host in the preview. |
+| `--cli-only` | `-CliOnly` | — | Install the preview CLI without prompting or changing the saved host. |
 | `--install-dir DIR` | `-InstallDir DIR` | `KITSU_INSTALL_DIR` | Choose the destination directory. |
 | `--no-modify-path` | `-NoModifyPath` | `KITSU_NO_MODIFY_PATH=1` | Install without changing user `PATH`. |
 | `--archive-dir DIR` | `-ArchiveDir DIR` | `KITSU_ARCHIVE_DIR` | Use local archives and `SHA256SUMS`, with no download. |
@@ -116,7 +119,7 @@ sh ./install.sh --archive-dir . --host codex
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -ArchiveDir . -AgentHost codex
 ```
 
-Omit the host option for a CLI-only install. With one matching platform archive in the manifest, the installer can discover a preview tag. When multiple tags match, select one with `--version TAG` or `-Version TAG`. Use scripts and archives from the same download. For an update, rerun the command from the new bundle. Check the revision from `kitsu version` against the CI run because two builds can share a version label.
+Omit the host option in an interactive terminal to show the preview chooser. Use `--cli-only` or `-CliOnly` to skip setup explicitly. In a noninteractive shell, omitting both options installs only the CLI. With one matching platform archive in the manifest, the installer can discover a preview tag. When multiple tags match, select one with `--version TAG` or `-Version TAG`. Use scripts and archives from the same download. For an update, rerun the command from the new bundle. Check the revision from `kitsu version` against the CI run because two builds can share a version label.
 
 ### Register the matching marketplace
 
@@ -127,7 +130,7 @@ kitsu agent setup --host claude --archive-dir .
 kitsu agent check --host claude
 ```
 
-Setup verifies the plugin checksum and registers a persistent copy using the selected host. In a new terminal, run `kitsu agent check --host codex` or `--host claude` from the repository where you work. Review Codex hook trust in `/hooks`. Once ready, start a task with `kitsu task start "Add an order CSV export" --host codex`. [Start or resume a daily task](task-harness.md)
+Setup verifies the plugin checksum and registers a persistent copy for the selected host. To change your saved default after registering a second host, use `kitsu config set host claude --global`. In a new terminal, run `kitsu agent check --host codex` or `--host claude` from the repository where you work. Review Codex hook trust in `/hooks`. Once ready, start a task with `kitsu task start "Add an order CSV export" --host codex`. [Start or resume a daily task](task-harness.md)
 
 <details>
 <summary>Installing an older preview whose installer lacks the host option</summary>

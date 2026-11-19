@@ -20,6 +20,7 @@ import (
 type UXEditor struct {
 	Kind, Host, Role, Path   string
 	Global, Accessible, Save bool
+	NativeEffort             bool
 	Model, Reasoning         string
 	Skills                   []string
 	Models, ReasoningChoices []string
@@ -37,7 +38,7 @@ func (e *UXEditor) summary() string {
 	}
 	text := fmt.Sprintf("Role: %s\nHost: %s", e.Role, e.Host)
 	if !e.Global && e.Role != roles.Coordinator {
-		text += fmt.Sprintf("\nModel: %s\nReasoning: %s", e.Model, e.Reasoning)
+		text += fmt.Sprintf("\nModel: %s\nReasoning: %s", e.Model, roleEffortText(e.Reasoning))
 	}
 	return text + "\nSkills: " + skillListText(e.Skills)
 }
@@ -147,11 +148,25 @@ func runUXRoleEdit(ctx context.Context, cfg Config, args []string) error {
 	if err := uxEditorAllowed(cfg, uxFlagSet(flags, "json")); err != nil {
 		return err
 	}
+	role := p.pos[0]
+	if !*global && role != roles.Coordinator {
+		config, err := rolesConfig(ctx)
+		if err != nil {
+			return err
+		}
+		if config.Version == roles.WorkflowConfigVersion {
+			selected, err := config.SpecialistHost(*host, role)
+			if err != nil {
+				return usagef("%v; use `kitsu role set %s --host HOST` to assign a host", err, role)
+			}
+			return uxEditRole(ctx, cfg, role, selected, false, *accessible, roots)
+		}
+	}
 	selected, err := uxEditorHost(ctx, cfg, *host, *accessible)
 	if err != nil || selected == "" {
 		return err
 	}
-	return uxEditRole(ctx, cfg, p.pos[0], selected, *global, *accessible, roots)
+	return uxEditRole(ctx, cfg, role, selected, *global, *accessible, roots)
 }
 
 func uxEditorHost(ctx context.Context, cfg Config, host string, accessible bool) (string, error) {
@@ -181,11 +196,15 @@ func uxEditorHost(ctx context.Context, cfg Config, host string, accessible bool)
 func uxModelSuggestions(config *roles.Config, host string, effort bool) []string {
 	values := []string{}
 	for _, role := range append(roles.All(config), roles.All(nil)...) {
-		value := role.Models[host].Model
-		if effort {
-			value = role.Models[host].Effort
+		model, exists := role.Models[host]
+		if !exists {
+			continue
 		}
-		if !slices.Contains(values, value) {
+		value := model.Model
+		if effort {
+			value = model.Effort
+		}
+		if value != "" && !slices.Contains(values, value) {
 			values = append(values, value)
 		}
 	}

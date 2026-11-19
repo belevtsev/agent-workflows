@@ -247,6 +247,9 @@ func ingestWorkerReturn(ctx context.Context, cfg Config, request workerReturnReq
 	if err := matchWorkerReturn(record, request); err != nil {
 		return compactFailure(err)
 	}
+	if err := verifyManagedHandback(ledger, record, request); err != nil {
+		return compactFailure(err)
+	}
 	observed, err := finishStageReceipt(ctx, s, e, record, stageFinishOptions{id: request.DispatchID, expect: "any"})
 	if err != nil {
 		return compactFailure(err)

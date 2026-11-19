@@ -2,7 +2,7 @@
   "name": "kitsu",
   "version": "0.0.2",
   "icon": "./docs/brand/kitsu-mascot.png",
-  "description": "Kitsu for Claude Code: workflow instructions for coordinating coding agents through specification, implementation, testing and review, with seven roles, shared task records and token reports. The workflow runs in the agent host; end-to-end orchestration remains experimental. A Git check-evidence gate provides an additional safeguard.",
+  "description": "Coordinate coding tasks across Claude Code and Codex. Configure each specialist's host, model and reasoning, resume saved tasks, and keep verification evidence with the worktree.",
   "author": {
     "name": "Pavlo Belevtsev",
     "url": "https://github.com/belevtsev"

@@ -17,11 +17,13 @@ The order of the work, the record of a task and `kitsu task` are in
 The preferred commands use singular `role`; existing `roles` commands remain supported.
 [CLI help and host preferences](cli.md) can supply a host once instead of repeating `--host`.
 
+[Configure a host per role](configured-workflow.md#configure-the-roles) with version 2 of `kitsu-roles.toml`. `kitsu task run` saves those assignments for a daily task. A managed dispatch can use the same configuration.
+
 With [compact context](compact-context.md), the coordinator prepares a fresh worker using
 `kitsu task prepare`. The saved brief includes current model/reasoning, original selected skills,
 write limits, factual task state and allowed advisers. Selection receipts precede its baseline;
 `task finish <dispatch-id>` checks the saved write interval and existing evidence. Use explicit
-`--expect-checks pass|fail` for required outcomes. The native host still launches the fresh worker.
+`--expect-checks pass|fail` for required outcomes. The coordinator can launch the fresh worker in its host or explicitly run a [configured dispatch](configured-workflow.md#run-a-managed-openspec-role).
 Codex receives role text; native Claude roles supply their own text once. Neither approach
 changes the role's tools, independence, approvals or after-role write check.
 
@@ -178,7 +180,7 @@ which a host cannot limit to reading.
 
 ### git
 
-Runs `git status`, `kitsu check run` and `kitsu gate status`, stages everything with `git add -A`, and commits
+Runs `git status`, `kitsu check run` and `kitsu gate status`, stages only authorized paths, and commits
 through the hooks. It never passes `--no-verify`, does not push, tag or open a pull request unless
 the brief says the developer asked for it, and does not rewrite history. It changes no file of the
 working tree.

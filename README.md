@@ -4,7 +4,7 @@
 
 # Kitsu
 
-Kitsu is a plugin for **Codex** and **Claude Code** that saves a coding task and its evidence in your Git worktree.
+Kitsu coordinates coding tasks in **Codex** and **Claude Code**. It remembers the request, each role’s work, and the checks that verify the result in your Git worktree.
 
 Start with a partial CSV fix. Ask Codex to reproduce the remaining quoting bug and save the task ID. Open Claude Code in the **same worktree** and resume that ID to repair, verify and commit the fix with your approval. You can start in either host.
 
@@ -12,7 +12,7 @@ Start with a partial CSV fix. Ask Codex to reproduce the remaining quoting bug a
 
 ## Install
 
-Run one installer per agent you use. It downloads the Kitsu CLI and matching plugin from the public release and registers the plugin with that agent. On Windows, use Git for Windows.
+Install the Kitsu CLI and matching plugin for the host you use. On Windows, use Git for Windows. The preview installer lets you choose a default host interactively, or pass the host explicitly as shown below. [Preview installation](docs/release-install.md#install-a-ci-artifact-before-publication)
 
 | Your agent | First time | Use in chat |
 | --- | --- | --- |
@@ -235,11 +235,28 @@ When you’re ready for the fix, reply in the same chat.
 
 </details>
 
+## Choose who does the work
+
+The [configured workflow preview](docs/configured-workflow.md) can start in either plugin. For a new task in a repository without role settings, Kitsu uses the default host you chose at install. You can assign each role its own host, model, and reasoning effort.
+
+```sh
+kitsu role init
+kitsu role set architect --host codex --model gpt-6.1-sol --reasoning max
+kitsu role set developer --host claude --model sonnet --reasoning high
+kitsu role list
+```
+
+`role init` creates `kitsu-roles.toml` in this repository. Omit it when you already have a version 2 roles file. Edit the TOML directly or ask either plugin to update it.
+
+> Use Kitsu’s task skill to set the architect to Codex with GPT-6.1 Sol at max reasoning, and the developer to Claude Code with Sonnet at high reasoning. Show me the role table.
+
+In Claude Code, start the same request with `/kitsu:task`. Install and sign in to both hosts if you assign roles to both. Role changes apply to new tasks. [All roles and TOML example](docs/configured-workflow.md#configure-the-roles)
+
 ## How Kitsu works
 
-<img src="docs/diagrams/daily-task.svg" alt="Ask for work in Codex or Claude Code. The Kitsu CLI saves the request, scope and task ID. Switch hosts or resume in the same worktree. The host follows the saved next action and records results. After a verified commit, export its receipt." width="100%">
+<img src="docs/diagrams/overview.svg" alt="The installer saves a default host. Repository settings can assign a host, model and effort to each role. Kitsu pins roles and scope when a task starts, dispatches each role, and verifies the candidate using the repository checks. Reopen the saved task to resume or export its verification receipt." width="100%">
 
-Ask for a plan and the agent can finish with a proposal. Ask for a verified fix and Kitsu runs the behavior check against the current code. The host starts an independent reviewer when you ask for one or your repository requires one.
+Ask either plugin to use the configured workflow, or run `kitsu task run "Fix CSV quoting" --until verify`. Resume with `kitsu task run --resume TASK_ID` in the same worktree. Kitsu runs a behavior check and the repository’s required checks. A separate reviewer runs when you or the repository require one.
 
 [Follow a bug ticket to its verified commit](docs/task-harness.md#deliver-a-bug-ticket) · [See how managed specialist roles work](docs/workflow.md#the-flow)
 

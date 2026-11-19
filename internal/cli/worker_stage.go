@@ -44,12 +44,21 @@ type stageReceipt struct {
 	Checks        []stageCheck      `json:"checks"`
 	Missing       []string          `json:"missing"`
 	Warnings      []string          `json:"warnings"`
+	Commit        string            `json:"commit,omitempty"`
 	EvidenceError string            `json:"evidence_error,omitempty"`
 	Reason        string            `json:"reason,omitempty"`
 	Scope         string            `json:"scope"`
 }
 
 const stageReceiptScope = "Local write bounds and existing check evidence only; no model execution, skill loading, semantic TDD, independent review, human approval or task completion is certified. Hooks and the normal gate remain authoritative."
+
+type stagePreparation struct {
+	brief      workerBrief
+	assignment string
+	budget     int
+	native     bool
+	view       string
+}
 
 func runTaskPrepare(ctx context.Context, cfg Config, args []string) error {
 	b, assignmentPath, budget, native, view, err := parseStagePrepare(args)
@@ -64,11 +73,24 @@ func runTaskPrepare(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := selectBriefHost(ctx, s, &b); err != nil {
+		return err
+	}
+	b, _, err = briefInputs(s, b)
+	if err != nil {
+		return compactFailure(err)
+	}
 	ledger, err := openStageLedger(ctx, s)
 	if err != nil {
 		return compactFailure(err)
 	}
 	defer ledger.close()
+	return prepareTaskStage(ctx, s, ledger, stagePreparation{
+		brief: b, assignment: assignment, budget: budget, native: native, view: view,
+	})
+}
+
+func prepareTaskStage(ctx context.Context, s *session, ledger *stageLedger, o stagePreparation) error {
 	active, err := ledger.active()
 	if err != nil {
 		return compactFailure(err)
@@ -76,14 +98,23 @@ func runTaskPrepare(ctx context.Context, cfg Config, args []string) error {
 	if active != "" {
 		return failf("unfinished stage %s; finish or explicitly abandon it before preparing another worker", active)
 	}
-	if native {
-		if err := checkNativeDispatchBudget(s, b, budget, view); err != nil {
-			return err
-		}
-	} else if err := checkWorkerDispatchBudget(s, b, budget, 81); err != nil {
+	if id, err := workflowActiveTask(ledger, ""); err != nil {
+		return err
+	} else if id != "" {
+		return failf("resume daily task %s before preparing a managed worker", id)
+	}
+	managed, err := prepareManagedStage(ctx, s, ledger, o.brief)
+	if err != nil {
 		return err
 	}
-	p, err := prepareWorkerBrief(ctx, cfg, b, assignment)
+	if o.native {
+		if err := checkNativeDispatchBudget(s, o.brief, o.budget, o.view); err != nil {
+			return err
+		}
+	} else if err := checkWorkerDispatchBudget(s, o.brief, o.budget, 81); err != nil {
+		return err
+	}
+	p, err := prepareWorkerBrief(ctx, s.cfg, o.brief, o.assignment)
 	if err != nil {
 		return err
 	}
@@ -95,22 +126,25 @@ func runTaskPrepare(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return compactFailure(err)
 	}
-	record := stageRecord{Version: 1, Worktree: s.repo.Root, Nonce: rand.Text(), Created: time.Now().UTC(), Checks: checkPolicy, Sources: sources, Prepared: p}
-	if native {
+	record := stageRecord{Version: 1, Worktree: s.repo.Root, Nonce: rand.Text(), Created: time.Now().UTC(), Checks: checkPolicy, Sources: sources, Prepared: p, Managed: managed}
+	if o.native {
 		record.Prompt = nativeWorkerDispatch(stageDispatch{workerDispatch: p.Dispatch}, p.State, s.repo.Root).Native.Prompt
 	}
 	id := contextpack.Key(record)
 	dispatch := stageDispatch{workerDispatch: p.Dispatch, DispatchID: id}
 	var output any = dispatch
-	if native {
-		output = nativeDispatchView(nativeDispatchRecord(record, id), p.Brief.Warnings, view)
+	if o.native {
+		output = nativeDispatchView(nativeDispatchRecord(record, id), p.Brief.Warnings, o.view)
 	}
-	data, err := boundedStageJSON(output, budget)
+	data, err := boundedStageJSON(output, o.budget)
 	if err != nil {
 		return err
 	}
-	if err := verifySavedWorkerBrief(ctx, cfg, p); err != nil {
+	if err := verifySavedWorkerBrief(ctx, s.cfg, p); err != nil {
 		return compactFailure(err)
+	}
+	if err := saveManagedProfile(ctx, s, ledger, record); err != nil {
+		return err
 	}
 	if err := ledger.write(id+".json", record); err != nil {
 		return compactFailure(err)
@@ -118,7 +152,7 @@ func runTaskPrepare(ctx context.Context, cfg Config, args []string) error {
 	if err := ledger.write("active.json", id); err != nil {
 		return compactFailure(err)
 	}
-	_, err = cfg.Out.Write(data)
+	_, err = s.cfg.Out.Write(data)
 	return err
 }
 
@@ -140,7 +174,7 @@ func parseStagePrepare(args []string) (workerBrief, string, int, bool, string, e
 		return b, "", 0, false, "", err
 	}
 	if !validBriefArgs(p, b) || *assignment == "" {
-		return b, "", 0, false, "", usagef("prepare requires a task, --role, --stage, positive --round, --host, --workflow full|small and --assignment <file|->")
+		return b, "", 0, false, "", usagef("prepare requires a task, --role, --stage, positive --round, --workflow full|small and --assignment <file|->")
 	}
 	if *view != "full" && *view != "launch" || *view == "launch" && !*native {
 		return b, "", 0, false, "", usagef("--view requires full|launch; launch requires --dispatch")
@@ -153,6 +187,8 @@ type stageFinishOptions struct {
 	id, expect, reason string
 	abandon            bool
 	budget             int
+	message            string
+	includes           stringList
 }
 
 func parseStageFinish(args []string) (stageFinishOptions, error) {
@@ -161,6 +197,8 @@ func parseStageFinish(args []string) (stageFinishOptions, error) {
 	flags.StringVar(&o.expect, "expect-checks", "any", "")
 	flags.BoolVar(&o.abandon, "abandon", false, "")
 	flags.StringVar(&o.reason, "reason", "", "")
+	flags.StringVar(&o.message, "message", "", "")
+	flags.Var(&o.includes, "include", "")
 	flags.IntVar(&o.budget, "max-bytes", contextpack.DefaultBytes, "")
 	flags.Bool("json", false, "")
 	p, err := parseArgs(flags, args)
@@ -174,6 +212,9 @@ func parseStageFinish(args []string) (stageFinishOptions, error) {
 	flags.Visit(func(f *flag.Flag) { explicitExpectation = explicitExpectation || f.Name == "expect-checks" })
 	if o.abandon && (explicitExpectation || strings.TrimSpace(o.reason) == "") || !o.abandon && o.reason != "" || len(o.reason) > 1024 || !utf8.ValidString(o.reason) || strings.ContainsRune(o.reason, 0) {
 		return o, usagef("--abandon requires --reason (at most 1024 UTF-8 bytes) and cannot combine with --expect-checks")
+	}
+	if err := validateManagedCommitOptions(&o); err != nil {
+		return o, err
 	}
 	o.id = p.pos[0]
 	return o, compactBudget(o.budget)
@@ -196,6 +237,9 @@ func runTaskFinish(ctx context.Context, cfg Config, args []string) error {
 	record, err := ledger.record(o.id, s.repo.Root)
 	if err != nil {
 		return compactFailure(err)
+	}
+	if err := checkManagedFinish(ctx, s, ledger, record, o); err != nil {
+		return err
 	}
 	if receipt, err := existingStageReceipt(ctx, s, e, ledger, record, o); !errors.Is(err, os.ErrNotExist) {
 		if err != nil {
@@ -220,6 +264,16 @@ func runTaskFinish(ctx context.Context, cfg Config, args []string) error {
 	}
 	if err := verifyStageBeforePublication(ctx, s, e, record, receipt); err != nil {
 		return compactFailure(err)
+	}
+	if o.message != "" {
+		receipt, err = finishManagedCommit(ctx, s, e, ledger, record, o, receipt)
+		if err != nil {
+			return err
+		}
+		data, err = boundedStageJSON(receipt, o.budget)
+		if err != nil {
+			return err
+		}
 	}
 	if err := ledger.write(stageReceiptName(o), receipt); err != nil {
 		return compactFailure(err)
@@ -269,6 +323,9 @@ func validateStageWrites(ctx context.Context, s *session, record stageRecord, st
 		return err
 	}
 	if err := validateStageCheckPolicy(ctx, s, record, state.Tree); err != nil {
+		return err
+	}
+	if err := validateManagedStageGit(ctx, s, record, state); err != nil {
 		return err
 	}
 	if state.SourcePolicy != p.State.SourcePolicy {
@@ -348,21 +405,9 @@ func stageExpectation(r stageReceipt, expected string) error {
 }
 
 func existingStageReceipt(ctx context.Context, s *session, e *contextpack.Engine, ledger *stageLedger, record stageRecord, o stageFinishOptions) (stageReceipt, error) {
-	var r stageReceipt
-	if err := ledger.read(stageReceiptName(o), &r); err != nil {
+	r, err := readStageReceipt(ledger, record, o)
+	if err != nil {
 		return r, err
-	}
-	id := r.ID
-	r.ID = ""
-	if !stageValidID(id) || id != contextpack.Key(r) || r.DispatchID != o.id || r.Version != 1 {
-		return r, errors.New("finished stage receipt was tampered with")
-	}
-	r.ID = id
-	if err := validateStageReceiptSemantics(record, r); err != nil {
-		return r, err
-	}
-	if o.abandon != (r.Status == "abandoned") || !o.abandon && o.expect != r.ExpectChecks || o.abandon && o.reason != r.Reason {
-		return r, errors.New("repeat finish must use the original expectation or abandonment reason")
 	}
 	// Explicit abandonment grants no current write or quality approval. Retrying
 	// it can safely recover its saved receipt after an interrupted pointer removal.
@@ -382,8 +427,34 @@ func existingStageReceipt(ctx context.Context, s *session, e *contextpack.Engine
 	if state != r.State {
 		return r, errors.New("finished stage receipt is stale: source or HEAD changed")
 	}
-	if err := releaseCompletedStage(ledger, o.id); err != nil {
+	return r, releaseCompletedStage(ledger, o.id)
+}
+
+func readStageReceipt(ledger *stageLedger, record stageRecord, o stageFinishOptions) (stageReceipt, error) {
+	var r stageReceipt
+	if err := ledger.read(stageReceiptName(o), &r); err != nil {
 		return r, err
+	}
+	id := r.ID
+	r.ID = ""
+	if !stageValidID(id) || id != contextpack.Key(r) || r.DispatchID != o.id || r.Version != 1 {
+		return r, errors.New("finished stage receipt was tampered with")
+	}
+	r.ID = id
+	if err := validateStageReceiptSemantics(record, r); err != nil {
+		return r, err
+	}
+	if o.abandon != (r.Status == "abandoned") || !o.abandon && o.expect != r.ExpectChecks || o.abandon && o.reason != r.Reason {
+		return r, errors.New("repeat finish must use the original expectation or abandonment reason")
+	}
+	if (r.Commit != "") != (o.message != "") {
+		return r, errors.New("repeat finish must use the original delivery scope")
+	}
+	if r.Commit != "" {
+		var intent managedCommitIntent
+		if err := ledger.read(o.id+".commit.json", &intent); err != nil {
+			return r, errors.Join(err, errors.New("configured commit receipt has no saved authorization"))
+		}
 	}
 	return r, nil
 }
@@ -401,18 +472,25 @@ func validateStageReceiptSemantics(record stageRecord, r stageReceipt) error {
 	}
 	switch r.Status {
 	case "finished":
-		if !r.Writes || r.Reason != "" || r.ExpectChecks != "any" && r.ExpectChecks != "pass" && r.ExpectChecks != "fail" {
-			return errors.New("invalid finished stage receipt semantics")
-		}
-		return stageExpectation(r, r.ExpectChecks)
+		return validateCompletedStageReceipt(record, r)
 	case "abandoned":
-		if r.Writes || r.Verified || strings.TrimSpace(r.Reason) == "" || r.ExpectChecks != "" {
+		if r.Writes || r.Verified || strings.TrimSpace(r.Reason) == "" || r.ExpectChecks != "" || r.Commit != "" {
 			return errors.New("invalid abandoned stage receipt semantics")
 		}
 		return nil
 	default:
 		return errors.New("invalid stage receipt status")
 	}
+}
+
+func validateCompletedStageReceipt(record stageRecord, r stageReceipt) error {
+	if !r.Writes || r.Reason != "" || r.ExpectChecks != "any" && r.ExpectChecks != "pass" && r.ExpectChecks != "fail" {
+		return errors.New("invalid finished stage receipt semantics")
+	}
+	if r.Commit != "" && (!configuredGitStage(record) || r.Commit != r.State.Head || !r.Verified) {
+		return errors.New("invalid configured commit receipt")
+	}
+	return stageExpectation(r, r.ExpectChecks)
 }
 
 func releaseCompletedStage(ledger *stageLedger, id string) error {

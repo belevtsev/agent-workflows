@@ -2,6 +2,7 @@ package installers
 
 import (
 	"bytes"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -43,15 +44,23 @@ func TestRemoteMatchedHostInstall(t *testing.T) {
 				run.env["KITSU_INSTALL_TEST_VERSION"] = version
 				previous := []byte("previous installation")
 				writeFile(t, run.target, previous)
+				hostFile := filepath.Join(run.home, "installed-host")
+				writeFile(t, hostFile, []byte("previous host"))
 				output, err := run.run(false, hostFlag, tc.host)
 				if tc.fail {
 					if err == nil || !strings.Contains(output, plugin) || !bytes.Equal(readFile(t, run.target), previous) {
 						t.Fatalf("failed bundle must report the plugin and preserve the CLI: %v\n%s", err, output)
 					}
+					if got := string(readFile(t, hostFile)); got != "previous host" {
+						t.Fatalf("failed install changed default host to %q", got)
+					}
 					return
 				}
 				if err != nil || !strings.HasPrefix(run.installedVersion(), "kitsu "+version+"\n") {
 					t.Fatalf("matching bundle install: %v\n%s", err, output)
+				}
+				if got := string(readFile(t, hostFile)); got != tc.host {
+					t.Fatalf("default host = %q, want %q", got, tc.host)
 				}
 			})
 		}

@@ -15,12 +15,28 @@ const uxCheckoutConfigFile = "kitsu-cli.toml"
 
 func uxValidHost(host string) bool { return host == "codex" || host == "claude" }
 
-func uxConfigPaths(ctx context.Context) (checkout, personal string, err error) {
+func uxPersonalConfigPath() (string, error) {
 	dir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "kitsu", "config.toml"), nil
+}
+
+func uxInstalledHost() (string, error) {
+	path, err := uxPersonalConfigPath()
+	if err != nil {
+		return "", err
+	}
+	host, _, err := uxReadPreference(path)
+	return host, err
+}
+
+func uxConfigPaths(ctx context.Context) (checkout, personal string, err error) {
+	personal, err = uxPersonalConfigPath()
 	if err != nil {
 		return "", "", err
 	}
-	personal = filepath.Join(dir, "kitsu", "config.toml")
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", "", err
@@ -179,12 +195,12 @@ func uxConfigOperands(action string, p parsed, global bool) error {
 }
 
 func uxConfigTarget(ctx context.Context, global bool) (string, error) {
-	checkout, personal, err := uxConfigPaths(ctx)
+	if global {
+		return uxPersonalConfigPath()
+	}
+	checkout, _, err := uxConfigPaths(ctx)
 	if err != nil {
 		return "", failf("%v", err)
-	}
-	if global {
-		return personal, nil
 	}
 	if checkout == "" {
 		return "", usagef("checkout configuration requires a git working tree; use --global for personal settings")

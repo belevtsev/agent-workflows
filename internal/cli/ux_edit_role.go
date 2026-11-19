@@ -40,11 +40,23 @@ func uxEditRole(ctx context.Context, cfg Config, role, host string, global, acce
 	if err != nil {
 		return failf("%v", err)
 	}
+	configured := config.Version == roles.WorkflowConfigVersion
+	if configured {
+		if role == roles.Coordinator {
+			return usagef("configure coordinator skills with --global")
+		}
+		if _, err := config.SpecialistHost(host, role); err != nil {
+			return usagef("%v", err)
+		}
+	}
 	catalog, err := skills.DiscoverWithRoots(root, host, roots)
 	if err != nil {
 		return failf("%v", err)
 	}
-	draft := &UXEditor{Kind: "role", Host: host, Role: role, Path: path, Global: global, Accessible: accessible, AvailableSkills: catalog.Skills}
+	draft := &UXEditor{
+		Kind: "role", Host: host, Role: role, Path: path, Global: global, Accessible: accessible,
+		AvailableSkills: catalog.Skills, NativeEffort: configured,
+	}
 	draft.Skills = uxEditorSkillRefs(catalog, selectedSkills(config, host, role))
 	for _, r := range roles.All(config) {
 		if r.ID == role {
@@ -106,10 +118,11 @@ func uxEditorSkillRefs(catalog skills.Catalog, refs []string) []string {
 }
 
 func uxRoleEditorData(root string, roots []string, file uxSnapshot, initial, draft *UXEditor) ([]byte, error) {
-	if draft.Role != initial.Role || draft.Host != initial.Host || draft.Global != initial.Global {
+	if draft.Role != initial.Role || draft.Host != initial.Host || draft.Global != initial.Global || draft.NativeEffort != initial.NativeEffort {
 		return nil, fmt.Errorf("editor scope changed; reopen for the intended role and host")
 	}
-	if !draft.Global && draft.Role != roles.Coordinator && (strings.TrimSpace(draft.Model) == "" || strings.TrimSpace(draft.Reasoning) == "") {
+	emptyEffort := strings.TrimSpace(draft.Reasoning) == ""
+	if !draft.Global && draft.Role != roles.Coordinator && (strings.TrimSpace(draft.Model) == "" || emptyEffort && !draft.NativeEffort) {
 		return nil, fmt.Errorf("model and reasoning must not be empty")
 	}
 	catalog, err := skills.DiscoverWithRoots(root, initial.Host, roots)
@@ -134,5 +147,9 @@ func uxRoleEditorData(root string, roots []string, file uxSnapshot, initial, dra
 	if !file.exists {
 		data = []byte("version = 1\n")
 	}
-	return roles.EditSelection(data, initial.Host, initial.Role, uxRoleEditModel(initial, draft), refs, false, initial.Global)
+	updated, err := roles.EditSelection(data, initial.Host, initial.Role, uxRoleEditModel(initial, draft), refs, false, initial.Global)
+	if err == nil && draft.NativeEffort && emptyEffort && initial.Reasoning != "" {
+		return roles.ResetConfiguredEffort(updated, initial.Host, initial.Role)
+	}
+	return updated, err
 }

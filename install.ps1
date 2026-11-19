@@ -15,7 +15,10 @@ Leaves both user PATH and the current session PATH unchanged. Also set by KITSU_
 .PARAMETER ArchiveDir
 Reads the archive and SHA256SUMS locally, without network access. Defaults to KITSU_ARCHIVE_DIR.
 .PARAMETER AgentHost
-Installs the matching plugin and runs Kitsu agent setup for codex or claude.
+Installs the matching plugin and saves codex or claude as your default host.
+An interactive terminal offers a choice when this parameter is omitted.
+.PARAMETER CliOnly
+Installs the CLI without prompting for or setting up an agent host.
 .EXAMPLE
 irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 | iex
 .EXAMPLE
@@ -27,12 +30,13 @@ param(
     [string]$InstallDir = $env:KITSU_INSTALL_DIR,
     [switch]$NoModifyPath = ($env:KITSU_NO_MODIFY_PATH -eq '1'),
     [string]$ArchiveDir = $env:KITSU_ARCHIVE_DIR,
-    [string]$AgentHost
+    [string]$AgentHost,
+    [switch]$CliOnly
 )
 
 # Keep preferences and helper functions out of an interactive irm | iex session.
 & {
-    param($ReleaseVersion, $DestinationDir, $LeavePath, $LocalArchives, $SelectedHost, $HostSpecified)
+    param($ReleaseVersion, $DestinationDir, $LeavePath, $LocalArchives, $SelectedHost, $HostSpecified, $SkipHost)
     $ErrorActionPreference = 'Stop'
     Set-StrictMode -Version 2.0
 
@@ -221,9 +225,26 @@ param(
         }
     }
 
+    function Select-KitsuHost {
+        while ($true) {
+            try { $choice = Read-Host 'Choose a Kitsu host [1 Codex, 2 Claude Code, 3 CLI only]' }
+            catch [System.Management.Automation.PSInvalidOperationException] { return '' }
+            switch -Regex ($choice) {
+                '^(1|codex)$' { return 'codex' }
+                '^(2|claude)$' { return 'claude' }
+                '^(3)?$' { return '' }
+            }
+        }
+    }
+
     if ($PSVersionTable.PSVersion -lt [version]'5.1') { throw 'Kitsu requires PowerShell 5.1 or newer.' }
     # Invoke-Expression applies parameter attributes even for omitted arguments.
     if ($HostSpecified -and $SelectedHost -notin 'codex', 'claude') { throw '-AgentHost must be codex or claude.' }
+    if ($HostSpecified -and $SkipHost) { throw '-CliOnly and -AgentHost cannot be used together.' }
+    if (-not $HostSpecified -and -not $SkipHost -and $Host.Name -eq 'ConsoleHost' -and
+        -not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) {
+        $SelectedHost = Select-KitsuHost
+    }
     $isLocal = -not [string]::IsNullOrEmpty($LocalArchives)
     $remoteHost = $SelectedHost -and -not $isLocal
     $officialLatest = $remoteHost -and -not $ReleaseVersion -and -not $env:KITSU_DOWNLOAD_BASE
@@ -388,6 +409,14 @@ param(
                 [Console]::Error.WriteLine("Retry with this command.`n& '$retryExecutable' agent setup --host $SelectedHost --archive-dir '$retryArchiveDir'")
                 throw "$SelectedHost setup failed. $($_.Exception.Message)"
             }
+            try {
+                & $destination config set host $SelectedHost --global
+                if ($LASTEXITCODE -ne 0) { throw "Kitsu exited with code $LASTEXITCODE." }
+            }
+            catch {
+                $retryExecutable = $destination.Replace("'", "''")
+                throw "The plugin is set up, but saving the default host failed. $($_.Exception.Message)`n& '$retryExecutable' config set host $SelectedHost --global"
+            }
         }
     }
     finally {
@@ -397,4 +426,4 @@ param(
         if ($null -ne $stage) { Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue }
         Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
     }
-} $Version $InstallDir $NoModifyPath.IsPresent $ArchiveDir $AgentHost ($PSBoundParameters.ContainsKey('AgentHost'))
+} $Version $InstallDir $NoModifyPath.IsPresent $ArchiveDir $AgentHost ($PSBoundParameters.ContainsKey('AgentHost')) $CliOnly.IsPresent

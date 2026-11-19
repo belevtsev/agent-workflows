@@ -11,18 +11,19 @@ import (
 // Keep separate budgets for the gate and its supporting subsystems.
 // Test files and testdata do not count.
 const (
-	maxCoreLines         = 6316 // Includes submodule checks, index recovery and reliable checkout discovery.
-	maxRolesLines        = 4000
+	maxCoreLines         = 6340 // Includes submodule checks, index recovery and configured native spawn guards.
+	maxRolesLines        = 4375 // Existing per-host settings, single-host assignments and repository role initialization.
 	maxAdviserLines      = 4000 // CLI advisers plus native typed providers and usage records.
 	maxSkillLines        = 2000
-	maxUXLines           = 3576 // Shared routing, help, preferences, forms, completion and check approval.
+	maxUXLines           = 3715 // Shared routing, help, install defaults, forms, completion and approval.
 	maxOnboardingLines   = 2014 // Local setup diagnostics, verified plugin installation and explicit host handoff.
 	maxContextLines      = 2000 // Opt-in Go collection, briefs, compact checks and private artifacts.
-	maxWorkerLines       = 1400 // Saved dispatch, local intervals and bounded QE hints; no model execution.
+	maxWorkerLines       = 1500 // Saved dispatch, local intervals, bounded QE hints and configured handback checks.
 	maxProtocolLines     = 700  // Explicit native launch descriptions and bounded untrusted hand-backs.
 	maxStateLines        = 750  // Bounded coordinator projections, retained baselines and section deltas.
 	maxVerificationLines = 2200 // Behavioral plans, shared history and current local task observations.
 	maxInsightLines      = 3000 // Read-only workflow diagnostics, optional notes and explicit budget metadata.
+	maxConfiguredLines   = 4100 // Persisted role orchestration and native Codex and Claude Code adapters.
 )
 
 // rolesCode says whether a Go file belongs to the role workflow.
@@ -38,12 +39,25 @@ func rolesCode(file string) bool {
 	return false
 }
 
+func configuredWorkflowCode(file string) bool {
+	for _, prefix := range []string{
+		"internal/harness/workflow", "internal/gitx/harness_workflow", "internal/onboarding/workflow",
+		"internal/cli/harness_workflow", "internal/cli/worker_managed",
+	} {
+		if strings.HasPrefix(file, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	core, roles, advisers, skills, ux, onboarding, contextLines, workers, protocols, states := 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 	verificationLines := 0
 	harnessLines := 0
 	insightLines := 0
 	releaseLines := 0
+	configuredLines := 0
 	for _, file := range repoFiles(t) {
 		if !strings.HasSuffix(file, ".go") || strings.HasSuffix(file, "_test.go") || strings.Contains(file, "/testdata/") {
 			continue
@@ -53,7 +67,9 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 			t.Fatal(err)
 		}
 		lines := bytes.Count(data, []byte("\n"))
-		if strings.HasPrefix(file, "internal/tickets/") || strings.HasPrefix(file, "internal/gitx/harness_") || strings.HasPrefix(file, "internal/harness/") || strings.HasPrefix(file, "internal/cli/harness_") {
+		if configuredWorkflowCode(file) {
+			configuredLines += lines
+		} else if strings.HasPrefix(file, "internal/tickets/") || strings.HasPrefix(file, "internal/gitx/harness_") || strings.HasPrefix(file, "internal/harness/") || strings.HasPrefix(file, "internal/cli/harness_") {
 			harnessLines += lines
 		} else if strings.HasPrefix(file, "internal/insights/") || strings.HasPrefix(file, "internal/taskbudget/") || strings.HasPrefix(file, "internal/cli/usage_") {
 			insightLines += lines
@@ -94,10 +110,14 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	t.Logf("coordinator state: %d of %d lines", states, maxStateLines)
 	t.Logf("task verification: %d of %d lines", verificationLines, maxVerificationLines)
 	t.Logf("workflow insights: %d of %d lines", insightLines, maxInsightLines)
-	const maxHarnessLines = 4431 // Includes verified delivery, native review and the public ticket transport.
+	const maxHarnessLines = 4590 // Includes verified delivery, native review, and configured workflow hooks.
 	t.Logf("task harness: %d of %d lines", harnessLines, maxHarnessLines)
 	const maxReleaseLines = 410 // Repository-only release assembly, integrity and publication.
 	t.Logf("release automation: %d of %d lines", releaseLines, maxReleaseLines)
+	t.Logf("configured workflows: %d of %d lines", configuredLines, maxConfiguredLines)
+	if configuredLines > maxConfiguredLines {
+		t.Errorf("configured workflows hold %d lines of Go, want at most %d", configuredLines, maxConfiguredLines)
+	}
 	if releaseLines > maxReleaseLines {
 		t.Errorf("release automation holds %d lines of Go, want at most %d", releaseLines, maxReleaseLines)
 	}

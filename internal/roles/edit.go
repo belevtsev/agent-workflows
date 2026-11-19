@@ -18,15 +18,23 @@ func Edit(data []byte, host, role string, model Model, reset bool) ([]byte, erro
 
 // EditSelection changes explicit settings. A nil refs keeps skills; an empty
 // nonnil list clears them. Reset removes all overrides in the selected scope.
+// A version 2 host change starts with the new host's defaults and applies the supplied fields.
 func EditSelection(data []byte, host, role string, model Model, refs []string, reset, personal bool) ([]byte, error) {
-	if !slices.Contains(Hosts, host) || (!Known(role) && role != Coordinator) {
+	if !Known(role) && role != Coordinator {
 		return nil, fmt.Errorf("unknown host %q or role %q", host, role)
 	}
 	if (personal || role == Coordinator) && model != (Model{}) {
 		return nil, fmt.Errorf("only skills may be set in this scope")
 	}
-	if _, err := parseConfig(data, personal); err != nil {
+	config, err := parseConfig(data, personal)
+	if err != nil {
 		return nil, err
+	}
+	if config.Version == WorkflowConfigVersion {
+		return editWorkflowSelection(data, config, host, role, model, refs, reset)
+	}
+	if !slices.Contains(Hosts, host) {
+		return nil, fmt.Errorf("unknown host %q or role %q", host, role)
 	}
 	for _, field := range []struct {
 		key   string
@@ -46,6 +54,64 @@ func EditSelection(data []byte, host, role string, model Model, refs []string, r
 		return nil, err
 	}
 	return data, nil
+}
+
+func editWorkflowSelection(data []byte, config *Config, host, role string, model Model, refs []string, reset bool) ([]byte, error) {
+	if !Known(role) {
+		return nil, fmt.Errorf("configure coordinator skills in the personal roles file")
+	}
+	var err error
+	if reset || host == "" {
+		host, err = config.SpecialistHost(host, role)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if !slices.Contains(Hosts, host) {
+		return nil, fmt.Errorf("%s host must be codex or claude", role)
+	}
+	path := []string{"roles", role, "host"}
+	hostChanged := config.ConfiguredHost(role) != host
+	if hostChanged {
+		data, err = editField(data, path, host, false)
+		if err != nil {
+			return nil, err
+		}
+	}
+	for _, field := range []struct {
+		key   string
+		value any
+		set   bool
+	}{{"model", model.Model, model.Model != ""}, {"effort", model.Effort, model.Effort != ""}, {"skills", refs, refs != nil}} {
+		clear := reset || hostChanged && !field.set
+		if !clear && !field.set {
+			continue
+		}
+		path[2] = field.key
+		data, err = editField(data, path, field.value, clear)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if _, err := Parse(data); err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+// ResetConfiguredEffort returns the named role to the native host's default.
+func ResetConfiguredEffort(data []byte, host, role string) ([]byte, error) {
+	config, err := Parse(data)
+	if err != nil {
+		return nil, err
+	}
+	if config.Version != WorkflowConfigVersion {
+		return nil, fmt.Errorf("native effort inheritance requires version 2 in %s", FileName)
+	}
+	if _, err := config.SpecialistHost(host, role); err != nil {
+		return nil, err
+	}
+	return editField(data, []string{"roles", role, "effort"}, nil, true)
 }
 
 func editField(data []byte, path []string, value any, reset bool) ([]byte, error) {

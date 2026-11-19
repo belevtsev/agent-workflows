@@ -52,6 +52,7 @@ func nativeDispatchRecord(record stageRecord, id string) nativeDispatch {
 func runTaskDispatch(ctx context.Context, cfg Config, args []string) error {
 	flags := newFlags("task dispatch")
 	budget := flags.Int("max-bytes", contextpack.DefaultBytes, "")
+	run := flags.Bool("run", false, "")
 	flags.Bool("json", false, "")
 	p, err := parseArgs(flags, args)
 	if err != nil {
@@ -66,6 +67,9 @@ func runTaskDispatch(ctx context.Context, cfg Config, args []string) error {
 	s, err := open(ctx, cfg, true)
 	if err != nil {
 		return err
+	}
+	if *run {
+		return startManagedWorker(ctx, cfg, s, p.pos[0], *budget)
 	}
 	ledger, err := readOnlyStageLedger(s.repo.GitDir)
 	if err != nil {

@@ -30,6 +30,9 @@ func runSkills(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return err
 	}
+	if uxFlagSet(flags, "host") && !uxValidHost(*host) {
+		return usagef("--host must be codex or claude")
+	}
 	if err := validateSkillArguments(p, args[0], *host); err != nil {
 		return err
 	}
@@ -42,24 +45,26 @@ func runSkills(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return failf("%v", err)
 	}
+	if args[0] == "resolve" {
+		return resolveRoleSkills(cfg, root, *host, p.pos[0], task, workflow, roots, *asJSON)
+	}
 	catalog, err := skills.DiscoverWithRoots(root, *host, roots)
 	if err != nil {
 		return failf("%v", err)
 	}
-	if args[0] == "list" {
-		return printSkills(cfg, *host, catalog, *asJSON)
-	}
-	return resolveRoleSkills(cfg, root, *host, p.pos[0], task, workflow, catalog, *asJSON)
+	return printSkills(cfg, *host, catalog, *asJSON)
 }
 
 func validateSkillArguments(p parsed, mode, host string) error {
-	if p.dash || (host != "codex" && host != "claude") || (mode == "list" && len(p.pos) != 0) || (mode == "resolve" && len(p.pos) != 1) {
+	validList := mode == "list" && uxValidHost(host) && len(p.pos) == 0
+	validResolution := mode == "resolve" && (host == "" || uxValidHost(host)) && len(p.pos) == 1
+	if p.dash || !validList && !validResolution {
 		return usagef("skills %s requires --host claude|codex and %s; see `kitsu skills --help`", mode, map[string]string{"list": "no role", "resolve": "one role"}[mode])
 	}
 	return nil
 }
 
-func resolveRoleSkills(cfg Config, root, host, role, task, workflow string, catalog skills.Catalog, asJSON bool) error {
+func resolveRoleSkills(cfg Config, root, host, role, task, workflow string, roots []string, asJSON bool) error {
 	if !roles.Known(role) && role != roles.Coordinator {
 		return usagef("unknown role %q", role)
 	}
@@ -67,6 +72,14 @@ func resolveRoleSkills(cfg Config, root, host, role, task, workflow string, cata
 		return failf("recording a skill selection requires a git working tree")
 	}
 	config, err := roles.Load(root)
+	if err != nil {
+		return failf("%v", err)
+	}
+	host, err = roleSkillHost(config, host, role)
+	if err != nil {
+		return usagef("%v", err)
+	}
+	catalog, err := skills.DiscoverWithRoots(root, host, roots)
 	if err != nil {
 		return failf("%v", err)
 	}
@@ -83,6 +96,16 @@ func resolveRoleSkills(cfg Config, root, host, role, task, workflow string, cata
 		}
 	}
 	return printSkillResolution(cfg, host, role, refs, entries, id, asJSON)
+}
+
+func roleSkillHost(config *roles.Config, host, role string) (string, error) {
+	if role != roles.Coordinator {
+		return config.SpecialistHost(host, role)
+	}
+	if !uxValidHost(host) {
+		return "", fmt.Errorf("coordinator skills require --host codex|claude")
+	}
+	return host, nil
 }
 
 func skillWorkingRoot(ctx context.Context) (string, error) {

@@ -33,7 +33,9 @@ func runUXSkillEdit(ctx context.Context, cfg Config, action string, args []strin
 		return err
 	}
 	needsSkill := action == "attach" || action == "detach"
-	if p.dash || needsSkill && len(p.pos) != 1 || !needsSkill && len(p.pos) != 0 || !slices.Contains(roles.Hosts, *host) || !roles.Known(*role) && *role != roles.Coordinator {
+	validOperands := needsSkill && len(p.pos) == 1 || !needsSkill && len(p.pos) == 0
+	validRole := roles.Known(*role) || *role == roles.Coordinator
+	if p.dash || !validOperands || !validRole || uxFlagSet(flags, "host") && !uxValidHost(*host) {
 		return usagef("%s requires a valid --host, --role and %s", action, map[bool]string{true: "one skill reference", false: "no skill argument"}[needsSkill])
 	}
 	change := uxSkillChange{action: action, host: *host, role: *role, roots: roots, global: *global}
@@ -48,7 +50,11 @@ func runUXSkillEdit(ctx context.Context, cfg Config, action string, args []strin
 	if err != nil {
 		return failf("skill settings were not changed: %v", err)
 	}
-	return printSkillRoleSelection(cfg, *host, *role, config, path, *global, *asJSON)
+	selectedHost := change.host
+	if config.Version == roles.WorkflowConfigVersion {
+		selectedHost = config.ConfiguredHost(change.role)
+	}
+	return printSkillRoleSelection(cfg, selectedHost, change.role, config, path, *global, *asJSON)
 }
 
 func uxWriteSkillChange(ctx context.Context, root, path, lockPath string, change uxSkillChange) (*roles.Config, error) {
@@ -63,6 +69,13 @@ func uxWriteSkillChange(ctx context.Context, root, path, lockPath string, change
 	}
 	defer func() { _ = lock.Close() }()
 	config, err := uxSkillScope(root, change.global)
+	if err != nil {
+		return nil, err
+	}
+	if config.Version == roles.WorkflowConfigVersion && change.role == roles.Coordinator {
+		return nil, fmt.Errorf("configure coordinator skills with --global")
+	}
+	change.host, err = roleSkillHost(config, change.host, change.role)
 	if err != nil {
 		return nil, err
 	}

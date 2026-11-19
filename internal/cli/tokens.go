@@ -143,6 +143,9 @@ func runTokensRecord(ctx context.Context, cfg Config, args []string) error {
 		return failf("%v", err)
 	}
 	if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err != nil && !hasLocalHarnessTasks(repo) {
+		if !bad {
+			return observeManagedReview(ctx, repo, *host, notice)
+		}
 		return nil
 	}
 	if bad {
@@ -150,9 +153,11 @@ func runTokensRecord(ctx context.Context, cfg Config, args []string) error {
 	}
 	switch notice.Event {
 	case "SubagentStart":
-		return observeNativeReview(ctx, repo, *host, notice)
+		return errors.Join(observeNativeReview(ctx, repo, *host, notice), observeManagedReview(ctx, repo, *host, notice))
 	case "SubagentStop":
-		return errors.Join(observeNativeReview(ctx, repo, *host, notice), tokens.Record(ctx, tokensDir(repo), *host, notice))
+		return errors.Join(observeNativeReview(ctx, repo, *host, notice), observeManagedReview(ctx, repo, *host, notice),
+			tokens.Record(ctx, tokensDir(repo), *host, notice),
+		)
 	}
 	if err := tokens.Record(ctx, tokensDir(repo), *host, notice); err != nil {
 		return failf("%v", err)

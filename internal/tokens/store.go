@@ -48,12 +48,14 @@ type Start struct {
 
 // Notice is what a host gives its hook when a role or a session ends.
 type Notice struct {
-	Event           string `json:"hook_event_name"`
-	LastAssistant   string `json:"last_assistant_message"`
-	Session         string `json:"session_id"`
-	Transcript      string `json:"transcript_path"`
-	AgentID         string `json:"agent_id"`
-	AgentTranscript string `json:"agent_transcript_path"`
+	Model           string          `json:"model"`
+	Effort          json.RawMessage `json:"effort"`
+	Event           string          `json:"hook_event_name"`
+	LastAssistant   string          `json:"last_assistant_message"`
+	Session         string          `json:"session_id"`
+	Transcript      string          `json:"transcript_path"`
+	AgentID         string          `json:"agent_id"`
+	AgentTranscript string          `json:"agent_transcript_path"`
 	// AgentType is the name of the role as the host knows it. A plugin's
 	// role has the plugin's name and a colon before its own.
 	AgentType string `json:"agent_type"`

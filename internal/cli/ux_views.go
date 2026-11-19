@@ -65,6 +65,9 @@ func runUXRoleShow(ctx context.Context, cfg Config, args []string) error {
 		return failf("%v", err)
 	}
 	id := p.pos[0]
+	if config.Version == roles.WorkflowConfigVersion && id != roles.Coordinator {
+		return printConfiguredRole(cfg, config, id, options, access)
+	}
 	selected := roles.Role{ID: id, Job: "Coordinates roles and records", Writes: "workflow coordination records", Models: map[string]roles.Model{}}
 	for _, host := range roles.Hosts {
 		selected.Models[host] = roles.Model{Model: "host session", Effort: "host setting"}
@@ -103,6 +106,27 @@ func runUXRoleShow(ctx context.Context, cfg Config, args []string) error {
 	}
 	writeRoleLine(cfg.Out, "Advisers: "+adviserListText(access, id))
 	return nil
+}
+
+func printConfiguredRole(cfg Config, config *roles.Config, id string, options uxViewArgs, access map[string][]string) error {
+	if _, err := config.SpecialistHost(options.host, id); err != nil {
+		return usagef("%v", err)
+	}
+	for _, role := range roles.All(config) {
+		if role.ID != id {
+			continue
+		}
+		view := viewConfiguredRole(config, role, access)
+		if options.json {
+			return printJSON(cfg, view)
+		}
+		fmt.Fprintf(cfg.Out, "%s: %s\nMay change: %s\n", id, view.Job, view.Writes)
+		writeRoleLine(cfg.Out, fmt.Sprintf("%s: %s, reasoning %s", view.Host, view.Model.Model, roleEffortText(view.Effort)))
+		writeRoleLine(cfg.Out, "  Skills: "+skillListText(view.Skills))
+		writeRoleLine(cfg.Out, "Advisers: "+adviserListText(access, id))
+		return nil
+	}
+	return failf("role %q is unavailable", id)
 }
 
 func runUXSkillShow(ctx context.Context, cfg Config, args []string) error {

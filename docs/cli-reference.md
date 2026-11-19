@@ -526,6 +526,53 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
 ```
 
+### kitsu task run
+
+```text
+usage: kitsu task run <request> | --resume <task> [options]
+
+Run or resume the repository's configured role workflow.
+
+Arguments:
+  <request>          one complete developer request
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --id <task>              save a new task under this ID
+  --resume <task>          resume the saved role assignments and evidence
+  --until <outcome>        finish at plan, implement, review, verify or deliver
+  --entry <stage>          start at plan, implement, tests, review or verify
+  --repair                 authorize source repairs on an existing candidate
+  --commit                 deliver one verified local commit
+  --include <path>         include a pre-existing change in the authorized
+                           commit
+  --expect <text>          preauthorize an assertion with -- PROGRAM ARGS
+  --require-review         require an independent review of the candidate
+  --native-host <host>     offer compatible assignments to this authenticated
+                           host session
+  --actor <session>        current native parent session for --native-host
+  --retry                  retry the current stage after resolving a reported
+                           problem
+  --approve-assertion      review and approve the saved assertion in your
+                           terminal
+  --release <attempt>      reconcile an outstanding attempt after confirming its
+                           worker stopped
+  --rework-limit <count>   maximum automatic test and code rework starts
+  --json                   return a bounded task status or native assignment
+  --time-limit <duration>  time remaining before the task pauses
+  --review-limit <count>   maximum total independent review starts, including
+                           released reservations
+  --finish-reserve <duration> time before the deadline reserved from new reviews
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task run "Fix CSV quoting" --until verify
+  kitsu task run --resume export-quoting
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
 ### kitsu task brief
 
 ```text
@@ -537,7 +584,7 @@ Arguments:
   <task>             task name: lowercase words joined by hyphens
 
 Options:
-  --host <codex|claude>    required host
+  --host <codex|claude>    host if the repository does not configure this role
   --role <role>            required specialist role
   --stage <stage>          required explicit worker stage
   --round <number>         required positive worker round
@@ -552,9 +599,6 @@ Options:
   --json                   print JSON; collection, show and brief always use
                            JSON
   --help, -h               show this command's help without executing it
-
-Host: --host > KITSU_HOST > private checkout preference > personal preference.
-Set a preference with `kitsu config set host codex` (or add --global).
 
 Examples:
   kitsu task brief fix-login --role developer --stage code --round 1 --host codex --workflow small --assignment assignment.txt --save
@@ -574,7 +618,7 @@ Arguments:
   <task>             task name: lowercase words joined by hyphens
 
 Options:
-  --host <codex|claude>    required host
+  --host <codex|claude>    host if the repository does not configure this role
   --role <role>            required specialist role
   --stage <stage>          required explicit stage
   --round <number>         required positive worker round
@@ -592,9 +636,6 @@ Options:
                            JSON
   --help, -h               show this command's help without executing it
 
-Host: --host > KITSU_HOST > private checkout preference > personal preference.
-Set a preference with `kitsu config set host codex` (or add --global).
-
 Examples:
   kitsu task prepare fix-login --role developer --stage code --round 1 --host codex --workflow small --assignment assignment.txt
 
@@ -607,12 +648,14 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ```text
 usage: kitsu task dispatch <dispatch-id> [options]
 
-Read the original full native dispatch without preparing or executing a worker.
+Read the original native dispatch or run its configured worker explicitly.
 
 Arguments:
   <dispatch-id>      immutable private interval id returned by task prepare in this worktree
 
 Options:
+  --run                    run one worker from a prepared version 2 role
+                           assignment
   --max-bytes <bytes>      maximum response bytes; default 16384, range 512 to
                            1048576
   --json                   print JSON; these explicit compact helpers always use
@@ -621,6 +664,7 @@ Options:
 
 Examples:
   kitsu task dispatch <dispatch-id>
+  kitsu task dispatch <dispatch-id> --run
 
 Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
@@ -669,6 +713,10 @@ Options:
                                   failures
   --abandon                record abandonment and release the interval; gives no
                            write or quality approval
+  --message <text>         explicitly commit the verified and already staged
+                           candidate for a configured git worker
+  --include <path>         authorize one changed path in that commit; repeat for
+                           every path
   --reason <text>          required explanation with --abandon; cannot combine
                            abandonment with --expect-checks
   --max-bytes <bytes>      maximum response bytes; default 16384, range 512 to
@@ -848,6 +896,30 @@ Selections grant no extra permissions and do not prove host loading.
 
 Examples:
   kitsu role show developer
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu role init
+
+```text
+usage: kitsu role init [options]
+
+Create repository role assignments from your installed host or --host.
+
+Options:
+  --host <codex|claude>    override the saved CLI host preference
+  --json                   print machine-readable JSON without prompts or
+                           styling
+  --help, -h               show this command's help without executing it
+
+Role settings: repository skills replace personal lists; clear pins none; reset
+restores inheritance. Personal settings and coordinator accept only skills.
+Selections grant no extra permissions and do not prove host loading.
+
+Examples:
+  kitsu role init
 
 Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.

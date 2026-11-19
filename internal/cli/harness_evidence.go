@@ -29,6 +29,10 @@ type verificationLogRef struct {
 }
 
 type harnessView struct {
+	AssignedRole      string                `json:"assigned_role,omitempty"`
+	AssignedHost      string                `json:"assigned_host,omitempty"`
+	WorkflowAttempt   string                `json:"workflow_attempt,omitempty"`
+	WorkflowProblem   string                `json:"workflow_problem,omitempty"`
 	TicketMarkdown    string                `json:"ticket_markdown,omitempty"`
 	TicketSource      *harness.TicketSource `json:"ticket_source,omitempty"`
 	ActorSessions     []tokens.Session      `json:"actor_session_usage,omitempty"`
@@ -98,6 +102,13 @@ func observeHarness(ctx context.Context, s *session, t *harness.Task, withUsage 
 		v.describeBug(t)
 	} else if err := v.observeCurrentHarness(ctx, s, t); err != nil {
 		return v, err
+	}
+	if w := t.Workflow; w != nil && v.Next != "done" {
+		v.AssignedRole = harness.WorkflowRole(v.Next)
+		if a := w.Active; a != nil {
+			v.WorkflowAttempt, v.AssignedRole = a.ID, a.Role
+		}
+		v.AssignedHost, v.WorkflowProblem = w.Roles[v.AssignedRole].Host, w.Problem
 	}
 	v.timing(t)
 	if withUsage {
@@ -451,6 +462,15 @@ func (v harnessView) brief() map[string]any {
 	}
 	if v.ReviewPolicyError != "" {
 		reply["review_policy_error"] = v.ReviewPolicyError
+	}
+	if v.AssignedRole != "" {
+		reply["assigned_role"], reply["assigned_host"] = v.AssignedRole, v.AssignedHost
+	}
+	if v.WorkflowAttempt != "" {
+		reply["workflow_attempt"] = v.WorkflowAttempt
+	}
+	if v.WorkflowProblem != "" {
+		reply["workflow_problem"] = v.WorkflowProblem
 	}
 	if v.RepositoryPolicy != "" {
 		reply["repository_policy"] = v.RepositoryPolicy

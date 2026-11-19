@@ -24,6 +24,7 @@ type workerBrief struct {
 	Stage        string         `json:"stage"`
 	Round        int            `json:"round"`
 	Host         string         `json:"host"`
+	Configured   bool           `json:"configured_routing,omitempty"`
 	Compact      bool           `json:"compact"`
 	Model        roles.Model    `json:"model"`
 	Writes       string         `json:"writes"`
@@ -48,6 +49,11 @@ func briefInputs(s *session, b workerBrief) (workerBrief, []skills.Entry, error)
 	if err != nil {
 		return b, nil, err
 	}
+	b.Host, err = config.SpecialistHost(b.Host, b.Role)
+	if err != nil {
+		return b, nil, err
+	}
+	b.Configured = config.Version == roles.WorkflowConfigVersion
 	for _, role := range roles.All(config) {
 		if role.ID == b.Role {
 			b.Model, b.Writes = role.Models[b.Host], role.Writes
@@ -76,7 +82,7 @@ func briefInputs(s *session, b workerBrief) (workerBrief, []skills.Entry, error)
 	} else if !errors.Is(err, advisers.ErrNoBinding) {
 		return b, nil, err
 	}
-	if b.Host == "claude" {
+	if b.Host == "claude" && !b.Configured {
 		b.NativeRole = "kitsu:" + b.Role
 	} else {
 		b.Instructions, err = roles.Text(b.Role)
@@ -93,7 +99,27 @@ func briefInputs(s *session, b workerBrief) (workerBrief, []skills.Entry, error)
 		Binding      *advisers.Binding
 		Instructions string
 	}{b.Model, b.Writes, b.TestPaths, b.Skills, b.Warnings, binding, b.Instructions})
+	if b.Configured {
+		b.Policy = contextpack.Key([]string{b.Policy, b.Host})
+	}
 	return b, entries, nil
+}
+
+// A configured role determines its own host. A host preference continues to
+// apply to manual briefs in repositories without role routing.
+func selectBriefHost(ctx context.Context, s *session, b *workerBrief) error {
+	if b.Host != "" {
+		return nil
+	}
+	config, err := roles.Load(s.repo.Root)
+	if err != nil || config.Version == roles.WorkflowConfigVersion {
+		return err
+	}
+	b.Host, _, err = uxHostPreference(ctx)
+	if err == nil && b.Host == "" {
+		return usagef("select --host codex|claude or save a preference with `kitsu config set host <host>`")
+	}
+	return err
 }
 
 func runTaskBrief(ctx context.Context, cfg Config, args []string) error {
@@ -131,6 +157,9 @@ func runTaskBrief(ctx context.Context, cfg Config, args []string) error {
 	}
 	s, _, err := compactEngine(ctx, cfg)
 	if err != nil {
+		return err
+	}
+	if err := selectBriefHost(ctx, s, &b); err != nil {
 		return err
 	}
 	ledger, err := openStageLedger(ctx, s)
@@ -188,6 +217,9 @@ func prepareBriefInputs(ctx context.Context, cfg Config, b workerBrief, budget i
 			return b, state, s, e, usagef("--workflow full requires a full task folder")
 		}
 		b.State = views[0]
+		if err := validateConfiguredStage(b); err != nil {
+			return b, state, s, e, err
+		}
 		for _, file := range []string{"proposal.md", "specs/", "design.md", "tasks.md", "tests.md"} {
 			b.References = append(b.References, roles.ChangeFolder(b.Task)+file)
 		}
@@ -204,9 +236,15 @@ func prepareBriefInputs(ctx context.Context, cfg Config, b workerBrief, budget i
 	if budget > 0 && len(metadata)+1024 > budget {
 		return b, state, s, e, usagef("budget cannot hold mandatory worker instructions; increase --max-bytes")
 	}
-	b.Selection, err = skills.RecordSelection(s.repo.Root, b.Task, b.Workflow, b.Host, b.Role, entries)
-	if err != nil {
-		return b, state, s, e, compactFailure(err)
+	if b.Configured && b.Workflow == "full" && b.Role == "git" {
+		// The saved dispatch pins the skill references without adding a file to
+		// the already approved and verified OpenSpec candidate.
+		b.Selection = contextpack.Key(b.Skills)
+	} else {
+		b.Selection, err = skills.RecordSelection(s.repo.Root, b.Task, b.Workflow, b.Host, b.Role, entries)
+		if err != nil {
+			return b, state, s, e, compactFailure(err)
+		}
 	}
 	// The receipt MUST precede the role's baseline, otherwise it looks like a worker write.
 	state, err = e.Snapshot(ctx)
@@ -248,7 +286,7 @@ func briefConstraints(role string) []string {
 
 func validBriefArgs(p parsed, b workerBrief) bool {
 	stages := map[string]string{"lookup": "lookup", "spec": "spec-writer", "spec-review": "reviewer", "design": "architect", "design-review": "reviewer", "tests": "quality-engineer", "code": "developer", "review": "reviewer", "commit": "git"}
-	return !p.dash && len(p.pos) == 1 && taskName.MatchString(p.pos[0]) && roles.Known(b.Role) && uxValidHost(b.Host) && stages[b.Stage] == b.Role && b.Round > 0 && (b.Workflow == "full" || b.Workflow == "small")
+	return !p.dash && len(p.pos) == 1 && taskName.MatchString(p.pos[0]) && roles.Known(b.Role) && (b.Host == "" || uxValidHost(b.Host)) && stages[b.Stage] == b.Role && b.Round > 0 && (b.Workflow == "full" || b.Workflow == "small")
 }
 
 func validateCompactMetadata(ctx context.Context, s *session, a contextpack.Artifact) error {

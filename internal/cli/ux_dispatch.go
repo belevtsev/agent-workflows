@@ -100,7 +100,7 @@ func uxExecuteLeaf(ctx context.Context, cfg Config, c uxCommand, remaining []str
 		return uxPrintLeaf(cfg, c)
 	}
 	var err error
-	if c.host {
+	if c.host && !uxUsesConfiguredRoleHost(ctx, c.path, remaining) {
 		remaining, err = uxHostArgs(ctx, remaining, c.requiredHost)
 	}
 	if err == nil {
