@@ -45,6 +45,7 @@ func runCodexWorkflow(ctx context.Context, executable, scratch string, worker Wo
 	run := proc.Run(runCtx, proc.Spec{
 		Path: executable, Args: append(args, "-"), Dir: worker.Root, Env: os.Environ(),
 		Stdin: strings.NewReader(worker.Prompt), Stdout: stream, StderrLimit: 8 << 10,
+		WaitDelay: workflowOutputDrain,
 	})
 	output.result.Started = output.result.Started || workflowProcessCouldRun(run)
 	output.result.Exited = workflowProcessExited(run)

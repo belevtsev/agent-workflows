@@ -4,11 +4,11 @@
 
 # Kitsu
 
-Kitsu coordinates coding tasks in **Codex** and **Claude Code**. It remembers the request, each role’s work, and the checks that verify the result in your Git worktree.
+**Coordinate Codex and Claude Code from a ticket to a verified change.**
 
-Start with a partial CSV fix. Ask Codex to reproduce the remaining quoting bug and save the task ID. Open Claude Code in the **same worktree** and resume that ID to repair, verify and commit the fix with your approval. You can start in either host.
+Give Kitsu an issue, a design, or an unfinished patch. In the configured workflow preview, you choose which host plans, writes tests, implements, and reviews. Kitsu passes work between roles, runs the checks, and keeps the request and evidence under one task ID. Start in either plugin and pick up where you left off in the same Git worktree. [See Codex and Claude Code work on one task](#how-kitsu-works)
 
-**Preview.** Export a shareable Markdown receipt with `kitsu task receipt ID --markdown`. It identifies the exact verified commit and the recorded checks. Try both directions with the [verified handoff preview guide](docs/verified-handoff-preview.md).
+When the change is ready, share which patch or commit passed and the checks behind it with `kitsu task receipt ID --markdown`. [Try a verified handoff](docs/verified-handoff-preview.md)
 
 ## Install
 
@@ -254,11 +254,13 @@ In Claude Code, start the same request with `/kitsu:task`. Install and sign in t
 
 ## How Kitsu works
 
-<img src="docs/diagrams/overview.svg" alt="The installer saves a default host. Repository settings can assign a host, model and effort to each role. Kitsu pins roles and scope when a task starts, dispatches each role, and verifies the candidate using the repository checks. Reopen the saved task to resume or export its verification receipt." width="100%">
+Codex plans a CSV quoting fix. Kitsu passes the plan to Claude Code to write a regression test, checks that it fails for the expected reason, and dispatches the repair. Kitsu then verifies the change and sends it to a separate Codex reviewer when review is required. Your role settings decide which host does each job.
 
-Ask either plugin to use the configured workflow, or run `kitsu task run "Fix CSV quoting" --until verify`. Resume with `kitsu task run --resume TASK_ID` in the same worktree. Kitsu runs a behavior check and the repository’s required checks. A separate reviewer runs when you or the repository require one.
+<img src="docs/diagrams/configured-workflow.svg" alt="Kitsu opens a task and pins its role settings. Codex plans the change, then Kitsu records the plan and dispatches tests to Claude Code. Kitsu checks the baseline before Claude Code implements the change. Kitsu verifies the result, routes it to a Codex reviewer when required, and reports the saved evidence." width="100%">
 
-[Follow a bug ticket to its verified commit](docs/task-harness.md#deliver-a-bug-ticket) · [See how managed specialist roles work](docs/workflow.md#the-flow)
+Ask either plugin to use the configured workflow, or run `kitsu task run "Fix CSV quoting" --until verify`. Resume with `kitsu task run --resume TASK_ID` in the same worktree. When repairs are authorized, Kitsu routes findings to the assigned role and verifies the updated candidate.
+
+[See the architecture and managed roles](docs/workflow.md) · [Follow a bug ticket to its verified commit](docs/task-harness.md#deliver-a-bug-ticket)
 
 <a name="the-roles"></a>
 

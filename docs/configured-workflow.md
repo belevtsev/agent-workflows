@@ -74,7 +74,9 @@ Daily workflows derive test paths from the repository and can use an optional `[
 
 ## Follow the evidence
 
-<img src="diagrams/configured-workflow.svg" alt="Start or resume from either host or a terminal. Kitsu pins the role settings. The chosen architect and test writer prepare behavior and a focused test. Kitsu checks the baseline, dispatches implementation to its assigned host, verifies the candidate and uses the assigned reviewer when required." width="100%">
+The diagram uses the assignments from the TOML example above. Kitsu saves each completed assignment and hands the task to the role configured for the next step.
+
+<img src="diagrams/configured-workflow.svg" alt="Kitsu pins the role settings and dispatches architecture to Codex. It records the Codex plan and sends test writing to Claude Code. Kitsu checks the baseline, Claude Code implements the change, and Kitsu verifies it. A separate Codex reviewer inspects the verified candidate when required." width="100%">
 
 1. The architect reads the current checkout and records the intended behavior, source and test boundaries, and expected baseline.
 2. The test writer works inside the approved test paths. Kitsu runs the focused check and retains the observation. For a change in behavior, the pre-code failure must show the planned reason. For a refactor, the pre-code check should pass.

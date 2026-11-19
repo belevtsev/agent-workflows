@@ -84,6 +84,7 @@ func runClaudeWorkflow(ctx context.Context, executable, scratch string, worker W
 	run := proc.Run(runCtx, proc.Spec{
 		Path: executable, Args: append(args, "--", instruction), Dir: worker.Root, Env: environment,
 		Stdin: strings.NewReader(prompt), Stdout: stream, StderrLimit: 8 << 10,
+		WaitDelay: workflowOutputDrain,
 	})
 	output.result.Started = output.result.Started || workflowProcessCouldRun(run)
 	output.result.Exited = workflowProcessExited(run)

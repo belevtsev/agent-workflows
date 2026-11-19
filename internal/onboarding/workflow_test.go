@@ -47,6 +47,24 @@ func TestWorkflowOrdinaryHosts(t *testing.T) {
 	}
 }
 
+func TestWorkflowCompletesWithDelayedSessionRegistration(t *testing.T) {
+	for _, host := range []string{"codex", "claude"} {
+		t.Run(host, func(t *testing.T) {
+			worker := setupWorkflowFixture(t, host, host, "high")
+			t.Setenv("GORACE", os.Getenv("GORACE")+" atexit_sleep_ms=0")
+			worker.OnSession = func(string) error {
+				// The native host can exit while the ledger records its session.
+				time.Sleep(350 * time.Millisecond)
+				return nil
+			}
+			result, err := RunWorkflowWorker(t.Context(), worker)
+			if err != nil || !result.Exited || !result.Terminal || string(result.Payload) != `{"note":"complete"}` {
+				t.Fatalf("result = %+v, %s, %v", result, result.Payload, err)
+			}
+		})
+	}
+}
+
 func TestWorkflowOrdinaryResultRequiresNativeCompletion(t *testing.T) {
 	for _, tc := range []struct{ host, mode, diagnostic string }{
 		{"codex", "codex-incomplete", "completed native turn"},

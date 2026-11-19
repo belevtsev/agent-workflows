@@ -22,6 +22,8 @@ const (
 	workflowPromptLimit = 256 << 10
 	workflowResultLimit = 64 << 10
 	workflowSchemaLimit = 8 << 10
+	// Output handling may still be recording a native session when the host exits.
+	workflowOutputDrain = 2 * time.Second
 )
 
 var workflowSessionID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$`)

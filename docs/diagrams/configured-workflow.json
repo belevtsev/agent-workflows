@@ -2,41 +2,40 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "A configured daily Kitsu task",
+    "title": "Example workflow across Codex and Claude Code",
     "locale": "en",
     "quality_profile": "showcase",
     "output": ".archify/configured-workflow.html",
     "legend": {
       "entries": {
-        "external": {"label": "Developer"},
-        "backend": {"label": "Native specialist"},
+        "backend": {"label": "Assigned specialist"},
         "frontend": {"label": "Kitsu CLI"}
       }
     }
   },
   "lanes": [
-    {"id": "developer", "label": "Developer"},
-    {"id": "worker", "label": "Role"},
-    {"id": "local", "label": "Kitsu CLI"}
+    {"id": "codex", "label": "Codex"},
+    {"id": "kitsu", "label": "Kitsu CLI"},
+    {"id": "claude", "label": "Claude Code"}
   ],
   "nodes": [
-    {"id": "request", "lane": "developer", "col": 0, "type": "external", "icon": "person", "label": "Start or resume", "sublabel": "either host or CLI"},
-    {"id": "saved", "lane": "local", "col": 0, "type": "frontend", "label": "Pin roles", "sublabel": "host + settings", "width": 92},
-    {"id": "plan", "lane": "worker", "col": 1, "type": "backend", "label": "Architecture", "sublabel": "behavior and scope"},
-    {"id": "tests", "lane": "worker", "col": 2, "type": "backend", "label": "Write tests", "sublabel": "approved test paths", "width": 88},
-    {"id": "baseline", "lane": "local", "col": 2, "type": "frontend", "label": "Baseline", "sublabel": "before code", "width": 88},
-    {"id": "implementation", "lane": "worker", "col": 3, "type": "backend", "label": "Implement", "sublabel": "preserve tests"},
-    {"id": "verify", "lane": "local", "col": 3, "type": "frontend", "label": "Verify", "sublabel": "assertion and checks", "width": 92},
-    {"id": "review", "lane": "worker", "col": 4, "type": "backend", "label": "Review", "sublabel": "if required"},
-    {"id": "finish", "lane": "local", "col": 5, "type": "frontend", "label": "Report result", "sublabel": "scope and evidence", "width": 88}
+    {"id": "saved", "lane": "kitsu", "col": 0, "type": "frontend", "label": "Open task", "sublabel": "pin role settings", "width": 94},
+    {"id": "plan", "lane": "codex", "col": 1, "type": "backend", "label": "Architecture", "sublabel": "behavior and scope", "width": 92},
+    {"id": "handoff", "lane": "kitsu", "col": 1, "type": "frontend", "label": "Save plan", "sublabel": "dispatch testing", "width": 92},
+    {"id": "tests", "lane": "claude", "col": 2, "type": "backend", "label": "Write tests", "sublabel": "approved test paths", "width": 88},
+    {"id": "baseline", "lane": "kitsu", "col": 2, "type": "frontend", "label": "Baseline", "sublabel": "before code", "width": 88},
+    {"id": "implementation", "lane": "claude", "col": 3, "type": "backend", "label": "Implement", "sublabel": "preserve tests", "width": 88},
+    {"id": "verify", "lane": "kitsu", "col": 3, "type": "frontend", "label": "Verify", "sublabel": "assertion and checks", "width": 92},
+    {"id": "review", "lane": "codex", "col": 4, "type": "backend", "label": "Review", "sublabel": "if required", "width": 90},
+    {"id": "finish", "lane": "kitsu", "col": 5, "type": "frontend", "label": "Report result", "sublabel": "scope and evidence", "width": 88}
   ],
   "edges": [
-    {"id": "request-saved", "from": "request", "to": "saved", "route": "drop", "fromSide": "bottom", "toSide": "top"},
     {"id": "saved-plan", "from": "saved", "to": "plan", "fromSide": "right", "toSide": "left"},
-    {"id": "plan-tests", "from": "plan", "to": "tests"},
-    {"id": "tests-baseline", "from": "tests", "to": "baseline", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "plan-handoff", "from": "plan", "to": "handoff", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "handoff-tests", "from": "handoff", "to": "tests", "fromSide": "right", "toSide": "left"},
+    {"id": "tests-baseline", "from": "tests", "to": "baseline", "fromSide": "top", "toSide": "bottom"},
     {"id": "baseline-implementation", "from": "baseline", "to": "implementation", "fromSide": "right", "toSide": "left"},
-    {"id": "implementation-verify", "from": "implementation", "to": "verify", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "implementation-verify", "from": "implementation", "to": "verify", "fromSide": "top", "toSide": "bottom"},
     {"id": "verify-review", "from": "verify", "to": "review", "fromSide": "right", "toSide": "left"},
     {"id": "verify-finish", "from": "verify", "to": "finish", "variant": "dashed"},
     {"id": "review-finish", "from": "review", "to": "finish", "fromSide": "right", "toSide": "top"}
