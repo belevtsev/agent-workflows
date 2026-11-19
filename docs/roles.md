@@ -23,7 +23,7 @@ With [compact context](compact-context.md), the coordinator prepares a fresh wor
 `kitsu task prepare`. The saved brief includes current model/reasoning, original selected skills,
 write limits, factual task state and allowed advisers. Selection receipts precede its baseline;
 `task finish <dispatch-id>` checks the saved write interval and existing evidence. Use explicit
-`--expect-checks pass|fail` for required outcomes. The coordinator can launch the fresh worker in its host or explicitly run a [configured dispatch](configured-workflow.md#run-a-managed-openspec-role).
+`--expect-checks pass|fail` for required outcomes. The coordinator can launch a fresh worker for a manual handoff. [Supervised runs](configured-workflow.md) use the registered runner.
 Codex receives role text; native Claude roles supply their own text once. Neither approach
 changes the role's tools, independence, approvals or after-role write check.
 

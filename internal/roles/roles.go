@@ -169,7 +169,11 @@ func Check(role string, changes []gitx.Change, tests []string, task string) ([]V
 func check(changes []gitx.Change, allowed func(gitx.Change) string) []Violation {
 	var out []Violation
 	for _, change := range changes {
-		if why := allowed(change); why != "" {
+		why := allowed(change)
+		if ProtectedWorkflowPath(change.Path) {
+			why = "workers may not change workflow, host, or Git control files"
+		}
+		if why != "" {
 			out = append(out, Violation{Path: change.Path, Kind: change.Kind, Why: why})
 		}
 	}

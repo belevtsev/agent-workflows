@@ -11,11 +11,11 @@ import (
 // Keep separate budgets for the gate and its supporting subsystems.
 // Test files and testdata do not count.
 const (
-	maxCoreLines         = 6340 // Includes submodule checks, index recovery and configured native spawn guards.
-	maxRolesLines        = 4375 // Existing per-host settings, single-host assignments and repository role initialization.
+	maxCoreLines         = 6370 // Includes strict pre-push framing and local permission checks.
+	maxRolesLines        = 4430 // Existing per-host settings, single-host assignments and repository role initialization.
 	maxAdviserLines      = 4000 // CLI advisers plus native typed providers and usage records.
 	maxSkillLines        = 2000
-	maxUXLines           = 3715 // Shared routing, help, install defaults, forms, completion and approval.
+	maxUXLines           = 3745 // Shared routing, help, install defaults, forms, completion and approval.
 	maxOnboardingLines   = 2014 // Local setup diagnostics, verified plugin installation and explicit host handoff.
 	maxContextLines      = 2000 // Opt-in Go collection, briefs, compact checks and private artifacts.
 	maxWorkerLines       = 1500 // Saved dispatch, local intervals, bounded QE hints and configured handback checks.
@@ -23,7 +23,7 @@ const (
 	maxStateLines        = 750  // Bounded coordinator projections, retained baselines and section deltas.
 	maxVerificationLines = 2200 // Behavioral plans, shared history and current local task observations.
 	maxInsightLines      = 3000 // Read-only workflow diagnostics, optional notes and explicit budget metadata.
-	maxConfiguredLines   = 4100 // Persisted role orchestration and native Codex and Claude Code adapters.
+	maxConfiguredLines   = 4100 // Persisted role orchestration and the supervised runner protocol.
 )
 
 // rolesCode says whether a Go file belongs to the role workflow.
@@ -42,7 +42,7 @@ func rolesCode(file string) bool {
 func configuredWorkflowCode(file string) bool {
 	for _, prefix := range []string{
 		"internal/harness/workflow", "internal/gitx/harness_workflow", "internal/onboarding/workflow",
-		"internal/cli/harness_workflow", "internal/cli/worker_managed",
+		"internal/cli/harness_workflow", "internal/cli/worker_managed", "internal/workflowrunner/",
 	} {
 		if strings.HasPrefix(file, prefix) {
 			return true

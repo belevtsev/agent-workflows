@@ -35,7 +35,7 @@ func TestConfiguredSharedFileKeepsRoleEditRegionsSeparate(t *testing.T) {
 		{"developer", "changed code", "original test", true},
 		{"developer", "changed code", "weakened test", false},
 	} {
-		w := harness.Workflow{Plan: plan, Active: &harness.WorkflowAttempt{Role: tc.role, Shared: before}}
+		w := harness.Workflow{Plan: plan, TestPolicy: []string{name}, Active: &harness.WorkflowAttempt{Role: tc.role, Shared: before}}
 		if got := workflowPathAllowed(&w, name, write(tc.production, tc.test)); got != tc.allowed {
 			t.Errorf("%s with %q and %q allowed=%t, want %t", tc.role, tc.production, tc.test, got, tc.allowed)
 		}

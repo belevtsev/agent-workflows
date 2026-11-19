@@ -7,7 +7,7 @@ Requires PowerShell 5.1 or newer. No Go toolchain or administrator access is nee
 ArchiveDir can install a CI build before publication.
 .PARAMETER Version
 Archive version label. Defaults to KITSU_VERSION. When neither is provided, a local install uses
-the single archive tag for this platform. Remote host installs select the latest pair; CLI-only installs use v0.0.2.
+the single archive tag for this platform. Remote installs select the latest release.
 .PARAMETER InstallDir
 Destination directory. Defaults to KITSU_INSTALL_DIR, then LOCALAPPDATA\kitsu.
 .PARAMETER NoModifyPath
@@ -15,8 +15,10 @@ Leaves both user PATH and the current session PATH unchanged. Also set by KITSU_
 .PARAMETER ArchiveDir
 Reads the archive and SHA256SUMS locally, without network access. Defaults to KITSU_ARCHIVE_DIR.
 .PARAMETER AgentHost
-Installs the matching plugin and saves codex or claude as your default host.
+Installs the matching plugin and sets your personal default if it is empty.
 An interactive terminal offers a choice when this parameter is omitted.
+.PARAMETER SetDefault
+Replaces the current personal default after successful plugin setup.
 .PARAMETER CliOnly
 Installs the CLI without prompting for or setting up an agent host.
 .EXAMPLE
@@ -31,12 +33,13 @@ param(
     [switch]$NoModifyPath = ($env:KITSU_NO_MODIFY_PATH -eq '1'),
     [string]$ArchiveDir = $env:KITSU_ARCHIVE_DIR,
     [string]$AgentHost,
-    [switch]$CliOnly
+    [switch]$CliOnly,
+    [switch]$SetDefault
 )
 
 # Keep preferences and helper functions out of an interactive irm | iex session.
 & {
-    param($ReleaseVersion, $DestinationDir, $LeavePath, $LocalArchives, $SelectedHost, $HostSpecified, $SkipHost)
+    param($ReleaseVersion, $DestinationDir, $LeavePath, $LocalArchives, $SelectedHost, $HostSpecified, $SkipHost, $ReplaceDefault)
     $ErrorActionPreference = 'Stop'
     Set-StrictMode -Version 2.0
 
@@ -228,11 +231,12 @@ param(
     function Select-KitsuHost {
         while ($true) {
             try { $choice = Read-Host 'Choose a Kitsu host [1 Codex, 2 Claude Code, 3 CLI only]' }
-            catch [System.Management.Automation.PSInvalidOperationException] { return '' }
+            catch [System.Management.Automation.PSInvalidOperationException] { throw 'Host selection cancelled.' }
+            if ($null -eq $choice) { throw 'Host selection cancelled.' }
             switch -Regex ($choice) {
                 '^(1|codex)$' { return 'codex' }
                 '^(2|claude)$' { return 'claude' }
-                '^(3)?$' { return '' }
+                '^3$' { return '' }
             }
         }
     }
@@ -247,8 +251,8 @@ param(
     }
     $isLocal = -not [string]::IsNullOrEmpty($LocalArchives)
     $remoteHost = $SelectedHost -and -not $isLocal
-    $officialLatest = $remoteHost -and -not $ReleaseVersion -and -not $env:KITSU_DOWNLOAD_BASE
-    if (-not $isLocal -and -not $SelectedHost -and -not $ReleaseVersion) { $ReleaseVersion = 'v0.0.2' }
+    if ($ReplaceDefault -and -not $SelectedHost) { throw '-SetDefault requires choosing an agent host.' }
+    $officialLatest = -not $isLocal -and -not $ReleaseVersion -and -not $env:KITSU_DOWNLOAD_BASE
     if ($ReleaseVersion) { Assert-KitsuReleaseTag $ReleaseVersion }
     $architecture = Get-KitsuArchitecture
     if ([string]::IsNullOrEmpty($DestinationDir)) {
@@ -410,7 +414,26 @@ param(
                 throw "$SelectedHost setup failed. $($_.Exception.Message)"
             }
             try {
-                & $destination config set host $SelectedHost --global
+                if ($ReplaceDefault) {
+                    & $destination config set host $SelectedHost --global
+                }
+                else {
+                    $configHelp = (& $destination config set --help) -join "`n"
+                    if ($LASTEXITCODE -ne 0) { throw "Kitsu exited with code $LASTEXITCODE." }
+                    if ($configHelp -match '--if-unset') {
+                        & $destination config set host $SelectedHost --global --if-unset
+                    }
+                    else {
+                        # Older published CLI versions expose the personal value in config show.
+                        $preference = (& $destination config show --json) -join "`n"
+                        if ($LASTEXITCODE -ne 0) { throw "Kitsu exited with code $LASTEXITCODE." }
+                        $preference = ConvertFrom-Json $preference
+                        $saved = $preference.values.PSObject.Properties[$preference.personal]
+                        if ($null -eq $saved -or -not $saved.Value) {
+                            & $destination config set host $SelectedHost --global
+                        }
+                    }
+                }
                 if ($LASTEXITCODE -ne 0) { throw "Kitsu exited with code $LASTEXITCODE." }
             }
             catch {
@@ -426,4 +449,4 @@ param(
         if ($null -ne $stage) { Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue }
         Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
     }
-} $Version $InstallDir $NoModifyPath.IsPresent $ArchiveDir $AgentHost ($PSBoundParameters.ContainsKey('AgentHost')) $CliOnly.IsPresent
+} $Version $InstallDir $NoModifyPath.IsPresent $ArchiveDir $AgentHost ($PSBoundParameters.ContainsKey('AgentHost')) $CliOnly.IsPresent $SetDefault.IsPresent

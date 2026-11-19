@@ -10,6 +10,7 @@ import (
 
 	"github.com/belevtsev/kitsu/v3/internal/decl"
 	"github.com/belevtsev/kitsu/v3/internal/gitx"
+	"github.com/belevtsev/kitsu/v3/internal/roles"
 	"github.com/belevtsev/kitsu/v3/internal/shellwords"
 )
 
@@ -48,9 +49,6 @@ func runGuard(ctx context.Context, cfg Config, args []string) error {
 		return nil // a notice the guard cannot read is one it does not act on
 	}
 	reason, developerOnly := guardReason(ctx, call)
-	if native := guardWorkflowSpawn(ctx, *host, call); native != "" {
-		reason, developerOnly = native, true
-	}
 	if reason == "" {
 		return nil
 	}
@@ -86,8 +84,10 @@ func guardReason(ctx context.Context, call toolCall) (string, bool) {
 	if err != nil || repo.Root == "" {
 		return "", false
 	}
-	if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err != nil {
-		return "", false // nothing is gated here
+	_, declarationErr := os.Stat(filepath.Join(repo.Root, decl.FileName))
+	_, rolesErr := os.Stat(filepath.Join(repo.Root, roles.FileName))
+	if declarationErr != nil && rolesErr != nil && !hasLocalHarnessTasks(repo) {
+		return "", false
 	}
 	// A host gives a command as one text; a list of words is read as one
 	// line and, for a word that is itself a command line, word by word.
@@ -100,6 +100,12 @@ func guardReason(ctx context.Context, call toolCall) (string, bool) {
 	}
 	switch call.Tool {
 	case "Bash", "PowerShell":
+		if shellwords.ChangesCommands(command, []shellwords.CommandRule{
+			{Path: []string{"task", "run"}, Flag: "approve-assertion", Reason: "protected"},
+			{Path: []string{"task", "run"}, Flag: "release", Reason: "protected"},
+		}) != "" {
+			return "Configured assertions and recovery require reviewed runner policy and independent runner evidence.", true
+		}
 		if why := guardCheckTrust(ctx, repo, command); why != "" {
 			return why, true
 		}
@@ -136,6 +142,9 @@ func editReason(ctx context.Context, repo *gitx.Repo, dir string, paths []string
 		{filepath.Join(repo.CommonDir, "hooks"), hook},
 		{hooks, hook},
 		{filepath.Join(repo.CommonDir, "config"), "This edit changes the git configuration of this clone, which names the hooks git runs."},
+		{filepath.Join(repo.GitDir, "kitsu-stages"), "This edit changes the private Kitsu task ledger."},
+		{filepath.Join(repo.CommonDir, "info", "exclude"), "This edit changes Git's local ignore policy."},
+		{filepath.Join(repo.GitDir, "info", "exclude"), "This edit changes Git's local ignore policy."},
 		{filepath.Join(repo.CommonDir, "kitsu"), "This edit changes the records of kitsu, which hold the passing runs that the commit gate reads."},
 	}
 	for _, path := range paths {
@@ -143,10 +152,17 @@ func editReason(ctx context.Context, repo *gitx.Repo, dir string, paths []string
 			path = filepath.Join(dir, path)
 		}
 		// Configuration creation must be guarded before a target inode exists.
-		for _, g := range guarded[:3] {
-			if filepath.Clean(path) == filepath.Clean(g[0]) {
+		for _, g := range guarded {
+			if g[0] == "" {
+				continue
+			}
+			if rel, err := filepath.Rel(g[0], path); err == nil && filepath.IsLocal(rel) {
 				return g[1]
 			}
+		}
+		if rel, err := filepath.Rel(repo.Root, path); err == nil && filepath.IsLocal(rel) &&
+			!strings.HasPrefix(filepath.ToSlash(rel), ".git/") && roles.ProtectedWorkflowPath(filepath.ToSlash(rel)) {
+			return "This edit changes a protected host, workflow, or Git control path."
 		}
 		for at, above := filepath.Clean(path), ""; at != above; at, above = filepath.Dir(at), at {
 			info, err := os.Stat(at)

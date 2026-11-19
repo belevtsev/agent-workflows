@@ -546,19 +546,14 @@ Options:
   --commit                 deliver one verified local commit
   --include <path>         include a pre-existing change in the authorized
                            commit
-  --expect <text>          preauthorize an assertion with -- PROGRAM ARGS
+  --expect <text>          require a reviewed assertion with -- PROGRAM ARGS
   --require-review         require an independent review of the candidate
-  --native-host <host>     offer compatible assignments to this authenticated
-                           host session
-  --actor <session>        current native parent session for --native-host
   --retry                  retry the current stage after resolving a reported
                            problem
-  --approve-assertion      review and approve the saved assertion in your
-                           terminal
-  --release <attempt>      reconcile an outstanding attempt after confirming its
-                           worker stopped
+  --release <attempt>      reconcile an outstanding attempt with the runner
+                           operator’s release authorization
   --rework-limit <count>   maximum automatic test and code rework starts
-  --json                   return a bounded task status or native assignment
+  --json                   return a bounded task status
   --time-limit <duration>  time remaining before the task pauses
   --review-limit <count>   maximum total independent review starts, including
                            released reservations
@@ -648,14 +643,12 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ```text
 usage: kitsu task dispatch <dispatch-id> [options]
 
-Read the original native dispatch or run its configured worker explicitly.
+Read the original native dispatch.
 
 Arguments:
   <dispatch-id>      immutable private interval id returned by task prepare in this worktree
 
 Options:
-  --run                    run one worker from a prepared version 2 role
-                           assignment
   --max-bytes <bytes>      maximum response bytes; default 16384, range 512 to
                            1048576
   --json                   print JSON; these explicit compact helpers always use
@@ -664,7 +657,6 @@ Options:
 
 Examples:
   kitsu task dispatch <dispatch-id>
-  kitsu task dispatch <dispatch-id> --run
 
 Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
@@ -713,10 +705,6 @@ Options:
                                   failures
   --abandon                record abandonment and release the interval; gives no
                            write or quality approval
-  --message <text>         explicitly commit the verified and already staged
-                           candidate for a configured git worker
-  --include <path>         authorize one changed path in that commit; repeat for
-                           every path
   --reason <text>          required explanation with --abandon; cannot combine
                            abandonment with --expect-checks
   --max-bytes <bytes>      maximum response bytes; default 16384, range 512 to
@@ -1954,6 +1942,7 @@ Options:
                            styling
   --global                 edit personal CLI preferences instead of this private
                            checkout
+  --if-unset               with --global, only set a missing personal preference
   --help, -h               show this command's help without executing it
 
 Examples:

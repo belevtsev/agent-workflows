@@ -385,8 +385,6 @@ func TestPushOneRulingPerRef(t *testing.T) {
 	feature := e.commit("feature")
 	rulings := push(e,
 		"refs/heads/main "+head+" refs/heads/main "+zero,
-		"malformed line",
-		"",
 		"refs/heads/feature "+feature+" refs/heads/feature "+zero,
 	)
 	if len(rulings) != 2 {
@@ -519,5 +517,22 @@ func TestObserved(t *testing.T) {
 	invalid := Cannot("pre-commit", store.CauseInvalidDeclaration, "x")
 	if !strings.Contains(invalid.Observed(), "the declaration is invalid") {
 		t.Errorf("Observed = %q", invalid.Observed())
+	}
+}
+
+func TestPushDistinguishesNoUpdatesFromMalformedInput(t *testing.T) {
+	e := demo(t)
+	ruling := e.gate.Push(t.Context(), "origin", strings.NewReader(""))
+	if len(ruling) != 1 || !ruling[0].Allowed || ruling[0].Cause != store.CauseNoRefUpdates ||
+		ruling[0].Verdict != nil || ruling[0].Tree != "" {
+		t.Fatalf("empty Git input gave content evidence: %+v", ruling)
+	}
+	head := e.git("rev-parse", "HEAD")
+	complete := "HEAD " + head + " refs/heads/main " + zero
+	for _, input := range []string{complete, "bad\n", complete + "\nbad\n", "HEAD " + head + " refs/heads/main z\n"} {
+		rulings := e.gate.Push(t.Context(), "origin", strings.NewReader(input))
+		if len(rulings) != 1 || rulings[0].Allowed || rulings[0].Verdict != nil {
+			t.Fatalf("invalid Git input was accepted: %+v", rulings)
+		}
 	}
 }

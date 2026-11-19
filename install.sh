@@ -13,6 +13,7 @@ _kitsu_no_modify_path=${KITSU_NO_MODIFY_PATH:-0}
 _kitsu_archive_dir=${KITSU_ARCHIVE_DIR:-}
 _kitsu_agent_host=
 _kitsu_cli_only=0
+_kitsu_set_default=0
 _kitsu_work=
 _kitsu_stage=
 _kitsu_profile_stage=
@@ -20,11 +21,11 @@ _kitsu_profile_stage=
 usage() {
 	printf '%s\n' \
 		'Usage: install.sh [--version TAG] [--install-dir DIR] [--no-modify-path]' \
-		'                  [--archive-dir DIR] [--host codex|claude | --cli-only]' \
+		'                  [--archive-dir DIR] [--host codex|claude | --cli-only] [--set-default]' \
 		'' \
 		'Choose Codex or Claude Code in a terminal, or supply --host for automation.' \
-		'Install the latest CLI and matching plugin, and save the selected host as your default.' \
-		'CLI-only downloads default to v0.0.2. The default install directory is $HOME/.local/bin.' \
+		'Install the latest CLI and matching plugin. Use --set-default to change your saved host.' \
+		'The default install directory is $HOME/.local/bin. CLI-only installs use the latest release.' \
 		'Environment: KITSU_VERSION, KITSU_INSTALL_DIR, KITSU_NO_MODIFY_PATH=1,' \
 		'             KITSU_ARCHIVE_DIR, KITSU_DOWNLOAD_BASE.' \
 		'With an archive directory, the installer uses the single archive tag for this platform in SHA256SUMS unless a version is provided.'
@@ -65,11 +66,11 @@ quote_shell_argument() {
 choose_agent_host() {
 	while :; do
 		printf '%s' 'Choose a Kitsu host [1 Codex, 2 Claude Code, 3 CLI only]: ' >&2
-		IFS= read -r _kitsu_choice || return 0
+		IFS= read -r _kitsu_choice || fail 'host selection cancelled'
 		case "$_kitsu_choice" in
 			1|codex) _kitsu_agent_host=codex; return 0 ;;
 			2|claude) _kitsu_agent_host=claude; return 0 ;;
-			3|'') return 0 ;;
+			3) return 0 ;;
 		esac
 	done
 }
@@ -120,6 +121,10 @@ while [ "$#" -gt 0 ]; do
 			_kitsu_cli_only=1
 			shift
 			;;
+		--set-default)
+			_kitsu_set_default=1
+			shift
+			;;
 		--no-modify-path)
 			_kitsu_no_modify_path=1
 			shift
@@ -149,8 +154,8 @@ fi
 if [ "$_kitsu_cli_only" -eq 0 ] && [ -z "$_kitsu_agent_host" ] && [ -t 2 ] && ( : </dev/tty ) 2>/dev/null; then
 	choose_agent_host </dev/tty
 fi
-if [ -z "$_kitsu_archive_dir$_kitsu_agent_host" ]; then
-	_kitsu_version=${_kitsu_version:-v0.0.2}
+if [ "$_kitsu_set_default" -eq 1 ] && [ -z "$_kitsu_agent_host" ]; then
+	argument_error '--set-default requires choosing an agent host'
 fi
 [ -z "$_kitsu_version" ] || validate_version
 case "$_kitsu_no_modify_path" in
@@ -496,7 +501,25 @@ if [ -n "$_kitsu_agent_host" ]; then
 		fail "$_kitsu_agent_host setup failed. Retry with this command.
 $(quote_shell_argument "$_kitsu_target") agent setup --host $_kitsu_agent_host --archive-dir $(quote_shell_argument "$_kitsu_archive_dir")"
 	}
-	"$_kitsu_target" config set host "$_kitsu_agent_host" --global ||
+	save_agent_default() {
+		if [ "$_kitsu_set_default" -eq 1 ]; then
+			"$_kitsu_target" config set host "$_kitsu_agent_host" --global
+			return
+		fi
+		_kitsu_config_help=$("$_kitsu_target" config set --help) || return
+		case "$_kitsu_config_help" in
+			*--if-unset*) "$_kitsu_target" config set host "$_kitsu_agent_host" --global --if-unset; return ;;
+		esac
+		# Released CLI versions before --if-unset still expose the personal value.
+		_kitsu_config=$(unset KITSU_HOST; cd "$_kitsu_work" && "$_kitsu_target" config show) || return
+		_kitsu_personal=$(printf '%s\n' "$_kitsu_config" | awk '/^Personal: / { sub(/^.* \(/, ""); sub(/\)$/, ""); print }')
+		case "$_kitsu_personal" in
+			codex|claude) return 0 ;;
+			'') "$_kitsu_target" config set host "$_kitsu_agent_host" --global ;;
+			*) return 1 ;;
+		esac
+	}
+	save_agent_default ||
 		fail "the plugin is set up, but saving the default host failed. Retry with this command.
 $(quote_shell_argument "$_kitsu_target") config set host $_kitsu_agent_host --global"
 fi

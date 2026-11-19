@@ -1,10 +1,14 @@
 package shellwords
 
-import "slices"
+import (
+	"slices"
+	"strings"
+)
 
 // CommandRule classifies a known Kitsu command without executing shell text.
 type CommandRule struct {
 	Path        []string
+	Flag        string // optional flag before the argv separator
 	Reason      string
 	ObserveOnly bool
 }
@@ -28,9 +32,25 @@ func policyCall(args []string, rules []CommandRule) string {
 		if len(args) < len(rule.Path) || !slices.Equal(args[:len(rule.Path)], rule.Path) {
 			continue
 		}
+		if rule.Flag != "" && !hasCommandFlag(args[len(rule.Path):], rule.Flag) {
+			continue
+		}
 		if !rule.ObserveOnly || slices.ContainsFunc(args[len(rule.Path):], observes) {
 			return rule.Reason
 		}
 	}
 	return ""
+}
+
+func hasCommandFlag(args []string, name string) bool {
+	for _, arg := range args {
+		if arg == "--" {
+			break
+		}
+		flag, _, _ := strings.Cut(arg, "=")
+		if flag == "-"+name || flag == "--"+name {
+			return true
+		}
+	}
+	return false
 }

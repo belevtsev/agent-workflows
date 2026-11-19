@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/belevtsev/kitsu/v3/internal/proc"
+	"github.com/belevtsev/kitsu/v3/internal/roles"
 )
 
 const claudeWorkflowReviewRole = "kitsu-workflow-reviewer"
@@ -36,9 +38,17 @@ func checkClaudeWorkflowTrust(root string) error {
 			Trusted bool `json:"hasTrustDialogAccepted"`
 		} `json:"projects"`
 	}
-	data, err := readFile(filepath.Join(home, ".claude.json"))
-	if err != nil || json.Unmarshal(data, &state) != nil ||
-		!state.Projects[root].Trusted && !state.Projects[filepath.ToSlash(root)].Trusted {
+	f, err := os.Open(filepath.Join(home, ".claude.json"))
+	if err != nil {
+		return fmt.Errorf("read Claude trust store: %w", err)
+	}
+	defer func() { _ = f.Close() }()
+	const limit = 16 << 20
+	data, err := io.ReadAll(io.LimitReader(f, limit+1))
+	if err != nil || len(data) > limit || json.Unmarshal(data, &state) != nil {
+		return errors.New("Claude trust store cannot be read as JSON within 16 MiB")
+	}
+	if !state.Projects[root].Trusted && !state.Projects[filepath.ToSlash(root)].Trusted {
 		return errors.New("Claude headless workflow requires explicit trust for this exact worktree in Claude Code")
 	}
 	return nil
@@ -55,7 +65,7 @@ func runClaudeWorkflow(ctx context.Context, executable, scratch string, worker W
 	args := []string{
 		"--print", "--input-format", "text", "--output-format", "stream-json", "--verbose",
 		"--permission-prompts", "none", "--strict-mcp-config", "--no-chrome", "--permission-mode", mode,
-		"--model", worker.Model,
+		"--model", worker.Model, "--setting-sources", "user",
 	}
 	if worker.Effort != "" {
 		args = append(args, "--effort", worker.Effort)
@@ -234,12 +244,7 @@ func (o *claudeWorkflowOutput) observeInit(session, model, effort string) error 
 }
 
 func checkClaudeModel(requested, reported string) error {
-	if !strings.HasPrefix(requested, "claude-") || !strings.HasPrefix(reported, "claude-") {
-		return nil
-	}
-	requested, _, _ = strings.Cut(requested, "[")
-	reported, _, _ = strings.Cut(reported, "[")
-	if requested != reported {
+	if !roles.ObservedModelMatches("claude", requested, reported) {
 		return errors.New("Claude substituted the pinned model")
 	}
 	return nil

@@ -3,6 +3,7 @@ package gate
 import (
 	"bufio"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -202,26 +203,42 @@ func (g *Gate) Push(ctx context.Context, remote string, input io.Reader) []Rulin
 	const hook = "pre-push"
 	var updates [][]string
 	var tips []string // the new tips of the branches this push updates
-	scanner := bufio.NewScanner(input)
-	scanner.Buffer(nil, 1<<20)
-	for scanner.Scan() {
-		if fields := strings.Fields(scanner.Text()); len(fields) == 4 {
-			updates = append(updates, fields)
-			if strings.HasPrefix(fields[2], "refs/heads/") && !zeroID(fields[1]) {
-				tips = append(tips, fields[1])
-			}
+	reader := bufio.NewReaderSize(input, 64<<10)
+	for {
+		line, err := reader.ReadSlice('\n')
+		if errors.Is(err, io.EOF) && len(line) == 0 {
+			break
+		}
+		fields := strings.Fields(string(line))
+		if err != nil || len(fields) != 4 || !validPushID(fields[1]) ||
+			len(fields[1]) != len(fields[3]) || !validPushID(fields[3]) ||
+			!strings.HasPrefix(fields[2], "refs/") {
+			return []Ruling{Cannot(hook, store.CauseInternal, "Git did not supply a complete, valid ref update")}
+		}
+		updates = append(updates, fields)
+		if strings.HasPrefix(fields[2], "refs/heads/") && !zeroID(fields[1]) {
+			tips = append(tips, fields[1])
 		}
 	}
+	if len(updates) == 0 {
+		return []Ruling{{Hook: hook, Allowed: true, Cause: store.CauseNoRefUpdates}}
+	}
+
 	var rulings []Ruling
 	for _, update := range updates {
 		ruling := g.pushRef(ctx, remote, update[1], update[2], update[3], tips)
 		ruling.Hook, ruling.Ref = hook, update[2]
 		rulings = append(rulings, ruling)
 	}
-	if err := scanner.Err(); err != nil {
-		rulings = append(rulings, Cannot(hook, store.CauseInternal, "the refs of the push cannot be read: "+err.Error()))
-	}
 	return rulings
+}
+
+func validPushID(value string) bool {
+	if len(value) != 40 && len(value) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
 }
 
 // pushRef judges one update. A deletion and an update that adds nothing to

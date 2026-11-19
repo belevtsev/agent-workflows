@@ -103,10 +103,6 @@ func prepareTaskStage(ctx context.Context, s *session, ledger *stageLedger, o st
 	} else if id != "" {
 		return failf("resume daily task %s before preparing a managed worker", id)
 	}
-	managed, err := prepareManagedStage(ctx, s, ledger, o.brief)
-	if err != nil {
-		return err
-	}
 	if o.native {
 		if err := checkNativeDispatchBudget(s, o.brief, o.budget, o.view); err != nil {
 			return err
@@ -126,7 +122,7 @@ func prepareTaskStage(ctx context.Context, s *session, ledger *stageLedger, o st
 	if err != nil {
 		return compactFailure(err)
 	}
-	record := stageRecord{Version: 1, Worktree: s.repo.Root, Nonce: rand.Text(), Created: time.Now().UTC(), Checks: checkPolicy, Sources: sources, Prepared: p, Managed: managed}
+	record := stageRecord{Version: 1, Worktree: s.repo.Root, Nonce: rand.Text(), Created: time.Now().UTC(), Checks: checkPolicy, Sources: sources, Prepared: p}
 	if o.native {
 		record.Prompt = nativeWorkerDispatch(stageDispatch{workerDispatch: p.Dispatch}, p.State, s.repo.Root).Native.Prompt
 	}
@@ -142,9 +138,6 @@ func prepareTaskStage(ctx context.Context, s *session, ledger *stageLedger, o st
 	}
 	if err := verifySavedWorkerBrief(ctx, s.cfg, p); err != nil {
 		return compactFailure(err)
-	}
-	if err := saveManagedProfile(ctx, s, ledger, record); err != nil {
-		return err
 	}
 	if err := ledger.write(id+".json", record); err != nil {
 		return compactFailure(err)
@@ -213,8 +206,8 @@ func parseStageFinish(args []string) (stageFinishOptions, error) {
 	if o.abandon && (explicitExpectation || strings.TrimSpace(o.reason) == "") || !o.abandon && o.reason != "" || len(o.reason) > 1024 || !utf8.ValidString(o.reason) || strings.ContainsRune(o.reason, 0) {
 		return o, usagef("--abandon requires --reason (at most 1024 UTF-8 bytes) and cannot combine with --expect-checks")
 	}
-	if err := validateManagedCommitOptions(&o); err != nil {
-		return o, err
+	if o.message != "" || len(o.includes) != 0 {
+		return o, usagef("configured commits use kitsu task run with --commit and --include")
 	}
 	o.id = p.pos[0]
 	return o, compactBudget(o.budget)
@@ -238,8 +231,8 @@ func runTaskFinish(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return compactFailure(err)
 	}
-	if err := checkManagedFinish(ctx, s, ledger, record, o); err != nil {
-		return err
+	if record.Managed != nil {
+		return failf("this historical configured dispatch needs operator reconciliation outside this checkout; use kitsu task run in a clean worktree")
 	}
 	if receipt, err := existingStageReceipt(ctx, s, e, ledger, record, o); !errors.Is(err, os.ErrNotExist) {
 		if err != nil {
@@ -265,16 +258,7 @@ func runTaskFinish(ctx context.Context, cfg Config, args []string) error {
 	if err := verifyStageBeforePublication(ctx, s, e, record, receipt); err != nil {
 		return compactFailure(err)
 	}
-	if o.message != "" {
-		receipt, err = finishManagedCommit(ctx, s, e, ledger, record, o, receipt)
-		if err != nil {
-			return err
-		}
-		data, err = boundedStageJSON(receipt, o.budget)
-		if err != nil {
-			return err
-		}
-	}
+
 	if err := ledger.write(stageReceiptName(o), receipt); err != nil {
 		return compactFailure(err)
 	}
@@ -325,9 +309,7 @@ func validateStageWrites(ctx context.Context, s *session, record stageRecord, st
 	if err := validateStageCheckPolicy(ctx, s, record, state.Tree); err != nil {
 		return err
 	}
-	if err := validateManagedStageGit(ctx, s, record, state); err != nil {
-		return err
-	}
+
 	if state.SourcePolicy != p.State.SourcePolicy {
 		return errors.New("source visibility policy changed during stage")
 	}
@@ -447,15 +429,7 @@ func readStageReceipt(ledger *stageLedger, record stageRecord, o stageFinishOpti
 	if o.abandon != (r.Status == "abandoned") || !o.abandon && o.expect != r.ExpectChecks || o.abandon && o.reason != r.Reason {
 		return r, errors.New("repeat finish must use the original expectation or abandonment reason")
 	}
-	if (r.Commit != "") != (o.message != "") {
-		return r, errors.New("repeat finish must use the original delivery scope")
-	}
-	if r.Commit != "" {
-		var intent managedCommitIntent
-		if err := ledger.read(o.id+".commit.json", &intent); err != nil {
-			return r, errors.Join(err, errors.New("configured commit receipt has no saved authorization"))
-		}
-	}
+
 	return r, nil
 }
 
@@ -487,7 +461,7 @@ func validateCompletedStageReceipt(record stageRecord, r stageReceipt) error {
 	if !r.Writes || r.Reason != "" || r.ExpectChecks != "any" && r.ExpectChecks != "pass" && r.ExpectChecks != "fail" {
 		return errors.New("invalid finished stage receipt semantics")
 	}
-	if r.Commit != "" && (!configuredGitStage(record) || r.Commit != r.State.Head || !r.Verified) {
+	if r.Commit != "" && ((record.Managed == nil || record.Prepared.Brief.Role != "git") || r.Commit != r.State.Head || !r.Verified) {
 		return errors.New("invalid configured commit receipt")
 	}
 	return stageExpectation(r, r.ExpectChecks)

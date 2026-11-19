@@ -52,11 +52,21 @@ func TestMain(m *testing.M) {
 		}
 		os.Exit(23)
 	}
-	if len(os.Args) == 6 && os.Args[1] == "config" {
+	if len(os.Args) == 4 && strings.Join(os.Args[1:], " ") == "config set --help" {
+		fmt.Println("--if-unset")
+		os.Exit(0)
+	}
+	if (len(os.Args) == 6 || len(os.Args) == 7) && os.Args[1] == "config" {
 		want := os.Getenv("KITSU_TEST_SETUP_HOST")
 		home, err := os.UserHomeDir()
-		if err == nil && want != "" && strings.Join(os.Args[2:], " ") == "set host "+want+" --global" {
-			if err := os.WriteFile(filepath.Join(home, "installed-host"), []byte(want), 0o600); err == nil {
+		if err == nil && want != "" && strings.Join(os.Args[2:6], " ") == "set host "+want+" --global" {
+			path := filepath.Join(home, "installed-host")
+			if len(os.Args) == 7 && os.Args[6] == "--if-unset" {
+				if saved, _ := os.ReadFile(path); string(saved) == "codex" || string(saved) == "claude" {
+					os.Exit(0)
+				}
+			}
+			if err := os.WriteFile(path, []byte(want), 0o600); err == nil {
 				os.Exit(0)
 			}
 		}

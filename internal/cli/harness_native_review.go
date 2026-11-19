@@ -67,9 +67,6 @@ func observeNativeReview(ctx context.Context, repo *gitx.Repo, host string, noti
 		return err
 	}
 	defer ledger.close()
-	if err := observeWorkflowNative(ledger, host, notice); err != nil {
-		return err
-	}
 	if notice.Event == "SubagentStart" {
 		return observeReviewStart(ledger, host, notice)
 	}
@@ -87,17 +84,20 @@ func observeNativeReview(ctx context.Context, repo *gitx.Repo, host string, noti
 
 func nativeClaimFor(t *harness.Task, host string, notice tokens.Notice) bool {
 	c := t.Claim
-	return c != nil && c.Candidate != nil && nativeSessionID.MatchString(c.ReviewID) && c.Reviewer != nil &&
+	return t.Workflow == nil && c != nil && c.Candidate != nil && nativeSessionID.MatchString(c.ReviewID) && c.Reviewer != nil &&
 		c.Reviewer.Host == host && c.Owner == notice.Session &&
-		checkHarnessActor(t, "review", notice.AgentID) == nil && nativeReviewPrepared(t)
+		checkHarnessActor(t, "review", notice.AgentID) == nil
 }
 
-func nativeReviewPrepared(t *harness.Task) bool {
-	if t.Workflow == nil || t.Workflow.Active == nil {
-		return true
+func workflowNoticeSettings(notice tokens.Notice) (model, effort string) {
+	if json.Unmarshal(notice.Effort, &effort) != nil {
+		var value struct {
+			Level string `json:"level"`
+		}
+		_ = json.Unmarshal(notice.Effort, &value)
+		effort = value.Level
 	}
-	a := t.Workflow.Active
-	return !a.Native || a.NativePrepared
+	return notice.Model, effort
 }
 
 func observeReviewStart(l *stageLedger, host string, notice tokens.Notice) error {
@@ -175,9 +175,6 @@ func recordObservedReview(l *stageLedger, task *harness.Task, o *harnessOptions,
 		}
 		return nil, nil
 	}
-	if err := validateObservedWorkflowReview(task, observed); err != nil {
-		return nil, err
-	}
 	result := observed.Result
 	if !o.observedReview && (o.actor != observed.Source.Worker || o.note != result.Note || !slices.Equal(o.findings, result.Findings)) {
 		return nil, failf("review result differs from the host-observed result. Use --observed-review")
@@ -186,20 +183,10 @@ func recordObservedReview(l *stageLedger, task *harness.Task, o *harnessOptions,
 	return observed.Source, nil
 }
 
-func validateObservedWorkflowReview(task *harness.Task, observed nativeReviewObservation) error {
-	if task.Workflow == nil || task.Workflow.Active == nil {
-		return nil
-	}
-	a := task.Workflow.Active
-	a.ObservedModel, a.ObservedEffort = observed.Model, observed.Effort
-	if !observedWorkflowSettingsMatch(task.Workflow.Roles["reviewer"], observed.Model, observed.Effort) {
-		return failf("native reviewer reported different settings for the assigned role")
-	}
-	return nil
-}
-
 func (v *harnessView) setReviewStatus(required bool) {
 	switch {
+	case v.WorkflowReview:
+		v.ReviewStatus = "runner_signed"
 	case v.Review != nil && v.ReviewCurrent && v.Review.NativeReview != nil:
 		v.ReviewStatus = "host_observed"
 	case required:

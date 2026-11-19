@@ -15,7 +15,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|apply_patch|Agent|spawn_agent",
+        "matcher": "Bash|apply_patch",
         "hooks": [
           {
             "type": "command",

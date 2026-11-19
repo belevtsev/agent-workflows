@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Breaking
+
+- Register a [trusted runner](docs/workflow-runner.md) for `kitsu task run`. Continue a local-launch preview record by opening a new task with the original request and assertion.
+
 ### Added
 
 - Assign each specialist to Codex or Claude Code and run or resume tasks with the [configured workflow](docs/configured-workflow.md).
@@ -18,6 +22,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Direct ticket imports connect only to public addresses. Use a host connector to [supply a private ticket](docs/task-harness.md#deliver-a-bug-ticket).
 
 ### Fixed
+
+- [Installers](docs/release-install.md) use the latest release for CLI-only installs and preserve the personal host unless explicitly replaced.
+- The [pre-push hook](docs/hooks.md#pre-push) rejects malformed ref updates and records empty input as a no-op.
 
 - [Release installers](docs/release-install.md#install-from-a-release) stage the shell script before running. The release workflow tests and attests the exact bundle before publishing.
 

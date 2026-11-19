@@ -11,11 +11,18 @@ import (
 // Workflow pins the role assignments at intake. Attempts and baseline evidence
 // are kept separately from the proof of the delivered candidate.
 type Workflow struct {
+	LegacyApprovedArgv string `json:"approved_assertion,omitempty"` // Archives from the local launcher.
+
 	Roles          map[string]roles.SpecialistSettings `json:"roles"`
 	TestPolicy     []string                            `json:"test_policy,omitempty"`
 	Plan           *WorkflowPlan                       `json:"plan,omitempty"`
 	Test           *WorkflowAssertion                  `json:"assertion,omitempty"`
-	ApprovedArgv   string                              `json:"approved_assertion,omitempty"`
+	Intake         *WorkflowAssertion                  `json:"intake_assertion,omitempty"`
+	Authority      string                              `json:"runner_authority,omitempty"`
+	Policy         string                              `json:"runner_policy,omitempty"`
+	Profile        string                              `json:"runner_profile,omitempty"`
+	Verification   *WorkflowEvidence                   `json:"runner_verification,omitempty"`
+	Reviewed       *WorkflowEvidence                   `json:"runner_review,omitempty"`
 	Baselines      []Proof                             `json:"baselines,omitempty"`
 	BaselineReady  bool                                `json:"baseline_ready,omitempty"`
 	PreCode        *Snapshot                           `json:"pre_code,omitempty"`
@@ -46,31 +53,43 @@ type WorkflowPlan struct {
 }
 
 type WorkflowAssertion struct {
-	Argv    []string `json:"argv"`
-	Expect  string   `json:"expect"`
-	Failure string   `json:"failure_marker"`
+	LegacyFailureMarker string   `json:"failure_marker,omitempty"`
+	Argv                []string `json:"argv"`
+	Expect              string   `json:"expect"`
+	TestID              string   `json:"test_id,omitempty"`
+}
+
+type WorkflowEvidence struct {
+	Attempt   string   `json:"attempt"`
+	Job       string   `json:"job"`
+	Candidate Snapshot `json:"candidate"`
+	Checks    []string `json:"checks,omitempty"`
 }
 
 type WorkflowAttempt struct {
-	ID             string                               `json:"id"`
-	Role           string                               `json:"role"`
-	Host           string                               `json:"host"`
-	Action         string                               `json:"action"`
-	Ticket         string                               `json:"ticket"`
-	Owner          string                               `json:"owner,omitempty"`
-	Session        string                               `json:"session,omitempty"`
-	ObservedModel  string                               `json:"observed_model,omitempty"`
-	ObservedEffort string                               `json:"observed_effort,omitempty"`
-	Candidate      Snapshot                             `json:"candidate"`
-	Sources        map[string]string                    `json:"sources,omitempty"`
-	Shared         map[string]WorkflowSharedFingerprint `json:"shared,omitempty"`
-	Started        time.Time                            `json:"started"`
-	Elapsed        time.Duration                        `json:"elapsed_ns,omitempty"`
-	Outcome        string                               `json:"outcome,omitempty"`
-	Usage          map[string]int64                     `json:"usage,omitempty"`
-	Native         bool                                 `json:"native,omitempty"`
-	NativePrepared bool                                 `json:"native_prepared,omitempty"`
-	Rework         bool                                 `json:"rework,omitempty"`
+	LegacyNative         bool                                 `json:"native,omitempty"`
+	LegacyNativePrepared bool                                 `json:"native_prepared,omitempty"`
+	Binding              string                               `json:"runner_binding,omitempty"`
+	Job                  string                               `json:"runner_job,omitempty"`
+	Import               string                               `json:"import_candidate,omitempty"`
+	Checks               []string                             `json:"runner_checks,omitempty"`
+	ID                   string                               `json:"id"`
+	Role                 string                               `json:"role"`
+	Host                 string                               `json:"host"`
+	Action               string                               `json:"action"`
+	Ticket               string                               `json:"ticket"`
+	Owner                string                               `json:"owner,omitempty"`
+	Session              string                               `json:"session,omitempty"`
+	ObservedModel        string                               `json:"observed_model,omitempty"`
+	ObservedEffort       string                               `json:"observed_effort,omitempty"`
+	Candidate            Snapshot                             `json:"candidate"`
+	Sources              map[string]string                    `json:"sources,omitempty"`
+	Shared               map[string]WorkflowSharedFingerprint `json:"shared,omitempty"`
+	Started              time.Time                            `json:"started"`
+	Elapsed              time.Duration                        `json:"elapsed_ns,omitempty"`
+	Outcome              string                               `json:"outcome,omitempty"`
+	Usage                map[string]int64                     `json:"usage,omitempty"`
+	Rework               bool                                 `json:"rework,omitempty"`
 }
 
 type WorkflowSharedFingerprint struct {
@@ -129,7 +148,7 @@ func (w *Workflow) IsRework(action string) bool {
 
 func (t *Task) workflowNext(state Readiness) string {
 	w := t.Workflow
-	if w.Problem != "" || t.NeedsRepairAuthority(state.Candidate) {
+	if w.Authority == "" || w.Problem != "" || t.NeedsRepairAuthority(state.Candidate) {
 		return "blocked"
 	}
 	if t.Scope.Until == "plan" {

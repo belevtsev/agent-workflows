@@ -14,15 +14,13 @@ func workerCommands() []uxCommand {
 			uxOption("dispatch", "", "emit version 2 with a generated fresh-worker native prompt and host settings"),
 			uxOption("view", "full|launch", "default full; launch requires --dispatch and retains native launch fields with a full response reference", "full", "launch"), budget, json,
 		}, examples: []string{"kitsu task prepare fix-login --role developer --stage code --round 1 --host codex --workflow small --assignment assignment.txt"}, run: runTaskPrepare},
-		{path: "task dispatch", args: "<dispatch-id>", summary: "Read the original native dispatch or run its configured worker explicitly", operands: [][2]string{{"dispatch-id", "immutable private interval id returned by task prepare in this worktree"}}, flags: []uxFlag{uxOption("run", "", "run one worker from a prepared version 2 role assignment"), budget, json}, examples: []string{"kitsu task dispatch <dispatch-id>", "kitsu task dispatch <dispatch-id> --run"}, run: runTaskDispatch},
+		{path: "task dispatch", args: "<dispatch-id>", summary: "Read the original native dispatch", operands: [][2]string{{"dispatch-id", "immutable private interval id returned by task prepare in this worktree"}}, flags: []uxFlag{budget, json}, examples: []string{"kitsu task dispatch <dispatch-id>"}, run: runTaskDispatch},
 		{path: "task return", args: "<dispatch-id>", summary: "Bind bounded untrusted worker claims to the active interval without finishing it", operands: [][2]string{{"dispatch-id", "private interval id returned by task prepare in this worktree"}}, flags: []uxFlag{
 			uxOption("request", "file|-", "required version 1 JSON handback, at most 65536 bytes; optional claims may be omitted; - reads standard input"), budget, json,
 		}, examples: []string{"kitsu task return <dispatch-id> --request -"}, run: runTaskReturn},
 		{path: "task finish", args: "<dispatch-id>", summary: "Validate a prepared role's writes and record current checks without rerunning them", operands: [][2]string{{"dispatch-id", "private interval id returned by task prepare in this worktree"}}, flags: []uxFlag{
 			uxOption("expect-checks", "pass|fail|any", "default any records the actual verdict; pass requires current passes; fail requires current failures", "pass", "fail", "any"),
 			uxOption("abandon", "", "record abandonment and release the interval; gives no write or quality approval"),
-			uxOption("message", "text", "explicitly commit the verified and already staged candidate for a configured git worker"),
-			uxOption("include", "path", "authorize one changed path in that commit; repeat for every path"),
 			uxOption("reason", "text", "required explanation with --abandon; cannot combine abandonment with --expect-checks"), budget, json,
 		}, examples: []string{"kitsu task finish <dispatch-id> --expect-checks pass", "kitsu task finish <dispatch-id> --abandon --reason 'Role settings changed; prepare a fresh worker'"}, run: runTaskFinish},
 	}
