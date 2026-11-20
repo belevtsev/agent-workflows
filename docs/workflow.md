@@ -2,7 +2,7 @@
 
 Use the **managed role workflow** when you ask Kitsu to coordinate specialists or resume an existing OpenSpec change. An ordinary Codex or Claude Code request uses the [daily task harness](task-harness.md#how-a-daily-task-runs).
 
-<img src="diagrams/overview.svg" alt="With the configured workflow, Kitsu uses repository role assignments or the saved installation default. Start in either host. Kitsu saves the task, dispatches each role to its selected host and verifies the candidate before reporting evidence." width="100%">
+<img src="diagrams/overview.svg" alt="Start or resume in a coding host or the CLI. Kitsu pins the role settings, sends jobs to the trusted runner, and records signed results and scope in the task." width="100%">
 
 [Set up the configured workflow](configured-workflow.md) to choose each specialist’s host, model, and reasoning.
 
@@ -19,10 +19,9 @@ The [early Claude Code trial](roles.md#what-is-not-known) covered two small task
 [Compact mode](compact-context.md) is an opt-in way to collect scoped repository evidence,
 prepare each fresh worker with `kitsu task prepare`, finalize its saved write-check interval
 with `kitsu task finish`, and inspect bounded declared-check results. Saved briefs go directly
-to the native host. With version 2 role assignments, `kitsu task dispatch ID --run` can execute one prepared worker and save its handback. The coordinator still records reviews and developer approvals. [Run a configured managed role](configured-workflow.md#run-a-managed-openspec-role)
-It keeps both paths and their approval/review conditions. The coordinator loads the
-[on-demand instructions](../skills/task/references/compact.md) only when requested; byte and
-call comparisons do not establish a total task-token saving.
+to the native host. Version 2 role settings also select a host for each prepared assignment. The
+[supervised daily workflow](configured-workflow.md) uses the registered runner
+to launch roles and verify candidates under reviewed policy.
 
 Optional [workflow insights](workflow-insights.md) join existing usage, check
 records and managed intervals. Consequential source-linked notes, troubleshooting

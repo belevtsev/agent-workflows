@@ -207,3 +207,18 @@ func TestUXConfigShowAndInvalidArgumentsDoNotWrite(t *testing.T) {
 		}
 	}
 }
+
+func TestUXConfigIfUnsetUsesPersonalPreference(t *testing.T) {
+	cfg, checkout, personal := uxTestConfig(t)
+	uxTestWrite(t, checkout, "version = 1\nhost = \"codex\"\n")
+	t.Setenv("KITSU_HOST", "codex")
+	for _, requested := range []string{"claude", "codex"} {
+		if err := Execute(t.Context(), []string{"config", "set", "host", requested, "--global", "--if-unset"}, cfg); err != nil {
+			t.Fatal(err)
+		}
+		got, _, err := uxReadPreference(personal)
+		if err != nil || got != "claude" {
+			t.Fatalf("personal host = %q, %v", got, err)
+		}
+	}
+}

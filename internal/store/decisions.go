@@ -16,6 +16,7 @@ import (
 
 // The causes that prevent a hook from deciding.
 const (
+	CauseNoRefUpdates       = "no_ref_updates"
 	CauseNoDeclaration      = "no_declaration"
 	CauseInvalidDeclaration = "invalid_declaration"
 	CauseTree               = "tree"

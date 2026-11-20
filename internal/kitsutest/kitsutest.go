@@ -125,6 +125,10 @@ func NewRepo(t testing.TB) *Repo {
 	for _, kv := range os.Environ() {
 		name, _, _ := strings.Cut(kv, "=")
 		upper := strings.ToUpper(name)
+		switch upper {
+		case "CLAUDECODE", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_CODE_ENTRYPOINT":
+			continue
+		}
 		if strings.HasPrefix(upper, "GIT_") || upper == "HOME" || upper == "USERPROFILE" || upper == "APPDATA" || upper == "PATH" || strings.HasPrefix(upper, "XDG_") {
 			continue
 		}

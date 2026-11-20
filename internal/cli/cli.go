@@ -8,18 +8,20 @@ import (
 	"strings"
 
 	"github.com/belevtsev/kitsu/v3/internal/advisers"
+	"github.com/belevtsev/kitsu/v3/internal/workflowrunner"
 )
 
 // Config is what the program gives the commands.
 type Config struct {
-	Editor        func(context.Context, *UXEditor) error
-	NativeExecute func(context.Context, *advisers.NativeCall) advisers.Execution
-	Version       string
-	Revision      string
-	BuiltAt       string
-	In            io.Reader
-	Out           io.Writer
-	Err           io.Writer
+	workflowRunner func(context.Context, string) (*workflowrunner.Client, error)
+	Editor         func(context.Context, *UXEditor) error
+	NativeExecute  func(context.Context, *advisers.NativeCall) advisers.Execution
+	Version        string
+	Revision       string
+	BuiltAt        string
+	In             io.Reader
+	Out            io.Writer
+	Err            io.Writer
 }
 
 // command is one entry of the command table.

@@ -62,7 +62,39 @@ func TestRemoteMatchedHostInstall(t *testing.T) {
 				if got := string(readFile(t, hostFile)); got != tc.host {
 					t.Fatalf("default host = %q, want %q", got, tc.host)
 				}
+				other := "claude"
+				if tc.host == "claude" {
+					other = "codex"
+				}
+				run.env["KITSU_TEST_SETUP_HOST"] = other
+				if output, err := run.run(false, hostFlag, other); err != nil || string(readFile(t, hostFile)) != tc.host {
+					t.Fatalf("second install changed the saved default: %v\n%s", err, output)
+				}
+				opt := "--set-default"
+				if runtime.GOOS == "windows" {
+					opt = "-SetDefault"
+				}
+				if output, err := run.run(false, hostFlag, other, opt); err != nil || string(readFile(t, hostFile)) != other {
+					t.Fatalf("explicit default was not saved: %v\n%s", err, output)
+				}
 			})
 		}
+	}
+}
+
+func TestCLIOnlyUsesLatestManifestVersion(t *testing.T) {
+	const version = "v1.6.0"
+	for _, shell := range nativeInstallers(t) {
+		t.Run(shell.name, func(t *testing.T) {
+			run := newInstallRun(t, shell, serveAssets(t, fixtureAssets(t, version)))
+			run.env["KITSU_INSTALL_TEST_VERSION"] = version
+			flag := "--cli-only"
+			if runtime.GOOS == "windows" {
+				flag = "-CliOnly"
+			}
+			if output, err := run.run(false, flag); err != nil || !strings.HasPrefix(run.installedVersion(), "kitsu "+version+"\n") {
+				t.Fatalf("CLI-only install did not use the manifest's release: %v\n%s", err, output)
+			}
+		})
 	}
 }

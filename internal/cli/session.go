@@ -10,14 +10,16 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/evidence"
 	"github.com/belevtsev/kitsu/v3/internal/gitx"
 	"github.com/belevtsev/kitsu/v3/internal/store"
+	"github.com/belevtsev/kitsu/v3/internal/workflowrunner"
 )
 
 // session is what a command needs to work in a repository.
 type session struct {
-	cfg     Config
-	repo    *gitx.Repo
-	store   *store.Store
-	compact *compactCheckCapture
+	cfg            Config
+	repo           *gitx.Repo
+	store          *store.Store
+	compact        *compactCheckCapture
+	workflowRunner *workflowrunner.Client
 }
 
 // open finds the repository of the working directory. A command other than

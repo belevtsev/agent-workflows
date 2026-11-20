@@ -135,12 +135,16 @@ func runUXConfig(ctx context.Context, cfg Config, args []string) error {
 	flags := newFlags("config " + args[0])
 	asJSON := flags.Bool("json", false, "")
 	global := flags.Bool("global", false, "")
+	ifUnset := flags.Bool("if-unset", false, "")
 	p, err := parseArgs(flags, args[1:])
 	if err != nil {
 		return err
 	}
 	if err := uxConfigOperands(args[0], p, *global); err != nil {
 		return err
+	}
+	if *ifUnset && (!*global || args[0] != "set") {
+		return usagef("--if-unset is available for config set --global")
 	}
 	if args[0] == "show" || args[0] == "get" {
 		return uxShowConfig(ctx, cfg, args[0] == "get", *asJSON)
@@ -149,9 +153,12 @@ func runUXConfig(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return err
 	}
-	_, before, err := uxReadPreference(path)
+	saved, before, err := uxReadPreference(path)
 	if err != nil {
 		return failf("%v", err)
+	}
+	if *ifUnset && saved != "" {
+		return uxSavedPreference(cfg, path, saved, *asJSON)
 	}
 	host := ""
 	if args[0] == "set" {

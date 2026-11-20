@@ -23,9 +23,9 @@
     {"id": "checks", "type": "frontend", "label": "Repository checks", "sublabel": "kitsu.toml", "row": 0, "col": 3, "size": [150, 58]},
     {"id": "start", "type": "external", "label": "Start or resume", "sublabel": "either host or CLI", "row": 1, "col": 0, "size": [150, 58]},
     {"id": "runner", "type": "backend", "label": "kitsu task run", "sublabel": "pins role settings", "row": 1, "col": 1, "size": [150, 58]},
-    {"id": "worker", "type": "external", "label": "Specialist session", "sublabel": "assigned host", "row": 1, "col": 2, "size": [150, 58]},
-    {"id": "verify", "type": "backend", "label": "Verify candidate", "sublabel": "behavior and checks", "row": 1, "col": 3, "size": [150, 58]},
-    {"id": "state", "type": "database", "label": "Saved task", "sublabel": "scope and evidence", "row": 2, "col": 1, "size": [150, 58]},
+    {"id": "worker", "type": "external", "label": "Specialist session", "sublabel": "disposable job", "row": 1, "col": 2, "size": [150, 58]},
+    {"id": "verify", "type": "backend", "label": "Trusted runner", "sublabel": "isolated verification", "row": 1, "col": 3, "size": [150, 58]},
+    {"id": "state", "type": "database", "label": "Saved task", "sublabel": "signed results and scope", "row": 2, "col": 1, "size": [150, 58]},
     {"id": "receipt", "type": "backend", "label": "Export receipt", "sublabel": "verified change", "row": 2, "col": 3, "size": [150, 58]}
   ],
   "connections": [
@@ -33,7 +33,7 @@
     {"id": "init-roles", "from": "default", "to": "roles", "variant": "dashed"},
     {"id": "use-default", "from": "default", "to": "runner", "label": "fallback"},
     {"id": "choose-role", "from": "roles", "to": "worker", "label": "host, model, effort"},
-    {"id": "required-checks", "from": "checks", "to": "verify", "label": "required checks"},
+    {"id": "required-checks", "from": "checks", "to": "verify", "label": "reviewed checks"},
     {"id": "start-runner", "from": "start", "to": "runner"},
     {"id": "send-task", "from": "runner", "to": "worker"},
     {"id": "returned-work", "from": "worker", "to": "verify"},

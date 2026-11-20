@@ -1,141 +1,64 @@
 package cli
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"io"
-	"io/fs"
-	"maps"
-	"os"
-	"path"
+	"slices"
 
 	"github.com/belevtsev/kitsu/v3/internal/decl"
-	"github.com/belevtsev/kitsu/v3/internal/gitx"
 	"github.com/belevtsev/kitsu/v3/internal/harness"
+	"github.com/belevtsev/kitsu/v3/internal/workflowrunner"
 )
 
-// A revised regression is checked against the pre-code source and the new
-// tests in a private directory. The real checkout and index are never changed.
-func workflowBaselineProof(ctx context.Context, s *session, t *harness.Task, o harnessOptions, c harness.Snapshot, out io.Writer) (*harness.Proof, error) {
-	w := t.Workflow
-	if w.PreCode == nil || t.Latest("implement", "repair") == nil {
-		return executeHarnessAssertion(ctx, s, t, o, c, out)
-	}
-	dir, err := os.MkdirTemp(s.repo.GitDir, "kitsu-baseline-")
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = os.RemoveAll(dir) }()
-	if err := s.repo.CheckoutWorkflowTree(ctx, s.store.Tmp(), w.PreCode.Tree, dir); err != nil {
-		return nil, fmt.Errorf("restore pre-code baseline: %w", err)
-	}
-	repo, err := gitx.InitWorkflowReplay(ctx, dir)
-	if err != nil {
-		return nil, err
-	}
-	replay := &session{cfg: s.cfg, repo: repo, store: s.store}
-	restoreTree, err := repo.Snapshot(ctx, s.store.Tmp())
-	if err != nil {
-		return nil, err
-	}
-	raw, err := stageRawSources(ctx, replay, restoreTree)
-	if err != nil {
-		return nil, err
-	}
-	if restoreTree != w.PreCode.Tree || !maps.Equal(raw, w.PreCodeSources) {
-		return nil, failf("pre-code bytes could not be restored exactly for the revised assertion")
-	}
-	if err := overlayWorkflowTests(ctx, s, w, c, dir); err != nil {
-		return nil, err
-	}
-	replayed, err := harnessSnapshot(ctx, replay)
-	if err != nil {
-		return nil, err
-	}
-	task := *t
-	task.Scope.Commit = false
-	task.CommitTarget = ""
-	return executeHarnessAssertion(ctx, replay, &task, o, replayed, out)
+func workflowBaselineFile(id string) string {
+	return "runner-pre-code-" + id + ".json"
 }
 
-func overlayWorkflowTests(ctx context.Context, s *session, w *harness.Workflow, c harness.Snapshot, dir string) error {
-	changes, err := s.repo.Diff(ctx, w.PreCode.Tree, c.Tree)
-	if err != nil {
-		return err
+// Rework replays the revised tests against the exact accepted pre-code
+// bytes. The runner receives that complete projection as a new check job.
+func workflowBaselineFiles(l *stageLedger, task *harness.Task, files []workflowrunner.File) ([]workflowrunner.File, error) {
+	w := task.Workflow
+	if w.PreCode == nil {
+		return files, nil
 	}
-	current, err := stageRawSources(ctx, s, c.Tree)
-	if err != nil {
-		return err
+	var base []workflowrunner.File
+	if err := l.read(workflowBaselineFile(task.ID), &base); err != nil {
+		return nil, err
 	}
-	from, err := os.OpenRoot(s.repo.Root)
-	if err != nil {
-		return err
+	if workflowFilesKey(base) != w.PreCodeSources["bundle"] {
+		return nil, failf("retained pre-code sources no longer match the accepted baseline")
 	}
-	defer func() { _ = from.Close() }()
-	to, err := os.OpenRoot(dir)
-	if err != nil {
-		return err
+	var tests []workflowrunner.File
+	isTest := func(name string) bool {
+		return decl.MatchAny(w.TestPolicy, name) && decl.MatchAny(w.Plan.TestPaths, name)
 	}
-	defer func() { _ = to.Close() }()
-	shared := map[string]harness.WorkflowTestRegion{}
-	for _, region := range w.Plan.Shared {
-		shared[region.Path] = region
+	for _, file := range base {
+		if isTest(file.Path) && !slices.ContainsFunc(files, func(current workflowrunner.File) bool { return current.Path == file.Path }) {
+			tests = append(tests, workflowrunner.File{Path: file.Path})
+		}
 	}
-	for _, name := range workflowChangePaths(changes, w.PreCodeSources, current) {
-		if !decl.MatchAny(w.Plan.TestPaths, name) || len(w.TestPolicy) > 0 && !decl.MatchAny(w.TestPolicy, name) {
+	for _, file := range files {
+		if !isTest(file.Path) {
 			continue
 		}
-		if region, mixed := shared[name]; mixed {
-			if err := overlayWorkflowShared(from, to, region); err != nil {
-				return err
+		for _, shared := range w.Plan.Shared {
+			if shared.Path != file.Path {
+				continue
 			}
-			continue
+			original := slices.IndexFunc(base, func(f workflowrunner.File) bool { return f.Path == file.Path })
+			if original < 0 {
+				return nil, failf("shared pre-code file %q is missing", file.Path)
+			}
+			old, err := workflowRegion(base[original].Data, shared)
+			if err != nil {
+				return nil, err
+			}
+			now, err := workflowRegion(file.Data, shared)
+			if err != nil {
+				return nil, err
+			}
+			file.Data = append(slices.Clone(old.prefix), now.body...)
+			file.Data = append(file.Data, old.suffix...)
 		}
-		if err := overlayWorkflowTestPath(from, to, name); err != nil {
-			return err
-		}
+		tests = append(tests, file)
 	}
-	return nil
-}
-
-func overlayWorkflowShared(from, to *os.Root, region harness.WorkflowTestRegion) error {
-	old, err := readSharedFile(to, region)
-	if err != nil {
-		return fmt.Errorf("recover pre-code test boundaries: %w", err)
-	}
-	now, err := readSharedFile(from, region)
-	if err != nil {
-		return err
-	}
-	full := append(append(append([]byte(nil), old.prefix...), now.body...), old.suffix...)
-	return to.WriteFile(region.Path, full, 0o600)
-}
-
-func overlayWorkflowTestPath(from, to *os.Root, name string) error {
-	info, err := from.Lstat(name)
-	if errors.Is(err, fs.ErrNotExist) {
-		err = to.Remove(name)
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil
-		}
-		return err
-	}
-	if err != nil || !info.Mode().IsRegular() {
-		return failf("cannot replay non-regular test path %q", name)
-	}
-	src, err := from.Open(name)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = src.Close() }()
-	if err := to.MkdirAll(path.Dir(name), 0o700); err != nil {
-		return err
-	}
-	dst, err := to.OpenFile(name, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode().Perm())
-	if err != nil {
-		return err
-	}
-	_, copyErr := io.Copy(dst, src)
-	return errors.Join(copyErr, dst.Chmod(info.Mode().Perm()), dst.Close())
+	return workflowChanges(base, tests), nil
 }
