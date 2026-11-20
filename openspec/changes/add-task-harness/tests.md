@@ -2,6 +2,9 @@
 
 | Scenario | Test file | Text |
 | --- | --- | --- |
+| Deliver JSON export | scenarios/harness/feature_delivery_test.go | TestVerifiedFeatureDelivery |
+| Revise scope or withdraw check approval | scenarios/harness/feature_delivery_test.go | TestVerifiedFeatureDelivery |
+| Review an incomplete story | scenarios/harness/feature_delivery_test.go | TestFeatureDraftAndNamedCheck |
 | Continue an approved design | scenarios/harness/harness_test.go | TestJavaScriptPlanThenImplement |
 | Review a named committed range | scenarios/harness/committed_review_test.go | TestCommittedReviewRange |
 | Require independent review by request or repository policy | scenarios/harness/review_policy_test.go | TestImplementationReviewPolicy |
@@ -174,3 +177,11 @@ On 20 November 2026, the split and combined paths each ran once on GPT-6.2 Sol w
 | Combined | 113.18 s | 820,622 | 111,911 | 704,000 | 4,711 | 3 | 0 |
 
 The combined attempt took 9.5% less wall time and used 3.5% fewer captured tokens. Uncached input rose by 39.1%. The split run started one nested Codex process and the combined run started two. Their actual session IDs and finished counters were reconciled against the coordinator's command output, retained rollouts and budget ledger. This required operator work outside the timed tasks. The pair captured 1,671,044 tokens, below the 1.7M stop threshold. These measurements describe one ordered pair. Billing savings remain unverified.
+
+## Feature acceptance
+
+Run `go test ./scenarios/harness -run 'Test(VerifiedFeature|FeatureDraft|FeatureBrief)'`.
+The export fixture checks empty JSON, quote round-trip and unchanged text bytes. It
+also exercises withdrawn approval, a different brief and required native review
+evidence before commit. Draft, named-check and replay cases use isolated Git
+checkouts and recorded host events.

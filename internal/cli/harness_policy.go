@@ -64,9 +64,22 @@ func prepareHarnessVerification(ctx context.Context, s *session, task *harness.T
 	if task.NeedsRepairAuthority(candidate) {
 		return failf("candidate changed after failed verification. Authorize repair with kitsu task extend %s --repair", task.ID)
 	}
+	if task.Feature != nil {
+		if err := requireFeatureApproval(ctx, s, task, candidate.Tree); err != nil {
+			return err
+		}
+	}
 	task.PinVerifyOnlyFailure()
 	if err := pinHarnessCommitTarget(ctx, s, task); err != nil {
 		return err
 	}
 	return s.checkHarnessCommitTarget(ctx, task.CommitTarget)
+}
+
+func requireHarnessCheckApproval(s *session, fingerprint string) error {
+	approval, err := trustFile(s.repo, "")
+	if err != nil || string(approval.data) != fingerprint+"\n" {
+		return failf("review and approve the local declaration with kitsu check trust in your terminal")
+	}
+	return nil
 }

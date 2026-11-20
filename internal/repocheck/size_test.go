@@ -110,7 +110,7 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	t.Logf("coordinator state: %d of %d lines", states, maxStateLines)
 	t.Logf("task verification: %d of %d lines", verificationLines, maxVerificationLines)
 	t.Logf("workflow insights: %d of %d lines", insightLines, maxInsightLines)
-	const maxHarnessLines = 5070 // Includes PR check receipts, private approvals and resumable delivery.
+	const maxHarnessLines = 5385 // Includes PR check delivery and versioned feature acceptance evidence.
 	t.Logf("task harness: %d of %d lines", harnessLines, maxHarnessLines)
 	const maxReleaseLines = 410 // Repository-only release assembly, integrity and publication.
 	t.Logf("release automation: %d of %d lines", releaseLines, maxReleaseLines)

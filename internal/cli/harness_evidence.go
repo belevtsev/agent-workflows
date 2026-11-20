@@ -29,6 +29,7 @@ type verificationLogRef struct {
 }
 
 type harnessView struct {
+	Feature           *harness.FeatureBrief `json:"feature_brief,omitempty"`
 	AssignedRole      string                `json:"assigned_role,omitempty"`
 	AssignedHost      string                `json:"assigned_host,omitempty"`
 	WorkflowAttempt   string                `json:"workflow_attempt,omitempty"`
@@ -89,6 +90,7 @@ type harnessView struct {
 
 func observeHarness(ctx context.Context, s *session, t *harness.Task, withUsage bool) (harnessView, error) {
 	v := harnessView{store: s.store, Claim: t.Claim, Request: t.Request, Task: t.ID, Scope: t.Scope, Behavior: "pending", Gate: "unchecked", Delivery: "working tree", Proof: t.Proof, Review: t.Latest("review"), Usage: []string{"kitsu", "usage", "show", "--task", t.ID, "--json"}}
+	v.Feature = t.Feature
 	v.Publication = lastPublication(t)
 	v.RepositoryPolicy = t.RepositoryPolicy
 	v.Deadline, v.FinishReserve, v.ReviewLimit, v.ReviewStarts = t.Deadline, t.FinishReserve, t.ReviewLimit, t.StartedReviews()
@@ -155,7 +157,7 @@ func (v *harnessView) observeCurrentHarness(ctx context.Context, s *session, t *
 			return err
 		}
 	}
-	v.ReviewCurrent = v.Review != nil && v.Review.ReviewMatches(c, t.Scope.Until, headTree, parents)
+	v.ReviewCurrent = t.CurrentFeatureEvent(v.Review) && v.Review.ReviewMatches(c, t.Scope.Until, headTree, parents)
 	if err := v.observeDelivery(ctx, s, t, headTree, parents); err != nil {
 		return err
 	}
@@ -491,6 +493,9 @@ func (v harnessView) verificationLog() *verificationLogRef {
 // Full results, findings and inputs stay in task show across interruptions.
 func (v harnessView) brief() map[string]any {
 	reply := map[string]any{"task": v.Task, "next": v.Next, "verified": v.Verified, "repository_checks": v.Gate, "delivery": v.Delivery, "details": []string{"kitsu", "task", "show", v.Task, "--json"}}
+	if v.Feature != nil {
+		reply["feature_revision"] = v.Feature.Revision()
+	}
 	v.addBriefTicket(reply)
 	if v.ReviewPolicyError != "" {
 		reply["review_policy_error"] = v.ReviewPolicyError
@@ -609,7 +614,7 @@ func (v harnessView) addBriefClaim(reply map[string]any) {
 }
 
 func harnessProofValid(s *session, t *harness.Task) (bool, error) {
-	if t.Proof == nil || t.Proof.RepositoryPolicy != t.RepositoryPolicy {
+	if t.Proof == nil || t.Proof.RepositoryPolicy != t.RepositoryPolicy || t.Proof.FeatureRevision != t.Feature.Revision() {
 		return false, nil
 	}
 	return validAssertionRecord(s, t.Proof, store.Passed)
@@ -738,6 +743,7 @@ func executeHarnessAssertion(ctx context.Context, s *session, t *harness.Task, o
 	}
 	p := &harness.Proof{IndexChecked: true, PerRunInputs: true, CheckID: check.ID, Ticket: o.ticket, Candidate: c, Key: key, Run: record.RunID, Outcome: record.Outcome, ExitStatus: record.ExitStatus, Detail: sourceChangeSummary(record), Expect: o.expect, Argv: o.argv}
 	p.RepositoryPolicy = t.RepositoryPolicy
+	p.FeatureRevision = t.Feature.Revision()
 	p.LogDigest, err = taskVerificationLog(s, p.Run)
 	if err != nil {
 		return nil, err
@@ -815,7 +821,7 @@ func (v *harnessView) observeDelivery(ctx context.Context, s *session, t *harnes
 		return err
 	}
 	if t.Workflow == nil {
-		v.Gate, v.Verified, err = harnessGate(ctx, s, c.Tree, p)
+		err = v.observeDailyGate(ctx, s, t)
 	} else {
 		v.Gate, v.Verified = workflowVerificationStatus(s, t)
 	}
@@ -957,6 +963,9 @@ func assertionCheck(ctx context.Context, s *session, t *harness.Task, o harnessO
 		return check, "", false, err
 	}
 	for _, declared := range policy.Checks {
+		if id := t.Feature.PrimaryCheck(); id != "" && declared.ID != id {
+			continue
+		}
 		if t.Bug != nil && t.Bug.Source.Check != nil && t.Bug.Source.Check.LocalCheck != declared.ID {
 			continue
 		}

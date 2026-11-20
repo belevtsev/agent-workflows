@@ -508,6 +508,8 @@ Options:
   --actor <id>             native session identity
   --note <text>            result and evidence or artifact reference
   --finding <text>         unresolved review finding; repeatable
+  --feature-brief <file>   save a feature brief at intake or planning; use - for
+                           stdin
   --observed-review        use the matching native review result captured by the
                            host hooks
   --brief                  return next action, ticket and evidence references as
