@@ -21,6 +21,11 @@ type nativeAnswer struct {
 }
 
 func decodeNativeResponse(data []byte, r Request) (*DecisionResult, string, *Usage, error) {
+	answers, model, usage, err := decodeNativeAnswers(data, map[string]Request{"result": r})
+	return answers["result"], model, usage, err
+}
+
+func decodeNativeAnswers(data []byte, requests map[string]Request) (map[string]*DecisionResult, string, *Usage, error) {
 	invalid := errors.New("invalid native response")
 	if len(data) > MaxAnswer || !utf8.Valid(data) || jsonKeys(json.NewDecoder(bytes.NewReader(data)), 0, false) != nil {
 		return nil, "", nil, invalid
@@ -33,16 +38,20 @@ func decodeNativeResponse(data []byte, r Request) (*DecisionResult, string, *Usa
 			Output *int64 `json:"output_tokens"`
 		} `json:"usage"`
 	}
-	if json.Unmarshal(data, &response) != nil || len(response.Answers) != 1 {
+	if json.Unmarshal(data, &response) != nil || len(response.Answers) != len(requests) {
 		return nil, "", nil, invalid
 	}
-	answer, exists := response.Answers["result"]
-	if !exists {
-		return nil, "", nil, invalid
-	}
-	result, err := normalizeNativeAnswer(answer, r)
-	if err != nil {
-		return nil, "", nil, err
+	results := make(map[string]*DecisionResult, len(requests))
+	for name, request := range requests {
+		answer, exists := response.Answers[name]
+		if !exists {
+			return nil, "", nil, invalid
+		}
+		result, err := normalizeNativeAnswer(answer, request, len(requests) > 1)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		results[name] = result
 	}
 	model := "unknown"
 	if response.Model != nil {
@@ -58,10 +67,10 @@ func decodeNativeResponse(data []byte, r Request) (*DecisionResult, string, *Usa
 		}
 		usage = &Usage{InputTokens: *u.Input, OutputTokens: *u.Output}
 	}
-	return result, model, usage, nil
+	return results, model, usage, nil
 }
 
-func normalizeNativeAnswer(a nativeAnswer, r Request) (*DecisionResult, error) {
+func normalizeNativeAnswer(a nativeAnswer, r Request, optionalConfidence bool) (*DecisionResult, error) {
 	invalid := errors.New("answer does not match the requested decision")
 	result := &DecisionResult{Kind: r.Kind}
 	if r.Kind == "boolean" {
@@ -71,7 +80,7 @@ func normalizeNativeAnswer(a nativeAnswer, r Request) (*DecisionResult, error) {
 		result.ProbabilityTrue = a.Noul
 		return result, nil
 	}
-	if !probability(a.Confidence) || a.Noul != nil {
+	if ((!optionalConfidence || a.Confidence != nil) && !probability(a.Confidence)) || a.Noul != nil {
 		return nil, invalid
 	}
 	result.Confidence = a.Confidence

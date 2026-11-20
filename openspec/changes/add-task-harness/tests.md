@@ -2,6 +2,7 @@
 
 | Scenario | Test file | Text |
 | --- | --- | --- |
+| Resume configured story intake after a result or interruption | internal/cli/adviser_story_review_test.go | TestConfiguredStoryReviewIntake |
 | Resume saved verification in either host | scenarios/harness/feature_handoffs_test.go | TestFeatureHandoffReplaysInBothHosts |
 | Deliver JSON export | scenarios/harness/feature_delivery_test.go | TestVerifiedFeatureDelivery |
 | Revise scope or withdraw check approval | scenarios/harness/feature_delivery_test.go | TestVerifiedFeatureDelivery |
@@ -186,3 +187,22 @@ The export fixture checks empty JSON, quote round-trip and unchanged text bytes.
 also exercises withdrawn approval, a different brief and required native review
 evidence before commit. Draft, named-check and replay cases use isolated Git
 checkouts and recorded host events.
+
+
+## Offline delivery comparison
+
+| Case | Observed result |
+| --- | --- |
+| Shared daily skill at merged #259 (`3ca4097`) | 7,611 bytes |
+| Shared daily skill after #261 (`90c599d`) | 5,678 bytes |
+| Shared daily skill with Jev instructions | 5,866 bytes |
+| Codex and Claude Code handoff fixtures | Both use the supplied verification command. An identical replay preserves the run ID. Changed staged content gets a new run. Both recover the delivered commit. |
+| Jev settings disabled | No HTTP call for the feature fixture. |
+| Jev settings enabled | One local TLS request for each labeled clear or ambiguous story. Six matching answers are saved. Replays and lost results add zero requests. |
+| Jev outage or policy change | The fixture permits local work. Replays and stale approvals add zero requests. |
+
+Byte counts come from the shipped skill, including its header. The Jev tests
+use fixed responses and fixture token counters. A signed-in host trial would
+measure captured input, cache, output, elapsed time and developer interventions
+on matching tasks, with Jev disabled first and then enabled on the same build.
+These local results establish the contract and give a prompt size comparison.

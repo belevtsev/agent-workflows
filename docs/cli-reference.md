@@ -1385,6 +1385,41 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
 ```
 
+### kitsu adviser story-review enable
+
+```text
+usage: kitsu adviser story-review enable --adviser NAME [options]
+
+Approve automatic Jev review for new feature stories in this checkout.
+
+Options:
+  --adviser <name>         configured TypeSafe Jev adviser
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu adviser story-review enable
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
+### kitsu adviser story-review disable
+
+```text
+usage: kitsu adviser story-review disable
+
+Disable automatic feature story review in this checkout.
+
+Options:
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu adviser story-review disable
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
 ### kitsu adviser providers
 
 ```text

@@ -69,6 +69,7 @@ Open a daily task with the developer's request or the story from a saved ticket.
 For a clear feature, choose the implementation entry. For a story with unresolved
 behavior, choose the planning entry and record a brief with `"draft": true`.
 A planning-only task can finish with open questions, without editing the checkout.
+You can [enable Jev story review](advisers.md#review-feature-stories-at-intake-with-jev) for new features in this checkout.
 
 Save a UTF-8 JSON brief with `kitsu task record ID intake --ticket TICKET --actor SESSION --note "Acceptance agreed" --feature-brief FILE`.
 Use `-` for stdin. For a planning task or a revision, use `plan` in place of `intake`.

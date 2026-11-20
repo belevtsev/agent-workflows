@@ -494,3 +494,18 @@ observable expectation and a saved assertion or declared check.
 - **THEN** the brief SHALL link to the full saved record and provide a runnable
   verification command when a current ticket and saved assertion are available
 - **AND** a changed candidate SHALL require fresh evidence
+
+### Requirement: Review new feature stories with an explicitly approved adviser
+
+Source: Approved production execution plan for Jev at configured feature intake.
+
+With local approval and current repository policy, a new feature intake SHALL
+reserve one batch of six named story judgments before calling Jev. The request
+SHALL contain bounded story text. The result SHALL be advisory and tied to the
+intake revision. Verification and required independent review SHALL remain in force.
+
+#### Scenario: Resume configured story intake after a result or interruption
+
+- **WHEN** a configured intake sends its one batch and reports success, failure, or no result
+- **THEN** the persisted intake SHALL allow local planning and prevent a replayed HTTP attempt
+- **AND** a changed configuration SHALL require approval before another intake can send a request

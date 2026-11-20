@@ -389,3 +389,45 @@ kitsu advisers check --task <task> [--checkpoint <id>] [--json]
 `providers`, `list`, `bind`, and `status` make no provider calls. `check` changes no records. A failed
 consultation is reported as a failure and retained for inspection; successful output alone never
 records a disposition.
+
+
+## Review feature stories at intake with Jev
+
+In `kitsu-advisers.toml`, name a TypeSafe Jev adviser and allow the coordinator
+to use it. Keep any other providers and role access already configured.
+
+```toml
+version = 2
+
+[advisers.jev]
+provider = "typesafe"
+model = "jev-1.14.0"
+
+[access]
+coordinator = ["jev"]
+```
+
+Set `TYPESAFE_API_KEY` in the environment that launches Codex or Claude Code.
+In your own terminal in the checkout, run:
+
+```sh
+kitsu advisers story-review enable --adviser jev
+```
+
+Review the destination and confirm. Future feature intakes with
+`--feature-brief` send the saved request, goal, scope, criteria IDs and expected
+behavior. The batch has six named questions about the goal and actor, scope,
+behavior, testability, failure cases and compatibility. Kitsu sends at most
+16 KiB of story data, excluding check commands and logs. The request lasts up
+to ten seconds. See the [TypeSafe System One schema](https://api.typesafe.ai/openapi.json).
+
+The task keeps the result and any provider usage on the intake brief revision.
+The host uses it to spot gaps and can save a revised brief after clarifying
+the request. If the provider is unavailable or the call is interrupted, local
+planning can continue. Replaying an intake uses its existing record. Review
+and verification requirements still apply. Read older advice with
+`kitsu task show ID --json`. The Markdown receipt contains verification evidence.
+
+A change to the selected adviser, coordinator access or repository check
+policy requires a fresh opt-in. Run `kitsu advisers story-review disable` in your
+terminal to turn it off for future tasks in this checkout.

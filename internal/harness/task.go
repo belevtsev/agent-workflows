@@ -210,6 +210,7 @@ type DeveloperAssignment struct {
 }
 
 type Task struct {
+	StoryReview        *StoryReview   `json:"story_review,omitempty"`
 	Feature            *FeatureBrief  `json:"feature_brief,omitempty"`
 	Workflow           *Workflow      `json:"workflow,omitempty"`
 	RepositoryPolicy   string         `json:"repository_policy,omitempty"`

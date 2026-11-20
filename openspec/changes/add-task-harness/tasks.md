@@ -11,3 +11,4 @@
 - [x] 1.8 Support a privately approved CI check on an unchanged PR checkout while preserving repository checks and review. Size: S. Depends on: 1.6. Check: test. Source: Reproduce and repair a failed pull request check.
 - [x] 1.9 Save feature acceptance, enforce current evidence and review, and export criterion receipts. Size: M. Depends on: 1.2, 1.5. Check: test. Source: Verify a feature against a saved acceptance brief.
 - [x] 1.10 Resume with a short shared host brief and reuse a saved verification command. Size: S. Depends on: 1.9. Check: test. Source: Verify a feature against a saved acceptance brief.
+- [x] 1.11 Opt in to one revision-bound Jev assessment at feature intake, with replay and unavailable outcomes. Size: M. Depends on: 1.9. Check: test. Source: Review new feature stories with an explicitly approved adviser.

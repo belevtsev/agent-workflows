@@ -18,20 +18,28 @@ import (
 // Preparing a call performs no network I/O and writes no records.
 type NativeCall struct {
 	definition Definition
-	request    Request
+	requests   map[string]Request
 	body       []byte
 	key        string
 }
 
 func PrepareNative(d Definition, r Request, prompt string) (*NativeCall, error) {
+	return prepareNative(d, map[string]Request{"result": r}, prompt)
+}
+
+func prepareNative(d Definition, requests map[string]Request, prompt string) (*NativeCall, error) {
 	if d.Provider == "" {
 		return nil, errors.New("a native call requires a provider")
 	}
 	if err := validateDefinition(d); err != nil {
 		return nil, err
 	}
-	if err := ValidateCapability(d.Provider, r); err != nil {
-		return nil, err
+	questions := make(map[string]any, len(requests))
+	for name, r := range requests {
+		if err := ValidateCapability(d.Provider, r); err != nil {
+			return nil, err
+		}
+		questions[name] = nativeQuestion(r)
 	}
 	if len(prompt) > MaxInput || !utf8.ValidString(prompt) || strings.TrimSpace(prompt) == "" {
 		return nil, errors.New("native context must be nonempty UTF-8 text of at most 1 MiB")
@@ -45,6 +53,16 @@ func PrepareNative(d Definition, r Request, prompt string) (*NativeCall, error) 
 			return nil, errors.New("adviser API key must contain only printable non-space ASCII")
 		}
 	}
+	body, err := json.Marshal(map[string]any{
+		"model": d.Model, "state": prompt, "questions": questions,
+	})
+	if err != nil || len(body) > MaxInput {
+		return nil, errors.New("encoded native request exceeds 1 MiB")
+	}
+	return &NativeCall{definition: d, requests: requests, body: body, key: key}, nil
+}
+
+func nativeQuestion(r Request) map[string]any {
 	question := map[string]any{"instructions": r.Question, "type": r.Kind}
 	switch r.Kind {
 	case "decision":
@@ -61,13 +79,7 @@ func PrepareNative(d Definition, r Request, prompt string) (*NativeCall, error) 
 			question["criteria"] = r.Criteria
 		}
 	}
-	body, err := json.Marshal(map[string]any{
-		"model": d.Model, "state": prompt, "questions": map[string]any{"result": question},
-	})
-	if err != nil || len(body) > MaxInput {
-		return nil, errors.New("encoded native request exceeds 1 MiB")
-	}
-	return &NativeCall{definition: d, request: r, body: body, key: key}, nil
+	return question
 }
 
 // Execute performs one HTTP attempt. The optional client supplies a transport
@@ -118,12 +130,17 @@ func (call *NativeCall) Execute(ctx context.Context, client *http.Client) (resul
 		result.Detail = "adviser response contained credentials and was discarded"
 		return result
 	}
-	answer, model, usage, err := decodeNativeResponse(body, call.request)
+	answers, model, usage, err := decodeNativeAnswers(body, call.requests)
 	if err != nil {
 		result.Detail = "adviser returned an invalid structured response"
 		return result
 	}
-	result.Answer, result.Result, result.ActualModel, result.Usage = string(body), answer, model, usage
+	if len(call.requests) == 1 {
+		result.Answer, result.Result = string(body), answers["result"]
+	} else {
+		result.Decisions = answers
+	}
+	result.ActualModel, result.Usage = model, usage
 	result.UsageKnown, result.Outcome = usage != nil, "success"
 	return result
 }
