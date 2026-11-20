@@ -10,3 +10,4 @@
 - [x] 1.7 Finish the approved CI repair from staging through verification, commit and receipt and recover interrupted delivery. Size: M. Depends on: 1.6. Check: test. Source: Reproduce and repair a failed pull request check.
 - [x] 1.8 Support a privately approved CI check on an unchanged PR checkout while preserving repository checks and review. Size: S. Depends on: 1.6. Check: test. Source: Reproduce and repair a failed pull request check.
 - [x] 1.9 Save feature acceptance, enforce current evidence and review, and export criterion receipts. Size: M. Depends on: 1.2, 1.5. Check: test. Source: Verify a feature against a saved acceptance brief.
+- [x] 1.10 Resume with a short shared host brief and reuse a saved verification command. Size: S. Depends on: 1.9. Check: test. Source: Verify a feature against a saved acceptance brief.

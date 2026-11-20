@@ -51,6 +51,18 @@ kitsu task start --resume review-export --host codex
 
 Choose the base you intend to compare. For a branch that diverged from main, use the merge base as the starting revision when you want the branch's changes since divergence. The reviewer receives the resolved commit IDs and commands to inspect their log and diff. Another session can recover that comparison after a branch moves while the original Git objects are available locally. Open a new task to review updated endpoints. For an ordinary staged or working-tree review, omit the two revision options. The first reviewer receives a `review_diff` command for the reserved working tree. When the index holds different content on a review-only task, `review_staged_diff` shows exactly what was staged. Use the comparison the developer requested. Both commands continue to address the reserved objects after the checkout changes.
 
+## Resume in Codex or Claude Code
+
+Open the original worktree and ask either host to resume the saved ID. Invoke Kitsu's task skill in Codex or use `/kitsu:task` in Claude Code. For example, “Resume Kitsu
+task json-export here. Continue from the saved verification and stop before
+publishing.”
+
+`kitsu task next ID --brief` gives the current ticket and, when there is a saved
+assertion, the next verification command. It also links to the full record and
+any relevant local log. Read the full record only when you need earlier
+decisions. After an interrupted commit, inspect the saved outcome before
+retrying. A changed candidate requires fresh evidence.
+
 ## Deliver a feature
 
 Open a daily task with the developer's request or the story from a saved ticket.

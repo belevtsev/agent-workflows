@@ -487,3 +487,10 @@ observable expectation and a saved assertion or declared check.
 
 - **WHEN** a planning-only task saves a draft brief
 - **THEN** it SHALL stop after the plan without source edits or a verification claim
+
+#### Scenario: Resume saved verification in either host
+
+- **WHEN** Codex or Claude Code resumes an existing daily task
+- **THEN** the brief SHALL link to the full saved record and provide a runnable
+  verification command when a current ticket and saved assertion are available
+- **AND** a changed candidate SHALL require fresh evidence
