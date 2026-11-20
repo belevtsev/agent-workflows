@@ -36,7 +36,7 @@ Before writes, explain the path/reason; follow the developer's choice.
 
 ## Starting a role
 
-- Version 2: omit `--host`, prepare with `--dispatch`, and use `kitsu task dispatch ID --run`.
+- Version 2: omit `--host` for the assigned host. Use `kitsu task run` for supervised runs.
   Use this for configured reviews so native hooks bind the parent and child.
   Other same-host assignments can use the native launcher.
 - Start a fresh worker without this conversation or a fork, passing the resolved

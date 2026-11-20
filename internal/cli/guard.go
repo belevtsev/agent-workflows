@@ -10,6 +10,7 @@ import (
 
 	"github.com/belevtsev/kitsu/v3/internal/decl"
 	"github.com/belevtsev/kitsu/v3/internal/gitx"
+	"github.com/belevtsev/kitsu/v3/internal/roles"
 	"github.com/belevtsev/kitsu/v3/internal/shellwords"
 )
 
@@ -48,9 +49,6 @@ func runGuard(ctx context.Context, cfg Config, args []string) error {
 		return nil // a notice the guard cannot read is one it does not act on
 	}
 	reason, developerOnly := guardReason(ctx, call)
-	if native := guardWorkflowSpawn(ctx, *host, call); native != "" {
-		reason, developerOnly = native, true
-	}
 	if reason == "" {
 		return nil
 	}
@@ -98,10 +96,16 @@ func guardReason(ctx context.Context, call toolCall) (string, bool) {
 	var paths []string
 	switch call.Tool {
 	case "Bash", "PowerShell":
+		if shellwords.ChangesCommands(command, []shellwords.CommandRule{
+			{Path: []string{"task", "run"}, Flag: "approve-assertion", Reason: "protected"},
+			{Path: []string{"task", "run"}, Flag: "release", Reason: "protected"},
+		}) != "" && guardRepository(repo) {
+			return "Configured assertions and recovery require reviewed runner policy and independent runner evidence.", true
+		}
 		if why := guardCheckTrust(ctx, repo, command); why != "" {
 			return why, true
 		}
-		if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err == nil {
+		if guardRepository(repo) {
 			if how := uxChangesPolicy(command); how != "" && !uxRepositoryRoleCommand(repo.Root, command) {
 				return "This command " + how + ".", false
 			}
@@ -119,6 +123,13 @@ func guardReason(ctx context.Context, call toolCall) (string, bool) {
 	return reason, reason == checkTrustEditReason
 }
 
+// Local check approvals apply even when this checkout has no workflow policy.
+func guardRepository(repo *gitx.Repo) bool {
+	_, declarationErr := os.Stat(filepath.Join(repo.Root, decl.FileName))
+	_, rolesErr := os.Stat(filepath.Join(repo.Root, roles.FileName))
+	return declarationErr == nil || rolesErr == nil || hasLocalHarnessTasks(repo)
+}
+
 const checkTrustEditReason = "The developer manages local check approvals in their own terminal."
 
 // editReason says why an edit of paths, relative to dir or absolute, needs
@@ -130,10 +141,14 @@ func editReason(ctx context.Context, repo *gitx.Repo, dir string, paths []string
 		return ""
 	}
 	var guarded [][2]string
-	if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err == nil {
+	if configDir, err := os.UserConfigDir(); err == nil {
+		guarded = append(guarded, [2]string{filepath.Join(configDir, "kitsu", "check-trust"), checkTrustEditReason})
+	}
+	protected := guardRepository(repo)
+	if protected {
 		hooks, _, _ := repo.HooksDir(ctx)
 		const hook = "This edit changes a git hook of this clone, and the git hooks of kitsu judge each commit and push."
-		guarded = [][2]string{
+		guarded = append(guarded, [][2]string{
 			{filepath.Join(repo.Root, decl.FileName), "This edit changes kitsu.toml, and with it the checks this repository requires before a commit or a push."},
 			{filepath.Join(repo.Root, "kitsu-advisers.toml"), "This edit changes adviser commands, model selections, role access or required consultations."},
 			{filepath.Join(repo.Root, "kitsu-roles.toml"), "This edit changes role models, reasoning effort or write limits."},
@@ -141,27 +156,37 @@ func editReason(ctx context.Context, repo *gitx.Repo, dir string, paths []string
 			{filepath.Join(repo.CommonDir, "hooks"), hook},
 			{hooks, hook},
 			{filepath.Join(repo.CommonDir, "config"), "This edit changes the git configuration of this clone, which names the hooks git runs."},
+			{filepath.Join(repo.GitDir, "kitsu-stages"), "This edit changes the private Kitsu task ledger."},
+			{filepath.Join(repo.CommonDir, "info", "exclude"), "This edit changes Git's local ignore policy."},
+			{filepath.Join(repo.GitDir, "info", "exclude"), "This edit changes Git's local ignore policy."},
 			{filepath.Join(repo.CommonDir, "kitsu"), "This edit changes the records of kitsu, which hold the passing runs that the commit gate reads."},
-		}
-	}
-	if dir, err := os.UserConfigDir(); err == nil {
-		guarded = append(guarded, [2]string{filepath.Join(dir, "kitsu", "check-trust"), checkTrustEditReason})
+		}...)
 	}
 	for _, path := range paths {
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(dir, path)
 		}
+		// Configuration creation must be guarded before a target inode exists.
+		for _, g := range guarded {
+			if g[0] == "" {
+				continue
+			}
+			if rel, err := filepath.Rel(g[0], path); err == nil && filepath.IsLocal(rel) {
+				return g[1]
+			}
+		}
 		for at, above := filepath.Clean(path), ""; at != above; at, above = filepath.Dir(at), at {
 			info, err := os.Stat(at)
 			for _, g := range guarded {
-				// Protect the destination before a target inode exists.
-				if g[0] != "" && at == filepath.Clean(g[0]) {
-					return g[1]
-				}
 				if target, targetErr := os.Stat(g[0]); err == nil && targetErr == nil && os.SameFile(info, target) {
 					return g[1]
 				}
 			}
+		}
+		// Keep the specific diagnostic for aliases of a known guarded path.
+		if rel, err := filepath.Rel(repo.Root, path); protected && err == nil && filepath.IsLocal(rel) &&
+			!strings.HasPrefix(filepath.ToSlash(rel), ".git/") && roles.ProtectedWorkflowPath(filepath.ToSlash(rel)) {
+			return "This edit changes a protected host, workflow, or Git control path."
 		}
 	}
 	return ""

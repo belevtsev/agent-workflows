@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg viewBox="0 0 781 528" data-reader-fit="width-first" data-layout-contract="readable-v2" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" style="--flow-cycle: 6.992s; width: 781px; height: 528px; min-width: 0px;" width="781" height="528" xmlns="http://www.w3.org/2000/svg"><style>
+<svg viewBox="0 0 811 652" data-reader-fit="width-first" data-layout-contract="readable-v2" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" style="--flow-cycle: 7.901s; width: 811px; height: 652px; min-width: 0px;" width="811" height="652" xmlns="http://www.w3.org/2000/svg"><style>
 /*
 JetBrains Mono variable WOFF2 subsets from Google Fonts service revision v24.
 These fixed bytes are shared by the viewer and its SVG/raster exports.
@@ -399,160 +399,160 @@ svg[data-preset="editorial"] { --flow-halo-peak: 0.07; --flow-glow-peak: 0.28; -
 }
 @keyframes archify-relay-ripple {
   0% { r: 2px; opacity: var(--flow-peak, 0.6); }
-  10.727%, 100% { r: 20px; opacity: 0; }
+  9.493%, 100% { r: 20px; opacity: 0; }
 }
 @keyframes archify-relay-comet-0 {
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.553% { opacity: var(--flow-peak, 0.9); }
-  7.763% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  10.051%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.433% { opacity: var(--flow-peak, 0.9); }
+  7.164% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  9.189%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-0 {
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  7.763% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  20.635%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  7.164% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  18.555%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-1 {
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.532% { opacity: var(--flow-peak, 0.9); }
-  7.661% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  9.949%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.356% { opacity: var(--flow-peak, 0.9); }
+  6.779% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  8.805%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-1 {
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  7.661% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  20.533%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  6.779% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  18.171%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-2 {
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.201% { opacity: var(--flow-peak, 0.9); }
-  6.007% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  8.296%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.063% { opacity: var(--flow-peak, 0.9); }
+  5.316% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  7.341%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-2 {
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  6.007% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  18.88%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  5.316% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  16.708%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-3 {
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.201% { opacity: var(--flow-peak, 0.9); }
-  6.007% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  8.296%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.063% { opacity: var(--flow-peak, 0.9); }
+  5.316% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  7.341%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-3 {
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  6.007% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  18.88%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  5.316% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  16.708%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-4 {
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.716% { opacity: var(--flow-peak, 0.9); }
-  8.683% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  10.971%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.519% { opacity: var(--flow-peak, 0.9); }
+  7.684% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  9.709%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-4 {
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  8.683% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  21.555%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  7.684% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  19.076%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-5 {
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.532% { opacity: var(--flow-peak, 0.9); }
-  7.661% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  9.949%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.356% { opacity: var(--flow-peak, 0.9); }
+  6.779% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  8.805%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-5 {
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  7.661% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  20.533%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  6.779% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  18.171%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-6 {
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.201% { opacity: var(--flow-peak, 0.9); }
-  6.007% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  8.296%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.063% { opacity: var(--flow-peak, 0.9); }
+  5.316% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  7.341%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-6 {
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  6.007% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  18.88%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  5.316% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  16.708%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-7 {
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.563% { opacity: var(--flow-peak, 0.9); }
-  7.815% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  10.104%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.519% { opacity: var(--flow-peak, 0.9); }
+  18.986% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  21.011%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-7 {
-  0%, 2.345% { opacity: 0; }
-  7.815% { opacity: var(--flow-peak, 0.3); }
-  20.688%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 5.696% { opacity: 0; }
+  18.986% { opacity: var(--flow-peak, 0.3); }
+  30.377%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-8 {
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.461% { opacity: var(--flow-peak, 0.9); }
-  7.303% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  9.592%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.519% { opacity: var(--flow-peak, 0.9); }
+  17.674% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  19.699%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-8 {
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  7.303% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  20.176%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  17.674% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  29.065%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-node-0 {
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
   0% { filter: var(--ambient-node-base-filter, none); }
-  1.716%, 6.007% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  17.163% { filter: var(--ambient-node-base-filter, none); }
+  1.519%, 5.316% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  15.189% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-1 {
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  7.661% { filter: var(--ambient-node-base-filter, none); }
-  9.377%, 13.668% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  24.824% { filter: var(--ambient-node-base-filter, none); }
+  6.779% { filter: var(--ambient-node-base-filter, none); }
+  8.298%, 12.095% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  21.968% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-2 {
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  15.098% { filter: var(--ambient-node-base-filter, none); }
-  16.814%, 21.105% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  32.261% { filter: var(--ambient-node-base-filter, none); }
+  13.361% { filter: var(--ambient-node-base-filter, none); }
+  14.88%, 18.677% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  28.55% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-3 {
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  24.189% { filter: var(--ambient-node-base-filter, none); }
-  25.905%, 30.196% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  41.352% { filter: var(--ambient-node-base-filter, none); }
+  21.406% { filter: var(--ambient-node-base-filter, none); }
+  22.925%, 26.722% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  36.595% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-4 {
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  31.627% { filter: var(--ambient-node-base-filter, none); }
-  33.343%, 37.634% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  48.79% { filter: var(--ambient-node-base-filter, none); }
+  27.988% { filter: var(--ambient-node-base-filter, none); }
+  29.507%, 33.304% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  43.177% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-5 {
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  40.82% { filter: var(--ambient-node-base-filter, none); }
-  42.536%, 46.827% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  57.983% { filter: var(--ambient-node-base-filter, none); }
+  36.417% { filter: var(--ambient-node-base-filter, none); }
+  37.936%, 41.733% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  51.606% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-6 {
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  48.257% { filter: var(--ambient-node-base-filter, none); }
-  49.973%, 54.264% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  65.42% { filter: var(--ambient-node-base-filter, none); }
+  42.999% { filter: var(--ambient-node-base-filter, none); }
+  44.518%, 48.315% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  58.188% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-7 {
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  57.503% { filter: var(--ambient-node-base-filter, none); }
-  59.219%, 63.51% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  74.666% { filter: var(--ambient-node-base-filter, none); }
+  63.251% { filter: var(--ambient-node-base-filter, none); }
+  64.77%, 68.567% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  78.439% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-8 {
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  56.99% { filter: var(--ambient-node-base-filter, none); }
-  58.707%, 62.998% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  74.154% { filter: var(--ambient-node-base-filter, none); }
+  61.939% { filter: var(--ambient-node-base-filter, none); }
+  63.457%, 67.255% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  77.127% { filter: var(--ambient-node-base-filter, none); }
 }
 svg[data-node-ui] [data-node-id] &gt; rect:not(.c-mask) { stroke-width: 1.25px; }
 :is([data-theme="dark"] svg[data-node-ui], svg[data-node-ui][data-theme="dark"]) [data-node-id] &gt; rect:not(.c-mask).c-frontend { fill: color-mix(in srgb, var(--frontend-stroke) 13%, var(--mask)); stroke: color-mix(in srgb, var(--frontend-stroke) 72%, var(--mask)); }
@@ -578,8 +578,8 @@ svg[data-node-ui][data-preset="editorial"] :is([data-graph-role="structural-fram
 svg[data-theme="light"] { --bg: #f4f5f7; --grid: #e9edf2; --canvas-dot: #e2e7ec; --text: #111827; --text-muted: #5b6474; --text-dim: #9aa3b2; --text-faint: #6b7280; --panel: #ffffff; --panel-border: #e5e7eb; --lane-fill: rgba(248, 250, 252, 0.65); --lane-stroke: #cbd5e1; --arrow: #64748b; --arrow-emphasis: #059669; --mask: #ffffff; --frontend-fill: rgba(34, 211, 238, 0.15); --frontend-stroke: #0891b2; --backend-fill: rgba(52, 211, 153, 0.18); --backend-stroke: #059669; --database-fill: rgba(167, 139, 250, 0.2); --database-stroke: #7c3aed; --cloud-fill: rgba(251, 191, 36, 0.18); --cloud-stroke: #d97706; --security-fill: rgba(251, 113, 133, 0.15); --security-stroke: #e11d48; --messagebus-fill: rgba(251, 146, 60, 0.15); --messagebus-stroke: #ea580c; --external-fill: rgba(148, 163, 184, 0.18); --external-stroke: #64748b; --toolbar-bg: rgba(255, 255, 255, 0.92); --toolbar-border: #cbd5e1; --toolbar-text: #334155; --toolbar-hover: #ffffff; --toolbar-menu-bg: #ffffff; --flow-cycle: ; --flow-halo-peak: ; --flow-glow-peak: ; --flow-tail-peak: ; --flow-head-peak: ; --flow-wake-peak: ; --flow-ripple-peak: ; --flow-peak: ; }
 svg[data-theme="dark"] { --bg: #020617; --grid: #1e293b; --canvas-dot: rgba(148, 163, 184, 0.16); --text: #ffffff; --text-muted: #94a3b8; --text-dim: #475569; --text-faint: #7d8da1; --panel: rgba(15, 23, 42, 0.5); --panel-border: #1e293b; --lane-fill: rgba(15, 23, 42, 0.22); --lane-stroke: #334155; --arrow: #94a3b8; --arrow-emphasis: #34d399; --mask: #0f172a; --frontend-fill: rgba(8, 51, 68, 0.4); --frontend-stroke: #22d3ee; --backend-fill: rgba(6, 78, 59, 0.4); --backend-stroke: #34d399; --database-fill: rgba(76, 29, 149, 0.4); --database-stroke: #a78bfa; --cloud-fill: rgba(120, 53, 15, 0.3); --cloud-stroke: #fbbf24; --security-fill: rgba(136, 19, 55, 0.4); --security-stroke: #fb7185; --messagebus-fill: rgba(251, 146, 60, 0.3); --messagebus-stroke: #fb923c; --external-fill: rgba(30, 41, 59, 0.5); --external-stroke: #94a3b8; --toolbar-bg: rgba(15, 23, 42, 0.8); --toolbar-border: #334155; --toolbar-text: #e2e8f0; --toolbar-hover: rgba(15, 23, 42, 0.95); --toolbar-menu-bg: #0f172a; --flow-cycle: ; --flow-halo-peak: ; --flow-glow-peak: ; --flow-tail-peak: ; --flow-head-peak: ; --flow-wake-peak: ; --flow-ripple-peak: ; --flow-peak: ; }
 rect.c-bg-rect { fill: var(--bg); }
-</style><rect x="0" y="0" width="781" height="528" class="c-bg-rect"/>
-        <title id="archify-diagram-title">Example workflow across Codex and Claude Code</title>
+</style><rect x="0" y="0" width="811" height="652" class="c-bg-rect"/>
+        <title id="archify-diagram-title">A supervised task across Codex and Claude Code</title>
         <desc id="archify-diagram-description">A workflow diagram generated by Archify.</desc>
         <!-- Definitions -->
         <defs>
@@ -625,14 +625,17 @@ rect.c-bg-rect { fill: var(--bg); }
         <rect width="100%" height="100%" fill="url(#grid)"/>
 
         <!-- Swimlanes -->
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="725" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="755" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="74" class="t-muted" font-size="10" font-weight="600">01 / Codex</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="176" width="725" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="176" width="755" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="198" class="t-muted" font-size="10" font-weight="600">02 / Kitsu CLI</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="725" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="755" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="322" class="t-muted" font-size="10" font-weight="600">03 / Claude Code</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-3" x="40" y="424" width="755" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="446" class="t-muted" font-size="10" font-weight="600">04 / Trusted runner</text>
 
         <!-- Phase headers -->
 
@@ -641,129 +644,125 @@ rect.c-bg-rect { fill: var(--bg); }
 
 
         <!-- Edge paths -->
-        <path data-edge-from="baseline" data-edge-to="implementation" data-edge-key="0" data-edge-id="baseline-implementation" data-edge-role="" data-composition-points="386,243;403,243;403,367;420,367" d="M 386 243 L 395 243 Q 403 243 403 251 L 403 359 Q 403 367 411 367 L 420 367" class="a-default" data-animate="edge" style="--step: 0;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="handoff" data-edge-to="tests" data-edge-key="1" data-edge-id="handoff-tests" data-edge-role="" data-composition-points="266,243;282,243;282,367;298,367" d="M 266 243 L 274 243 Q 282 243 282 251 L 282 359 Q 282 367 290 367 L 298 367" class="a-default" data-animate="edge" style="--step: 1;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="implementation" data-edge-to="verify" data-edge-key="2" data-edge-id="implementation-verify" data-edge-role="" data-composition-points="464,341;464,269" d="M 464 341 L 464 269" class="a-default" data-animate="edge" style="--step: 2;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="plan" data-edge-to="handoff" data-edge-key="3" data-edge-id="plan-handoff" data-edge-role="" data-composition-points="220,145;220,217" d="M 220 145 L 220 217" class="a-default" data-animate="edge" style="--step: 3;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="review" data-edge-to="finish" data-edge-key="4" data-edge-id="review-finish" data-edge-role="" data-composition-points="632,119;707,119;707,217" d="M 632 119 L 699 119 Q 707 119 707 127 L 707 217" class="a-default" data-animate="edge" style="--step: 4;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="saved" data-edge-to="plan" data-edge-key="5" data-edge-id="saved-plan" data-edge-role="" data-composition-points="142,243;158,243;158,119;174,119" d="M 142 243 L 150 243 Q 158 243 158 235 L 158 127 Q 158 119 166 119 L 174 119" class="a-default" data-animate="edge" style="--step: 5;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="tests" data-edge-to="baseline" data-edge-key="6" data-edge-id="tests-baseline" data-edge-role="" data-composition-points="342,341;342,269" d="M 342 341 L 342 269" class="a-default" data-animate="edge" style="--step: 6;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="verify" data-edge-to="finish" data-edge-key="7" data-edge-id="verify-finish" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="510,243;663,243" d="M 510 243 L 663 243" class="a-dashed" data-animate="edge" style="--step: 7;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="verify" data-edge-to="review" data-edge-key="8" data-edge-id="verify-review" data-edge-role="" data-composition-points="510,236;526,236;526,119;542,119" d="M 510 236 L 518 236 Q 526 236 526 228 L 526 127 Q 526 119 534 119 L 542 119" class="a-default" data-animate="edge" style="--step: 8;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="baseline" data-edge-to="implementation" data-edge-key="0" data-edge-id="baseline-implementation" data-edge-role="" data-composition-points="403,491;423.25,491;423.25,367;443.5,367" d="M 403 491 L 415.25 491 Q 423.25 491 423.25 483 L 423.25 375 Q 423.25 367 431.25 367 L 443.5 367" class="a-default" data-animate="edge" style="--step: 0;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="handoff" data-edge-to="tests" data-edge-key="1" data-edge-id="handoff-tests" data-edge-role="" data-composition-points="274,243;290,243;290,367;306,367" d="M 274 243 L 282 243 Q 290 243 290 251 L 290 359 Q 290 367 298 367 L 306 367" class="a-default" data-animate="edge" style="--step: 1;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="implementation" data-edge-to="verify" data-edge-key="2" data-edge-id="implementation-verify" data-edge-role="" data-composition-points="487.5,393;487.5,465" d="M 487.5 393 L 487.5 465" class="a-default" data-animate="edge" style="--step: 2;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="plan" data-edge-to="handoff" data-edge-key="3" data-edge-id="plan-handoff" data-edge-role="" data-composition-points="228,145;228,217" d="M 228 145 L 228 217" class="a-default" data-animate="edge" style="--step: 3;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="review" data-edge-to="finish" data-edge-key="4" data-edge-id="review-finish" data-edge-role="" data-composition-points="662,119;737,119;737,217" d="M 662 119 L 729 119 Q 737 119 737 127 L 737 217" class="a-default" data-animate="edge" style="--step: 4;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="saved" data-edge-to="plan" data-edge-key="5" data-edge-id="saved-plan" data-edge-role="" data-composition-points="150,243;166,243;166,119;182,119" d="M 150 243 L 158 243 Q 166 243 166 235 L 166 127 Q 166 119 174 119 L 182 119" class="a-default" data-animate="edge" style="--step: 5;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="tests" data-edge-to="baseline" data-edge-key="6" data-edge-id="tests-baseline" data-edge-role="" data-composition-points="350,393;350,465" d="M 350 393 L 350 465" class="a-default" data-animate="edge" style="--step: 6;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="verify" data-edge-to="finish" data-edge-key="7" data-edge-id="verify-finish" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="540,498;737,498;737,269" d="M 540 498 L 729 498 Q 737 498 737 490 L 737 269" class="a-dashed" data-animate="edge" style="--step: 7;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="verify" data-edge-to="review" data-edge-key="8" data-edge-id="verify-review" data-edge-role="" data-composition-points="540,484;556,484;556,119;572,119" d="M 540 484 L 548 484 Q 556 484 556 476 L 556 127 Q 556 119 564 119 L 572 119" class="a-default" data-animate="edge" style="--step: 8;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
 
         <!-- Nodes -->
         <g id="node-plan" data-node-id="plan" data-node-label="Architecture" tabindex="0" role="button" aria-label="Focus Architecture, behavior and scope, Codex" aria-pressed="false" data-node-kind="backend" data-node-sublabel="behavior and scope" data-node-context="Codex">
           <title>Architecture · behavior and scope · Codex</title>
-          <rect x="174" y="93" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="174" y="93" width="92" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 0; --flow-node-name: archify-relay-node-1;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(180 99) scale(0.6875)">
+          <rect x="182" y="93" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="182" y="93" width="92" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 0; --flow-node-name: archify-relay-node-1;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(188 99) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="220" y="125.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Architecture</text>
-          <text x="220" y="139.8" class="t-muted" font-size="7.7" text-anchor="middle">behavior and scope</text>
+          <text data-node-label="" x="228" y="125.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Architecture</text>
+          <text x="228" y="139.8" class="t-muted" font-size="7.7" text-anchor="middle">behavior and scope</text>
         </g>
 
         <g id="node-review" data-node-id="review" data-node-label="Review" tabindex="0" role="button" aria-label="Focus Review, if required, Codex" aria-pressed="false" data-node-kind="backend" data-node-sublabel="if required" data-node-context="Codex">
           <title>Review · if required · Codex</title>
-          <rect x="542" y="93" width="90" height="52" rx="8" class="c-mask"/>
-          <rect x="542" y="93" width="90" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 1; --flow-node-name: archify-relay-node-8;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(548 99) scale(0.6875)">
+          <rect x="572" y="93" width="90" height="52" rx="8" class="c-mask"/>
+          <rect x="572" y="93" width="90" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 1; --flow-node-name: archify-relay-node-8;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(578 99) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="587" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Review</text>
-          <text x="587" y="131" class="t-muted" font-size="8" text-anchor="middle">if required</text>
+          <text data-node-label="" x="617" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Review</text>
+          <text x="617" y="131" class="t-muted" font-size="8" text-anchor="middle">if required</text>
         </g>
 
-        <g id="node-saved" data-node-id="saved" data-node-label="Open task" tabindex="0" role="button" aria-label="Focus Open task, pin role settings, Kitsu CLI" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="pin role settings" data-node-context="Kitsu CLI">
-          <title>Open task · pin role settings · Kitsu CLI</title>
-          <rect x="48" y="217" width="94" height="52" rx="8" class="c-mask"/>
-          <rect x="48" y="217" width="94" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 2; --flow-node-name: archify-relay-node-0;" stroke-width="1.5"/>
+        <g id="node-saved" data-node-id="saved" data-node-label="Open task" tabindex="0" role="button" aria-label="Focus Open task, roles and intake, Kitsu CLI" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="roles and intake" data-node-context="Kitsu CLI">
+          <title>Open task · roles and intake · Kitsu CLI</title>
+          <rect x="48" y="217" width="102" height="52" rx="8" class="c-mask"/>
+          <rect x="48" y="217" width="102" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 2; --flow-node-name: archify-relay-node-0;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(54 223) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="96.7" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Open task</text>
-          <text x="95" y="255" class="t-muted" font-size="8" text-anchor="middle">pin role settings</text>
+          <text data-node-label="" x="99" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Open task</text>
+          <text x="99" y="255" class="t-muted" font-size="8" text-anchor="middle">roles and intake</text>
         </g>
 
         <g id="node-handoff" data-node-id="handoff" data-node-label="Save plan" tabindex="0" role="button" aria-label="Focus Save plan, dispatch testing, Kitsu CLI" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="dispatch testing" data-node-context="Kitsu CLI">
           <title>Save plan · dispatch testing · Kitsu CLI</title>
-          <rect x="174" y="217" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="174" y="217" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 3; --flow-node-name: archify-relay-node-2;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(180 223) scale(0.6875)">
+          <rect x="182" y="217" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="182" y="217" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 3; --flow-node-name: archify-relay-node-2;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(188 223) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="222.7" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Save plan</text>
-          <text x="220" y="255" class="t-muted" font-size="8" text-anchor="middle">dispatch testing</text>
+          <text data-node-label="" x="230.7" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Save plan</text>
+          <text x="228" y="255" class="t-muted" font-size="8" text-anchor="middle">dispatch testing</text>
         </g>
 
-        <g id="node-baseline" data-node-id="baseline" data-node-label="Baseline" tabindex="0" role="button" aria-label="Focus Baseline, before code, Kitsu CLI" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="before code" data-node-context="Kitsu CLI">
-          <title>Baseline · before code · Kitsu CLI</title>
-          <rect x="298" y="217" width="88" height="52" rx="8" class="c-mask"/>
-          <rect x="298" y="217" width="88" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 4; --flow-node-name: archify-relay-node-4;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(304 223) scale(0.6875)">
+        <g id="node-finish" data-node-id="finish" data-node-label="Report result" tabindex="0" role="button" aria-label="Focus Report result, signed evidence, Kitsu CLI" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="signed evidence" data-node-context="Kitsu CLI">
+          <title>Report result · signed evidence · Kitsu CLI</title>
+          <rect x="690" y="217" width="94" height="52" rx="8" class="c-mask"/>
+          <rect x="690" y="217" width="94" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 4; --flow-node-name: archify-relay-node-7;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(696 223) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="343.4" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Baseline</text>
-          <text x="342" y="255" class="t-muted" font-size="8" text-anchor="middle">before code</text>
-        </g>
-
-        <g id="node-verify" data-node-id="verify" data-node-label="Verify" tabindex="0" role="button" aria-label="Focus Verify, assertion and checks, Kitsu CLI" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="assertion and checks" data-node-context="Kitsu CLI">
-          <title>Verify · assertion and checks · Kitsu CLI</title>
-          <rect x="418" y="217" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="418" y="217" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 5; --flow-node-name: archify-relay-node-6;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(424 223) scale(0.6875)">
-            <rect x="2" y="3" width="12" height="10" rx="2"/>
-            <path d="M2 6.5h12"/>
-            <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
-            <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
-          </g>
-          <text data-node-label="" x="464" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Verify</text>
-          <text x="464" y="255" class="t-muted" font-size="7" text-anchor="middle">assertion and checks</text>
-        </g>
-
-        <g id="node-finish" data-node-id="finish" data-node-label="Report result" tabindex="0" role="button" aria-label="Focus Report result, scope and evidence, Kitsu CLI" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="scope and evidence" data-node-context="Kitsu CLI">
-          <title>Report result · scope and evidence · Kitsu CLI</title>
-          <rect x="663" y="217" width="88" height="52" rx="8" class="c-mask"/>
-          <rect x="663" y="217" width="88" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 6; --flow-node-name: archify-relay-node-7;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(669 223) scale(0.6875)">
-            <rect x="2" y="3" width="12" height="10" rx="2"/>
-            <path d="M2 6.5h12"/>
-            <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
-            <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
-          </g>
-          <text data-node-label="" x="707" y="248.3" class="t-primary" font-size="10.2" font-weight="600" text-anchor="middle">Report result</text>
-          <text x="707" y="262.3" class="t-muted" font-size="7.4" text-anchor="middle">scope and evidence</text>
+          <text data-node-label="" x="737" y="249.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Report result</text>
+          <text x="737" y="264.1" class="t-muted" font-size="8" text-anchor="middle">signed evidence</text>
         </g>
 
         <g id="node-tests" data-node-id="tests" data-node-label="Write tests" tabindex="0" role="button" aria-label="Focus Write tests, approved test paths, Claude Code" aria-pressed="false" data-node-kind="backend" data-node-sublabel="approved test paths" data-node-context="Claude Code">
           <title>Write tests · approved test paths · Claude Code</title>
-          <rect x="298" y="341" width="88" height="52" rx="8" class="c-mask"/>
-          <rect x="298" y="341" width="88" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 7; --flow-node-name: archify-relay-node-3;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(304 347) scale(0.6875)">
+          <rect x="306" y="341" width="88" height="52" rx="8" class="c-mask"/>
+          <rect x="306" y="341" width="88" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 5; --flow-node-name: archify-relay-node-3;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(312 347) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="342" y="373.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Write tests</text>
-          <text x="342" y="386.9" class="t-muted" font-size="7" text-anchor="middle">approved test paths</text>
+          <text data-node-label="" x="350" y="373.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Write tests</text>
+          <text x="350" y="386.9" class="t-muted" font-size="7" text-anchor="middle">approved test paths</text>
         </g>
 
         <g id="node-implementation" data-node-id="implementation" data-node-label="Implement" tabindex="0" role="button" aria-label="Focus Implement, preserve tests, Claude Code" aria-pressed="false" data-node-kind="backend" data-node-sublabel="preserve tests" data-node-context="Claude Code">
           <title>Implement · preserve tests · Claude Code</title>
-          <rect x="420" y="341" width="88" height="52" rx="8" class="c-mask"/>
-          <rect x="420" y="341" width="88" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 8; --flow-node-name: archify-relay-node-5;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(426 347) scale(0.6875)">
+          <rect x="443.5" y="341" width="88" height="52" rx="8" class="c-mask"/>
+          <rect x="443.5" y="341" width="88" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 6; --flow-node-name: archify-relay-node-5;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(449.5 347) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="468.7" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Implement</text>
-          <text x="464" y="379" class="t-muted" font-size="8" text-anchor="middle">preserve tests</text>
+          <text data-node-label="" x="492.2" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Implement</text>
+          <text x="487.5" y="379" class="t-muted" font-size="8" text-anchor="middle">preserve tests</text>
+        </g>
+
+        <g id="node-baseline" data-node-id="baseline" data-node-label="Baseline" tabindex="0" role="button" aria-label="Focus Baseline, named test result, Trusted runner" aria-pressed="false" data-node-kind="security" data-node-sublabel="named test result" data-node-context="Trusted runner">
+          <title>Baseline · named test result · Trusted runner</title>
+          <rect x="297" y="465" width="106" height="52" rx="8" class="c-mask"/>
+          <rect x="297" y="465" width="106" height="52" rx="8" class="c-security" data-animate="node" style="--step: 7; --flow-node-name: archify-relay-node-4;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(303 471) scale(0.6875)">
+            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
+            <path d="m5.8 8 1.5 1.5 3-3"/>
+          </g>
+          <text data-node-label="" x="350" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Baseline</text>
+          <text x="350" y="503" class="t-muted" font-size="8" text-anchor="middle">named test result</text>
+        </g>
+
+        <g id="node-verify" data-node-id="verify" data-node-label="Verify" tabindex="0" role="button" aria-label="Focus Verify, isolated checks, Trusted runner" aria-pressed="false" data-node-kind="security" data-node-sublabel="isolated checks" data-node-context="Trusted runner">
+          <title>Verify · isolated checks · Trusted runner</title>
+          <rect x="435" y="465" width="105" height="52" rx="8" class="c-mask"/>
+          <rect x="435" y="465" width="105" height="52" rx="8" class="c-security" data-animate="node" style="--step: 8; --flow-node-name: archify-relay-node-6;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(441 471) scale(0.6875)">
+            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
+            <path d="m5.8 8 1.5 1.5 3-3"/>
+          </g>
+          <text data-node-label="" x="487.5" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Verify</text>
+          <text x="487.5" y="503" class="t-muted" font-size="8" text-anchor="middle">isolated checks</text>
         </g>
 
         <!-- Edge labels -->
@@ -779,14 +778,18 @@ rect.c-bg-rect { fill: var(--bg); }
 
         <!-- Legend -->
         <g data-legend="">
-          <text x="20" y="428" class="t-primary" font-size="12" font-weight="650">Legend</text>
-          <g data-legend-semantic-kind="frontend" data-legend-x="20" data-legend-baseline="448" data-legend-width="85">
-            <rect x="20" y="440" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
-            <text x="42" y="448" class="t-muted" font-size="7.5" font-weight="500">Kitsu CLI</text>
+          <text x="20" y="552" class="t-primary" font-size="12" font-weight="650">Legend</text>
+          <g data-legend-semantic-kind="frontend" data-legend-x="20" data-legend-baseline="572" data-legend-width="85">
+            <rect x="20" y="564" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
+            <text x="42" y="572" class="t-muted" font-size="7.5" font-weight="500">Kitsu CLI</text>
           </g>
-          <g data-legend-semantic-kind="backend" data-legend-x="112" data-legend-baseline="448" data-legend-width="132">
-            <rect x="112" y="440" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
-            <text x="134" y="448" class="t-muted" font-size="7.5" font-weight="500">Assigned specialist</text>
+          <g data-legend-semantic-kind="backend" data-legend-x="112" data-legend-baseline="572" data-legend-width="132">
+            <rect x="112" y="564" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
+            <text x="134" y="572" class="t-muted" font-size="7.5" font-weight="500">Assigned specialist</text>
+          </g>
+          <g data-legend-semantic-kind="security" data-legend-x="251" data-legend-baseline="572" data-legend-width="109">
+            <rect x="251" y="564" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
+            <text x="273" y="572" class="t-muted" font-size="7.5" font-weight="500">Trusted runner</text>
           </g>
         </g>
       </svg>

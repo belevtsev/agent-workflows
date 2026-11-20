@@ -266,8 +266,8 @@ func runHarnessCommand(ctx context.Context, s *session, l *stageLedger, verb str
 	if err != nil {
 		return err
 	}
-	if task.Workflow != nil && !slices.Contains([]string{"next", "receipt", "extend", "confirm"}, verb) {
-		return failf("continue the configured assignment with kitsu task run --resume %s", task.ID)
+	if err := checkDailyHarnessAction(&task, verb); err != nil {
+		return err
 	}
 	if verb == "receipt" {
 		return bugReceipt(ctx, s, l, &task, o)
@@ -291,6 +291,23 @@ func runHarnessCommand(ctx context.Context, s *session, l *stageLedger, verb str
 		o.ticket, o.retry = view.Ticket, true
 	}
 	return saveHarnessAction(ctx, s, l, &task, o, verb, view, full)
+}
+
+func checkDailyHarnessAction(task *harness.Task, verb string) error {
+	if task.Workflow == nil {
+		return nil
+	}
+	switch verb {
+	case "next", "receipt":
+		return nil
+	case "extend", "confirm":
+		if task.Workflow.Active != nil {
+			return failf("reconcile the supervised runner attempt before changing task scope")
+		}
+		return nil
+	default:
+		return failf("continue the configured assignment with kitsu task run --resume %s", task.ID)
+	}
 }
 
 func checkOtherWorkflow(l *stageLedger, id, verb string) error {

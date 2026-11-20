@@ -69,7 +69,7 @@ func runTaskDispatch(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	if *run {
-		return startManagedWorker(ctx, cfg, s, p.pos[0], *budget)
+		return failf("configured launch moved to kitsu task run, which uses supervised workers and checks")
 	}
 	ledger, err := readOnlyStageLedger(s.repo.GitDir)
 	if err != nil {

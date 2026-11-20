@@ -122,6 +122,9 @@ func uxExtraCommands(list []uxCommand, common []uxFlag) []uxCommand {
 		} else if action == "set" || action == "reset" {
 			guard = "policy"
 		}
+		if action == "set" {
+			flags = append(flags, uxOption("if-unset", "", "with --global, only set a missing personal preference"))
+		}
 		list = append(list, uxCommand{path: "config " + action, args: args, summary: "Manage CLI host preferences: " + action, flags: flags, run: func(ctx context.Context, cfg Config, args []string) error {
 			return runUXConfig(ctx, cfg, append([]string{action}, args...))
 		}, guard: guard})

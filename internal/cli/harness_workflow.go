@@ -6,14 +6,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"io/fs"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/belevtsev/kitsu/v3/internal/harness"
-	"github.com/belevtsev/kitsu/v3/internal/roles"
+	"github.com/belevtsev/kitsu/v3/internal/workflowrunner"
 )
 
 func workflowCommand() uxCommand {
@@ -29,15 +28,12 @@ func workflowCommand() uxCommand {
 			uxOption("repair", "", "authorize source repairs on an existing candidate"),
 			uxOption("commit", "", "deliver one verified local commit"),
 			uxOption("include", "path", "include a pre-existing change in the authorized commit"),
-			uxOption("expect", "text", "preauthorize an assertion with -- PROGRAM ARGS"),
+			uxOption("expect", "text", "require a reviewed assertion with -- PROGRAM ARGS"),
 			requireReviewFlag(),
-			uxOption("native-host", "host", "offer compatible assignments to this authenticated host session", roles.Hosts...),
-			uxOption("actor", "session", "current native parent session for --native-host"),
 			uxOption("retry", "", "retry the current stage after resolving a reported problem"),
-			uxOption("approve-assertion", "", "review and approve the saved assertion in your terminal"),
-			uxOption("release", "attempt", "reconcile an outstanding attempt after confirming its worker stopped"),
+			uxOption("release", "attempt", "reconcile an outstanding attempt with the runner operator’s release authorization"),
 			uxOption("rework-limit", "count", "maximum automatic test and code rework starts"),
-			uxOption("json", "", "return a bounded task status or native assignment"),
+			uxOption("json", "", "return a bounded task status"),
 		}, reviewLimitFlags()...),
 		examples: []string{`kitsu task run "Fix CSV quoting" --until verify`, "kitsu task run --resume export-quoting"}, run: runConfiguredWorkflow,
 	}
@@ -78,9 +74,11 @@ func parseWorkflow(args []string) (workflowOptions, error) {
 		return o, err
 	}
 	o.argv = p.rest
-	if o.nativeHost != "" && (!slices.Contains(roles.Hosts, o.nativeHost) || !nativeSessionID.MatchString(o.actorID)) ||
-		o.nativeHost == "" && o.actorID != "" {
-		return o, usagef("--native-host and the current --actor session must be supplied together")
+	if o.nativeHost != "" || o.actorID != "" {
+		return o, usagef("configured tasks use Kitsu-supervised workers; start or resume without --native-host and --actor")
+	}
+	if o.approveAssertion {
+		return o, usagef("assertions must be in the trusted runner's reviewed policy")
 	}
 	if o.reworkMax < 0 {
 		return o, usagef("--rework-limit must be positive")
@@ -141,14 +139,24 @@ func runConfiguredWorkflow(ctx context.Context, cfg Config, args []string) error
 	if err != nil {
 		return err
 	}
+	if cfg.workflowRunner != nil {
+		s.workflowRunner, err = cfg.workflowRunner(ctx, s.repo.Root)
+	} else {
+		s.workflowRunner, err = workflowrunner.Open(ctx, s.repo.Root)
+	}
+	if err != nil {
+		return failf("configured workflow paused: %v", err)
+	}
+	if err := validateWorkflowPolicy(s.workflowRunner.Policy); err != nil {
+		return err
+	}
+	if o.release != "" {
+		return releaseWorkflowAttempt(ctx, s, o)
+	}
 	if err := workflowIntake(ctx, s, o); err != nil {
 		return err
 	}
-	if o.approveAssertion {
-		if err := approveWorkflowAssertion(ctx, s, o); err != nil {
-			return err
-		}
-	}
+
 	if o.resume == "" {
 		fmt.Fprintf(cfg.Err, "Kitsu task %s. Resume with kitsu task run --resume %s\n", o.id, o.id)
 	}
@@ -166,9 +174,6 @@ func runConfiguredWorkflow(ctx context.Context, cfg Config, args []string) error
 			}
 			return reportWorkflow(s, o, step)
 		}
-		if step.attempt.Native {
-			return reportWorkflow(s, o, step)
-		}
 		if err := launchWorkflowAttempt(ctx, s, o, step); err != nil {
 			return err
 		}
@@ -176,7 +181,7 @@ func runConfiguredWorkflow(ctx context.Context, cfg Config, args []string) error
 }
 
 func workflowIntake(ctx context.Context, s *session, o workflowOptions) error {
-	l, err := openStageLedger(ctx, s)
+	l, err := openStageLedgerWait(ctx, s, workflowLedgerWait)
 	if err != nil {
 		return err
 	}
@@ -189,6 +194,9 @@ func workflowIntake(ctx context.Context, s *session, o workflowOptions) error {
 		}
 		if !task.Valid(o.id) || task.Workflow == nil {
 			return failf("task %s has no configured role workflow", o.id)
+		}
+		if err := checkWorkflowAuthority(s.workflowRunner, &task); err != nil {
+			return err
 		}
 		return reconcileWorkflowOptions(ctx, s, l, &task, o)
 	}
@@ -213,19 +221,7 @@ func workflowIntake(ctx context.Context, s *session, o workflowOptions) error {
 	if o.reworkMax > 0 {
 		task.Workflow.ReworkMax = o.reworkMax
 	}
-	if len(o.argv) > 0 {
-		task.Workflow.Test = &harness.WorkflowAssertion{Argv: o.argv, Expect: o.expect}
-		task.Workflow.ApprovedArgv = workflowArgvKey(o.argv)
-	}
-	task.Start, err = harnessCandidate(ctx, s, &task)
-	if err != nil {
-		return err
-	}
-	task.Workflow.Candidate = &task.Start
-	if err = pinHarnessCommitTarget(ctx, s, &task); err != nil {
-		return err
-	}
-	if err = pinHarnessPolicy(ctx, s, &task); err != nil {
+	if err := bindWorkflowIntake(ctx, s, &task, o, roleConfig.Tests); err != nil {
 		return err
 	}
 	if err = o.setLimits(&task); err != nil {
@@ -236,6 +232,48 @@ func workflowIntake(ctx context.Context, s *session, o workflowOptions) error {
 		Ticket: actionTicket(&task, "intake", task.Start),
 	})
 	return l.write(harnessFile(o.id), &task)
+}
+
+func bindWorkflowIntake(ctx context.Context, s *session, task *harness.Task, o workflowOptions, testPaths []string) error {
+	if len(o.argv) > 0 {
+		task.Workflow.Intake = &harness.WorkflowAssertion{Argv: o.argv, Expect: o.expect}
+		if !validWorkflowArgv(o.argv) || len(o.expect) > 4096 {
+			return usagef("intake assertion exceeds its argv or expectation limit")
+		}
+		if _, err := approvedWorkflowCheck(s.workflowRunner.Policy, task.Workflow.Intake); err != nil {
+			return err
+		}
+	}
+	var err error
+	task.Start, err = harnessCandidate(ctx, s, task)
+	if err != nil {
+		return err
+	}
+	task.Workflow.Candidate = &task.Start
+	task.Workflow.Authority, task.Workflow.Profile, task.Workflow.Policy =
+		s.workflowRunner.Authority(), s.workflowRunner.Profile, workflowrunner.Digest(s.workflowRunner.Policy)
+	if testPaths != nil && !slices.Equal(testPaths, s.workflowRunner.Policy.TestPaths) {
+		return failf("the roles file's test paths must match the reviewed runner policy")
+	}
+	task.Workflow.TestPolicy = s.workflowRunner.Policy.TestPaths
+	if err = pinHarnessCommitTarget(ctx, s, task); err != nil {
+		return err
+	}
+	if err = pinHarnessPolicy(ctx, s, task); err != nil {
+		return err
+	}
+	if task.RepositoryPolicy != s.workflowRunner.Policy.Declaration {
+		return failf("the opening kitsu.toml differs from the runner's reviewed check declaration")
+	}
+	if o.scope.Until != "plan" && o.scope.Until != "review" && o.scope.Entry != "verify" && len(task.Workflow.TestPolicy) == 0 {
+		return failf("the runner policy must define the repository's test paths")
+	}
+	if task.Scope.Commit {
+		if err := checkWorkflowCommitHooks(ctx, s); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func reconcileWorkflowOptions(ctx context.Context, s *session, l *stageLedger, task *harness.Task, o workflowOptions) error {
@@ -279,16 +317,6 @@ func addWorkflowIncludes(task *harness.Task, o workflowOptions) error {
 
 func recoverWorkflowAttempt(ctx context.Context, s *session, task *harness.Task, o workflowOptions) error {
 	w := task.Workflow
-	if o.release != "" {
-		if w.Active == nil || w.Active.ID != o.release {
-			return failf("release must name the saved outstanding attempt")
-		}
-		if o.nativeHost != "" || !onboardingTerminal(s.cfg) {
-			return failf("confirm the worker stopped and release it from your terminal")
-		}
-		finishWorkflowAttempt(task, "released")
-		task.Generation++
-	}
 	if o.retry {
 		if w.Active != nil {
 			return failf("reconcile the outstanding worker before retrying")
@@ -306,21 +334,17 @@ func recoverWorkflowAttempt(ctx context.Context, s *session, task *harness.Task,
 }
 
 type workflowStep struct {
-	attempt    *harness.WorkflowAttempt
-	settings   roles.SpecialistSettings
-	view       harnessView
-	assignment string
-	deadline   time.Time
-	again      bool
-	message    string
+	attempt  *harness.WorkflowAttempt
+	job      *workflowrunner.Job
+	view     harnessView
+	deadline time.Time
+	again    bool
+	message  string
 }
 
 func reportWorkflow(s *session, o workflowOptions, step workflowStep) error {
-	if step.attempt != nil || o.json {
+	if o.json {
 		v := step.view.brief()
-		if step.attempt != nil {
-			v["assignment"], v["attempt"], v["role_settings"] = step.assignment, step.attempt, step.settings
-		}
 		if step.message != "" {
 			v["diagnostic"] = step.message
 		}
@@ -335,7 +359,7 @@ func reportWorkflow(s *session, o workflowOptions, step workflowStep) error {
 			return err
 		}
 	}
-	if step.attempt != nil || step.view.Next == "done" {
+	if step.view.Next == "done" {
 		return nil
 	}
 	return exit(ExitNotVerified)
@@ -388,13 +412,4 @@ func finishWorkflowAttempt(task *harness.Task, outcome string) {
 		w.Active = nil
 	}
 	task.Claim = nil
-}
-
-// All coordinator output is tied to the saved task. Worker narratives go to
-// the ledger, while the CLI emits a single bounded action or outcome.
-func workflowCheckOutput(cfg Config, id, action string) io.Writer {
-	if cfg.Err != nil {
-		fmt.Fprintf(cfg.Err, "Kitsu task %s · %s\n", id, action)
-	}
-	return io.Discard
 }

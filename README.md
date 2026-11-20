@@ -239,7 +239,7 @@ When you’re ready for the fix, reply in the same chat.
 
 ## Choose who does the work
 
-The [configured workflow preview](docs/configured-workflow.md) can start in either plugin. For a new task in a repository without role settings, Kitsu uses the default host you chose at install. You can assign each role its own host, model, and reasoning effort.
+Start the [supervised workflow preview](docs/configured-workflow.md) from either plugin once a [trusted runner](docs/workflow-runner.md) is registered. For a new task in a repository without role settings, Kitsu uses the default host you chose at install. You can assign each role its own host, model, and reasoning effort.
 
 ```sh
 kitsu role init
@@ -256,13 +256,13 @@ In Claude Code, start the same request with `/kitsu:task`. Install and sign in t
 
 ## How Kitsu works
 
-Codex plans a CSV quoting fix. Kitsu passes the plan to Claude Code to write a regression test, checks that it fails for the expected reason, and dispatches the repair. Kitsu then verifies the change and sends it to a separate Codex reviewer when review is required. Your role settings decide which host does each job.
+Kitsu gives Codex and Claude Code one task record. Your role settings pick who plans, writes tests, implements, and reviews. The supervised runner sends back signed results from disposable jobs. Kitsu checks write scope before importing edits, keeps the original assertion required, and ties verification to the accepted candidate.
 
-<img src="docs/diagrams/configured-workflow.svg" alt="Kitsu opens a task and pins its role settings. Codex plans the change, then Kitsu records the plan and dispatches tests to Claude Code. Kitsu checks the baseline before Claude Code implements the change. Kitsu verifies the result, routes it to a Codex reviewer when required, and reports the saved evidence." width="100%">
+<img src="docs/diagrams/configured-workflow.svg" alt="Kitsu pins role assignments and the intake assertion. The trusted runner runs Codex and Claude Code roles in disposable jobs. Checks and required review return signed results to the same task record." width="100%">
 
-Ask either plugin to use the configured workflow, or run `kitsu task run "Fix CSV quoting" --until verify`. Resume with `kitsu task run --resume TASK_ID` in the same worktree. When repairs are authorized, Kitsu routes findings to the assigned role and verifies the updated candidate.
+Once the [runner is configured](docs/workflow-runner.md), ask either plugin to use the supervised workflow. For a terminal start, use `kitsu task run "Fix CSV quoting" --until verify`. Resume the same work with `kitsu task run --resume TASK_ID`.
 
-[See the architecture and managed roles](docs/workflow.md) · [Follow a bug ticket to its verified commit](docs/task-harness.md#deliver-a-bug-ticket)
+[See the workflow and its boundaries](docs/workflow.md) · [Follow a bug ticket to its verified commit](docs/task-harness.md#deliver-a-bug-ticket)
 
 <a name="the-roles"></a>
 

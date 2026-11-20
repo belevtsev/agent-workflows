@@ -29,7 +29,7 @@ With Git and Codex or Claude Code installed, run the command for your platform. 
 
 The installer downloads the CLI and matching plugin from the latest public release, verifies both checksums, and registers the plugin with your agent. Downloads are anonymous. On macOS and Linux the command stages the whole installer before running it.
 
-The preview installers also save the chosen host for new configured tasks. Run them in a terminal with the host flag omitted to choose Codex, Claude Code, or the CLI alone. For unattended setup, pass the host flag explicitly. To set a default after a v0.0.2 install, run `kitsu config set host codex --global` or substitute `claude`. [Choose a host per role](configured-workflow.md#configure-the-roles)
+Plugin setup saves the chosen host if your personal default is empty. Run them in a terminal with the host flag omitted to choose Codex, Claude Code, or the CLI alone. For unattended setup, pass the host flag explicitly. To set a default after a v0.0.2 install, run `kitsu config set host codex --global` or substitute `claude`. [Choose a host per role](configured-workflow.md#configure-the-roles)
 
 The default locations are `$HOME/.local/bin/kitsu` on macOS/Linux and `%LOCALAPPDATA%\kitsu\kitsu.exe` on Windows. Open a new terminal and run `kitsu version` for the installed tag and revision. Windows hooks use Git for Windows.
 
@@ -71,8 +71,9 @@ CI build, use the bundled installer and pass its artifact directory.
 
 | macOS/Linux flag | PowerShell parameter | Environment default | Purpose |
 | --- | --- | --- | --- |
-| `--version TAG` | `-Version TAG` | `KITSU_VERSION` | Pin the requested tag. CLI-only remote installs default to `v0.0.2`. |
-| `--host codex\|claude` | `-AgentHost codex\|claude` | — | Install the matching plugin and save the selected host in the preview. |
+| `--version TAG` | `-Version TAG` | `KITSU_VERSION` | Pin the requested tag. Remote installs use the latest release by default. |
+| `--host codex\|claude` | `-AgentHost codex\|claude` | — | Install the matching plugin and set your first personal default. |
+| `--set-default` | `-SetDefault` | — | Change the saved personal default after the selected plugin installs. |
 | `--cli-only` | `-CliOnly` | — | Install the preview CLI without prompting or changing the saved host. |
 | `--install-dir DIR` | `-InstallDir DIR` | `KITSU_INSTALL_DIR` | Choose the destination directory. |
 | `--no-modify-path` | `-NoModifyPath` | `KITSU_NO_MODIFY_PATH=1` | Install without changing user `PATH`. |

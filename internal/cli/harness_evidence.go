@@ -48,6 +48,7 @@ type harnessView struct {
 	Publication       *publicationReceipt   `json:"last_publication,omitempty"`
 	Completion        *harness.Completion   `json:"completed_delivery,omitempty"`
 	DeveloperLaunch   string                `json:"developer_launch,omitempty"`
+	WorkflowReview    bool                  `json:"supervised_review,omitempty"`
 	ReviewCurrent     bool                  `json:"review_current"`
 	reproduced        bool
 	store             *store.Store
@@ -95,8 +96,16 @@ func observeHarness(ctx context.Context, s *session, t *harness.Task, withUsage 
 		v.Completion, v.Candidate, v.CommitTarget = completion, completion.Candidate, completion.Target
 		v.Next, v.Delivery, v.Verified = "done", "committed", true
 		v.Claim, v.ReviewCurrent = nil, completion.Reviewed
+		if t.Workflow != nil {
+			v.Verified = currentWorkflowProof(s, t)
+			v.WorkflowReview = completion.Reviewed && currentWorkflowReview(s, t, v.Review)
+			v.ReviewCurrent = v.WorkflowReview
+		}
 		v.setReviewStatus(false)
 		v.Behavior, v.Gate, v.CommitEvidence = "passed", completion.RepositoryChecks, completion.CommitEvidence
+		if !v.Verified {
+			v.Behavior, v.Gate, v.CommitEvidence = "archived", "historical", "historical delivery record"
+		}
 		if v.Proof != nil && (v.Proof.Outcome != store.Passed || v.Proof.Candidate.Tree != completion.Candidate.Tree) {
 			v.Proof = nil
 		}
@@ -110,6 +119,9 @@ func observeHarness(ctx context.Context, s *session, t *harness.Task, withUsage 
 			v.WorkflowAttempt, v.AssignedRole = a.ID, a.Role
 		}
 		v.AssignedHost, v.WorkflowProblem = w.Roles[v.AssignedRole].Host, w.Problem
+		if w.Authority == "" {
+			v.WorkflowProblem = "Historical configured task. Start a supervised task with the original request and assertion."
+		}
 	}
 	v.timing(t)
 	if withUsage {
@@ -146,6 +158,9 @@ func (v *harnessView) observeCurrentHarness(ctx context.Context, s *session, t *
 	v.ReviewCurrent = v.Review != nil && v.Review.ReviewMatches(c, t.Scope.Until, headTree, parents)
 	if err := v.observeDelivery(ctx, s, t, headTree, parents); err != nil {
 		return err
+	}
+	if t.Workflow != nil {
+		v.requireSignedWorkflowReview(s, t)
 	}
 	v.describeBug(t)
 	return v.routeCurrentDelivery(ctx, s, t)
@@ -799,7 +814,11 @@ func (v *harnessView) observeDelivery(ctx context.Context, s *session, t *harnes
 		}
 		return err
 	}
-	v.Gate, v.Verified, err = harnessGate(ctx, s, c.Tree, p)
+	if t.Workflow == nil {
+		v.Gate, v.Verified, err = harnessGate(ctx, s, c.Tree, p)
+	} else {
+		v.Gate, v.Verified = workflowVerificationStatus(s, t)
+	}
 	if p.CheckedAt.IsZero() {
 		v.Verified = false
 	}

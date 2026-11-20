@@ -271,7 +271,7 @@ func codexWorkflowFixture(mode string, args []string) error {
 
 func claudeWorkflowFixture(mode string, args []string) error {
 	effort := os.Getenv("KITSU_WORKFLOW_TEST_EFFORT")
-	if !slices.Contains(args, "--print") || fixtureArgument(args, "--permission-mode") != "plan" || fixtureArgument(args, "--permission-prompts") != "none" || fixtureArgument(args, "--model") != "fixture-model" ||
+	if !slices.Contains(args, "--print") || fixtureArgument(args, "--permission-mode") != "plan" || fixtureArgument(args, "--permission-prompts") != "none" || fixtureArgument(args, "--setting-sources") != "user" || fixtureArgument(args, "--model") != "fixture-model" ||
 		fixtureArgument(args, "--effort") != effort || effort == "" && slices.Contains(args, "--effort") {
 		return errors.New("unexpected Claude arguments")
 	}
@@ -293,7 +293,7 @@ func claudeWorkflowFixture(mode string, args []string) error {
 		return errors.New("missing Claude output schema")
 	}
 	encoder := json.NewEncoder(os.Stdout)
-	if err := encoder.Encode(map[string]string{"type": "system", "subtype": "init", "session_id": session, "model": "claude-fixture"}); err != nil {
+	if err := encoder.Encode(map[string]string{"type": "system", "subtype": "init", "session_id": session, "model": fixtureArgument(args, "--model")}); err != nil {
 		return err
 	}
 	if mode == "claude-substitution" {
@@ -426,4 +426,47 @@ func confirmWorkflowTestClaim(session string) error {
 func writeWorkflowEvent(line string) error {
 	_, err := fmt.Fprintln(os.Stdout, line)
 	return err
+}
+
+func TestClaudeWorkflowReadsLargeTrustStore(t *testing.T) {
+	worker := setupWorkflowFixture(t, "claude", "claude", "")
+	name := filepath.Join(os.Getenv("CLAUDE_CONFIG_DIR"), ".claude.json")
+	data, err := json.Marshal(map[string]any{
+		"history":  strings.Repeat("x", 2<<20),
+		"projects": map[string]any{worker.Root: map[string]bool{"hasTrustDialogAccepted": true}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(name, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkClaudeWorkflowTrust(worker.Root); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(name, []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkClaudeWorkflowTrust(worker.Root); err == nil || !strings.Contains(err.Error(), "cannot be read") {
+		t.Fatalf("unreadable trust store: %v", err)
+	}
+}
+
+func TestClaudeWorkflowChecksAliasFamily(t *testing.T) {
+	for _, tc := range []struct {
+		requested, reported string
+		matches             bool
+	}{
+		{"opus", "claude-opus-4-5", true},
+		{"sonnet", "claude-sonnet-4-5", true},
+		{"haiku", "claude-haiku-4-5", true},
+		{"opus", "claude-haiku-4-5", false},
+		{"opus", "", false},
+		{"opus-custom", "claude-opus-custom-4-5", false},
+		{"claude-sonnet-4-5", "claude-sonnet-4-6", false},
+	} {
+		if got := checkClaudeModel(tc.requested, tc.reported) == nil; tc.matches != got {
+			t.Errorf("%q with observed %q match=%v, want %v", tc.requested, tc.reported, got, tc.matches)
+		}
+	}
 }

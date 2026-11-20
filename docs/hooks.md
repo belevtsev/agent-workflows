@@ -76,6 +76,10 @@ A check that is new gets no notice.
 
 git gives the hook one line per ref the push updates. `kitsu` decides each line:
 
+Malformed or incomplete input denies the push. An empty stream records
+`no_ref_updates` and allows Git’s no-op push. That outcome carries no tree or
+passing check evidence.
+
 - A deletion of a ref is allowed.
 - A ref under `refs/notes/` is allowed and not judged: notes hold no content of
   the project.

@@ -247,8 +247,8 @@ func ingestWorkerReturn(ctx context.Context, cfg Config, request workerReturnReq
 	if err := matchWorkerReturn(record, request); err != nil {
 		return compactFailure(err)
 	}
-	if err := verifyManagedHandback(ledger, record, request); err != nil {
-		return compactFailure(err)
+	if record.Managed != nil {
+		return failf("this historical configured dispatch cannot receive new evidence; use kitsu task run")
 	}
 	observed, err := finishStageReceipt(ctx, s, e, record, stageFinishOptions{id: request.DispatchID, expect: "any"})
 	if err != nil {

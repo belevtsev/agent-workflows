@@ -93,6 +93,7 @@ func TestRemoteInstallerUsesPinnedVersion(t *testing.T) {
 		t.Run(host.name, func(t *testing.T) {
 			run := newInstallRun(t, host, base)
 			run.env["KITSU_INSTALL_TEST_VERSION"] = preview
+			run.env["KITSU_VERSION"] = preparedVersion
 			if output, err := run.run(false); err == nil || !strings.Contains(output, archiveName(preparedVersion)) {
 				t.Fatalf("expected a failure requesting the pinned version: %v\n%s", err, output)
 			}

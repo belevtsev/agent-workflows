@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Breaking
+
+- Register a [trusted runner](docs/workflow-runner.md) for `kitsu task run`. Continue a local-launch preview record by opening a new task with the original request and assertion.
+
 ### Added
 
 - Start a [failed PR check repair](docs/task-harness.md#repair-a-failed-pr-check) with an approved local check. Finish verification, commit, and receipt in one command.
@@ -23,6 +27,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - [Failed PR check intake](docs/task-harness.md#repair-a-failed-pr-check) also recognizes failures reported through commit statuses by external CI.
 - [Failed PR repairs](docs/task-harness.md#repair-a-failed-pr-check) now pause when the checkout moves off the reproduced PR head before delivery.
+- [Supervised imports](docs/workflow-runner.md) preserve returned bytes across Git line-ending settings. The guard gives specific diagnostics for aliases of protected files.
+- [Installers](docs/release-install.md) use the latest release for CLI-only installs and preserve the personal host unless explicitly replaced.
+- The [pre-push hook](docs/hooks.md#pre-push) rejects malformed ref updates and records empty input as a no-op.
+
 - [Release installers](docs/release-install.md#install-from-a-release) stage the shell script before running. The release workflow tests and attests the exact bundle before publishing.
 
 - Release archives include the [license for Go networking and HTML dependencies](THIRD_PARTY.md).

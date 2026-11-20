@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -13,32 +12,9 @@ import (
 	"strings"
 
 	"github.com/belevtsev/kitsu/v3/internal/decl"
-	"github.com/belevtsev/kitsu/v3/internal/gitx"
 	"github.com/belevtsev/kitsu/v3/internal/harness"
 	"github.com/belevtsev/kitsu/v3/internal/roles"
 )
-
-func validateWorkflowReturn(ctx context.Context, s *session, task *harness.Task, c harness.Snapshot, r workflowReturn) error {
-	w, a := task.Workflow, task.Workflow.Active
-	if !a.Candidate.SameBase(c) || a.Candidate.Index != c.Index {
-		return failf("worker changed the index or Git parents; inspect the preserved work")
-	}
-	if a.Role == "architect" {
-		if c != a.Candidate {
-			return failf("architect changed the working candidate; review the preserved edits")
-		}
-		return validateWorkflowPlan(s.repo.Root, task.Scope, r.Plan)
-	}
-	if a.Role == "quality-engineer" {
-		if err := validateWorkflowAssertion(w.Plan, r.Assertion); err != nil {
-			return err
-		}
-	}
-	if a.Role == "developer" && a.Rework && c.SameSource(a.Candidate) {
-		return failf("repair returned the same candidate; inspect the current failure before starting another worker")
-	}
-	return validateWorkflowWrites(ctx, s, w, c)
-}
 
 func validateWorkflowPlan(root string, scope harness.Scope, plan *harness.WorkflowPlan) error {
 	if plan == nil || len(plan.CodePaths)+len(plan.TestPaths) > 128 || len(plan.Shared) > 32 ||
@@ -80,50 +56,20 @@ func validateWorkflowRegions(root string, scope harness.Scope, plan *harness.Wor
 }
 
 func validateWorkflowAssertion(plan *harness.WorkflowPlan, assertion *harness.WorkflowAssertion) error {
-	if assertion == nil || len(assertion.Argv) == 0 || len(assertion.Argv) > 128 ||
-		strings.TrimSpace(assertion.Argv[0]) == "" || strings.TrimSpace(assertion.Expect) == "" ||
-		len(assertion.Expect) > 4096 || len(assertion.Failure) > 4096 ||
-		plan.Baseline == "fail" && strings.TrimSpace(assertion.Failure) == "" {
-		return failf("test writer must supply a bounded argv, expected behavior, and an intended failure marker for a red baseline")
-	}
-	for _, arg := range assertion.Argv {
-		if len(arg) > 4096 || strings.ContainsRune(arg, 0) {
-			return failf("test writer supplied an invalid assertion argument")
-		}
-	}
-	return nil
-}
-
-func validateWorkflowWrites(ctx context.Context, s *session, w *harness.Workflow, c harness.Snapshot) error {
-	a := w.Active
-	changes, err := s.repo.Diff(ctx, a.Candidate.Tree, c.Tree)
-	if err != nil {
-		return err
-	}
-	sources, err := stageRawSources(ctx, s, c.Tree)
-	if err != nil {
-		return err
-	}
-	after, err := workflowSharedFingerprints(s.repo.Root, w.Plan.Shared)
-	if err != nil {
-		return err
-	}
-	for _, change := range append(changes, stageRawChanges(a.Sources, sources)...) {
-		name := change.Path
-		if !workflowPathAllowed(w, name, after) {
-			return failf("%s changed %q outside its saved write scope; inspect the preserved edits", a.Role, name)
-		}
+	if assertion == nil || !validWorkflowArgv(assertion.Argv) ||
+		strings.TrimSpace(assertion.Expect) == "" || len(assertion.Expect) > 4096 || len(assertion.TestID) > 1024 ||
+		plan.Baseline == "fail" && strings.TrimSpace(assertion.TestID) == "" {
+		return failf("test writer must supply a reviewed argv, expected behavior and a test ID for a red baseline")
 	}
 	return nil
 }
 
 func workflowPathAllowed(w *harness.Workflow, name string, after map[string]harness.WorkflowSharedFingerprint) bool {
-	if name == decl.FileName || name == roles.FileName || name == "kitsu-advisers.toml" ||
-		strings.HasPrefix(name, "openspec/") || name == ".gitattributes" || strings.HasSuffix(name, "/.gitattributes") {
+	if roles.ProtectedWorkflowPath(name) || strings.HasPrefix(strings.ToLower(name), "openspec/") {
 		return false
 	}
 	test := decl.MatchAny(w.Plan.TestPaths, name)
-	projectTest := len(w.TestPolicy) == 0 || decl.MatchAny(w.TestPolicy, name)
+	projectTest := decl.MatchAny(w.TestPolicy, name)
 	if current, shared := after[name]; shared {
 		before := w.Active.Shared[name]
 		if w.Active.Role == "quality-engineer" {
@@ -156,10 +102,7 @@ func workflowSharedFingerprints(rootName string, regions []harness.WorkflowTestR
 		if err != nil {
 			return nil, err
 		}
-		out[region.Path] = harness.WorkflowSharedFingerprint{
-			Outside: fmt.Sprintf("%x/%x", sha256.Sum256(file.prefix), sha256.Sum256(file.suffix)),
-			Inside:  fmt.Sprintf("%x", sha256.Sum256(file.body)),
-		}
+		out[region.Path] = sharedFingerprint(file)
 	}
 	return out, nil
 }
@@ -178,12 +121,14 @@ func readSharedFile(root *os.Root, region harness.WorkflowTestRegion) (sharedFil
 	if err != nil || len(payload) > 4<<20 {
 		return sharedFile{}, failf("cannot read shared test file %q", region.Path)
 	}
-	first, _, startOK := workflowBoundary(payload, region.First)
-	_, last, endOK := workflowBoundary(payload, region.Last)
-	if !startOK || !endOK || first >= last {
-		return sharedFile{}, failf("shared test boundaries in %q are missing, reordered, or ambiguous", region.Path)
+	return workflowRegion(payload, region)
+}
+
+func sharedFingerprint(file sharedFile) harness.WorkflowSharedFingerprint {
+	return harness.WorkflowSharedFingerprint{
+		Outside: fmt.Sprintf("%x/%x", sha256.Sum256(file.prefix), sha256.Sum256(file.suffix)),
+		Inside:  fmt.Sprintf("%x", sha256.Sum256(file.body)),
 	}
-	return sharedFile{prefix: payload[:first], body: payload[first:last], suffix: payload[last:]}, nil
 }
 
 func workflowBoundary(data []byte, line string) (int, int, bool) {
@@ -201,17 +146,4 @@ func workflowBoundary(data []byte, line string) (int, int, bool) {
 		remain = next
 	}
 	return first, end, count == 1
-}
-
-func workflowChangePaths(changes []gitx.Change, before, after map[string]string) []string {
-	seen := map[string]bool{}
-	var paths []string
-	for _, change := range append(changes, stageRawChanges(before, after)...) {
-		if !seen[change.Path] {
-			seen[change.Path] = true
-			paths = append(paths, change.Path)
-		}
-	}
-	slices.Sort(paths)
-	return paths
 }
