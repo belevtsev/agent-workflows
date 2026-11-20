@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Start a [failed PR check repair](docs/task-harness.md#repair-a-failed-pr-check) with an approved local check. Finish verification, commit, and receipt in one command.
+- Approve a private reproduction command for a [failed PR check repair](docs/task-harness.md#repair-a-failed-pr-check) with `kitsu check trust --ci`.
 - Assign each specialist to Codex or Claude Code and run or resume tasks with the [configured workflow](docs/configured-workflow.md).
 - Choose a default host during [installation](docs/release-install.md), then customize repository role assignments with `kitsu role init` and `kitsu role set`.
 - Follow a task from chat to its saved state and a bug ticket to its verified commit in the [illustrated task guide](docs/task-harness.md#how-a-daily-task-runs).
@@ -19,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- [Failed PR check intake](docs/task-harness.md#repair-a-failed-pr-check) also recognizes failures reported through commit statuses by external CI.
+- [Failed PR repairs](docs/task-harness.md#repair-a-failed-pr-check) now pause when the checkout moves off the reproduced PR head before delivery.
 - [Release installers](docs/release-install.md#install-from-a-release) stage the shell script before running. The release workflow tests and attests the exact bundle before publishing.
 
 - Release archives include the [license for Go networking and HTML dependencies](THIRD_PARTY.md).

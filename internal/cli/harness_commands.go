@@ -31,6 +31,7 @@ func harnessCommands() []uxCommand {
 	ticket := uxOption("ticket", "id", "action ticket returned by task next")
 	return []uxCommand{
 		{path: "task bug", args: "<task> --from SOURCE", summary: "Open a ticket for reproduction, repair and verified local commit delivery", flags: []uxFlag{uxOption("from", "source", "ticket source URL or Markdown file"), uxOption("stdin", "", "read ticket Markdown from standard input and retain its source link"), requireReviewFlag(), brief, json}, examples: []string{"kitsu task bug csv-fix --from tickets/csv.md"}, run: harnessCommand("bug")},
+		{path: "task ci", args: "<task> --from PR --check ID", summary: "Reproduce a failed GitHub PR check with an approved local check", flags: []uxFlag{uxOption("from", "url", "open GitHub pull request URL"), uxOption("check", "id", "declared or privately approved local check"), uxOption("job", "name", "select a failed check when the PR has several"), uxOption("stdin", "", "read GitHub pull request metadata from standard input"), requireReviewFlag(), brief, json}, examples: []string{"kitsu task ci csv-fix --from https://github.com/example/repo/pull/17 --check test"}, run: harnessCommand("ci")},
 		{path: "task receipt", args: "<task>", summary: "Print a ticket-linked bug receipt or export saved verification as shareable Markdown", flags: []uxFlag{uxOption("json", "", "return the local ticket-linked bug receipt as JSON"), uxOption("markdown", "", "export saved verification without running checks")}, examples: []string{"kitsu task receipt export-quoting --markdown", "kitsu task receipt csv-fix --json"}, run: harnessCommand("receipt")},
 
 		{path: "task open", args: "<task> --until <outcome>", summary: "Pin a candidate and the developer's requested outcome", flags: append([]uxFlag{request, taskEntry, taskUntil, repair, commit, publish, base, reviewBase, reviewHead, requireReviewFlag(), brief, json}, reviewLimitFlags()...), examples: []string{`kitsu task open export-quoting --entry review --until verify --repair --request "Verify CSV quoting"`, `kitsu task open review-pr --until review --review-base main --review-head topic --request "Review the committed change"`}, run: harnessCommand("open")},
@@ -38,7 +39,7 @@ func harnessCommands() []uxCommand {
 		{path: "task claim", args: "<task>", summary: "Reserve an action before launching a host worker", flags: []uxFlag{ticket, uxOption("actor", "id", "session reserving this action"), uxOption("worker", "id", "link the launched native reviewer or developer to an existing reservation"), uxOption("host", "host", "resolve specialist settings for a review, implementation or repair reservation", roles.Hosts...), brief, json}, run: harnessCommand("claim")},
 		{path: "task release", args: "<task>", summary: "Release a claim after reconciling or cancelling its worker", flags: []uxFlag{ticket, brief, json}, run: harnessCommand("release")},
 		{path: "task confirm", args: "<task>", summary: "Check every push destination and requested PR, or recheck a completed delivery", flags: []uxFlag{ticket, uxOption("pr", "url", "published pull request URL"), brief, json}, examples: []string{"kitsu task confirm export-quoting --ticket TICKET --pr https://github.com/example/repo/pull/17", "kitsu task confirm export-quoting --brief"}, run: harnessCommand("confirm")},
-		{path: "task commit", args: "<task>", summary: "Commit the verified candidate already staged for authorized delivery", flags: []uxFlag{ticket, uxOption("message", "text", "commit message"), uxOption("include", "path", "explicitly include a pre-existing changed path; repeatable"), brief, json}, run: harnessCommand("commit")},
+		{path: "task commit", args: "<task>", summary: "Commit a verified staged candidate or finish a failed PR check repair", flags: []uxFlag{ticket, uxOption("message", "text", "commit message"), uxOption("include", "path", "explicitly include a pre-existing changed path; repeatable"), brief, json}, run: harnessCommand("commit")},
 		{path: "task next", args: "<task>", summary: "Resume from current evidence and show the next action", flags: []uxFlag{brief, json}, run: harnessCommand("next")},
 		{path: "task record", args: "<task> <action>", summary: "Record intake, a plan, implementation, repair or review", flags: []uxFlag{ticket, uxOption("claim-review", "host", "reserve the next independent review with this result", roles.Hosts...), uxOption("actor", "id", "native session identity"), uxOption("note", "text", "result and evidence or artifact reference"), uxOption("finding", "text", "unresolved review finding; repeatable"), uxOption("observed-review", "", "use the matching native review result captured by the host hooks"), brief, json}, examples: []string{`kitsu task record export-quoting intake --actor SESSION --ticket TICKET --note "Quoted fields should round-trip"`, "kitsu task record export-quoting review --ticket TICKET --observed-review --brief"}, run: harnessCommand("record")},
 		{path: "task test", args: "<task> [-- <program> [<argument>...]]", summary: "Execute the requested behavioral assertion and required repository checks", flags: []uxFlag{ticket, uxOption("expect", "text", "observable behavior asserted by this command"), uxOption("retry", "", "use the saved behavioral assertion on the current candidate"), uxOption("replace-reason", "text", "explain why a failing assertion needs a different command"), brief, json}, examples: []string{`kitsu task test export-quoting --ticket TICKET --expect "Quoted fields round-trip" -- go test ./csv`}, run: harnessCommand("test")},
@@ -75,17 +76,22 @@ type harnessOptions struct {
 
 func parseHarness(verb string, args []string) (harnessOptions, error) {
 	var o harnessOptions
+	var localCheck, job string
 	f := newFlags("task " + verb)
 	f.BoolVar(&o.json, "json", false, "")
 	f.BoolVar(&o.brief, "brief", false, "")
 	switch verb {
 	case "receipt":
 		f.BoolVar(&o.markdown, "markdown", false, "")
-	case "bug":
+	case "bug", "ci":
 		f.StringVar(&o.from, "from", "", "")
 		f.BoolVar(&o.stdin, "stdin", false, "")
 		o.scope = harness.Scope{Entry: "verify", Until: "deliver", Repair: true, Commit: true}
 		f.BoolVar(&o.scope.RequireReview, "require-review", false, "")
+		if verb == "ci" {
+			f.StringVar(&localCheck, "check", "", "")
+			f.StringVar(&job, "job", "", "")
+		}
 	case "open", "extend":
 		if verb == "open" {
 			f.StringVar(&o.request, "request", "", "")
@@ -138,6 +144,12 @@ func parseHarness(verb string, args []string) (harnessOptions, error) {
 	}
 	if err := o.validateLimits(f); err != nil {
 		return o, err
+	}
+	if verb == "ci" {
+		o.source, err = tickets.FailedCheckLocation(o.from, localCheck, job)
+		if err != nil {
+			return o, usagef("%v", err)
+		}
 	}
 	return validateHarnessOptions(verb, p, o)
 }
@@ -261,7 +273,7 @@ func runHarnessCommand(ctx context.Context, s *session, l *stageLedger, verb str
 		return bugReceipt(ctx, s, l, &task, o)
 	}
 	full := o.json && !o.brief
-	readOnly := verb == "open" || verb == "next"
+	readOnly := verb == "open" || verb == "next" || verb == "ci" && task.Proof != nil
 	view, err := observeHarness(ctx, s, &task, full && readOnly)
 	if err != nil {
 		return err
@@ -270,7 +282,13 @@ func runHarnessCommand(ctx context.Context, s *session, l *stageLedger, verb str
 		return err
 	}
 	if readOnly {
+		if verb == "ci" && task.NeedsReproduction() {
+			return printHarnessResult(s.cfg, verb, o, view)
+		}
 		return printOpenedHarness(s, l, &task, o, verb, active, view)
+	}
+	if verb == "ci" {
+		o.ticket, o.retry = view.Ticket, true
 	}
 	return saveHarnessAction(ctx, s, l, &task, o, verb, view, full)
 }
@@ -291,26 +309,34 @@ func saveHarnessAction(ctx context.Context, s *session, l *stageLedger, task *ha
 	if verb == "record" && o.host != "" {
 		return recordAndClaimReview(ctx, s, l, task, o, view)
 	}
+	if verb == "commit" && task.Bug != nil && task.Bug.Source.Check != nil {
+		return finishCIRepair(ctx, s, l, task, o, view, full)
+	}
 	actionErr := applyHarness(ctx, s, l, task, o, verb, view)
 	if actionErr != nil && !errors.Is(actionErr, errPublicationUnconfirmed) {
 		return actionErr
 	}
-	if err := l.write(harnessFile(o.id), task); err != nil {
-		return err
-	}
-	view, err := observeHarness(ctx, s, task, full)
+	view, err := observeSavedHarness(ctx, s, l, task, full)
 	if err != nil {
-		return err
-	}
-	if err := saveObservedDelivery(l, task, view); err != nil {
 		return err
 	}
 	view.ClaimCreated = verb == "claim" && o.worker == ""
 	return errors.Join(actionErr, printHarnessResult(s.cfg, verb, o, view))
 }
 
+func observeSavedHarness(ctx context.Context, s *session, l *stageLedger, task *harness.Task, full bool) (harnessView, error) {
+	if err := l.write(harnessFile(task.ID), task); err != nil {
+		return harnessView{}, err
+	}
+	view, err := observeHarness(ctx, s, task, full)
+	if err != nil {
+		return view, err
+	}
+	return view, saveObservedDelivery(l, task, view)
+}
+
 func printOpenedHarness(s *session, l *stageLedger, task *harness.Task, o harnessOptions, verb, active string, view harnessView) error {
-	if o.from != "" {
+	if o.from != "" && o.source.Check == nil {
 		// Rebuild from the saved request on retry, even when the original is offline.
 		name := "ticket-" + task.ID + ".md"
 		md := fmt.Sprintf("Source: <%s>\n\n%s\n", task.Bug.Source.URL, task.Request)
@@ -338,13 +364,13 @@ func previousHarnessNotes(task *harness.Task, last *harness.Event) map[string]st
 }
 
 func printHarnessResult(cfg Config, verb string, o harnessOptions, view harnessView) error {
-	if verb == "test" && o.brief && view.VerificationLog == nil {
+	if (verb == "test" || verb == "ci") && o.brief && view.VerificationLog == nil {
 		view.VerificationLog = view.verificationLog()
 	}
 	if err := printHarness(cfg, o, view); err != nil {
 		return err
 	}
-	if verb == "test" && !view.Verified || verb == "commit" && view.Delivery != "committed" {
+	if verb == "test" && !view.Verified || verb == "commit" && view.Delivery != "committed" || verb == "ci" && view.Next != "repair" {
 		return exit(ExitNotVerified)
 	}
 	return nil
@@ -449,6 +475,11 @@ func commitHarness(ctx context.Context, s *session, l *stageLedger, task *harnes
 		}
 		p := task.Proof
 		verify := harnessOptions{id: task.ID, ticket: view.Ticket, argv: p.Argv, expect: p.Expect, brief: o.brief}
+		if task.Bug != nil && task.Bug.Source.Check != nil {
+			if _, err := verify.resolveCIAssertion(ctx, s, task, view.Candidate); err != nil {
+				return err
+			}
+		}
 		if err := runHarnessTest(ctx, s, l, task, verify, view); err != nil {
 			return err
 		}
@@ -481,6 +512,12 @@ func commitVerifiedHarness(ctx context.Context, s *session, l *stageLedger, task
 	}
 	if err := checkCommitIncludes(ctx, s, task, view.Candidate.Tree, o.includes); err != nil {
 		return err
+	}
+	if task.Bug != nil && task.Bug.Source.Check != nil {
+		verify := harnessOptions{retry: true}
+		if _, err := verify.resolveCIAssertion(ctx, s, task, view.Candidate); err != nil {
+			return err
+		}
 	}
 	return performHarnessCommit(ctx, s, l, task, o, view)
 }
@@ -682,16 +719,17 @@ func loadHarness(ctx context.Context, s *session, l *stageLedger, o harnessOptio
 		}
 	}
 	err := l.read(harnessFile(o.id), &task)
+	opening := verb == "open" || verb == "ci"
 	if task.Version == 1 && o.defaultDeliveryEntry {
 		o.scope.Entry = "review"
 	}
-	if errors.Is(err, os.ErrNotExist) && verb == "open" {
+	if errors.Is(err, os.ErrNotExist) && opening {
 		return createHarness(ctx, s, l, o, rangeStart)
 	} else if err != nil {
 		return task, fmt.Errorf("read saved task %s: %w", o.id, err)
 	} else if !task.Valid(o.id) {
 		return task, failf("invalid saved task %s", o.id)
-	} else if task.PendingScope && verb == "open" {
+	} else if task.PendingScope && opening {
 		if o.from != "" {
 			return task, failf("task %s already exists; choose a new ID for the ticket", o.id)
 		}
@@ -700,7 +738,7 @@ func loadHarness(ctx context.Context, s *session, l *stageLedger, o harnessOptio
 		}
 	} else if task.PendingScope && verb != "next" && verb != "extend" {
 		return task, failf("bind the saved request with task open %s --entry STAGE --until OUTCOME", task.ID)
-	} else if verb == "open" && (!o.matchesSavedScope(&task)) {
+	} else if opening && !o.matchesSavedScope(&task) {
 		return task, failf("task %s already exists with another request or scope; use task next or a new name", o.id)
 	}
 	if task.Scope.Commit {
@@ -711,7 +749,13 @@ func loadHarness(ctx context.Context, s *session, l *stageLedger, o harnessOptio
 
 func createHarness(ctx context.Context, s *session, l *stageLedger, o harnessOptions, start harness.Snapshot) (harness.Task, error) {
 	var bug *harness.BugDelivery
-	if o.from != "" {
+	if o.source.Check != nil {
+		var err error
+		start, bug, o.request, err = importFailedCheck(ctx, s, o)
+		if err != nil {
+			return harness.Task{}, err
+		}
+	} else if o.from != "" {
 		src, text, err := tickets.Read(ctx, o.from, o.source, s.cfg.In)
 		if err != nil {
 			return harness.Task{}, err
@@ -720,6 +764,12 @@ func createHarness(ctx context.Context, s *session, l *stageLedger, o harnessOpt
 		bug = &harness.BugDelivery{Source: src}
 	}
 	t := harness.Task{Bug: bug, Version: harness.CurrentVersion, ID: o.id, Scope: o.scope, Request: o.request, Created: time.Now().UTC(), Start: start}
+	if o.source.Check != nil {
+		t.Events = append(t.Events, harness.Event{
+			Action: "intake", Note: o.request, Candidate: start, At: t.Created,
+			Ticket: actionTicket(&t, "intake", start),
+		})
+	}
 	if strings.TrimSpace(o.request) == "" {
 		return t, usagef("--request is required for a new task")
 	}
@@ -759,6 +809,12 @@ func (o *harnessOptions) matchesSavedScope(task *harness.Task) bool {
 	if o.from != "" && (task.Bug == nil || !tickets.SameSource(o.source, task.Bug.Source)) {
 		return false
 	}
+	if check := o.source.Check; check != nil {
+		saved := task.Bug.Source.Check
+		if saved == nil || check.LocalCheck != saved.LocalCheck || check.Name != "" && check.Name != saved.Name {
+			return false
+		}
+	}
 	scope := o.scope
 	// Replaying the bind may omit a requirement already pinned at startup.
 	scope.RequireReview = scope.RequireReview || task.Scope.RequireReview
@@ -797,7 +853,7 @@ func applyHarness(ctx context.Context, s *session, l *stageLedger, task *harness
 		return extendHarness(ctx, s, task, o)
 	case "record":
 		return recordHarness(l, task, o, view)
-	case "test":
+	case "test", "ci":
 		return testHarnessAction(ctx, s, l, task, o, view)
 	}
 	return nil
@@ -869,7 +925,11 @@ func (o *harnessOptions) validateOpen() error {
 
 func testHarnessAction(ctx context.Context, s *session, l *stageLedger, task *harness.Task, o harnessOptions, view harnessView) error {
 	prior := task.Proof.FailedAssertion()
-	if err := o.resolveAssertion(task, prior); err != nil {
+	if task.Bug != nil && task.Bug.Source.Check != nil {
+		if _, err := o.resolveCIAssertion(ctx, s, task, view.Candidate); err != nil {
+			return err
+		}
+	} else if err := o.resolveAssertion(task, prior); err != nil {
 		return err
 	}
 	if task.Proof != nil && view.Verified && slices.Equal(o.argv, task.Proof.Argv) && o.expect == task.Proof.Expect && (o.ticket == task.Proof.Ticket || o.ticket == task.Proof.CompletionTicket) {

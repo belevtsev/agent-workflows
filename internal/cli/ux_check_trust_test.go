@@ -53,7 +53,7 @@ func TestReviewExactCheckDeclarationBeforeAgentExecution(t *testing.T) {
 	if ExitCode(err) != ExitUsage || !strings.Contains(output.String(), fingerprint) || !strings.Contains(output.String(), `"git" "status" "--short"`) {
 		t.Fatalf("a nonterminal request must preview the declaration and stop: %v\n%s", err, &output)
 	}
-	before, err := trustFile(repo)
+	before, err := trustFile(repo, "")
 	if err != nil || before.exists {
 		t.Fatalf("invalid approval saved: %v, %t", err, before.exists)
 	}
@@ -97,4 +97,39 @@ func checkApprovalNotice(t *testing.T, host, dir, command string) string {
 		t.Fatal(err)
 	}
 	return out.String()
+}
+
+func TestLocalCIApprovalRequiresDeveloperInUnconfiguredRepo(t *testing.T) {
+	r := kitsutest.NewRepo(t)
+	t.Chdir(r.Dir)
+	t.Setenv("HOME", r.Home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(r.Home, ".config"))
+	t.Setenv("APPDATA", filepath.Join(r.Home, "AppData", "Roaming"))
+	for _, host := range []string{"codex", "claude"} {
+		if reply := checkApprovalNotice(t, host, r.Dir, "kitsu check trust --ci product -- git status"); !strings.Contains(reply, "their own terminal") {
+			t.Fatalf("%s did not block the approval command: %s", host, reply)
+		}
+		if reply := checkApprovalNotice(t, host, r.Dir, "kitsu task ci work --from https://github.com/example/project/pull/17 --check product"); reply != "" {
+			t.Fatalf("%s blocked intake before Kitsu could resolve the local approval: %s", host, reply)
+		}
+	}
+	var output bytes.Buffer
+	cfg := Config{In: strings.NewReader("yes\n"), Out: &output, Err: io.Discard}
+	args := []string{"check", "trust", "--ci", "product", "--", "git", "status"}
+	if err := Execute(t.Context(), args, cfg); ExitCode(err) != ExitUsage || !strings.Contains(output.String(), `"git" "status"`) {
+		t.Fatalf("a nonterminal request must preview the command and stop: %v\n%s", err, &output)
+	}
+	repo, err := gitx.Open(t.Context(), r.Dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	local, err := ciTrustFile(repo, "product")
+	if err != nil || local.exists {
+		t.Fatalf("local approval created on refused request: %v, %t", err, local.exists)
+	}
+	write := toolCall{Tool: "Write", Dir: r.Dir}
+	write.Input.Path = local.path
+	if reason, developerOnly := guardReason(t.Context(), write); !developerOnly || !strings.Contains(reason, "local check approvals") {
+		t.Fatalf("guard allowed direct approval file creation: %s", reason)
+	}
 }

@@ -6,3 +6,6 @@
 
 - [x] 1.4 Import the ticket and retain failing, repaired and committed behavior evidence. Size: M. Depends on: 1.2. Check: test. Source: Deliver a ticket-linked bug fix.
 - [x] 1.5 Export saved verification as shareable Markdown and exercise privacy and legacy behavior through the CLI. Size: S. Depends on: 1.2, 1.4. Check: test. Source: Export a shareable verification receipt.
+- [x] 1.6 Reproduce a failed PR check with its approved local check and carry the source through review and receipt. Size: M. Depends on: 1.4, 1.5. Check: test. Source: Reproduce and repair a failed pull request check.
+- [x] 1.7 Finish the approved CI repair from staging through verification, commit and receipt and recover interrupted delivery. Size: M. Depends on: 1.6. Check: test. Source: Reproduce and repair a failed pull request check.
+- [x] 1.8 Support a privately approved CI check on an unchanged PR checkout while preserving repository checks and review. Size: S. Depends on: 1.6. Check: test. Source: Reproduce and repair a failed pull request check.

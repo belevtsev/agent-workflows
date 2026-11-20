@@ -85,6 +85,44 @@ For a local ticket use `--from ./tickets/wrapper-args.md`. Use `--host claude` f
 
 The receipt contains the source URL (a file URI for Markdown), title and digest, Git target, commit and tree, expected behavior, argument vector and log references for all three observations. Repository check references identify evidence from verification before commit. An undeclared check suite is labeled `undeclared`. Use the receipt as the delivery summary when reporting back to the ticket.
 
+## Repair a failed PR check
+
+Check out the open GitHub PR's head on a local branch with a clean working tree. Find the corresponding check in `kitsu check list`. If the repository declares checks, inspect and approve them in your own terminal with `kitsu check trust`.
+
+If you need a local reproduction check, approve the command once in your terminal. For example, for a Go repository:
+
+```sh
+kitsu check trust --ci unit -- go test ./...
+```
+
+Your approval lives in user configuration for this repository, so the PR checkout stays clean. Select it with `--check unit`. A committed repository check with the same ID takes precedence. Kitsu pins the approved command when it opens the repair. If you approve a different command later, start a new task or restore the original approval to resume.
+
+In Codex or Claude Code, ask “Use Kitsu to fix the failed check on this PR with our approved local unit check. Verify the fix, commit it, and give me the delivery receipt.” Include the PR URL and local check ID.
+
+```sh
+kitsu task ci csv-fix --from https://github.com/example/repo/pull/17 --check unit
+kitsu task start --resume csv-fix --host codex
+```
+
+Use `--host claude` to resume in Claude Code. If the PR has several failed checks, pass the exact check name with `--job "CI / unit"`. The initial command uses authenticated `gh pr view` to capture the open PR, head and completed failure. You can also pass its JSON with `--stdin` from a file or host connector. The JSON fields are `url,state,headRefOid,statusCheckRollup`. [GitHub CLI reference](https://cli.github.com/manual/gh_pr_view)
+
+Intake accepts completed failed check runs and failed or errored commit statuses published by external CI. The selected result points to the local reproduction you approved. [GitHub status types](https://docs.github.com/en/graphql/reference/commits#statuscheckrollupcontext)
+
+Run `kitsu task next csv-fix --brief` to recover the PR, selected check, reproduction status, log reference and next action in a fresh session.
+
+Kitsu saves the PR reference and runs the local check. Inspect the resulting log to confirm the failure you intend to fix. A locally passing or unavailable reproduction leaves the task at verification. Retry it on the original candidate with `kitsu task test ID --ticket TICKET --retry`, using the ticket from `kitsu task next ID --brief`. The check runs in your local setup, so dependencies and environment can differ from CI.
+
+The plugin can repair the candidate, stage the intended files, and obtain any required review. At the resulting verification or commit action, `task commit` finishes the local delivery and saves the receipt.
+
+```sh
+kitsu task commit csv-fix --ticket TICKET --message "Fix CSV quoting" --brief
+kitsu task receipt csv-fix --markdown
+```
+
+Use the current ticket after staging and review. Kitsu runs the original check and required repository checks before committing and reruns the original check on the resulting commit. The recorded next action and verification log guide any correction. If Git created the commit and the last check needs attention, repeat the commit command to resume receipt verification or run `kitsu task receipt csv-fix --json`.
+
+The receipt links the original PR, failed check name and head to the check evidence and delivered commit. If the checkout moves before delivery, return to the original PR head to reuse the saved failure. Use a new task ID to reproduce an updated PR. Pushes and PR updates require separate authorization.
+
 ## Choose independent review
 
 For new daily tasks, “implement, test and commit” uses one coordinator by default. If a reviewer finds a defect in the implementation or a behavior test fails after review, the developer can correct the work under the original implementation scope. For a review finish, Kitsu records the findings and stops. Reviewing or verifying a supplied patch requires explicit repair scope before editing it. When the correction changes the candidate, required review and the saved assertion run again before delivery. An explicit review entry or review finish reserves an independent reviewer. To require that same review during implementation, use a plain-language request, pass `--require-review` to `task start` or `task open`, or add it later with `task extend ID --require-review`. A review limit caps starts and does not request one. Use an explicit `--entry implement` when opening an implementation task directly. With only `--until deliver`, a new task starts by verifying the existing candidate.
