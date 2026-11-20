@@ -76,9 +76,16 @@ func TestConfiguredStoryReviewIntake(t *testing.T) {
 	f.configuration = fmt.Sprintf("version = 2\n[advisers.jev]\nprovider = 'typesafe'\nbase_url = %q\napi_key_env = 'KITSU_TEST_STORY_KEY'\n[access]\ncoordinator = ['jev']\n", server.URL+"/v1")
 	f.write(advisers.FileName, f.configuration)
 
-	f.run("", true, "advisers", "story-review", "enable", "--help")
-	f.run("", false, "advisers", "story-review", "enable", "--adviser", "jev")
-	f.run("", false, "advisers", "story-review", "disable")
+	if help := f.run("", true, "advisers", "story-review", "enable", "--help"); !strings.Contains(help, "story-review enable --adviser NAME") {
+		t.Fatalf("missing story review help: %s", help)
+	}
+	for _, args := range [][]string{{"enable", "--adviser", "jev"}, {"disable"}} {
+		command := append([]string{"advisers", "story-review"}, args...)
+		err := Execute(t.Context(), command, Config{In: strings.NewReader(""), Out: io.Discard, Err: io.Discard})
+		if err == nil || !strings.Contains(err.Error(), "in your own terminal") {
+			t.Fatalf("%v did not reach terminal approval: %v", command, err)
+		}
+	}
 	for _, command := range []string{"kitsu advisers story-review enable --adviser jev", "kitsu adviser story-review disable"} {
 		why := guardCheckTrust(t.Context(), repo, command)
 		if !strings.Contains(why, "own terminal") {

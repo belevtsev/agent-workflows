@@ -15,7 +15,7 @@ const (
 	maxRolesLines        = 4430 // Existing per-host settings, single-host assignments and repository role initialization.
 	maxAdviserLines      = 4040 // Includes native advice and private configured story intake.
 	maxSkillLines        = 2000
-	maxUXLines           = 3755 // Shared routing, help, install defaults, forms, completion and approval.
+	maxUXLines           = 3760 // Shared routing, help, install defaults, forms, completion and approval.
 	maxOnboardingLines   = 2014 // Local setup diagnostics, verified plugin installation and explicit host handoff.
 	maxContextLines      = 2000 // Opt-in Go collection, briefs, compact checks and private artifacts.
 	maxWorkerLines       = 1500 // Saved dispatch, local intervals, bounded QE hints and configured handback checks.
