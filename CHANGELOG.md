@@ -87,6 +87,8 @@ Install the CLI and matching Codex or Claude Code plugin with one command on mac
 
 ### Changed
 
+- Document [feature delivery](docs/task-harness.md#deliver-a-feature), checkout review order, resumable review, and Jev intake for both hosts.
+
 - [Compact handoffs](docs/coordinator-overhead.md) use shorter native prompts and worker-focused guidance, ordinary quiet checks,
   and minimal returns; [offline replay](docs/benchmarks/compact-delivery-report.md) checks fidelity without paid model calls.
 

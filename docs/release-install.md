@@ -33,6 +33,10 @@ Plugin setup saves the chosen host if your personal default is empty. Run them i
 
 The default locations are `$HOME/.local/bin/kitsu` on macOS/Linux and `%LOCALAPPDATA%\kitsu\kitsu.exe` on Windows. Open a new terminal and run `kitsu version` for the installed tag and revision. Windows hooks use Git for Windows.
 
+For commands under [Unreleased](../CHANGELOG.md#unreleased), install the matching
+CLI and plugin from a [CI build](#install-a-ci-artifact-before-publication).
+Check your installed command with `kitsu task --help`.
+
 ## Check the host and start a task
 
 After installing, restart Codex or Claude Code so it picks up the plugin and the updated PATH. Open your project’s Git worktree in a fresh session.
