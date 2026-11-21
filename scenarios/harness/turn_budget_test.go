@@ -29,6 +29,7 @@ type turnBudget struct {
 var turnBudgets = map[string]turnBudget{
 	"verify staged work and commit":      {calls: 1, replyBytes: 220},
 	"implement and commit":               {calls: 1, replyBytes: 220},
+	"verify, then a plain git commit":    {calls: 1, replyBytes: 220},
 	"implement, required review, commit": {calls: 2, replyBytes: 1100, reviewerCalls: 1, reviewerBytes: 1700},
 	"bug ticket to verified commit":      {calls: 2, replyBytes: 850},
 }
@@ -109,6 +110,17 @@ func TestTurnBudgetVerifyStagedWorkAndCommit(t *testing.T) {
 		"--", "git", "grep", "--cached", "-e", "^42$", "--", "answer.txt")
 	m.want("done")
 	m.within("verify staged work and commit", 0, 0)
+}
+
+// The model may commit with Git itself. That costs no further Kitsu command:
+// the receipt finds the commit.
+func TestTurnBudgetVerifyThenPlainGitCommit(t *testing.T) {
+	r := plainRepo(t)
+	m := plainTask(t, r, "budget-plain", "a.txt")
+	m.want("commit")
+	r.Git("commit", "-qm", "Add a")
+	markdownContains(t, receiptOf(t, r, m.id), "Verified commit `"+r.Git("rev-parse", "HEAD")+"`")
+	m.within("verify, then a plain git commit", 0, 0)
 }
 
 var trackReadme = []string{"--commit", "--request", "Track the README", "--expect", "README is tracked", "--message", "Add README",

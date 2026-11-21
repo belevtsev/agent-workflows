@@ -252,7 +252,7 @@ func doHint(view harnessView, failed bool) string {
 	case next == "review":
 		return "launch the reviewer on review_input, then run the command again"
 	case next == "commit":
-		return "stage the verified candidate and run again with --message"
+		return "stage the verified candidate, then run again with --message or commit it with git commit"
 	case next == "implement" || next == "repair" || next == "verify":
 		return "change the candidate and run again with --expect and a command after --; a corrected command needs --replace-reason"
 	}

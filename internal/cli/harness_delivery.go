@@ -18,6 +18,12 @@ func performHarnessCommit(ctx context.Context, s *session, l *stageLedger, t *ha
 	}
 	result, err := s.repo.CommitStaged(ctx, s.store.Tmp(), c.Tree, c.Head, c.MergeHeads, v.CommitTarget, o.note)
 	if result.Commit == "" {
+		// Git left the target where it was, as when a hook refuses the commit, so
+		// there is no commit to recover and a later one is judged on its own.
+		if head, _, check := s.repo.CommitOf(ctx, v.CommitTarget); check == nil && head == c.Head {
+			t.CommitAttempt = nil
+			err = errors.Join(err, l.write(harnessFile(t.ID), t))
+		}
 		return err
 	}
 	t.CommitAttempt.Commit, t.CommitAttempt.Tree = result.Commit, result.Tree
