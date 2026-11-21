@@ -136,6 +136,7 @@ var checkExecutionRules = []shellwords.CommandRule{
 	{Path: []string{"run"}, Reason: "run"},
 	{Path: []string{"check", "run"}, Reason: "run"},
 	{Path: []string{"task", "ci"}, Reason: "run"},
+	{Path: []string{"task", "do"}, Reason: "run"},
 	{Path: []string{"task", "test"}, Reason: "run"},
 	{Path: []string{"task", "verify"}, Reason: "run"},
 	{Path: []string{"task", "commit"}, Reason: "run"}, // May recheck newly staged content.

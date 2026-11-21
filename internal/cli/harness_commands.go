@@ -30,6 +30,7 @@ func harnessCommands() []uxCommand {
 	reviewHead := uxOption("review-head", "revision", "end commit of a read-only review range; requires --review-base")
 	ticket := uxOption("ticket", "id", "action ticket returned by task next")
 	return []uxCommand{
+		harnessDoCommand(request, commit, brief, json),
 		{path: "task bug", args: "<task> --from SOURCE", summary: "Open a ticket for reproduction, repair and verified local commit delivery", flags: []uxFlag{uxOption("from", "source", "ticket source URL or Markdown file"), uxOption("stdin", "", "read ticket Markdown from standard input and retain its source link"), requireReviewFlag(), brief, json}, examples: []string{"kitsu task bug csv-fix --from tickets/csv.md"}, run: harnessCommand("bug")},
 		{path: "task ci", args: "<task> --from PR --check ID", summary: "Reproduce a failed GitHub PR check with an approved local check", flags: []uxFlag{uxOption("from", "url", "open GitHub pull request URL"), uxOption("check", "id", "declared or privately approved local check"), uxOption("job", "name", "select a failed check when the PR has several"), uxOption("stdin", "", "read GitHub pull request metadata from standard input"), requireReviewFlag(), brief, json}, examples: []string{"kitsu task ci csv-fix --from https://github.com/example/repo/pull/17 --check test"}, run: harnessCommand("ci")},
 		{path: "task receipt", args: "<task>", summary: "Print a ticket-linked bug receipt or export saved verification as shareable Markdown", flags: []uxFlag{uxOption("json", "", "return the local ticket-linked bug receipt as JSON"), uxOption("markdown", "", "export saved verification without running checks")}, examples: []string{"kitsu task receipt export-quoting --markdown", "kitsu task receipt csv-fix --json"}, run: harnessCommand("receipt")},
@@ -69,6 +70,7 @@ type harnessOptions struct {
 	from                                                                          string
 	source                                                                        harness.TicketSource
 	id, host, action, request, actor, note, ticket, expect, replaceReason, worker string
+	message                                                                       string
 	scope                                                                         harness.Scope
 	findings, includes                                                            stringList
 	argv                                                                          []string
@@ -83,6 +85,8 @@ func parseHarness(verb string, args []string) (harnessOptions, error) {
 	f.BoolVar(&o.json, "json", false, "")
 	f.BoolVar(&o.brief, "brief", false, "")
 	switch verb {
+	case "do":
+		o.bindDoFlags(f)
 	case "receipt":
 		f.BoolVar(&o.markdown, "markdown", false, "")
 	case "bug", "ci":
@@ -178,11 +182,14 @@ func validateHarnessOptions(verb string, p parsed, o harnessOptions) (harnessOpt
 	if verb == "record" {
 		n = 2
 	}
-	if len(p.pos) != n || !validHarnessID(p.pos[0]) || p.dash != (verb == "test" && !o.retry) {
+	if len(p.pos) != n || !validHarnessID(p.pos[0]) || verb != "do" && p.dash != (verb == "test" && !o.retry) {
 		return o, usagef("invalid task name or arguments for task %s", verb)
 	}
 	o.id = p.pos[0]
 	switch verb {
+	case "do":
+		o.argv = p.rest
+		return o.validateDo(p.dash)
 	case "receipt":
 		if o.markdown && (o.json || o.brief) {
 			return o, usagef("--markdown is a separate receipt format")
@@ -256,6 +263,9 @@ func harnessCommand(verb string) func(context.Context, Config, []string) error {
 		defer l.close()
 		if verb == "bug" {
 			return runHarnessCommand(ctx, s, l, "open", o)
+		}
+		if verb == "do" {
+			return doHarness(ctx, s, l, o)
 		}
 		return runHarnessCommand(ctx, s, l, verb, o)
 	}
@@ -624,12 +634,21 @@ func checkCommitIncludes(ctx context.Context, s *session, task *harness.Task, ca
 	for _, item := range append(original, staged...) {
 		existing[item.Path] = true
 	}
+	var missing []string
 	for _, item := range changed {
 		if existing[item.Path] && !slices.Contains(includes, item.Path) {
-			return failf("pre-existing edit %q requires explicit --include after confirming ownership", item.Path)
+			missing = append(missing, fmt.Sprintf("%q", item.Path))
 		}
 	}
-	return nil
+	if len(missing) == 0 {
+		return nil
+	}
+	// Name every path at once: each refusal costs the caller another turn.
+	also := ""
+	if len(missing) > 1 {
+		also = "; so do " + strings.Join(missing[1:], ", ")
+	}
+	return failf("pre-existing edit %s requires explicit --include after confirming ownership%s", missing[0], also)
 }
 
 func extendHarness(ctx context.Context, s *session, task *harness.Task, o harnessOptions) error {

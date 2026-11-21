@@ -27,16 +27,16 @@ type turnBudget struct {
 }
 
 var turnBudgets = map[string]turnBudget{
-	"verify staged work and commit":      {calls: 4, replyBytes: 2800},
-	"implement and commit":               {calls: 5, replyBytes: 2900},
-	"implement, required review, commit": {calls: 6, replyBytes: 4100, reviewerCalls: 1, reviewerBytes: 1700},
-	"bug ticket to verified commit":      {calls: 7, replyBytes: 5600},
+	"verify staged work and commit":      {calls: 1, replyBytes: 220},
+	"implement and commit":               {calls: 1, replyBytes: 220},
+	"implement, required review, commit": {calls: 2, replyBytes: 1100, reviewerCalls: 1, reviewerBytes: 1700},
+	"bug ticket to verified commit":      {calls: 2, replyBytes: 850},
 }
 
 // Text that every task or every session carries: the skills in words, as
 // `wc -w` counts them, and the session-start notice in bytes.
 const (
-	taskSkillWords    = 920
+	taskSkillWords    = 851
 	gateSkillWords    = 1478
 	sessionStartBytes = 880
 )
@@ -49,33 +49,26 @@ type turns struct {
 	calls      int
 	replyBytes int
 	next       string
-	ticket     string
+	ticket     string // of the reserved review, for the reviewer's handoff
 }
 
-// spend counts one coordinator command and the bytes it returned.
-func (m *turns) spend(code int, argv ...string) kitsutest.Result {
+// do is one coordinator command: task do with its short default reply.
+func (m *turns) do(code int, args ...string) {
 	m.t.Helper()
-	got := m.repo.Kitsu(argv...)
+	got := m.repo.Kitsu(append([]string{"task", "do", m.id}, args...)...)
 	m.calls++
 	m.replyBytes += len(got.Stdout) + len(got.Stderr)
 	if got.Code != code {
-		m.t.Fatalf("%v = %d, want %d\n%s", argv, got.Code, code, got.Output())
+		m.t.Fatalf("task do %v = %d, want %d\n%s", args, got.Code, code, got.Output())
 	}
-	return got
-}
-
-// run is one coordinator command in the brief form the skill prescribes.
-func (m *turns) run(code int, verb string, args ...string) {
-	m.t.Helper()
-	got := m.spend(code, append([]string{"task", verb, m.id, "--brief"}, args...)...)
 	var reply struct {
-		Next   string `json:"next"`
-		Ticket string `json:"ticket"`
+		Next  string `json:"next"`
+		Claim struct{ Ticket string }
 	}
 	if err := json.Unmarshal([]byte(got.Stdout), &reply); err != nil {
-		m.t.Fatalf("task %s did not print a brief reply: %v\n%s", verb, err, got.Output())
+		m.t.Fatalf("task do did not print one JSON reply: %v\n%s", err, got.Output())
 	}
-	m.next, m.ticket = reply.Next, reply.Ticket
+	m.next, m.ticket = reply.Next, reply.Claim.Ticket
 }
 
 func (m *turns) want(next string) {
@@ -83,12 +76,6 @@ func (m *turns) want(next string) {
 	if m.next != next {
 		m.t.Fatalf("next = %q, want %q", m.next, next)
 	}
-}
-
-func (m *turns) record(action, note string, extra ...string) {
-	m.t.Helper()
-	m.want(action)
-	m.run(0, "record", append([]string{action, "--actor", "coordinator", "--ticket", m.ticket, "--note", note}, extra...)...)
 }
 
 // within fails when the task spent more commands than its budget, or fewer: a
@@ -117,29 +104,23 @@ func TestTurnBudgetVerifyStagedWorkAndCommit(t *testing.T) {
 	r.Write("answer.txt", "42\n")
 	r.Git("add", "answer.txt")
 	m := &turns{t: t, repo: r, id: "budget-verify"}
-	m.run(0, "open", "--entry", "verify", "--until", "deliver", "--commit", "--request", "Verify the staged answer and commit it if it passes")
-	m.record("intake", "The staged answer must equal 42")
-	m.want("verify")
-	m.run(0, "test", "--ticket", m.ticket, "--expect", "answer is 42", "--", "git", "grep", "--cached", "-e", "^42$", "--", "answer.txt")
-	m.want("commit")
-	m.run(0, "commit", "--ticket", m.ticket, "--message", "Deliver the verified answer", "--include", "answer.txt")
+	m.do(0, "--entry", "verify", "--commit", "--request", "Verify the staged answer and commit it if it passes",
+		"--expect", "answer is 42", "--message", "Deliver the verified answer", "--include", "answer.txt",
+		"--", "git", "grep", "--cached", "-e", "^42$", "--", "answer.txt")
 	m.want("done")
 	m.within("verify staged work and commit", 0, 0)
 }
 
+var trackReadme = []string{"--commit", "--request", "Track the README", "--expect", "README is tracked", "--message", "Add README",
+	"--include", "README.md", "--", "git", "ls-files", "--error-unmatch", "--", "README.md"}
+
 func TestTurnBudgetImplementAndCommit(t *testing.T) {
 	r := kitsutest.NewRepo(t)
 	r.Git("commit", "--allow-empty", "-qm", "Base")
-	m := &turns{t: t, repo: r, id: "budget-implement"}
-	m.run(0, "open", "--entry", "implement", "--until", "deliver", "--commit", "--request", "Track the README")
-	m.record("intake", "The README is tracked")
 	r.Write("README.md", "# Project\n")
 	r.Git("add", "README.md")
-	m.record("implement", "Added README")
-	m.want("verify")
-	m.run(0, "test", "--ticket", m.ticket, "--expect", "README is tracked", "--", "git", "ls-files", "--error-unmatch", "--", "README.md")
-	m.want("commit")
-	m.run(0, "commit", "--ticket", m.ticket, "--message", "Add README")
+	m := &turns{t: t, repo: r, id: "budget-implement"}
+	m.do(0, trackReadme...)
 	m.want("done")
 	m.within("implement and commit", 0, 0)
 }
@@ -147,12 +128,11 @@ func TestTurnBudgetImplementAndCommit(t *testing.T) {
 func TestTurnBudgetImplementRequiredReviewCommit(t *testing.T) {
 	r := kitsutest.NewRepo(t)
 	r.Git("commit", "--allow-empty", "-qm", "Base")
-	m := &turns{t: t, repo: r, id: "budget-review"}
-	m.run(0, "open", "--entry", "implement", "--until", "deliver", "--commit", "--require-review", "--request", "Track the README")
-	m.record("intake", "The README is tracked")
 	r.Write("README.md", "# Project\n")
 	r.Git("add", "README.md")
-	m.record("implement", "Added README", "--claim-review", "claude")
+	m := &turns{t: t, repo: r, id: "budget-review"}
+	command := append([]string{"--require-review", "--actor", "coordinator", "--claim-review", "claude"}, trackReadme...)
+	m.do(0, command...)
 	m.want("review")
 	ticket := m.ticket
 
@@ -165,11 +145,7 @@ func TestTurnBudgetImplementRequiredReviewCommit(t *testing.T) {
 	sendNativeReviewEvent(t, r, "claude", "SubagentStart", "coordinator", "worker", "")
 	finishNativeFixture(t, r, m.id, ticket, "claude", "coordinator", "worker", "Verified the staged documentation.")
 
-	m.run(0, "record", "review", "--ticket", ticket, "--observed-review")
-	m.want("verify")
-	m.run(0, "test", "--ticket", m.ticket, "--expect", "README is tracked", "--", "git", "ls-files", "--error-unmatch", "--", "README.md")
-	m.want("commit")
-	m.run(0, "commit", "--ticket", m.ticket, "--message", "Add README")
+	m.do(0, command...)
 	m.want("done")
 	m.within("implement, required review, commit", 1, len(handoff.Stdout)+len(handoff.Stderr))
 }
@@ -184,22 +160,14 @@ func TestTurnBudgetBugTicketToVerifiedCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := &turns{t: t, repo: r, id: "budget-bug"}
-	m.run(0, "bug", "--from", source)
-	m.record("intake", "The public output must be ready.")
-	m.want("verify")
-	m.run(5, "test", "--ticket", m.ticket, "--expect", "output is ready", "--", "git", "grep", "-q", "-e", "^ready$", "--", "output.txt")
+	m.do(5, "--from", source, "--expect", "output is ready", "--", "git", "grep", "-q", "-e", "^ready$", "--", "output.txt")
 	m.want("repair")
 	r.Write("output.txt", "ready\n")
 	r.Git("add", "output.txt")
-	m.record("repair", "Fixed the output.")
-	m.run(0, "test", "--ticket", m.ticket, "--retry")
-	m.want("commit")
-	m.run(0, "commit", "--ticket", m.ticket, "--message", "Fix export")
-	m.want("receipt")
-	m.spend(0, "task", "receipt", m.id, "--json")
-	// Reading the final state is the test's own check, not a step of the path.
-	if final := r.Kitsu("task", "next", m.id, "--brief"); final.Code != 0 || !strings.Contains(final.Stdout, `"next":"done"`) {
-		t.Fatalf("the receipt did not finish the task:\n%s", final.Output())
+	m.do(0, "--message", "Fix export")
+	m.want("done")
+	if receipt := r.Kitsu("task", "receipt", m.id, "--json"); receipt.Code != 0 || !strings.Contains(receipt.Stdout, r.Git("rev-parse", "HEAD")) {
+		t.Fatalf("the delivery has no receipt for its commit:\n%s", receipt.Output())
 	}
 	m.within("bug ticket to verified commit", 0, 0)
 }
