@@ -40,7 +40,7 @@ func uxCommands() []uxCommand {
 		{path: "adviser ask", args: "<adviser> --task <task> --role <role> --stage <stage> --request <file>", summary: "Consult an explicitly enabled experimental adviser and record its answer", flags: []uxFlag{task, role, uxOption("stage", "stage", "required workflow stage of this request", "lookup", "spec", "design", "tests", "code", "review", "commit"), uxOption("request", "file|-", "required version 1 or 2 request JSON; use - for standard input"), uxOption("checkpoint", "id", "required checkpoint this request addresses"), json}, run: runUXAdviserAsk},
 		{path: "adviser resolve", args: "<id> --task <task> --disposition <disposition> --reason <text>", summary: "Legacy disposition spelling; prefer adviser accept, reject or defer", flags: []uxFlag{task, uxOption("disposition", "accept|reject|defer", "required disposition", "accept", "reject", "defer"), uxOption("reason", "text", "required reason"), uxOption("choice", "id", "selected choice from a decision request"), json}, run: uxLegacy("advisers", "resolve"), hidden: true},
 		{path: "check list", summary: "List this repository's declared checks", flags: []uxFlag{json}, run: runUXCheckList},
-		{path: "check trust", summary: "Inspect and approve the exact repository check declaration for agent sessions", run: runUXCheckTrust},
+		{path: "check trust", args: "[--ci ID -- PROGRAM ARGS...]", summary: "Approve repository checks or a private local CI reproduction", flags: []uxFlag{uxOption("ci", "id", "approve a named local reproduction command")}, run: runUXCheckTrust},
 		{
 			path: "check add", args: "<id> -- <program> [<argument>...]", summary: "Declare a repository check without invoking a shell",
 			flags: []uxFlag{

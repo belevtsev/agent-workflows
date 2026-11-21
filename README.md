@@ -10,6 +10,8 @@ Give Kitsu an issue, a design, or an unfinished patch. In the configured workflo
 
 When the change is ready, share which patch or commit passed and the checks behind it with `kitsu task receipt ID --markdown`. [Try a verified handoff](docs/verified-handoff-preview.md)
 
+Open a repair from a failed GitHub check with `kitsu task ci`. Run an approved local check and continue in either plugin. [Repair a failed PR check](docs/task-harness.md#repair-a-failed-pr-check)
+
 ## Install
 
 Install the Kitsu CLI and matching plugin for the host you use. On Windows, use Git for Windows. The preview installer lets you choose a default host interactively, or pass the host explicitly as shown below. [Preview installation](docs/release-install.md#install-a-ci-artifact-before-publication)

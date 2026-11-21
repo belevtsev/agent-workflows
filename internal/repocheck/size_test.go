@@ -11,7 +11,7 @@ import (
 // Keep separate budgets for the gate and its supporting subsystems.
 // Test files and testdata do not count.
 const (
-	maxCoreLines         = 6370 // Includes strict pre-push framing and local permission checks.
+	maxCoreLines         = 6385 // Includes strict pre-push framing and protections for runner and local check approvals.
 	maxRolesLines        = 4430 // Existing per-host settings, single-host assignments and repository role initialization.
 	maxAdviserLines      = 4000 // CLI advisers plus native typed providers and usage records.
 	maxSkillLines        = 2000
@@ -110,7 +110,7 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	t.Logf("coordinator state: %d of %d lines", states, maxStateLines)
 	t.Logf("task verification: %d of %d lines", verificationLines, maxVerificationLines)
 	t.Logf("workflow insights: %d of %d lines", insightLines, maxInsightLines)
-	const maxHarnessLines = 4590 // Includes verified delivery, native review, and configured workflow hooks.
+	const maxHarnessLines = 5070 // Includes PR check receipts, private approvals and resumable delivery.
 	t.Logf("task harness: %d of %d lines", harnessLines, maxHarnessLines)
 	const maxReleaseLines = 410 // Repository-only release assembly, integrity and publication.
 	t.Logf("release automation: %d of %d lines", releaseLines, maxReleaseLines)

@@ -50,6 +50,7 @@ type harnessView struct {
 	DeveloperLaunch   string                `json:"developer_launch,omitempty"`
 	WorkflowReview    bool                  `json:"supervised_review,omitempty"`
 	ReviewCurrent     bool                  `json:"review_current"`
+	reproduced        bool
 	store             *store.Store
 	ClaimCreated      bool           `json:"claim_created,omitempty"`
 	Pause             *harness.Pause `json:"pause,omitempty"`
@@ -170,6 +171,13 @@ func (v *harnessView) routeCurrentDelivery(ctx context.Context, s *session, t *h
 	if err != nil || v.Next == "blocked" {
 		return err
 	}
+	if t.Bug != nil && t.Bug.Source.Check != nil && !recovering && !v.Candidate.SameBase(t.Start) {
+		if v.Delivery != "committed" || t.Proof == nil || !t.Proof.Candidate.SameBase(t.Start) {
+			v.Next, v.Verified = "blocked", false
+			v.Delivery = "PR checkout changed since reproduction. Return to the original PR head or start a new CI repair."
+			return nil
+		}
+	}
 	if err := v.routeAction(ctx, s, t); err != nil {
 		return err
 	}
@@ -185,10 +193,15 @@ func (v *harnessView) routeCurrentDelivery(ctx context.Context, s *session, t *h
 func (v *harnessView) describeBug(t *harness.Task) {
 	if t.Bug != nil {
 		v.TicketSource = &t.Bug.Source
+		v.reproduced = !t.NeedsReproduction()
 	}
 	if t.NeedsReproduction() && v.Behavior == "passed" {
 		v.Verified = false
 		v.Delivery = "bug not reproduced; run an assertion that demonstrates the reported behavior"
+		if t.Bug.Source.Check != nil {
+			v.Delivery = "CI failure not reproduced; inspect the log and retry the selected check on the original candidate"
+			v.VerificationLog = v.verificationLog()
+		}
 	}
 }
 
@@ -358,15 +371,7 @@ func printHarness(cfg Config, o harnessOptions, v harnessView) error {
 	if problem := cmp.Or(v.ReviewPolicyError, v.PolicyError); problem != "" {
 		fmt.Fprintln(cfg.Out, decl.Plain(problem))
 	}
-	if v.TicketMarkdown != "" {
-		fmt.Fprintln(cfg.Out, "Ticket Markdown:", decl.Plain(v.TicketMarkdown))
-	}
-	if v.TicketSource != nil {
-		fmt.Fprintln(cfg.Out, "Source ticket:", decl.Plain(v.TicketSource.URL))
-		if v.Next == "receipt" || v.Next == "done" {
-			fmt.Fprintln(cfg.Out, "Delivery receipt: kitsu task receipt", v.Task)
-		}
-	}
+	v.printTicket(cfg.Out)
 	v.printResumeNotes(cfg.Out)
 	if v.Scope.ReviewBase != "" {
 		fmt.Fprintf(cfg.Out, "Review range %s..%s\n", v.Scope.ReviewBase, v.Scope.ReviewHead)
@@ -399,6 +404,23 @@ func printHarness(cfg Config, o harnessOptions, v harnessView) error {
 		fmt.Fprintln(cfg.Out, "Action ticket:", v.Ticket)
 	}
 	return nil
+}
+
+func (v harnessView) printTicket(out io.Writer) {
+	if v.TicketMarkdown != "" {
+		fmt.Fprintln(out, "Ticket Markdown:", decl.Plain(v.TicketMarkdown))
+	}
+	if source := v.TicketSource; source != nil {
+		if check := source.Check; check != nil {
+			fmt.Fprintf(out, "Pull request %s · failed check %s · local check %s\n",
+				decl.Plain(source.URL), decl.Plain(check.Name), decl.Plain(check.LocalCheck))
+		} else {
+			fmt.Fprintln(out, "Source ticket:", decl.Plain(source.URL))
+		}
+		if v.Next == "receipt" || v.Next == "done" {
+			fmt.Fprintln(out, "Delivery receipt: kitsu task receipt", v.Task)
+		}
+	}
 }
 
 func (v harnessView) printReview(out io.Writer) {
@@ -469,12 +491,7 @@ func (v harnessView) verificationLog() *verificationLogRef {
 // Full results, findings and inputs stay in task show across interruptions.
 func (v harnessView) brief() map[string]any {
 	reply := map[string]any{"task": v.Task, "next": v.Next, "verified": v.Verified, "repository_checks": v.Gate, "delivery": v.Delivery, "details": []string{"kitsu", "task", "show", v.Task, "--json"}}
-	if v.TicketMarkdown != "" {
-		reply["ticket_markdown"] = v.TicketMarkdown
-	}
-	if v.TicketSource != nil && (v.Next == "receipt" || v.Next == "done") {
-		reply["delivery_receipt"] = []string{"kitsu", "task", "receipt", v.Task, "--json"}
-	}
+	v.addBriefTicket(reply)
 	if v.ReviewPolicyError != "" {
 		reply["review_policy_error"] = v.ReviewPolicyError
 	}
@@ -525,6 +542,22 @@ func (v harnessView) brief() map[string]any {
 		}
 	}
 	return reply
+}
+
+func (v harnessView) addBriefTicket(reply map[string]any) {
+	if v.TicketMarkdown != "" {
+		reply["ticket_markdown"] = v.TicketMarkdown
+	}
+	if source := v.TicketSource; source != nil {
+		if v.Next == "receipt" || v.Next == "done" {
+			reply["delivery_receipt"] = []string{"kitsu", "task", "receipt", v.Task, "--json"}
+		}
+		if check := source.Check; check != nil && v.Next != "done" {
+			reply["pull_request"] = map[string]any{
+				"url": source.URL, "check": check.Name, "local_check": check.LocalCheck, "reproduced": v.reproduced,
+			}
+		}
+	}
 }
 
 func (v harnessView) addBriefReview(reply map[string]any) {
@@ -924,6 +957,9 @@ func assertionCheck(ctx context.Context, s *session, t *harness.Task, o harnessO
 		return check, "", false, err
 	}
 	for _, declared := range policy.Checks {
+		if t.Bug != nil && t.Bug.Source.Check != nil && t.Bug.Source.Check.LocalCheck != declared.ID {
+			continue
+		}
 		if slices.Equal(declared.Run, o.argv) {
 			keys, err := evidence.Keys(ctx, s.repo, c.Tree, []decl.Check{declared})
 			return declared, keys[declared.ID], true, err

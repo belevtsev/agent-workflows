@@ -231,6 +231,34 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
 ```
 
+### kitsu task ci
+
+```text
+usage: kitsu task ci <task> --from PR --check ID [options]
+
+Reproduce a failed GitHub PR check with an approved local check.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+
+Options:
+  --from <url>             open GitHub pull request URL
+  --check <id>             declared or privately approved local check
+  --job <name>             select a failed check when the PR has several
+  --stdin                  read GitHub pull request metadata from standard input
+  --require-review         require an independent review of the candidate
+  --brief                  return next action, ticket and evidence references as
+                           JSON
+  --json                   return structured task state
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task ci csv-fix --from https://github.com/example/repo/pull/17 --check test
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
 ### kitsu task receipt
 
 ```text
@@ -418,7 +446,7 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ```text
 usage: kitsu task commit <task> [options]
 
-Commit the verified candidate already staged for authorized delivery.
+Commit a verified staged candidate or finish a failed PR check repair.
 
 Arguments:
   <task>             task name: lowercase words joined by hyphens
@@ -1588,11 +1616,12 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ### kitsu check trust
 
 ```text
-usage: kitsu check trust
+usage: kitsu check trust [--ci ID [options] -- PROGRAM ARGS...]
 
-Inspect and approve the exact repository check declaration for agent sessions.
+Approve repository checks or a private local CI reproduction.
 
 Options:
+  --ci <id>                approve a named local reproduction command
   --help, -h               show this command's help without executing it
 
 Examples:

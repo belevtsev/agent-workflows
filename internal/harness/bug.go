@@ -4,11 +4,20 @@ import "time"
 
 // TicketSource identifies the immutable ticket text saved as the task request.
 type TicketSource struct {
-	Kind      string `json:"kind"`
-	URL       string `json:"url"`
-	Title     string `json:"title"`
-	SHA256    string `json:"sha256"`
-	UpdatedAt string `json:"updated_at,omitempty"`
+	Kind      string            `json:"kind"`
+	URL       string            `json:"url"`
+	Title     string            `json:"title"`
+	SHA256    string            `json:"sha256"`
+	UpdatedAt string            `json:"updated_at,omitempty"`
+	Check     *PullRequestCheck `json:"check,omitempty"`
+}
+
+// PullRequestCheck identifies the observed failed check and its local reproduction.
+type PullRequestCheck struct {
+	Name           string `json:"name"`
+	Head           string `json:"head"`
+	LocalCheck     string `json:"local_check"`
+	ApprovalSHA256 string `json:"approval_sha256,omitempty"`
 }
 
 type BugDelivery struct {

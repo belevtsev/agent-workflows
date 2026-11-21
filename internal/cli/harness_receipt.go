@@ -19,30 +19,45 @@ func bugReceipt(ctx context.Context, s *session, l *stageLedger, t *harness.Task
 	if t.Bug == nil {
 		return failf("task %s has no imported bug ticket", t.ID)
 	}
-	r := t.Bug.Receipt
-	if r == nil {
+	if t.Bug.Receipt == nil {
 		view, err := observeHarness(ctx, s, t, false)
 		if err != nil {
 			return err
 		}
-		if view.Next != "receipt" || view.Delivery != "committed" || !view.Verified {
-			return failf("no delivery receipt yet: next action is %s (%s)", view.Next, view.Delivery)
-		}
-		r, err = verifyBugCommit(ctx, s, t, view)
-		if err != nil {
-			return err
-		}
-		t.Bug.Receipt = r
-		t.Completion = view.deliveryCompletion(r.At)
-		t.Events = append(t.Events, harness.Event{Action: "receipt", Note: "Verified local delivery", ObservedCommit: r.Commit, Candidate: view.Candidate, At: r.At})
-		if err := l.write(harnessFile(t.ID), t); err != nil {
+		if err := saveBugReceipt(ctx, s, l, t, view); err != nil {
 			return err
 		}
 	}
+	r := t.Bug.Receipt
 	if o.json || o.brief {
 		return printJSON(s.cfg, r)
 	}
 	fmt.Fprintf(s.cfg.Out, "Verified local commit %s\nTicket: %s\nSource SHA-256: %s\nBehavior: %s\nReproduced: %s\nVerified on commit: %s\nRepository checks: %s\n", r.Commit, decl.Plain(r.Source.URL), r.Source.SHA256, decl.Plain(r.Expect), r.Reproduction.ID, r.OnCommit.ID, r.RepositoryChecks)
+	return nil
+}
+
+func saveBugReceipt(ctx context.Context, s *session, l *stageLedger, t *harness.Task, view harnessView) error {
+	if view.Next != "receipt" || view.Delivery != "committed" || !view.Verified {
+		return failf("no delivery receipt yet: next action is %s (%s)", view.Next, view.Delivery)
+	}
+	r, err := verifyBugCommit(ctx, s, t, view)
+	if err != nil {
+		return err
+	}
+	t.Bug.Receipt = r
+	t.Completion = view.deliveryCompletion(r.At)
+	t.Events = append(t.Events, harness.Event{Action: "receipt", Note: "Verified local delivery", ObservedCommit: r.Commit, Candidate: view.Candidate, At: r.At})
+	return l.write(harnessFile(t.ID), t)
+}
+
+func checkBugReproduction(s *session, red *harness.Proof) error {
+	valid, err := validAssertionRecord(s, red, store.Failed)
+	if err != nil {
+		return err
+	}
+	if !valid || red.ExitStatus == nil || *red.ExitStatus == 0 {
+		return failf("the original failing assertion evidence is unavailable")
+	}
 	return nil
 }
 
@@ -61,32 +76,15 @@ func verifyBugCommit(ctx context.Context, s *session, t *harness.Task, v harness
 	if hookChangedTree {
 		before, beforeTree = t.CommitAttempt.Assertion, t.CommitAttempt.Before.Tree
 	}
-	valid, err := validAssertionRecord(s, red, store.Failed)
-	if err != nil {
+	if err := checkBugReproduction(s, red); err != nil {
 		return nil, err
-	}
-	if !valid || red.ExitStatus == nil || *red.ExitStatus == 0 {
-		return nil, failf("the original failing assertion evidence is unavailable")
 	}
 	if !t.Deadline.IsZero() {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithDeadline(ctx, t.Deadline)
 		defer cancel()
 	}
-	key := contextpack.Key([]string{"ticket-delivery", t.ID, v.Candidate.Head, p.Run})
-	check := decl.Check{ID: "receipt-" + t.ID, Run: p.Argv, Timeout: 10 * time.Minute}
-	job := runner.Job{Check: check, Tree: v.Candidate.Tree, Key: key, Out: io.Discard, Err: io.Discard, CheckInputs: s.checkHarnessInputs(v.Candidate, target)}
-	if err := job.CheckInputs(ctx); err != nil {
-		return nil, err
-	}
-	record, err := s.executeJob(ctx, job, false)
-	if err != nil {
-		return nil, err
-	}
-	if record.Outcome != store.Passed {
-		return nil, failf("verification on commit %s was %s; inspect %s", v.Candidate.Head, record.Outcome, s.store.LogPath(record.RunID))
-	}
-	digest, err := taskVerificationLog(s, record.RunID)
+	onCommit, err := runReceiptAssertion(ctx, s, t, v, target)
 	if err != nil {
 		return nil, err
 	}
@@ -99,9 +97,36 @@ func verifyBugCommit(ctx context.Context, s *session, t *harness.Task, v harness
 		},
 		BeforeCommit:     before,
 		BeforeCommitTree: beforeTree,
-		OnCommit:         harness.CheckRun{ID: record.RunID, Digest: digest},
+		OnCommit:         onCommit,
 		RepositoryChecks: v.Gate, RepositoryRuns: p.GateRuns, At: time.Now().UTC(),
 	}, nil
+}
+
+func runReceiptAssertion(ctx context.Context, s *session, t *harness.Task, v harnessView, target string) (harness.CheckRun, error) {
+	p := t.Proof
+	key := contextpack.Key([]string{"ticket-delivery", t.ID, v.Candidate.Head, p.Run})
+	check := decl.Check{ID: "receipt-" + t.ID, Run: p.Argv, Timeout: 10 * time.Minute}
+	if t.Bug.Source.Check != nil {
+		o := harnessOptions{argv: p.Argv, expect: p.Expect}
+		selected, err := o.resolveCIAssertion(ctx, s, t, v.Candidate)
+		if err != nil {
+			return harness.CheckRun{}, err
+		}
+		check.Timeout = selected.Timeout
+	}
+	job := runner.Job{Check: check, Tree: v.Candidate.Tree, Key: key, Out: io.Discard, Err: io.Discard, CheckInputs: s.checkHarnessInputs(v.Candidate, target)}
+	if err := job.CheckInputs(ctx); err != nil {
+		return harness.CheckRun{}, err
+	}
+	record, err := s.executeJob(ctx, job, false)
+	if err != nil {
+		return harness.CheckRun{}, err
+	}
+	if record.Outcome != store.Passed {
+		return harness.CheckRun{}, failf("verification on commit %s was %s; inspect %s", v.Candidate.Head, record.Outcome, s.store.LogPath(record.RunID))
+	}
+	digest, err := taskVerificationLog(s, record.RunID)
+	return harness.CheckRun{ID: record.RunID, Digest: digest}, err
 }
 
 func checkBugExtension(task *harness.Task, scope harness.Scope) error {

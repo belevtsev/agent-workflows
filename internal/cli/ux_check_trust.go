@@ -16,7 +16,7 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/store"
 )
 
-func trustFile(repo *gitx.Repo) (uxSnapshot, error) {
+func trustFile(repo *gitx.Repo, suffix string) (uxSnapshot, error) {
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return uxSnapshot{}, err
@@ -26,7 +26,7 @@ func trustFile(repo *gitx.Repo) (uxSnapshot, error) {
 		return uxSnapshot{}, err
 	}
 	name := fmt.Sprintf("%x", sha256.Sum256([]byte(common)))
-	return uxReadFile(filepath.Join(dir, "kitsu", "check-trust", name))
+	return uxReadFile(filepath.Join(dir, "kitsu", "check-trust", name+suffix))
 }
 
 func workingCheckPolicy(ctx context.Context, repo *gitx.Repo) (*decl.File, string, error) {
@@ -44,7 +44,7 @@ func workingCheckPolicy(ctx context.Context, repo *gitx.Repo) (*decl.File, strin
 
 func runUXCheckTrust(ctx context.Context, cfg Config, args []string) error {
 	if len(args) != 0 {
-		return usagef("check trust takes no arguments")
+		return runCITrust(ctx, cfg, args)
 	}
 	s, err := open(ctx, cfg, true)
 	if err != nil {
@@ -68,7 +68,7 @@ func runUXCheckTrust(ctx context.Context, cfg Config, args []string) error {
 }
 
 func confirmCheckTrust(ctx context.Context, cfg Config, repo *gitx.Repo, fingerprint string) error {
-	before, err := trustFile(repo)
+	before, err := trustFile(repo, "")
 	if err != nil {
 		return err
 	}
@@ -110,6 +110,7 @@ func readCheckApproval(ctx context.Context, input io.Reader) error {
 var checkExecutionRules = []shellwords.CommandRule{
 	{Path: []string{"run"}, Reason: "run"},
 	{Path: []string{"check", "run"}, Reason: "run"},
+	{Path: []string{"task", "ci"}, Reason: "run"},
 	{Path: []string{"task", "test"}, Reason: "run"},
 	{Path: []string{"task", "verify"}, Reason: "run"},
 	{Path: []string{"task", "commit"}, Reason: "run"}, // May recheck newly staged content.
@@ -121,6 +122,9 @@ func guardCheckTrust(ctx context.Context, repo *gitx.Repo, command string) strin
 	case "approve":
 		return "The developer approves repository checks by running kitsu check trust in their own terminal."
 	case "run":
+		if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); os.IsNotExist(err) {
+			return ""
+		}
 		file, fingerprint, err := workingCheckPolicy(ctx, repo)
 		if err != nil {
 			return "The check declaration could not be inspected. Ask the developer to inspect it with kitsu check list."
@@ -128,7 +132,7 @@ func guardCheckTrust(ctx context.Context, repo *gitx.Repo, command string) strin
 		if file == nil || len(file.Checks) == 0 {
 			return ""
 		}
-		approval, err := trustFile(repo)
+		approval, err := trustFile(repo, "")
 		if err != nil || string(approval.data) != fingerprint+"\n" {
 			return "The configured check commands need approval. Ask the developer to inspect and approve them with kitsu check trust in their own terminal."
 		}

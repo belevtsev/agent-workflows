@@ -424,3 +424,41 @@ Source: approved verified handoff plan.
 
 - **WHEN** a task has no successful saved verification or a developer requests both Markdown and a different receipt format
 - **THEN** the command fails without rendering a success report or executing a check.
+
+### Requirement: Reproduce and repair a failed pull request check
+
+Kitsu SHALL start a local delivery task from a completed failed check on an open GitHub PR and the matching clean local Git candidate. It SHALL run the selected approved local check, preserve its identity through repair and record the source in the verified commit receipt.
+
+Source: failed PR check delivery goal.
+
+#### Scenario: Start and resume repair from a selected check
+
+- **WHEN** `kitsu task ci ID --from PR --check ID` reads matching PR metadata with a unique completed failure and the approved local check fails
+- **THEN** Kitsu records the opening Git candidate, named check and failing run. It returns the repair action and a log reference. Repeating intake exposes the saved result without fetching metadata or rerunning the check.
+- **AND** the selected failure may be a completed check run or a failed or errored commit status.
+- **AND** a brief resume returns the PR reference, approved check, reproduction status and deciding log.
+
+#### Scenario: Preserve the required check and review through delivery
+
+- **WHEN** a CI repair proceeds to verification and local commit
+- **THEN** Kitsu retains the selected check, honors the same repository checks and review requirements as ticket delivery and runs the saved assertion on the delivered commit. The receipt includes the original PR, check and head.
+
+#### Scenario: Approve a local reproduction on an unchanged PR
+
+- **WHEN** the developer approves a private reproduction check with `kitsu check trust --ci ID -- PROGRAM ARGS` and selects that ID for CI repair
+- **THEN** the task can reproduce and deliver from the original clean checkout. Kitsu pins the approval digest, refuses further execution if the command approval changes, and retains every required repository check and independent review.
+
+#### Scenario: Finish or resume local delivery with one command
+
+- **WHEN** `kitsu task commit ID --ticket TICKET --message MESSAGE` is called on a staged CI repair ready to verify
+- **THEN** Kitsu checks the staged candidate, commits it only while all required evidence and authority match, and saves a receipt after the on-commit assertion passes. A failed gate leaves its evidence and next action. An interrupted run resumes from the saved verification or observed commit, with at most one commit for that delivery.
+
+#### Scenario: Retain the opening PR revision through delivery
+
+- **WHEN** the local branch advances after reproduction without delivering the verified repair
+- **THEN** Kitsu withholds repair and delivery actions even if the new commit has the same contents. Returning to the saved PR head resumes with the original failure evidence.
+
+#### Scenario: Keep reproduction pending without qualifying evidence
+
+- **WHEN** metadata has no unique matching failure, the checkout differs from the PR, the check is unapproved or it fails to reproduce locally
+- **THEN** Kitsu cannot authorize a repair or issue a verified receipt from that input. A local pass retains a task at verification for a retry on the original candidate.

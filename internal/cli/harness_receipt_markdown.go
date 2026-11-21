@@ -132,7 +132,11 @@ func (r savedVerification) writeDelivery(md *strings.Builder, task *harness.Task
 
 func writeReceiptTicket(md *strings.Builder, source harness.TicketSource) {
 	link := tickets.CanonicalIssueLink(source.URL)
+	pr := tickets.CanonicalPullRequestLink(source.URL)
 	switch {
+	case source.Check != nil && pr != "":
+		fmt.Fprintf(md, "- Pull request <%s>\n", pr)
+		fmt.Fprintln(md, "- Reported failed check", markdownCode(source.Check.Name), "on commit", markdownCode(source.Check.Head))
 	case link != "":
 		fmt.Fprintf(md, "- Ticket <%s>\n", link)
 	case source.Kind == "markdown":
@@ -147,6 +151,15 @@ func writeReceiptTicket(md *strings.Builder, source harness.TicketSource) {
 	if stageValidID(source.SHA256) {
 		fmt.Fprintf(md, "- Ticket content SHA-256 `%s`\n", source.SHA256)
 	}
+}
+
+func markdownCode(value string) string {
+	value = decl.Plain(value)
+	fence := "`"
+	for strings.Contains(value, fence) {
+		fence += "`"
+	}
+	return fence + " " + value + " " + fence
 }
 
 func receiptDeclaration(task *harness.Task, proof *harness.Proof, declarationErr error) string {
