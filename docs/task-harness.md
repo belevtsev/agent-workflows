@@ -261,6 +261,12 @@ For new daily tasks, “implement, test and commit” uses one coordinator by de
 
 For a required review, the plugin records `SubagentStart` and `SubagentStop` from a separate native reviewer under the reserving Codex or Claude Code session. The worker's final JSON refers to the reserved review and candidate. The coordinator records it with `kitsu task record ID review --ticket TICKET --observed-review --brief`. The `host_observed` result records what the local host reported. `agent_reported` describes an optional CLI result supplied directly. If the hooks are missing or the worker returns an unmatched result, required review stays pending. Verify the [plugin hook setup](hooks.md#verify-plugin-hook-setup) and recover the reserved worker before retrying.
 
+The reviewer of a daily task defaults to `sonnet` at `high` reasoning in Claude Code and `gpt-6.1-sol` at `high` in Codex. This review reads one change against one request on every task that requires it, so it starts cheaper than the `reviewer` role of the [managed workflow](roles.md#the-roles-at-a-glance). The effect of the cheaper default on what a review finds has not been measured. To choose a stronger reviewer, set it for the repository:
+
+```sh
+kitsu role set reviewer --host claude --model opus --reasoning max
+```
+
 To require review for the repository, put the following top-level key before any TOML tables in `kitsu.toml`.
 
 ```toml

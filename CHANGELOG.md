@@ -38,6 +38,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Review a daily task with a [cheaper default reviewer](docs/task-harness.md#choose-independent-review). A reviewer that you set in `kitsu-roles.toml` still applies.
+
 - Load a shorter task skill and session notice in every session. The [step-by-step commands](skills/task/references/steps.md) are read only when a task needs them.
 
 ### Fixed

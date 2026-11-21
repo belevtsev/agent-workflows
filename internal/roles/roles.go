@@ -38,8 +38,13 @@ var (
 	// deciding is for the design and for its review: a review never runs at
 	// a lower effort than the work it reviews.
 	deciding = map[string]Model{"claude": {"opus", "max"}, "codex": {"gpt-6.1-sol", "max"}}
-	writing  = []string{"Read", "Grep", "Glob", "Edit", "Write", "Skill"}
-	building = []string{"Read", "Grep", "Glob", "Edit", "Write", "Bash", "Skill"}
+	// dailyReview is the reviewer of a daily task. It reads one diff against
+	// one request on every task that requires a review, so it starts cheaper
+	// than the review of a design. Its effect on what a review finds is not
+	// measured yet.
+	dailyReview = map[string]Model{"claude": {"sonnet", "high"}, "codex": {"gpt-6.1-sol", "high"}}
+	writing     = []string{"Read", "Grep", "Glob", "Edit", "Write", "Skill"}
+	building    = []string{"Read", "Grep", "Glob", "Edit", "Write", "Bash", "Skill"}
 )
 
 // defaults lists the roles in the order a task meets them.
@@ -138,6 +143,15 @@ func (c *Config) roleModel(role Role, host string) Model {
 		model.Effort = selected.Effort
 	}
 	return model
+}
+
+// daily gives the reviewer of a daily task its own default. A model or an
+// effort that the repository or the developer set still applies.
+func (c *Config) daily(id string, s *SpecialistSettings) *SpecialistSettings {
+	if s != nil && id == "reviewer" {
+		s.Model = c.roleModel(Role{ID: id, Models: dailyReview}, s.Host)
+	}
+	return s
 }
 
 // Reasons a limit cannot be checked.

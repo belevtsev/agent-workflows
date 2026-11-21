@@ -181,10 +181,19 @@ func TestTaskDoCarriesReviewFindingsToASecondRound(t *testing.T) {
 		got := r.Kitsu(append([]string{"task", "do"}, command...)...)
 		var reply struct {
 			Next  string
-			Claim struct{ Ticket string }
+			Claim struct {
+				Ticket   string
+				Reviewer struct {
+					Model struct{ Model, Effort string }
+				}
+			}
 		}
 		if err := json.Unmarshal([]byte(got.Stdout), &reply); got.Code != 0 || err != nil || reply.Next != "review" || reply.Claim.Ticket == "" {
 			t.Fatalf("task do did not reserve the review:\n%s", got.Output())
+		}
+		// The repository sets no reviewer, so the daily default applies.
+		if m := reply.Claim.Reviewer.Model; m.Model != "sonnet" || m.Effort != "high" {
+			t.Fatalf("daily reviewer = %+v, want sonnet at high effort", m)
 		}
 		return reply.Claim.Ticket
 	}
