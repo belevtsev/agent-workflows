@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Resume saved assertions and feature checks from the [daily task handoff](docs/task-harness.md).
+
 - Save feature acceptance criteria and include their observed checks in a [verification receipt](docs/task-harness.md#deliver-a-feature).
 - Start a [failed PR check repair](docs/task-harness.md#repair-a-failed-pr-check) with an approved local check. Finish verification, commit, and receipt in one command.
 - Approve a private reproduction command for a [failed PR check repair](docs/task-harness.md#repair-a-failed-pr-check) with `kitsu check trust --ci`.

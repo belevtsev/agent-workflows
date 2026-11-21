@@ -63,6 +63,9 @@ Paste this into a fresh Codex chat. Save the task ID from the reply.
 
 > Use Kitsu’s task skill to find how this repository runs its tests. Give me the command you found, one test worth adding, and the task ID. Stop after the plan.
 
+For feature work, ask Kitsu to record acceptance criteria and verify them before
+delivery. See [verified feature delivery](docs/task-harness.md#deliver-a-feature).
+
 ### Resume later
 
 Open a new Codex chat in the **same Git worktree** and use the ID from the first reply. If you lost it, ask Codex to list your saved Kitsu tasks.

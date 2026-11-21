@@ -2,6 +2,7 @@
 
 | Scenario | Test file | Text |
 | --- | --- | --- |
+| Resume saved verification in either host | scenarios/harness/feature_handoffs_test.go | TestFeatureHandoffReplaysInBothHosts |
 | Deliver JSON export | scenarios/harness/feature_delivery_test.go | TestVerifiedFeatureDelivery |
 | Revise scope or withdraw check approval | scenarios/harness/feature_delivery_test.go | TestVerifiedFeatureDelivery |
 | Review an incomplete story | scenarios/harness/feature_delivery_test.go | TestFeatureDraftAndNamedCheck |
