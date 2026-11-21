@@ -29,6 +29,7 @@ type verificationLogRef struct {
 }
 
 type harnessView struct {
+	StoryReview       *harness.StoryReview  `json:"story_review,omitempty"`
 	Feature           *harness.FeatureBrief `json:"feature_brief,omitempty"`
 	AssignedRole      string                `json:"assigned_role,omitempty"`
 	AssignedHost      string                `json:"assigned_host,omitempty"`
@@ -90,7 +91,7 @@ type harnessView struct {
 
 func observeHarness(ctx context.Context, s *session, t *harness.Task, withUsage bool) (harnessView, error) {
 	v := harnessView{store: s.store, Claim: t.Claim, Request: t.Request, Task: t.ID, Scope: t.Scope, Behavior: "pending", Gate: "unchecked", Delivery: "working tree", Proof: t.Proof, Review: t.Latest("review"), Usage: []string{"kitsu", "usage", "show", "--task", t.ID, "--json"}}
-	v.Feature = t.Feature
+	v.Feature, v.StoryReview = t.Feature, t.StoryReview
 	v.Publication = lastPublication(t)
 	v.RepositoryPolicy = t.RepositoryPolicy
 	v.Deadline, v.FinishReserve, v.ReviewLimit, v.ReviewStarts = t.Deadline, t.FinishReserve, t.ReviewLimit, t.StartedReviews()
@@ -551,6 +552,9 @@ func (v harnessView) brief() map[string]any {
 }
 
 func (v harnessView) addBriefNextCommand(reply map[string]any) {
+	if v.StoryReview != nil && v.StoryReview.Revision == v.Feature.Revision() && v.Last != nil && v.Last.Action == "intake" {
+		reply["story_review"] = v.StoryReview
+	}
 	if v.Feature != nil && v.Verified {
 		reply["delivery_receipt"] = []string{"kitsu", "task", "receipt", v.Task, "--markdown"}
 	}

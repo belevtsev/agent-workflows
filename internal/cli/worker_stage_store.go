@@ -62,7 +62,11 @@ func openStageLedgerWait(ctx context.Context, s *session, wait time.Duration) (*
 }
 
 func (l *stageLedger) close() {
+	if l.root == nil {
+		return
+	}
 	_ = l.root.Close()
+	l.root = nil
 	if l.lock != nil {
 		_ = l.lock.Close()
 	}

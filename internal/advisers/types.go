@@ -105,18 +105,19 @@ type Usage struct {
 type Content = change.Content
 
 type Execution struct {
-	Version     int             `json:"version,omitempty"`
-	Result      *DecisionResult `json:"result,omitempty"`
-	Usage       *Usage          `json:"usage,omitempty"`
-	Outcome     string          `json:"outcome"`
-	Answer      string          `json:"answer"`
-	Detail      string          `json:"detail,omitempty"`
-	ExitStatus  *int            `json:"exit_status,omitempty"`
-	StartedAt   time.Time       `json:"started_at"`
-	EndedAt     time.Time       `json:"ended_at"`
-	ActualModel string          `json:"actual_model"`
-	UsageKnown  bool            `json:"usage_known"`
-	Diagnostics string          `json:"-"`
+	Decisions   map[string]*DecisionResult `json:"-"`
+	Version     int                        `json:"version,omitempty"`
+	Result      *DecisionResult            `json:"result,omitempty"`
+	Usage       *Usage                     `json:"usage,omitempty"`
+	Outcome     string                     `json:"outcome"`
+	Answer      string                     `json:"answer"`
+	Detail      string                     `json:"detail,omitempty"`
+	ExitStatus  *int                       `json:"exit_status,omitempty"`
+	StartedAt   time.Time                  `json:"started_at"`
+	EndedAt     time.Time                  `json:"ended_at"`
+	ActualModel string                     `json:"actual_model"`
+	UsageKnown  bool                       `json:"usage_known"`
+	Diagnostics string                     `json:"-"`
 }
 
 type Consultation struct {

@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Opt in to [Jev story review at feature intake](docs/advisers.md#review-feature-stories-at-intake-with-jev) with a local approval.
+
 - Resume saved assertions and feature checks from the [daily task handoff](docs/task-harness.md).
 
 - Save feature acceptance criteria and include their observed checks in a [verification receipt](docs/task-harness.md#deliver-a-feature).

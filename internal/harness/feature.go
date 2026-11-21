@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 )
 
 // FeatureBrief records what the author intends to verify for a feature task.
@@ -109,4 +110,24 @@ func (t *Task) CurrentFeatureEvent(e *Event) bool {
 func (t *Task) needsPlan() bool {
 	return t.Scope.Entry == "plan" && t.Latest("plan") == nil ||
 		t.Feature != nil && t.Feature.Draft && t.Scope.Until != "plan"
+}
+
+// StoryReview is advisory evidence for one feature intake revision.
+type StoryReview struct {
+	Version      int                    `json:"version"`
+	Revision     string                 `json:"feature_revision"`
+	Adviser      string                 `json:"adviser"`
+	Model        string                 `json:"model,omitempty"`
+	ActualModel  string                 `json:"actual_model,omitempty"`
+	Status       string                 `json:"status"`
+	Detail       string                 `json:"detail,omitempty"`
+	Duration     time.Duration          `json:"duration_ns,omitempty"`
+	Answers      map[string]StoryAnswer `json:"answers,omitempty"`
+	InputTokens  *int64                 `json:"input_tokens,omitempty"`
+	OutputTokens *int64                 `json:"output_tokens,omitempty"`
+}
+
+type StoryAnswer struct {
+	Choice     string   `json:"choice"`
+	Confidence *float64 `json:"confidence,omitempty"`
 }

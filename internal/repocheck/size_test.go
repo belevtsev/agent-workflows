@@ -13,9 +13,9 @@ import (
 const (
 	maxCoreLines         = 6385 // Includes strict pre-push framing and protections for runner and local check approvals.
 	maxRolesLines        = 4430 // Existing per-host settings, single-host assignments and repository role initialization.
-	maxAdviserLines      = 4000 // CLI advisers plus native typed providers and usage records.
+	maxAdviserLines      = 4040 // Includes native advice and private configured story intake.
 	maxSkillLines        = 2000
-	maxUXLines           = 3745 // Shared routing, help, install defaults, forms, completion and approval.
+	maxUXLines           = 3760 // Shared routing, help, install defaults, forms, completion and approval.
 	maxOnboardingLines   = 2014 // Local setup diagnostics, verified plugin installation and explicit host handoff.
 	maxContextLines      = 2000 // Opt-in Go collection, briefs, compact checks and private artifacts.
 	maxWorkerLines       = 1500 // Saved dispatch, local intervals, bounded QE hints and configured handback checks.
@@ -110,7 +110,7 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	t.Logf("coordinator state: %d of %d lines", states, maxStateLines)
 	t.Logf("task verification: %d of %d lines", verificationLines, maxVerificationLines)
 	t.Logf("workflow insights: %d of %d lines", insightLines, maxInsightLines)
-	const maxHarnessLines = 5410 // Includes PR check delivery and versioned feature acceptance evidence.
+	const maxHarnessLines = 5440 // Includes PR check delivery and versioned feature acceptance evidence.
 	t.Logf("task harness: %d of %d lines", harnessLines, maxHarnessLines)
 	const maxReleaseLines = 410 // Repository-only release assembly, integrity and publication.
 	t.Logf("release automation: %d of %d lines", releaseLines, maxReleaseLines)

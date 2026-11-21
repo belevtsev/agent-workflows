@@ -333,14 +333,23 @@ func checkOtherWorkflow(l *stageLedger, id, verb string) error {
 
 func saveHarnessAction(ctx context.Context, s *session, l *stageLedger, task *harness.Task, o harnessOptions, verb string, view harnessView, full bool) error {
 	if verb == "record" && o.host != "" {
+		if o.feature != nil {
+			return usagef("save the feature brief before claiming a review")
+		}
 		return recordAndClaimReview(ctx, s, l, task, o, view)
 	}
 	if verb == "commit" && task.Bug != nil && task.Bug.Source.Check != nil {
 		return finishCIRepair(ctx, s, l, task, o, view, full)
 	}
+	newFeatureIntake := o.feature != nil && o.action == "intake" && task.Latest("intake") == nil
 	actionErr := applyHarness(ctx, s, l, task, o, verb, view)
 	if actionErr != nil && !errors.Is(actionErr, errPublicationUnconfirmed) {
 		return actionErr
+	}
+	if newFeatureIntake {
+		if call := prepareStoryIntake(ctx, s, task, view.Candidate); call != nil {
+			return completeStoryIntake(ctx, s, l, task, o, call)
+		}
 	}
 	view, err := observeSavedHarness(ctx, s, l, task, full)
 	if err != nil {

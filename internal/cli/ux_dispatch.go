@@ -39,6 +39,7 @@ func Execute(ctx context.Context, args []string, cfg Config) error {
 		}
 		return runUXComplete(ctx, cfg, args[1:])
 	}
+	args = uxStoryReviewAlias(args)
 	preferred := slices.ContainsFunc(uxGroups, func(g [2]string) bool { return g[0] == args[0] })
 	if args[0] == "context" && (len(args) == 1 || strings.HasPrefix(args[1], "-") && args[1] != "--help" && args[1] != "-h") {
 		preferred = false
@@ -57,6 +58,13 @@ func Execute(ctx context.Context, args []string, cfg Config) error {
 		return err
 	}
 	return uxExecutePreferred(ctx, cfg, args)
+}
+
+func uxStoryReviewAlias(args []string) []string {
+	if len(args) > 1 && args[0] == "advisers" && args[1] == "story-review" {
+		return append([]string{"adviser"}, args[1:]...)
+	}
+	return args
 }
 
 func uxLegacyChild(parent, child string) bool {

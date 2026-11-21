@@ -118,6 +118,12 @@ var checkExecutionRules = []shellwords.CommandRule{
 }
 
 func guardCheckTrust(ctx context.Context, repo *gitx.Repo, command string) string {
+	if shellwords.ChangesCommands(command, []shellwords.CommandRule{
+		{Path: []string{"adviser", "story-review"}, Reason: "story-review"},
+		{Path: []string{"advisers", "story-review"}, Reason: "story-review"},
+	}) != "" {
+		return "The developer manages automatic story review in their own terminal."
+	}
 	switch shellwords.ChangesCommands(command, checkExecutionRules) {
 	case "approve":
 		return "The developer approves repository checks by running kitsu check trust in their own terminal."
