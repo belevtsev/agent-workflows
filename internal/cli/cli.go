@@ -13,7 +13,7 @@ import (
 
 // Config is what the program gives the commands.
 type Config struct {
-	workflowRunner func(context.Context, string) (*workflowrunner.Client, error)
+	workflowRunner func(context.Context, string) (workflowrunner.Runner, error)
 	Editor         func(context.Context, *UXEditor) error
 	NativeExecute  func(context.Context, *advisers.NativeCall) advisers.Execution
 	Version        string

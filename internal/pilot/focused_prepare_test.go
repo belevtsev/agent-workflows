@@ -71,8 +71,8 @@ func TestFocusedPrepareOffline(t *testing.T) {
 			m.Prepare[i].Argv[j] = replace(m.Prepare[i].Argv[j])
 		}
 	}
-	for _, rel := range []string{"skills/task/SKILL.md", "skills/task/references/compact.md"} {
-		if err := copyRegular(filepath.Join(source, rel), filepath.Join(assets, "support", rel), 0o400); err != nil {
+	for rel, from := range supportSources {
+		if err := copyRegular(filepath.Join(source, from), filepath.Join(assets, "support", rel), 0o400); err != nil {
 			t.Fatal(err)
 		}
 	}

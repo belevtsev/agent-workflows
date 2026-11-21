@@ -16,12 +16,12 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/workflowrunner"
 )
 
-func checkWorkflowAuthority(client *workflowrunner.Client, task *harness.Task) error {
+func checkWorkflowAuthority(client workflowrunner.Runner, task *harness.Task) error {
 	w := task.Workflow
 	if w.Authority == "" {
 		return failf("this task predates supervised execution; inspect its record and open a new task with the original request and assertion")
 	}
-	if w.Authority != client.Authority() || w.Policy != workflowrunner.Digest(client.Policy) || w.Profile != client.Profile {
+	if offer := client.Offer(); w.Authority != client.Authority() || w.Policy != workflowrunner.Digest(offer.Policy) || w.Profile != offer.Profile {
 		return failf("trusted runner registration or reviewed policy changed; resume under the pinned profile or start a new task")
 	}
 	return nil
@@ -75,7 +75,7 @@ func approvedWorkflowCheck(policy workflowrunner.Policy, assertion *harness.Work
 
 func reviewedWorkflowChecks(ctx context.Context, s *session, task *harness.Task, candidate harness.Snapshot, kind string) ([]string, error) {
 	var ids []string
-	w, policy := task.Workflow, s.workflowRunner.Policy
+	w, policy := task.Workflow, s.workflowRunner.Offer().Policy
 	if kind == "baseline" {
 		if w.Test == nil {
 			return nil, failf("a baseline requires the test writer's reviewed assertion")

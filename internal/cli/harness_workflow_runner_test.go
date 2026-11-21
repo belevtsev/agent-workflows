@@ -189,7 +189,7 @@ func (f *signedRunnerFixture) run(args ...string) (string, error) {
 	f.t.Helper()
 	var out bytes.Buffer
 	cfg := Config{Out: &out, Err: &out, In: strings.NewReader(""),
-		workflowRunner: func(context.Context, string) (*workflowrunner.Client, error) { return f.client, nil }}
+		workflowRunner: func(context.Context, string) (workflowrunner.Runner, error) { return f.client, nil }}
 	err := Execute(f.t.Context(), append([]string{"task", "run"}, args...), cfg)
 	return out.String(), err
 }
@@ -298,6 +298,24 @@ func TestSupervisedResumeRetainsResultAndRequiresReleaseAuthorization(t *testing
 	defer f.mu.Unlock()
 	if len(f.jobs) != 1 || f.task().Workflow.Active != nil {
 		t.Fatal("resuming did not consume the original result exactly once")
+	}
+}
+
+// A person who starts a supervised run reads what the role workflow measured
+// before the first job. Resuming the saved run does not repeat it.
+func TestSupervisedRunStatesTheMeasuredCostBeforeItsFirstJob(t *testing.T) {
+	f := newWorkflowFixture(t, nil)
+	f.pause = true
+	started, _ := f.run("Plan a change", "--id", "case", "--until", "plan")
+	cost, job := strings.Index(started, optInCost), strings.Index(started, "Kitsu task case · ")
+	if cost < 0 || job >= 0 && job < cost || !strings.Contains(started, "Supervised runs are not measured.") {
+		t.Fatalf("a new run did not state its cost before its first job:\n%s", started)
+	}
+	f.mu.Lock()
+	f.pause = false
+	f.mu.Unlock()
+	if resumed, err := f.run("--resume", "case"); err != nil || strings.Contains(resumed, optInCost) {
+		t.Fatalf("resuming repeated the cost or failed: %v\n%s", err, resumed)
 	}
 }
 

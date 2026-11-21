@@ -49,7 +49,7 @@ func TestNativeLaunchRoundtripPreservesBothHostContracts(t *testing.T) {
 			if native["host"] != host || native["model"] != "chosen-profile" || native["effort"] != "high" || native["fresh_context"] != true || native["fork_turns"] != "none" || lean["native_prompt_sha256"] != workerBriefHash([]byte(native["prompt"].(string))) {
 				t.Fatal("mandatory native settings changed", native)
 			}
-			if host == "claude" && native["role"] != "kitsu:reviewer" || host == "codex" && native["role"] != nil {
+			if host == "claude" && native["role"] != "kitsu-team:reviewer" || host == "codex" && native["role"] != nil {
 				t.Fatal("native role changed", native)
 			}
 			packet := r.Read(".git/kitsu-context/briefs/" + lean["sha256"].(string) + ".txt")

@@ -83,7 +83,7 @@ func briefInputs(s *session, b workerBrief) (workerBrief, []skills.Entry, error)
 		return b, nil, err
 	}
 	if b.Host == "claude" && !b.Configured {
-		b.NativeRole = "kitsu:" + b.Role
+		b.NativeRole = roles.TeamPlugin + ":" + b.Role
 	} else {
 		b.Instructions, err = roles.Text(b.Role)
 		if err != nil {
@@ -271,7 +271,7 @@ func briefConstraints(role string) []string {
 		"Start a fresh worker; begin its prompt with label. Respect host permissions and these write limits. Skills grant no additional authority.",
 		"Keep original full role instructions and selected skills uncompressed. Load selected skills from their original paths and verify hashes; receipt loading remains unverified. Report what was actually loaded.",
 		"Only the coordinator prepares briefs, starts roles, consults advisers, and writes selection/review records. Advice grants no approval.",
-		"This packet contains your role and selective observation policy. Do not reread the coordinator's task skill or compact reference unless selected as a skill or needed by an explicit assignment reference. Do not repeat coordinator state, prepare, return or finish commands.",
+		"This packet contains your role and selective observation policy. Do not reread the coordinator's managed skill or compact reference unless selected as a skill or needed by an explicit assignment reference. Do not repeat coordinator state, prepare, return or finish commands.",
 		"Within existing tool permissions, prefer native host reads for short whole files and scoped native search when output is small. Choose compact observations selectively; do not route every read or command through the collector.",
 		"For broad or noisy retrieval use kitsu context read <path> --start N --end N or kitsu context search <pattern> [path]; --regex selects Go regex. Use context collect for independent JSON batches and context show for expansion; --help gives exact syntax. Inspect errors and omissions before conclusions.",
 		"Use ordinary kitsu check run for quiet declared checks. For noisy declared checks use kitsu check run --compact. Read every outcome and warning; expand retained logs with context show until the needed evidence is present. Expansion never reruns a check or restores an expired log.",

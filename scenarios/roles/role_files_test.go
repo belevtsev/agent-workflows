@@ -9,8 +9,11 @@ import (
 	"unicode/utf8"
 )
 
-// roleFile is the Claude Code file of a role.
-func roleFile(id string) string { return "agents/" + id + ".md" }
+// roleFile is the Claude Code file of a role, in the opt-in plugin. managedSkill
+// holds the coordinator's instructions there.
+func roleFile(id string) string { return "plugins/kitsu-team/agents/" + id + ".md" }
+
+const managedSkill = "plugins/kitsu-team/skills/managed/SKILL.md"
 
 // Requirement "Explicit start", scenario "No role can start a role".
 func TestNoRoleCanStartARole(t *testing.T) {
@@ -80,14 +83,16 @@ func TestASearchOfTheTexts(t *testing.T) {
 		}
 	})
 
-	// What the host reads: the plugin's role files and the coordinator's
-	// instructions for Claude Code.
+	// What the host reads: the role files and the coordinator's instructions
+	// of the opt-in plugin, and the skill for a daily task.
 	t.Run("host files", func(t *testing.T) {
 		t.Parallel()
 		for _, id := range roleIDs {
 			search(t, roleFile(id), readModuleFile(t, roleFile(id)))
 		}
-		search(t, "skills/task/SKILL.md", readModuleFile(t, "skills/task/SKILL.md"))
+		for _, skill := range []string{"skills/task/SKILL.md", managedSkill} {
+			search(t, skill, readModuleFile(t, skill))
+		}
 	})
 }
 
@@ -98,7 +103,8 @@ func TestAHostFileIsEditedByHand(t *testing.T) {
 		t.Skip("runs go test on a copy of the module")
 	}
 	root := copyModule(t)
-	path := filepath.Join(root, "agents", "architect.md")
+	file := roleFile("architect")
+	path := filepath.Join(root, filepath.FromSlash(file))
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -106,7 +112,7 @@ func TestAHostFileIsEditedByHand(t *testing.T) {
 	// One sentence of the role's body; the file may wrap it over two lines.
 	sentence := regexp.MustCompile(`You\s+write\s+no\s+test\s+and\s+no\s+code\.`)
 	if !sentence.Match(data) {
-		t.Fatalf("agents/architect.md does not hold the sentence %q to change", sentence)
+		t.Fatalf("%s does not hold the sentence %q to change", file, sentence)
 	}
 	edited := sentence.ReplaceAllString(string(data), "You write the tests and the code as well.")
 	if err := os.WriteFile(path, []byte(edited), 0o644); err != nil {
@@ -115,13 +121,13 @@ func TestAHostFileIsEditedByHand(t *testing.T) {
 
 	code, out := goTestRoles(t, root)
 	if code == 0 {
-		t.Fatalf("go test ./internal/roles passed with agents/architect.md edited by hand:\n%s", out)
+		t.Fatalf("go test ./internal/roles passed with %s edited by hand:\n%s", file, out)
 	}
 	if !strings.Contains(out, "--- FAIL") {
 		t.Errorf("no test failed; go test exited %d for another reason:\n%s", code, out)
 	}
-	if !strings.Contains(out, "agents/architect.md") {
-		t.Errorf("the failure does not name agents/architect.md:\n%s", out)
+	if !strings.Contains(out, file) {
+		t.Errorf("the failure does not name %s:\n%s", file, out)
 	}
 }
 

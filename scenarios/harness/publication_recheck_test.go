@@ -109,8 +109,9 @@ func TestPullRequestOnSecondPushDestinationCanBeRechecked(t *testing.T) {
 	r.Git("config", "core.sshCommand", "sh .git/ssh")
 	r.Git("config", "ssh.variant", "ssh")
 	head := r.Git("rev-parse", "HEAD")
+	r.Git("remote", "add", "upstream", "https://git.example.invalid/maintainer/qs.git")
 	const url = "https://git.example.invalid/maintainer/qs/pull/17"
-	setPR := func(state, owner string) {
+	setPR := func(url, state, owner string) {
 		t.Helper()
 		data, err := json.Marshal(map[string]any{"url": url, "state": state, "headRefOid": head, "headRefName": "topic", "baseRefName": "main", "headRepository": map[string]string{"name": "qs"}, "headRepositoryOwner": map[string]string{"login": owner}})
 		if err != nil {
@@ -119,20 +120,35 @@ func TestPullRequestOnSecondPushDestinationCanBeRechecked(t *testing.T) {
 		r.Write(".git/pr.json", string(data))
 	}
 	f := flow{t: t, repo: r, id: "fork-pr"}
-	f.call(0, "open", "--request", "Confirm the topic PR into main", "--entry", "verify", "--until", "deliver", "--publish-to", "team/topic", "--pr-base", "main")
+	f.call(0, "open", "--request", "Confirm the topic PR into main", "--entry", "verify", "--until", "deliver", "--publish-to", "team/topic", "--pr-base", "upstream:main")
 	f.record("intake", "host", "Confirm the existing patch and PR")
 	f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "unit passes", "--", "sh", "unit.sh")
-	setPR("OPEN", "other-fork")
+	// A pull request with the same head in a repository that is not the pinned base confirms nothing.
+	const foreign = "https://git.example.invalid/attacker/other/pull/1"
+	setPR(foreign, "OPEN", "contributor")
+	f.call(1, "confirm", "--ticket", f.state.Ticket, "--pr", foreign)
+	setPR(url, "OPEN", "other-fork")
 	f.call(1, "confirm", "--ticket", f.state.Ticket, "--pr", url)
-	setPR("OPEN", "contributor")
+	setPR(url, "OPEN", "contributor")
 	f.call(0, "confirm", "--ticket", f.state.Ticket, "--pr", url)
 	f.want("done")
 	checkPublicationReceipt(t, r, f.id, "confirmed", "team/topic", url, head)
-	setPR("CLOSED", "contributor")
+	setPR(url, "CLOSED", "contributor")
 	f.call(1, "confirm")
 	f.call(0, "next")
 	f.want("done")
-	setPR("OPEN", "contributor")
+	setPR(url, "OPEN", "contributor")
 	f.call(0, "confirm")
+	f.want("done")
+
+	// Without a named remote the base repository is the push remote's own.
+	f = flow{t: t, repo: r, id: "own-pr"}
+	f.call(0, "open", "--request", "Confirm the topic PR into main", "--entry", "verify", "--until", "deliver", "--publish-to", "team/topic", "--pr-base", "main")
+	f.record("intake", "host", "Confirm the existing patch and PR")
+	f.call(0, "test", "--ticket", f.state.Ticket, "--expect", "unit passes", "--", "sh", "unit.sh")
+	f.call(1, "confirm", "--ticket", f.state.Ticket, "--pr", url)
+	const own = "https://git.example.invalid/contributor/qs/pull/3"
+	setPR(own, "OPEN", "contributor")
+	f.call(0, "confirm", "--ticket", f.state.Ticket, "--pr", own)
 	f.want("done")
 }

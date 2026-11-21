@@ -221,7 +221,7 @@ func runUXTaskStart(ctx context.Context, cfg Config, args []string) error {
 	}
 	handoff := prepareTaskHandoff(report, request)
 	if options.compact {
-		handoff.Prompt += "\n\nKitsu compact mode (selective opt-in): use native reads for short files and compact output for noisy searches and logs. Expand retained evidence when needed. See references/compact.md for commands. Keep the requested workflow."
+		handoff.Prompt += "\n\nKitsu compact mode (selective opt-in): use native reads for short files and compact output for noisy searches and logs. Expand retained evidence when needed. See references/compact.md of the kitsu-team plugin's managed skill for commands. Keep the requested workflow."
 		handoff.Argv[1] = handoff.Prompt
 	}
 	if options.json {

@@ -213,13 +213,17 @@ func isKitsuMarketplace(host string, data []byte) bool {
 			Source json.RawMessage
 		}
 	}
-	if json.Unmarshal(data, &market) != nil || market.Name != "kitsu" || len(market.Plugins) != 1 || market.Plugins[0].Name != "kitsu" {
+	want := [][2]string{{"kitsu", "./"}, {"kitsu-team", "./plugins/kitsu-team"}} // The opt-in plugin may follow the default one.
+	if json.Unmarshal(data, &market) != nil || market.Name != "kitsu" || len(market.Plugins) == 0 || len(market.Plugins) > len(want) {
 		return false
 	}
-	if host == "codex" {
-		var source struct{ Source, Path string }
-		return json.Unmarshal(market.Plugins[0].Source, &source) == nil && source.Source == "local" && source.Path == "./"
+	for i, plugin := range market.Plugins {
+		local := struct{ Source, Path string }{Source: "local"}
+		// Codex gives a source object and Claude Code the path alone.
+		source := map[bool]any{true: &local, false: &local.Path}[host == "codex"]
+		if json.Unmarshal(plugin.Source, source) != nil || plugin.Name != want[i][0] || local.Source != "local" || local.Path != want[i][1] {
+			return false
+		}
 	}
-	var source string
-	return json.Unmarshal(market.Plugins[0].Source, &source) == nil && source == "./"
+	return true
 }

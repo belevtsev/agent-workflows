@@ -189,7 +189,7 @@ working tree.
 
 ### The coordinator
 
-The developer's host session coordinates the work. For managed work, the task skill loads the instructions printed by `kitsu role text coordinator`. A normal plugin request follows the [daily workflow](task-harness.md#how-a-daily-task-runs). Run
+The developer's host session coordinates the work. For managed work, the `managed` skill of the opt-in `kitsu-team` plugin holds the instructions printed by `kitsu role text coordinator`. A normal plugin request follows the [daily workflow](task-harness.md#how-a-daily-task-runs). Run
 `kitsu agent check --host codex` or `--host claude` to inspect local setup, then
 `kitsu task start "<coding request>" --host <host>` to explicitly launch that host with the task
 skill. For an existing desktop session, add `--print` and paste its handoff. Print and JSON
@@ -485,13 +485,13 @@ and `coordinator.md`. These texts are embedded in `kitsu`, so `kitsu role text` 
 
 The files a host reads are generated from them:
 
-- `agents/<role>.md`, one for each role: a header with `name`, `description` (the job), `model`
+- `plugins/kitsu-team/agents/<role>.md`, one for each role: a header with `name`, `description` (the job), `model`
   and `effort` (the defaults for Claude Code) and `tools`, then a comment that the file is
   generated, then the role's text.
-- `skills/task/SKILL.md` contains the daily task instructions. The managed coordinator text is shipped in `skills/task/references/managed.md`.
+- `skills/task/SKILL.md` contains the daily task instructions. The managed coordinator text is shipped in `plugins/kitsu-team/skills/managed/SKILL.md`.
 
 A test of this repository makes these files from the texts and fails when a file on disk differs,
-or when `agents/` holds a file that belongs to no role. The failure message names the file and the
+or when `plugins/kitsu-team/agents/` holds a file that belongs to no role. The failure message names the file and the
 command that writes the files again. Edit the text, never the generated file.
 
 Other tests keep each role text within 8,000 characters, the coordinator's within 12,000 and all
@@ -499,21 +499,20 @@ of them within 60,000, and search the texts for the names of languages and build
 
 ### Claude Code
 
-The plugin of this repository ships, for Claude Code, the seven role files under `agents/`, the
-skill under `skills/task/`, and the hooks in `hooks/hooks.json`. `.claude-plugin/plugin.json`
-names none of these paths; they are in the folders a Claude Code plugin uses for agents, skills
-and hooks. Ask `/kitsu:task` to use the managed role workflow and the coordinator starts specialists as `kitsu:<role>`. The `tools` list of a role file is for Claude Code to apply; `kitsu` does
+This repository ships two plugins for Claude Code. The default plugin `kitsu` holds the skills under `skills/` and the hooks in `hooks/hooks.json`. The [opt-in plugin `kitsu-team`](release-install.md#add-role-coordination) holds the seven role files under `plugins/kitsu-team/agents/` and the `managed` skill. Neither `plugin.json`
+names these paths; they are in the folders a Claude Code plugin uses for agents, skills
+and hooks. Ask `/kitsu-team:managed` to use the managed role workflow and the coordinator starts specialists as `kitsu-team:<role>`. The `tools` list of a role file is for Claude Code to apply; `kitsu` does
 not apply it.
 
-`kitsu task start "<request>" --host claude` opens an interactive Claude Code session with that
-skill instruction; the host still dispatches the `kitsu:<role>` workers.
+`kitsu task start "<request>" --host claude` opens an interactive Claude Code session with the
+daily task skill; for managed work the host still dispatches the `kitsu-team:<role>` workers.
 
 ### Codex
 
 What is stated, and nothing more:
 
 - `.codex-plugin/plugin.json` names `"skills": "./skills/"` and `"hooks":
-  "./hooks/codex-hooks.json"`. It names no role files; `agents/*.md` are files for Claude Code.
+  "./hooks/codex-hooks.json"`. It names no role files; the role files of `kitsu-team` are for Claude Code. The Codex manifest of `kitsu-team` names its `managed` skill.
 - The coordinator's instructions say: on a host other than Claude Code, give a new worker the
   text that `kitsu role text <role>` prints, on the model and effort `kitsu role list` prints for Codex.
 - The design states that a host without role files of its own gives this text to a new worker.

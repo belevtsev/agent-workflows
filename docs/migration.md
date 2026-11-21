@@ -12,7 +12,7 @@ a new clone can follow the [quick start](quickstart.md).
 | `<common-git-dir>/cw/` | New records in `<common-git-dir>/kitsu/` |
 | `agent-workflows` plugin and marketplace | `kitsu` |
 | `/agent-workflows:cw`, `/agent-workflows:task` | `/kitsu:kitsu`, `/kitsu:task` |
-| `agent-workflows:<role>` | `kitsu:<role>` |
+| `agent-workflows:<role>` | `kitsu-team:<role>`, in the opt-in `kitsu-team` plugin |
 | `cw-task: <task> <stage> <round>` | `kitsu-task: <task> <stage> <round>` |
 | `refs/cw/finalize/<task>` | `refs/kitsu/finalize/<task>` |
 | `github.com/belevtsev/agent-workflows/v3` | `github.com/belevtsev/kitsu/v3` |

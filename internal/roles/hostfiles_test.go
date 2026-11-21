@@ -47,13 +47,13 @@ func TestHostFilesAreMadeFromTheTexts(t *testing.T) {
 			t.Errorf("%s differs from what its text in internal/roles/text gives; edit the text and run `go test ./internal/roles -update`", path)
 		}
 	}
-	entries, err := os.ReadDir(filepath.Join(root(t), "agents"))
+	entries, err := os.ReadDir(filepath.Join(root(t), TeamRoot, "agents"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if _, made := files["agents/"+entry.Name()]; !made {
-			t.Errorf("agents/%s belongs to no role", entry.Name())
+		if _, made := files[TeamRoot+"/agents/"+entry.Name()]; !made {
+			t.Errorf("%s/agents/%s belongs to no role", TeamRoot, entry.Name())
 		}
 	}
 }

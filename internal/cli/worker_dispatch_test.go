@@ -102,7 +102,7 @@ func TestSavedWorkerBriefUsesNativeClaudeRoleAndFullTaskReferences(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if b.NativeRole != "kitsu:reviewer" || b.Instructions != "" || strings.Contains(string(data), roleBody) || len(b.References) != 5 || b.State.Workflow != "full" || !strings.Contains(strings.Join(b.Constraints, " "), "Review sources independently") {
+	if b.NativeRole != "kitsu-team:reviewer" || b.Instructions != "" || strings.Contains(string(data), roleBody) || len(b.References) != 5 || b.State.Workflow != "full" || !strings.Contains(strings.Join(b.Constraints, " "), "Review sources independently") {
 		t.Fatal("native role, independence or task references lost", b)
 	}
 	for _, ref := range b.References {

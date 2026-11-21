@@ -98,7 +98,7 @@ Never preview a worker packet merely to recover its launch identity.
 Assignments carry the complete original behavioral contract, role-specific work,
 primary source references and required evidence. Keep coordinator scheduling,
 budget supervision and state/interval instructions in the coordinator. Do not
-paste this whole reference or the coordinator's task skill into every assignment,
+paste this whole reference or the coordinator's managed skill into every assignment,
 or require workers to reread them: the packet already contains their full role
 and selective observation policy. Selected skills and explicit task references
 are exceptions and must still be loaded in full; never trim user instructions.
@@ -119,7 +119,7 @@ protocols also remain compatible.
 
 Keep original full role instructions and selected skills uncompressed. The saved text
 includes original Codex role instructions once. On Claude Code use
-native role `kitsu:<role>`; its definition supplies the role body once. Load all
+native role `kitsu-team:<role>`; its definition supplies the role body once. Load all
 selected original skills in every fresh worker; receipts do not prove loading.
 Keep other native skills discoverable without preloading their bodies.
 

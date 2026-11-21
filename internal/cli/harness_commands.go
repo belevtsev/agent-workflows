@@ -25,7 +25,7 @@ func harnessCommands() []uxCommand {
 	repair := uxOption("repair", "", "authorize source repairs after findings or failing assertions")
 	commit := uxOption("commit", "", "delivery includes a local commit")
 	publish := uxOption("publish-to", "remote/branch", "authorized remote branch whose commit must be confirmed")
-	base := uxOption("pr-base", "branch", "require confirmation of an open GitHub PR into this branch")
+	base := uxOption("pr-base", "[remote:]branch", "require confirmation of an open GitHub PR into this branch of the pushed repository, or of the named remote's")
 	reviewBase := uxOption("review-base", "revision", "start commit of a read-only review range; requires --review-head")
 	reviewHead := uxOption("review-head", "revision", "end commit of a read-only review range; requires --review-base")
 	ticket := uxOption("ticket", "id", "action ticket returned by task next")
@@ -256,7 +256,7 @@ func harnessCommand(verb string) func(context.Context, Config, []string) error {
 		if o.markdown {
 			return printMarkdownReceipt(ctx, s, o.id)
 		}
-		l, err := openStageLedger(ctx, s)
+		l, err := openStageLedgerWait(ctx, s, ledgerWait)
 		if err != nil {
 			return err
 		}

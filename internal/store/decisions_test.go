@@ -164,6 +164,10 @@ func TestSweep(t *testing.T) {
 		"decisions/2026-11.jsonl":         now.Add(-time.Hour),
 		"tmp/index-1-dead":                now.Add(-25 * time.Hour),
 		"tmp/index-2-live":                now.Add(-time.Minute),
+		"tmp/index-3-held":                now.Add(-25 * time.Hour), // backdated to its index; its process still holds it
+		"tmp/index-3-held.hold":           now.Add(-time.Minute),
+		"tmp/index-4-left":                now.Add(-25 * time.Hour),
+		"tmp/index-4-left.hold":           now.Add(-25 * time.Hour),
 		"mode":                            now.Add(-2 * RecordAge),
 		"runs/lint/k/older-than-log.json": now.Add(-LogAge - time.Hour),
 	}
@@ -174,8 +178,8 @@ func TestSweep(t *testing.T) {
 	}
 	s.Sweep(t.Context(), now)
 
-	gone := []string{"logs/old.log", "runs/unit/old/r1.json", "runs/unit/old", "runs/unit/mixed/r3.json", "decisions/2025-10.jsonl", "tmp/index-1-dead"}
-	kept := []string{"logs/new.log", "runs/unit/new/r2.json", "runs/unit/mixed/r4.json", "decisions/2026-11.jsonl", "tmp/index-2-live", "mode", "runs/lint/k/older-than-log.json"}
+	gone := []string{"logs/old.log", "runs/unit/old/r1.json", "runs/unit/old", "runs/unit/mixed/r3.json", "decisions/2025-10.jsonl", "tmp/index-1-dead", "tmp/index-4-left", "tmp/index-4-left.hold"}
+	kept := []string{"logs/new.log", "runs/unit/new/r2.json", "runs/unit/mixed/r4.json", "decisions/2026-11.jsonl", "tmp/index-2-live", "tmp/index-3-held", "tmp/index-3-held.hold", "mode", "runs/lint/k/older-than-log.json"}
 	for _, rel := range gone {
 		if exists(filepath.Join(s.Dir, filepath.FromSlash(rel))) {
 			t.Errorf("Sweep kept %s", rel)

@@ -210,7 +210,7 @@ func validateWorkflowChanges(ctx context.Context, s *session, task *harness.Task
 	for _, file := range files {
 		known[strings.ToLower(file.Path)] = file
 	}
-	protected := reviewedWorkflowInputs(s.workflowRunner.Policy)
+	protected := reviewedWorkflowInputs(s.workflowRunner.Offer().Policy)
 	touched := map[string]bool{}
 	var before []workflowrunner.File
 	for _, f := range changes {
@@ -291,7 +291,7 @@ func workflowRegion(data []byte, r harness.WorkflowTestRegion) (sharedFile, erro
 
 func validateWorkflowFileScope(s *session, w *harness.Workflow, old, file workflowrunner.File) error {
 	name := file.Path
-	policy := s.workflowRunner.Policy
+	policy := s.workflowRunner.Offer().Policy
 	if w.Active.Role == "developer" && !decl.MatchAny(policy.CodePaths, name) {
 		return failf("developer changed %q outside the runner's reviewed source paths", name)
 	}

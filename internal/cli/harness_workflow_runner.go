@@ -13,8 +13,6 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/workflowrunner"
 )
 
-const workflowLedgerWait = 10 * time.Second
-
 func workflowReceiptFile(attempt string) string {
 	return "runner-result-" + attempt + ".json"
 }
@@ -42,7 +40,7 @@ func reserveWorkflowAttempt(ctx context.Context, s *session, l *stageLedger, t *
 	if err := checkHarnessPolicy(ctx, s, t, v.Candidate.Tree); err != nil {
 		return blockedWorkflowStep(step, err.Error()), nil
 	}
-	if role == "quality-engineer" && len(w.TestPolicy) == 0 || role == "developer" && len(s.workflowRunner.Policy.CodePaths) == 0 {
+	if role == "quality-engineer" && len(w.TestPolicy) == 0 || role == "developer" && len(s.workflowRunner.Offer().Policy.CodePaths) == 0 {
 		return blockedWorkflowStep(step, "The runner policy must approve this role's writable paths."), nil
 	}
 	var err error
@@ -137,7 +135,7 @@ func prepareWorkflowJob(ctx context.Context, s *session, l *stageLedger, t *harn
 			job.Files, err = workflowBaselineFiles(l, t, files)
 		}
 		if err == nil {
-			err = workflowCheckInputs(s.workflowRunner.Policy, job.Checks, job.Files)
+			err = workflowCheckInputs(s.workflowRunner.Offer().Policy, job.Checks, job.Files)
 		}
 	}
 	if err != nil {
@@ -165,7 +163,7 @@ func launchWorkflowAttempt(ctx context.Context, s *session, o workflowOptions, s
 	if err != nil {
 		return failf("runner attempt %s remains reserved: %v. Resume to check its status.", a.ID, err)
 	}
-	l, err := openStageLedgerWait(ctx, s, workflowLedgerWait)
+	l, err := openStageLedgerWait(ctx, s, ledgerWait)
 	if err != nil {
 		return err
 	}
@@ -218,7 +216,7 @@ func releaseWorkflowAttempt(ctx context.Context, s *session, o workflowOptions) 
 	if got.Job != a.Job || !got.Stopped || !got.Release || got.Status != "stopped" && got.Status != "failed" && got.Status != "returned" {
 		return failf("runner operator has not authorized release of this stopped attempt")
 	}
-	l, err = openStageLedgerWait(ctx, s, workflowLedgerWait)
+	l, err = openStageLedgerWait(ctx, s, ledgerWait)
 	if err != nil {
 		return err
 	}
@@ -306,7 +304,7 @@ func validateCompleteWorkerResult(s *session, t *harness.Task, r workflowReturn)
 		if err := validateWorkflowAssertion(w.Plan, r.Assertion); err != nil {
 			return err
 		}
-		_, err := approvedWorkflowCheck(s.workflowRunner.Policy, r.Assertion)
+		_, err := approvedWorkflowCheck(s.workflowRunner.Offer().Policy, r.Assertion)
 		return err
 	}
 	return nil

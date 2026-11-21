@@ -2,7 +2,7 @@
   "name": "kitsu",
   "version": "0.0.2",
   "icon": "./docs/brand/kitsu-mascot.png",
-  "description": "Coordinate Claude Code and Codex specialists from one task. Configure role settings and resume saved work. A registered runner signs the results of supervised jobs.",
+  "description": "Verify a coding task with one command and keep the evidence with the exact Git tree. A Git gate checks recorded evidence before commits and pushes.",
   "author": {
     "name": "Pavlo Belevtsev",
     "url": "https://github.com/belevtsev"
@@ -14,8 +14,7 @@
     "claude-code",
     "plugin",
     "coding-agents",
-    "agent-coordination",
-    "workflow",
+    "verification",
     "git-hooks",
     "quality-gate"
   ]

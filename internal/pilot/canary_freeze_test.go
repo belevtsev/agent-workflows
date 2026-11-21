@@ -164,6 +164,13 @@ func TestPilotFreezeCanaryAssets(t *testing.T) {
 	t.Log("offline freeze complete; paid_calls=0; no proxy or model launched")
 }
 
+// supportSources gives each file of the frozen support folder its place in
+// the repository. The folder keeps the paths that earlier runs recorded.
+var supportSources = map[string]string{
+	"skills/task/SKILL.md":              "skills/task/SKILL.md",
+	"skills/task/references/compact.md": "plugins/kitsu-team/skills/managed/references/compact.md",
+}
+
 func canarySourceIndex(ctx context.Context, repo string) (map[string]string, error) {
 	cmd := exec.CommandContext(ctx, "git", "ls-files", "-z", "--cached", "--others", "--exclude-standard")
 	cmd.Dir = repo
@@ -336,12 +343,12 @@ func freezeCanaryAssets(ctx context.Context, repo, root string) error {
 	if !reflect.DeepEqual(index, after) {
 		return errors.New("repository source changed during freeze; built evidence retained, no launch permitted")
 	}
-	for _, rel := range []string{"skills/task/SKILL.md", "skills/task/references/compact.md"} {
+	for rel, from := range supportSources {
 		out := filepath.Join(a, "support", rel)
 		if err := os.Remove(out); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
-		if err := copyRegular(filepath.Join(source, rel), out, 0o400); err != nil {
+		if err := copyRegular(filepath.Join(source, from), out, 0o400); err != nil {
 			return err
 		}
 	}

@@ -114,7 +114,7 @@ func acceptWorkflowBaseline(ctx context.Context, s *session, l *stageLedger, t *
 // commit hook. Only a matching runner receipt authorizes the configured FSM.
 func retainWorkflowCheck(ctx context.Context, s *session, t *harness.Task, got workflowrunner.CheckResult, gate bool) (*harness.Proof, bool, error) {
 	a := t.Workflow.Active
-	policy := s.workflowRunner.Policy
+	policy := s.workflowRunner.Offer().Policy
 	i := slices.IndexFunc(policy.Checks, func(c workflowrunner.Check) bool { return c.ID == got.ID })
 	if i < 0 {
 		return nil, false, failf("runner result names an unreviewed check")

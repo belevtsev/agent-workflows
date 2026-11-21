@@ -21,7 +21,7 @@ func TestSkillsReachWorkersWithoutChangingRoleBoundaries(t *testing.T) {
 				t.Errorf("skills expanded %s's write tools: %s", role.ID, tools)
 			}
 		}
-		if !strings.Contains(files["agents/"+role.ID+".md"], "Skill") {
+		if !strings.Contains(files[TeamRoot+"/agents/"+role.ID+".md"], "Skill") {
 			t.Errorf("generated %s omits native skill access", role.ID)
 		}
 	}

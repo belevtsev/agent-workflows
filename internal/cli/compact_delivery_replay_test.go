@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/belevtsev/kitsu/v3/internal/roles"
 )
 
 const deliveryBehavior = "Preserve anonymous fallback and the complete λ marker. Keep existing tests unchanged. Read src/label.txt and tests/regression.txt; report every finding and blocker.\n"
@@ -44,14 +46,13 @@ func deliveryFixture(t *testing.T) *coordinatorReplay {
 	t.Helper()
 	h := coordinatorReplayFixture(t, true)
 	h.repo.Setenv("KITSU_TEST_COORDINATOR_QUIET", "1")
-	for _, name := range []string{"SKILL.md", "references/compact.md"} {
-		body, err := os.ReadFile(filepath.Join("..", "..", "skills", "task", name))
+	for out, name := range map[string]string{
+		"support/task.md":    "skills/task/SKILL.md",
+		"support/compact.md": roles.ManagedSkill + "/references/compact.md",
+	} {
+		body, err := os.ReadFile(filepath.Join("..", "..", filepath.FromSlash(name)))
 		if err != nil {
 			t.Fatal(err)
-		}
-		out := "support/task.md"
-		if name != "SKILL.md" {
-			out = "support/compact.md"
 		}
 		h.repo.Write(out, string(body))
 	}
