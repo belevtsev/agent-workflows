@@ -512,14 +512,11 @@ Without `--host`, `kitsu context` reads nothing and judges the working directory
 
 ```text
 $ kitsu context
-Kitsu coordinates coding tasks with specialist roles and shared records.
-To start, select Kitsu's task skill in your host.
-Setup: `kitsu agent check --host <host>`. Terminal: `kitsu task start "<request>" --host <host>`.
+Kitsu verifies coding tasks: select Kitsu's task skill in your host. Setup: `kitsu agent check --host <host>`.
 
-This repository is gated by kitsu. git allows a commit or a push only when every check declared in kitsu.toml has a recorded passing run on exactly the content that is committed or pushed.
-- `kitsu run` records missing checks on current content; run it before committing.
-- `kitsu status` shows missing evidence.
-- A denied commit or push needs passing evidence for the staged content; never bypass hooks.
+This repository is gated by kitsu. git allows a commit or a push only when every kitsu.toml check has a passing run on exactly that content.
+- `kitsu run` records missing checks and `kitsu status` lists them. Approval is the developer's: `kitsu check trust`.
+- Never bypass a denied commit or push.
 The hooks are installed.
 ```
 
@@ -528,12 +525,13 @@ are not installed in this clone, the workflow introduction stays first, and the 
 paragraph is this one; the installed-hooks line is left out:
 
 ```text
-This repository declares checks for kitsu, but the hooks are not installed in this clone, so nothing is gated here yet; `kitsu init` installs them. Once they are installed, git allows a commit or a push only when every check declared in kitsu.toml has a recorded passing run on exactly the content that is committed or pushed.
+This repository declares checks for kitsu, but the hooks are not installed in this clone, so nothing is gated here yet; `kitsu init` installs them. Once they are installed, git allows a commit or a push only when every kitsu.toml check has a passing run on exactly that content.
 ```
 
 Without `kitsu.toml`, a Git repository still gets the workflow introduction, followed by a line
-that no checks are declared and passing evidence has not been established. Context stays within
-1,000 characters. Outside a Git repository, it prints nothing.
+that no checks are declared and passing evidence has not been established. The introduction and
+the gate paragraph stay within 620 characters. A host session adds one line with its ID. Outside a
+Git repository, it prints nothing.
 
 Exit statuses: 0 always, also outside a repository; 2 an argument.
 

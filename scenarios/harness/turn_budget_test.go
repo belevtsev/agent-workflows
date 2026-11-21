@@ -36,9 +36,9 @@ var turnBudgets = map[string]turnBudget{
 // Text that every task or every session carries: the skills in words, as
 // `wc -w` counts them, and the session-start notice in bytes.
 const (
-	taskSkillWords    = 851
+	taskSkillWords    = 238
 	gateSkillWords    = 1478
-	sessionStartBytes = 880
+	sessionStartBytes = 630
 )
 
 // turns counts the Kitsu commands of one task as the coordinator sees them.

@@ -273,7 +273,7 @@ func TestCompactCLIHelpCompletionAndLegacyHookStayIndependent(t *testing.T) {
 		t.Fatal(page)
 	}
 	legacy := r.Run(`{"cwd":"`+filepath.ToSlash(r.Dir)+`"}`, filepath.Join(kitsutest.Binary(t), compactBinaryName()), "context", "--host", "claude")
-	if legacy.Code != 0 || !strings.Contains(legacy.Stdout, "task start") || strings.HasPrefix(legacy.Stdout, `{"version"`) {
+	if legacy.Code != 0 || !strings.Contains(legacy.Stdout, "Kitsu verifies coding tasks") || strings.HasPrefix(legacy.Stdout, `{"version"`) {
 		t.Fatal("legacy hook routed into collector", legacy.Output())
 	}
 	for _, line := range []string{"kitsu context co", "kitsu task br", "kitsu check run --com", "kitsu task start --com"} {

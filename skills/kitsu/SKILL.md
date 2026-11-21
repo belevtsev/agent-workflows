@@ -1,6 +1,6 @@
 ---
 name: kitsu
-description: 'Configure or run kitsu.toml checks before committing or pushing. Diagnose failed checks, "not verified", and "kitsu: this commit is denied". Use when adding a Kitsu Git gate.'
+description: 'Set up kitsu.toml checks and the Git gate, or diagnose failed checks, "not verified" and "kitsu: this commit is denied". Use the task skill for coding tasks.'
 ---
 
 # Working in a repository gated by kitsu

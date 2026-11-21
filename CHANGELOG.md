@@ -36,6 +36,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A shorter task skill supports the [same-worktree handoff preview](docs/verified-handoff-preview.md) across Codex and Claude Code.
 - Direct ticket imports connect only to public addresses. Use a host connector to [supply a private ticket](docs/task-harness.md#deliver-a-bug-ticket).
 
+### Changed
+
+- Load a shorter task skill and session notice in every session. The [step-by-step commands](skills/task/references/steps.md) are read only when a task needs them.
+
 ### Fixed
 
 - [Failed PR check intake](docs/task-harness.md#repair-a-failed-pr-check) also recognizes failures reported through commit statuses by external CI.
