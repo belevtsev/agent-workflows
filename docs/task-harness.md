@@ -68,13 +68,24 @@ retrying. A changed candidate requires fresh evidence.
 Open a daily task with the developer's request or the story from a saved ticket.
 For a clear feature, choose the implementation entry. For a story with unresolved
 behavior, choose the planning entry and record a brief with `"draft": true`.
-A planning-only task can finish with open questions, without editing the checkout.
+A planning-only task can finish with open questions while preserving the checkout.
+For a local commit after verification and any required review, use this scope:
+
+```sh
+kitsu task open export-json --entry implement --until deliver --commit --brief \
+  --request "Add JSON export and preserve the default text output."
+```
+
+For a verified patch, replace `--until deliver --commit` with `--until verify`.
+Add `--require-review` when you want an
+independent reviewer. Repository review policy also applies.
+
 You can [enable Jev story review](advisers.md#review-feature-stories-at-intake-with-jev) for new features in this checkout.
 
-Save a UTF-8 JSON brief with `kitsu task record ID intake --ticket TICKET --actor SESSION --note "Acceptance agreed" --feature-brief FILE`.
-Use `-` for stdin. For a planning task or a revision, use `plan` in place of `intake`.
-A brief describes only the requested scope and uses IDs that stay stable through
-revisions. For example, when the repository declares a check named `test`:
+Save the brief as UTF-8 JSON outside the worktree or pass it through stdin.
+Keep criterion IDs stable through revisions.
+This example uses an existing repository check named `test`. Include only
+criteria that the named check actually exercises.
 
 ```json
 {
@@ -88,15 +99,34 @@ revisions. For example, when the repository declares a check named `test`:
 }
 ```
 
+Use the ticket returned by `task open` and the active host's session ID:
+
+```sh
+kitsu task record export-json intake --ticket INTAKE_TICKET --actor SESSION \
+  --note "Acceptance agreed" --feature-brief feature.json --brief
+```
+
+Use `--feature-brief -` to read from stdin. When the current action is `plan`,
+record the brief with that action and its ticket.
+
 Use `check:ID` for a declared repository check, or `behavior` plus a top-level
 `"behavior": {"expected_behavior": "...", "argv": ["program", "arg"]}` for one focused assertion.
 Choose checks that actually exercise the named behavior. The person who owns the
-checkout approves declared commands with `kitsu check trust`. At verification,
-`kitsu task test ID --ticket TICKET --retry` runs the saved acceptance check and
-the repository's other required checks. A revised brief needs fresh verification
-and any required review. With authorized commit delivery, the checked tree and
-parents must match the commit. Export criterion IDs and recorded results with
-`kitsu task receipt ID --markdown`.
+checkout approves declared commands with `kitsu check trust`.
+
+Record implementation with the current ticket. Stage the intended files before
+verification for a commit. Follow the action and ticket from
+`kitsu task next export-json --brief`.
+
+| Action | What to do |
+| --- | --- |
+| `review` | Reserve a reviewer and use the ticket-bound handoff. A revised brief or edited candidate needs fresh evidence. |
+| `verify` | Use the returned command or run `kitsu task test export-json --ticket VERIFY_TICKET --retry --brief`. Kitsu runs the saved assertion and all required repository checks. |
+| `commit` | Run `kitsu task commit export-json --ticket COMMIT_TICKET --message "Add JSON export"`. The checked tree and parents must match the commit. |
+
+Run `kitsu task receipt export-json --markdown` to export the criterion IDs and
+their evidence after verification. If a check fails, read its local log and
+follow the returned implementation or repair action. [Review and recovery](#drive-the-harness-without-opening-a-host)
 
 ### Verify before review
 
@@ -110,9 +140,14 @@ kitsu check trust --verify-order before-review
 
 Review the displayed declaration and confirm that its commands may execute the
 candidate's code before review. Approval is specific to this checkout and the
-exact declaration. A linked worktree needs its own ordering approval. A failed
-check returns to implementation or repair. A passing candidate still needs any
-required independent review before delivery.
+exact declaration. A linked worktree needs its own ordering approval. The
+opt-in applies to accepted briefs using only declared checks and only before
+the first required review of an `implement` → `deliver` task. The daily-task
+diagram follows the returned action, including `verify` before `review` when
+this order applies.
+
+A failed check returns to implementation or repair. A passing candidate still
+needs any required independent review before delivery.
 
 Use `kitsu check trust --verify-order review-first` to restore the default order.
 Existing check approval remains available. Revoking either approval stops new
@@ -211,6 +246,15 @@ selects the shorter handoff. It includes the original request, saved criteria,
 reserved Git comparison, unresolved findings and current check evidence. Use
 the handoff's `details` command for earlier work notes. Both reads use the same
 reservation ticket, even if the checkout has moved.
+
+```sh
+kitsu task show export-json --review-ticket REVIEW_TICKET --review-brief
+kitsu task show export-json --review-ticket REVIEW_TICKET
+```
+
+A review brief can report `verification.status: unverified` when the saved
+checks belong to an older candidate or brief. Use the pinned diff to review
+the reserved content and the current task action to decide what needs rerunning.
 
 ## Inspect or resume
 

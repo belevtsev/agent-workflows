@@ -6,6 +6,8 @@ Start with the [daily task harness](task-harness.md) to plan, implement, review,
 | --- | --- |
 | [CLI guide](cli.md) | Check CLI/plugin/hook setup, start a coordinated task, save host preferences, use editors and completion. |
 | [CLI command reference](cli-reference.md) | Generated command help with operands, options, defaults, and examples. |
+| [Feature and CI delivery](task-harness.md#deliver-a-feature) | Save acceptance criteria, approve check timing, resume a pinned reviewer handoff, or repair a failed GitHub check. |
+| [Jev intake](advisers.md#review-feature-stories-at-intake-with-jev) | Enable one optional story assessment per feature and inspect the saved advice and usage. |
 | [Configured role workflow](configured-workflow.md) | Assign each role to a host and run or resume a supervised task. |
 | [Trusted runner setup](workflow-runner.md) | Register execution profiles and reviewed checks. |
 | [Compact context](compact-context.md) | Opt into selective native reads, collection for noisy retrieval, original worker briefs and bounded checks; expand retained evidence. |

@@ -1,6 +1,6 @@
 # The task workflow
 
-Use the **managed role workflow** when you ask Kitsu to coordinate specialists or resume an existing OpenSpec change. An ordinary Codex or Claude Code request uses the [daily task harness](task-harness.md#how-a-daily-task-runs).
+Use the **managed role workflow** when you ask Kitsu to coordinate specialists or resume an existing OpenSpec change. An ordinary Codex or Claude Code request uses the [daily task harness](task-harness.md#how-a-daily-task-runs). Use its [feature delivery](task-harness.md#deliver-a-feature) or [failed PR check repair](task-harness.md#repair-a-failed-pr-check) guide for those starting points.
 
 <img src="diagrams/overview.svg" alt="Start or resume in a coding host or the CLI. Kitsu pins the role settings, sends jobs to the trusted runner, and records signed results and scope in the task." width="100%">
 

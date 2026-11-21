@@ -187,6 +187,10 @@ kitsu check list
 kitsu usage show --task add-order-export
 ```
 
+For a reserved feature review, use the returned `review_input` command.
+Its short form is `kitsu task show ID --review-ticket TICKET --review-brief`.
+The same ticket opens earlier work notes with `kitsu task show ID --review-ticket TICKET`.
+
 Task listing includes daily tasks, full change folders and saved small-task histories. Use `kitsu task check <change>` to check an OpenSpec change folder. A small managed task has no
 complete stage record: Kitsu identifies saved history and leaves the workflow stage unknown.
 It does not turn a receipt into proof that tests, review, or approval happened.
@@ -273,13 +277,18 @@ kitsu adviser check add-order-export
 ```
 
 `reject` and `defer` take the same id, task, and reason arguments; decisions can also name
-`--choice`. Only an explicit `adviser ask` executes a consultation. Listing providers,
-inspection, help, and completion make no provider request. Advice replaces no review or human
-approval. [Advisers](advisers.md) covers opt-in, request JSON, checkpoints, and usage limits.
+`--choice`. Use `adviser ask` for a manual consultation. A checkout can separately
+opt in to one Jev review at a new feature's intake. Listing providers, inspecting
+a record, asking for help, and completion are local operations. Review and human
+approval still apply. [Adviser setup and usage](advisers.md)
 
 ## Approve repository checks
 
 In a repository that declares checks, run `kitsu check trust` in your own terminal before the Codex or Claude Code plugin runs them. Review the commands and type `yes` to approve the exact `kitsu.toml` declaration. Linked worktrees share this approval for matching declarations. Review a changed declaration before approving it again.
+
+Use `kitsu check trust --verify-order before-review` to approve running eligible
+feature checks before the first required review. Use `--verify-order review-first`
+to revoke this checkout's ordering grant. Ordinary approval applies separately. [Eligibility and consent](task-harness.md#verify-before-review)
 
 For CI repair, `kitsu check trust --ci ID -- PROGRAM ARGS` approves a named local reproduction under your user configuration. Select it with `kitsu task ci --check ID`. Any declared repository checks still use their declaration approval. [Repair a failed PR check](task-harness.md#repair-a-failed-pr-check)
 

@@ -450,6 +450,15 @@ a start in session s1 whose record gives no label and no count: it may belong to
 
 Run `kitsu usage show --task ID` after the host has supplied its session receipt. For a saved daily task without a labelled worker, Kitsu matches the native session IDs recorded with `task record --actor` to receipts. Its JSON shows `total: null`, `complete: false` and any matching receipts under `actor_session_usage`. The full `task next ID --json` view exposes the same session evidence. A missing receipt leaves the amount unknown. A second task in the same chat can show the same session count. Adding those amounts would count the session twice.
 
+### Jev story review at intake
+
+For a task with [configured story review](advisers.md#review-feature-stories-at-intake-with-jev),
+read `kitsu task show ID --json` and inspect `harness.story_review` for
+provider-reported input and output tokens. This usage belongs to the intake
+brief revision. Treat a missing provider count as unknown. Daily host-session
+usage describes Codex or Claude Code, and the story record gives the separate
+Jev usage. Repeated status reads use the saved advice.
+
 ### Two tasks in one session
 
 The session's own tokens are counted once, as `coordination`. When the session ran one task, they

@@ -354,6 +354,13 @@ not in the hands of the plugin.
 
 Before an agent runs declared checks through Kitsu, the loaded `PreToolUse` hook requires approval for the exact declaration in the repository. Use `kitsu check list` to inspect checks, then run `kitsu check trust` in your own terminal to review and approve their commands. Each developer's approval is stored outside the checkout, keyed to its common Git directory and the declaration's SHA-256. Both plugins deny an agent's attempt to approve the checks. Commands you invoke directly in a terminal or CI execute as before.
 
+For eligible daily feature delivery, `kitsu check trust --verify-order before-review`
+also grants permission to run the declared commands against the candidate before
+the first independent review. That ordering grant is bound to the exact
+declaration in the current worktree. Revoke it from your terminal with
+`kitsu check trust --verify-order review-first`. [Check timing](task-harness.md#verify-before-review)
+
+
 The subagent hooks bind a required daily review to its local host, parent session, separate worker and reserved candidate. Startup provides the session ID the coordinator uses when claiming the review. Usage collection continues on subagent completion and session end.
 
 ### Verify plugin hook setup

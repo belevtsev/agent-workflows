@@ -14,16 +14,17 @@ provide text advice or compare named choices using their own authentication. Bot
 the answer and the coordinator's decision. Kitsu stores no API keys and supplies no model
 fallback or automatic retry. An adviser can be from the same provider as the role or another.
 
-The coordinator brokers every consultation. A role asks for advice, returns control, and resumes
+For manual consultations, a role asks the coordinator for advice, returns control, and resumes
 with the recorded answer. Advice leaves the role's job and write limits in place. A reviewer
 first forms its own assessment and receives none of the author's consultations as review guidance.
 Advice supplies neither an independent review nor the developer's approval.
 
 <img src="diagrams/adviser-opt-in.svg" alt="Experimental advisers are disabled by default. Define Jev, Snap or a CLI adviser, grant repository role access, and bind the task. An allowed role supplies an explicit question and context; the coordinator checks scope, consults the API or CLI, records the answer and decision, and resumes the role within its existing limits. Required checkpoints are a separate opt-in: bind or refresh their policy, obtain a successful receipt for the checkpoint and current content, record a disposition with a reason, and check it before proceeding." width="100%">
 
-The first row enables consultations; it makes no provider call. The second row runs only for an
-explicit request. The third row applies only when you also configure required checkpoints;
-otherwise it is skipped. A checkpoint receipt must match its bound policy and current stage
+The diagram shows the manual workflow. Configuration makes no provider call.
+A role's explicit request starts a consultation, and required checkpoints apply
+when configured. The daily harness can separately opt in to a
+[Jev story review at feature intake](#review-feature-stories-at-intake-with-jev). A checkpoint receipt must match its bound policy and current stage
 content, and have an `accept`, `reject`, or `defer` decision with a reason. Independent reviews
 and your specification/design approval still apply.
 
@@ -384,6 +385,8 @@ kitsu consult --task <task> --role <role> --stage <stage> --adviser <name> --req
 kitsu advisers resolve --task <task> <id> --disposition accept|reject|defer --reason <text> [--choice <id>] [--json]
 kitsu advisers status --task <task> [--checkpoint <id>] [--json]
 kitsu advisers check --task <task> [--checkpoint <id>] [--json]
+kitsu advisers story-review enable --adviser <name>
+kitsu advisers story-review disable
 ```
 
 `providers`, `list`, `bind`, and `status` make no provider calls. `check` changes no records. A failed

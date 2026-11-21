@@ -8,9 +8,9 @@
 
 Give Kitsu an issue, a design, or an unfinished patch. In the configured workflow preview, you choose which host plans, writes tests, implements, and reviews. Kitsu passes work between roles, runs the checks, and keeps the request and evidence under one task ID. Start in either plugin and pick up where you left off in the same Git worktree. [See Codex and Claude Code work on one task](#how-kitsu-works)
 
-When the change is ready, share which patch or commit passed and the checks behind it with `kitsu task receipt ID --markdown`. [Try a verified handoff](docs/verified-handoff-preview.md)
+Use the task skill in either host to save feature acceptance criteria, verify the exact candidate, and share a Markdown receipt. Start a failed GitHub check repair with `kitsu task ci` and an approved local reproduction. [Deliver a feature](docs/task-harness.md#deliver-a-feature) · [Repair a failed PR check](docs/task-harness.md#repair-a-failed-pr-check)
 
-Open a repair from a failed GitHub check with `kitsu task ci`. Run an approved local check and continue in either plugin. [Repair a failed PR check](docs/task-harness.md#repair-a-failed-pr-check)
+You can opt in to running eligible feature checks before the first required review. You can also enable one Jev story review at intake for new features in your checkout. [Verify before review](docs/task-harness.md#verify-before-review) · [Jev setup](docs/advisers.md#review-feature-stories-at-intake-with-jev)
 
 ## Install
 
@@ -20,6 +20,8 @@ Install the Kitsu CLI and matching plugin for the host you use. On Windows, use 
 | --- | --- | --- |
 | **Codex** | [Install for Codex](#install-for-codex) | [Start](#quick-start) · [Resume](#resume-later) · [Prompt examples](#codex-chat-examples) |
 | **Claude Code** | [Install for Claude Code](#install-for-claude-code) | [Start](#first-task-in-claude-code) · [Resume](#resume-in-claude-code) · [Prompt examples](#claude-code-chat-examples) |
+
+The release installers follow the latest published tag. For commands listed under **Unreleased**, use a matching CLI and plugin from CI. [Install a CI build](docs/release-install.md#install-a-ci-artifact-before-publication) · [Changelog](CHANGELOG.md#unreleased)
 
 [Latest release](https://github.com/belevtsev/kitsu/releases/latest) · [Pinned and offline installation](docs/release-install.md) · [How Kitsu works](#how-kitsu-works)
 
@@ -63,8 +65,7 @@ Paste this into a fresh Codex chat. Save the task ID from the reply.
 
 > Use Kitsu’s task skill to find how this repository runs its tests. Give me the command you found, one test worth adding, and the task ID. Stop after the plan.
 
-For feature work, ask Kitsu to record acceptance criteria and verify them before
-delivery. See [verified feature delivery](docs/task-harness.md#deliver-a-feature).
+> Use Kitsu’s task skill to add `--format=json` to order export. Record criteria for empty output `[]`, quote round-tripping, and unchanged default text. Verify them, then give me the task ID and a shareable receipt. Leave the patch uncommitted.
 
 ### Resume later
 
@@ -173,6 +174,8 @@ Run `kitsu agent check --host claude` in the project’s terminal and follow the
 Paste this into a fresh Claude Code chat. Save the task ID from the reply.
 
 > /kitsu:task Find how this repository runs its tests. Give me the command you found, one test worth adding, and the task ID. Stop after the plan.
+
+> /kitsu:task Add `--format=json` to order export. Record criteria for empty output `[]`, quote round-tripping, and unchanged default text. Verify them, then give me the task ID and a shareable receipt. Leave the patch uncommitted.
 
 ### Resume in Claude Code
 
