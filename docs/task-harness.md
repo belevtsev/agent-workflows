@@ -155,7 +155,8 @@ verification for a commit. Follow the action and ticket from
 
 Run `kitsu task receipt export-json --markdown` to export the criterion IDs and
 their evidence after verification. If a check fails, read its local log and
-follow the returned implementation or repair action. [Review and recovery](#drive-the-harness-without-opening-a-host)
+follow the returned implementation or repair action. A brief that you revise
+before its criteria pass stays visible: the receipt says that it was revised. [Review and recovery](#drive-the-harness-without-opening-a-host)
 
 ### Verify before review
 
@@ -236,7 +237,7 @@ kitsu task ci csv-fix --from https://github.com/example/repo/pull/17 --check uni
 kitsu task start --resume csv-fix --host codex
 ```
 
-Use `--host claude` to resume in Claude Code. If the PR has several failed checks, pass the exact check name with `--job "CI / unit"`. The initial command uses authenticated `gh pr view` to capture the open PR, head and completed failure. You can also pass its JSON with `--stdin` from a file or host connector. The JSON fields are `url,state,headRefOid,statusCheckRollup`. [GitHub CLI reference](https://cli.github.com/manual/gh_pr_view)
+Use `--host claude` to resume in Claude Code. If the PR has several failed checks, pass the exact check name with `--job "CI / unit"`. The initial command uses authenticated `gh pr view` to capture the open PR, head and completed failure. You can also pass its JSON with `--stdin` from a file or host connector. Kitsu then takes the failed check on the caller's word, and the receipt says so. The JSON fields are `url,state,headRefOid,statusCheckRollup`. [GitHub CLI reference](https://cli.github.com/manual/gh_pr_view)
 
 Intake accepts completed failed check runs and failed or errored commit statuses published by external CI. The selected result points to the local reproduction you approved. [GitHub status types](https://docs.github.com/en/graphql/reference/commits#statuscheckrollupcontext)
 
@@ -260,6 +261,8 @@ The receipt links the original PR, failed check name and head to the check evide
 For new daily tasks, “implement, test and commit” uses one coordinator by default. If a reviewer finds a defect in the implementation or a behavior test fails after review, the developer can correct the work under the original implementation scope. For a review finish, Kitsu records the findings and stops. Reviewing or verifying a supplied patch requires explicit repair scope before editing it. When the correction changes the candidate, required review and the saved assertion run again before delivery. An explicit review entry or review finish reserves an independent reviewer. To require that same review during implementation, use a plain-language request, pass `--require-review` to `task start` or `task open`, or add it later with `task extend ID --require-review`. A review limit caps starts and does not request one. Use an explicit `--entry implement` when opening an implementation task directly. With only `--until deliver`, a new task starts by verifying the existing candidate.
 
 For a required review, the plugin records `SubagentStart` and `SubagentStop` from a separate native reviewer under the reserving Codex or Claude Code session. The worker's final JSON refers to the reserved review and candidate. The coordinator records it with `kitsu task record ID review --ticket TICKET --observed-review --brief`. The `host_observed` result records what the local host reported. `agent_reported` describes an optional CLI result supplied directly. If the hooks are missing or the worker returns an unmatched result, required review stays pending. Verify the [plugin hook setup](hooks.md#verify-plugin-hook-setup) and recover the reserved worker before retrying.
+
+A host-observed review is evidence that the host reported a separate reviewer session for this candidate. It is not proof against a coordinator that sets out to forge one. Kitsu and the agent run as the same user, so a local tool cannot authenticate the model to itself. The plugin's guard denies the cheap forgeries: an agent's shell cannot run `kitsu tokens record` or `kitsu usage record`, and cannot write the task ledger. A program that the agent writes and then runs can still do both. Where a review must hold against the author, require it on the pull request. [A guardrail, not a sandbox](../SECURITY.md#a-guardrail-not-a-sandbox)
 
 The reviewer of a daily task defaults to `sonnet` at `high` reasoning in Claude Code and `gpt-6.1-sol` at `high` in Codex. This review reads one change against one request on every task that requires it, so it starts cheaper than the `reviewer` role of the [managed workflow](roles.md#the-roles-at-a-glance). The effect of the cheaper default on what a review finds has not been measured. To choose a stronger reviewer, set it for the repository:
 
@@ -319,6 +322,15 @@ Paste the receipt into a PR or ticket after verifying a working patch or commit.
 
 The declaration fingerprint identifies the bytes pinned at intake. The review row distinguishes a saved host-observed review from an agent report and applies only to the verified candidate. Older records may have a verified tree with no exact commit ID or declaration pin.
 
+The receipt also names what changed after the task opened:
+
+- authority added with `kitsu task extend`, such as `repair` or `commit`;
+- a failing assertion that another command replaced;
+- a feature brief that was revised before its criteria passed;
+- a failed PR check that the caller supplied with `--stdin`.
+
+Scope flags and supplied metadata are the agent's report of what you asked for. Kitsu cannot tell your word from the agent's, so compare these lines with your request.
+
 Markdown reads saved evidence without running checks. For a ticket-linked bug, use `kitsu task receipt ID --json` on the delivered commit to run the final behavior check and save the complete local receipt. A later Markdown export includes that result.
 
 Use `commit_evidence` in `kitsu task next ID --json` for the programmatic verification order. `verified_existing_commit` means the commit was already checked out when the proof ran. `commit_matches_verified_tree` means Kitsu later observed the matching tree on the verified parents.
@@ -358,7 +370,7 @@ Use `repair` for a repair result. The host starts the worker between the first t
 
 The task pins the exact `kitsu.toml` from its opening commit, or its opening tree before the first commit. The next-action view identifies that policy as `repository_policy`. If the candidate changes or removes it, restore the opening declaration to continue. To adopt a reviewed policy, open a new task from a commit that includes it.
 
-For a verify-only request such as “commit if it passes,” a failed assertion or declared check permits a retry on the same worktree, index and Git parents. Changing that candidate requires the developer to authorize repair with `kitsu task extend ID --repair`.
+For a verify-only request such as “commit if it passes,” a failed assertion or declared check permits a retry on the same worktree, index and Git parents. Changing that candidate requires the developer to authorize repair with `kitsu task extend ID --repair`. The agent runs that command on your word, so the receipt names the added authority.
 
 A verification receipt identifies the staged tree as well as the working files and commit parents. If someone stages or unstages a file, use the verification ticket from `kitsu task next ID` and run `kitsu task test ID --ticket TICKET --retry` to check the new index. The saved command may itself inspect staged contents. Kitsu checks the index before and after each assertion and repository check. A change observed during a command leaves the task unverified.
 

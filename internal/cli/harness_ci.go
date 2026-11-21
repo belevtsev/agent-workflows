@@ -52,7 +52,7 @@ func importFailedCheck(ctx context.Context, s *session, o harnessOptions) (harne
 	if source.Check.Head != start.Head {
 		return start, nil, "", failf("PR head is %s; check it out in a clean worktree before starting CI repair", source.Check.Head)
 	}
-	source.Check.ApprovalSHA256 = approval
+	source.Check.ApprovalSHA256, source.Check.Supplied = approval, o.stdin
 	return start, &harness.BugDelivery{Source: source}, request, nil
 }
 

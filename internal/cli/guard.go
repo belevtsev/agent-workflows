@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/belevtsev/kitsu/v3/internal/decl"
@@ -105,6 +107,9 @@ func guardReason(ctx context.Context, call toolCall) (string, bool) {
 		if why := guardCheckTrust(ctx, repo, command); why != "" {
 			return why, true
 		}
+		if writesPrivateStore(command) {
+			return "Only Kitsu and the developer change the task ledger and the local approvals. Read task state with kitsu task show.", true
+		}
 		if guardRepository(repo) {
 			if how := uxChangesPolicy(command); how != "" && !uxRepositoryRoleCommand(repo.Root, command) {
 				return "This command " + how + ".", false
@@ -121,6 +126,21 @@ func guardReason(ctx context.Context, call toolCall) (string, bool) {
 	}
 	reason := editReason(ctx, repo, dir, paths)
 	return reason, reason == checkTrustEditReason
+}
+
+// privateStore matches a path in the task ledger or the local approvals. A
+// saved review and an approval are plain files, so a redirect could forge one.
+var privateStore = regexp.MustCompile(`[/\\]kitsu-stages\b|\bkitsu-stages[/\\]|\bkitsu[/\\]check-trust\b`)
+
+// writesPrivateStore says whether a shell command names such a path and does
+// more than read it. Reads stay possible: a bug ticket lives in the ledger.
+func writesPrivateStore(command string) bool {
+	cmds, ok := shellwords.Split(command)
+	for _, words := range cmds {
+		reads := slices.Contains([]string{"cat", "head", "tail", "less", "more", "grep", "rg", "ls", "wc", "jq", "stat", "diff", "cmp"}, filepath.Base(words[0]))
+		ok = ok && reads && !strings.ContainsAny(strings.Join(words, " "), "<>")
+	}
+	return !ok && privateStore.MatchString(command)
 }
 
 // Local check approvals apply even when this checkout has no workflow policy.
