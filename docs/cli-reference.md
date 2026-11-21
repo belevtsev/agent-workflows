@@ -205,6 +205,49 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 3 gate denial; 4 foreign hook needs attention; 5 not verified.
 ```
 
+### kitsu task do
+
+```text
+usage: kitsu task do <task> [options] [-- <program> [<argument>...]]
+
+Open, record, verify and commit a task in one command, stopping where another session or a decision is needed.
+
+Arguments:
+  <task>             task name: lowercase words joined by hyphens
+  <program>          executable run directly without a shell
+  <argument>         argument passed unchanged to the check program
+
+Options:
+  --request <text>         original developer request
+  --from <source>          bug ticket source URL or Markdown file
+  --stdin                  read bug ticket Markdown from standard input and
+                           retain its source link
+  --entry <stage>          implement for your own change, verify for a supplied
+                           one
+  --expect <text>          observable behavior asserted by the command after --
+  --replace-reason <text>  explain why a failing assertion needs a different
+                           command
+  --commit                 delivery includes a local commit
+  --message <text>         commit message; the verified candidate is committed
+                           with it
+  --include <path>         confirm a changed path that you are delivering;
+                           repeatable
+  --require-review         require an independent review of the candidate
+  --actor <id>             native session identity
+  --claim-review <host>    reserve the required independent review
+  --brief                  return next action, ticket and evidence references as
+                           JSON
+  --json                   return structured task state
+  --help, -h               show this command's help without executing it
+
+Examples:
+  kitsu task do export-json --request "Add JSON export" --expect "An empty export is []" -- go test ./export
+  kitsu task do export-json --message "Add JSON export" --include export.go
+
+Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
+3 gate denial; 4 foreign hook needs attention; 5 not verified.
+```
+
 ### kitsu task bug
 
 ```text

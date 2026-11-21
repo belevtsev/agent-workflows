@@ -14,6 +14,35 @@ kitsu task start "Review the staged export change, repair confirmed findings, an
 
 With a [trusted runner](workflow-runner.md), use `kitsu task run "Fix CSV quoting" --until verify` to run the supervised workflow. It uses version 2 of `kitsu-roles.toml` or the saved default host when the repository has no roles file. [Configure role assignments and resume a run](configured-workflow.md)
 
+## Do a daily task in one command
+
+`kitsu task do` opens the task, records the request, runs your assertion and the declared repository checks, and commits. Each of these is the same step that a separate command takes. A coding agent pays for every command with one more model turn, so one command is the cheapest way through a task.
+
+Stage the change, then run:
+
+```sh
+kitsu task do export-json --request "Add JSON export" --expect "An empty export is []" \
+  --commit --message "Add JSON export" --include export.go -- go test ./export
+```
+
+| You have | Add |
+| --- | --- |
+| Your own change to verify | Nothing more. Leave out `--commit` and `--message` to stop after verification. |
+| Supplied work to verify | `--entry verify` |
+| A bug ticket | `--from SOURCE` instead of `--request`. Run it before the repair: Kitsu must see the assertion fail first. |
+| A required independent review | `--require-review --actor SESSION --claim-review HOST` |
+
+`--include PATH` confirms a path that was already changed when the task opened. A task opened before the edit needs none. One refusal names every unconfirmed path.
+
+The reply is one short JSON object. `next` is the action that remains and `then` says what to do before you run the command again:
+
+- **A failing assertion or check** exits with status 5 and returns the path of its `log`. Correct the candidate and run the same command. On an unchanged candidate, the command repeats the assertion.
+- **A required review** returns the reservation and `review_input`. Launch the reviewer on it, then run the command again to record the review, verify and commit.
+- **A verified candidate without `--message`** waits at `commit`.
+- **Staged content that differs from the verified candidate** is refused. Stage or set aside the other edits first.
+
+A saved task keeps its request and scope. To widen it, use `kitsu task extend`. Planning, feature briefs, failed PR checks and publication use the separate commands described below, and so does recovery after an interruption. Add `--brief` or `--json` for the same replies those commands give. [All options](cli-reference.md#kitsu-task-do)
+
 ## How a daily task runs
 
 <img src="diagrams/daily-task.svg" alt="The developer asks the host agent for work. The task skill opens a local record. Kitsu returns the next action, the host performs it, and Kitsu records the result. A new chat resumes from the same record until the requested outcome is reached." width="100%">

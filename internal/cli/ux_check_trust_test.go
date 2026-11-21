@@ -32,7 +32,7 @@ func TestReviewExactCheckDeclarationBeforeAgentExecution(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, host := range []string{"codex", "claude"} {
-		for _, command := range []string{"kitsu run", "kitsu check run", "kitsu task test test", "kitsu task verify test", "kitsu task commit test", "kitsu check trust"} {
+		for _, command := range []string{"kitsu run", "kitsu check run", "kitsu task test test", "kitsu task do test -- true", "kitsu task verify test", "kitsu task commit test", "kitsu check trust"} {
 			if got := checkApprovalNotice(t, host, r.Dir, command); !strings.Contains(got, `"permissionDecision":"deny"`) || !strings.Contains(got, "their own terminal") {
 				t.Fatalf("%s accepted %q: %s", host, command, got)
 			}
