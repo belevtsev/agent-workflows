@@ -306,11 +306,11 @@ func (g *Gate) addsSomething(ctx context.Context, remote, commit, remoteRef, rem
 
 // Decision is the record of a ruling.
 func (r Ruling) Decision(mode string, now time.Time) store.Decision {
-	d := store.Decision{Time: now.UTC().Truncate(time.Second), Hook: r.Hook, Mode: mode, Tree: r.Tree, Ref: r.Ref, Outcome: "allowed"}
+	d := store.Decision{Time: now.UTC().Truncate(time.Second), Hook: r.Hook, Mode: mode, Tree: r.Tree, Ref: r.Ref, Outcome: "allowed", Cause: r.Cause}
 	if r.Allowed {
-		return d
+		return d // with its cause: a push that updated nothing is told from one that was judged
 	}
-	d.Outcome, d.Cause = "denied", r.Cause
+	d.Outcome = "denied"
 	if r.Verdict != nil {
 		d.Checks = map[string]string{}
 		for _, c := range r.Verdict.Missing() {

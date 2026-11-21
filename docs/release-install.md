@@ -51,6 +51,22 @@ paste; `--json` also exposes diagnostics and proposed argv. Both modes execute n
 create no task record. See [onboarding](cli.md#check-setup-and-start-a-task) for exit statuses and
 ready, broken, and unknown evidence. Installing the supporting Git gate is a separate step.
 
+<a name="add-role-coordination"></a>
+
+## Add role coordination
+
+The installer enables the `kitsu` plugin: the daily task skill, the gate skill and the host hooks. The seven role agents, the managed role workflow, OpenSpec records, role settings and supervised runs are in a second plugin of the same marketplace, `kitsu-team`. It is opt-in and experimental. On two small tasks, one run each, the roles used about 5 and 39 times the tokens of a plain agent ([what an agent spends](benchmarks.md#what-an-agent-spends)).
+
+```sh
+codex plugin add kitsu-team@kitsu
+```
+
+```sh
+claude plugin install kitsu-team@kitsu
+```
+
+Restart the host. In Claude Code, start managed work with `/kitsu-team:managed`. In Codex, ask for Kitsu's `managed` skill. Keep the `kitsu` plugin enabled: it supplies the hooks that both plugins use.
+
 ## Choose a version or directory
 
 For a published version or custom directory, download the installer once and pass arguments.
@@ -173,7 +189,7 @@ if ((Get-FileHash kitsu-plugin.zip).Hash -ne $lines[0].Line.Split(" ")[0]) { thr
 Expand-Archive kitsu-plugin.zip -DestinationPath $pluginDir
 ```
 
-Register the absolute path to the extracted marketplace with your chosen host. Replace `/path/to/kitsu-marketplace` with that directory. The local marketplace supplies both skills, the role instructions and the host hook definitions.
+Register the absolute path to the extracted marketplace with your chosen host. Replace `/path/to/kitsu-marketplace` with that directory. The local marketplace supplies the `kitsu` plugin with both skills and the host hook definitions, and the opt-in [`kitsu-team` plugin](#add-role-coordination) with the role instructions.
 
 ```sh
 codex plugin marketplace add /path/to/kitsu-marketplace

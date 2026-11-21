@@ -65,8 +65,8 @@ the case says that it continues from another case. Run each case once in each of
 
 ### Host
 
-- **Claude Code**, with the plugin of this repository installed. Its roles are the agents
-  `kitsu:<role>`.
+- **Claude Code**, with both plugins of this repository installed. Its roles are the agents
+  `kitsu-team:<role>`.
 - **Codex is unconfirmed.** Nothing was checked on Codex, and how Codex starts a role on a given
   model is not confirmed (proposal, Known limits and Open Question 12). Run no case on Codex
   until that is settled.
@@ -78,7 +78,7 @@ the case says that it continues from another case. Run each case once in each of
 In Claude Code, at the root of the clone, give:
 
 ```text
-/kitsu:task <request>
+/kitsu-team:managed <request>
 ```
 
 `<request>` is the text in the case's "Request" field, word for word. The owner plays the
@@ -165,7 +165,7 @@ table above.
   requirement "Two paths".
 - **Prepare:** The prepared repository. Pick one word of a message the program prints and
   misspell it in `<src>`; commit that through the gate.
-- **Request:** `/kitsu:task The message has a typo: "<the misspelt word>". Fix it.`
+- **Request:** `/kitsu-team:managed The message has a typo: "<the misspelt word>". Fix it.`
 - **Look for:**
   1. In the session's record, a message of the coordinator says that the task needs no roles
      and offers to make the change directly, and it comes before any role start.
@@ -642,7 +642,7 @@ they ask, and nothing else.
 
 ### The two arms
 
-- **The workflow.** The request is given with `/kitsu:task`. The owner approves and
+- **The workflow.** The request is given with `/kitsu-team:managed`. The owner approves and
   answers from the sheet.
 - **One agent.** The same request is given to one session without roles, on the model and the
   effort that `kitsu roles` prints for `developer` on that host. The plugin's hooks still run, so

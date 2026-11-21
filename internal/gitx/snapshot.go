@@ -2,11 +2,11 @@ package gitx
 
 import (
 	"bytes"
-	"cmp"
 	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -90,12 +90,20 @@ func (r *Repo) copyIndex(tmp string) (path string, cleanup func(), err error) {
 		_ = os.Remove(tmp)
 		_ = os.Remove(filepath.Dir(tmp))
 	}
-	data, err := os.ReadFile(source)
+	// One handle gives the content and the time of the same index, also when git replaces the file in between.
+	file, err := os.Open(source)
 	if errors.Is(err, fs.ErrNotExist) {
 		return path, cleanup, nil // no index yet: git starts from an empty one
 	}
-	info, statErr := os.Stat(source)
-	if err = cmp.Or(err, statErr); err == nil {
+	var info fs.FileInfo
+	var data []byte
+	if err == nil {
+		defer func() { _ = file.Close() }()
+		if info, err = file.Stat(); err == nil {
+			data, err = io.ReadAll(file)
+		}
+	}
+	if err == nil {
 		err = os.WriteFile(path, data, 0o600)
 	}
 	if err == nil {
@@ -202,7 +210,7 @@ func (r *Repo) checkEntries(ctx context.Context, env []string) error {
 				return err
 			}
 		}
-		if _, err := r.git(ctx, env, "-c", "core.sparseCheckout=false", "--literal-pathspecs", "add", "--renormalize", "--", entry.path); err != nil {
+		if _, err := r.git(ctx, env, "-c", "core.sparseCheckout=false", "--literal-pathspecs", "add", "--", entry.path); err != nil {
 			return err
 		}
 		out, err := r.git(ctx, env, "--literal-pathspecs", "ls-files", "-s", "-z", "--", entry.path)

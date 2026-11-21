@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/belevtsev/kitsu/v3/internal/contextpack"
+	"github.com/belevtsev/kitsu/v3/internal/roles"
 )
 
 // Native launch settings describe a host handoff. They never execute a model.
@@ -46,7 +47,7 @@ Omit optional claims unless needed. If reporting loaded.skills, use only selecte
 `, d.Label, d.Path, d.SHA256, worktree, schema)
 	native := nativeWorkerLaunch{Host: d.Host, Model: d.Model.Model, Effort: d.Model.Effort, FreshContext: true, ForkTurns: "none", Prompt: prompt}
 	if d.Host == "claude" && !d.Configured {
-		native.Role = "kitsu:" + d.Role
+		native.Role = roles.TeamPlugin + ":" + d.Role
 	}
 	return nativeDispatch{stageDispatch: d, Worktree: worktree, State: state, Native: native, PromptSHA256: workerBriefHash([]byte(prompt))}
 }

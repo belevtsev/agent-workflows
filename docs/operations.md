@@ -993,7 +993,8 @@ kitsu/tokens/                                   token records; see tokens.md
   decisive run of its check on the same content.
 - `kitsu run` removes logs older than 30 days, records of runs and files of
   decisions older than 365 days, and index copies older than one day. The age
-  is the time the file was last written. When another `kitsu run` is already
+  is the time the file was last written. For an index copy it is the time its
+  command started, so a copy in use stays. When another `kitsu run` is already
   removing, this one skips it.
 
 The gate/check commands keep their worktree declaration in `kitsu.toml`: `kitsu init` creates it,

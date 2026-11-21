@@ -8,7 +8,7 @@ any code exists.
 
 | The task | The way |
 | --- | --- |
-| A few lines with a plain cause, a rename, a change one test can pin down | The loop of this skill, with no roles |
+| A few lines with a plain cause, a rename, a change one test can pin down | The loop of the skill `kitsu`, with no roles |
 | The intended behaviour does not change, and the task should get a second reader | The workflow, small path: tests, code, review, commit |
 | A requirement must be written or changed | The workflow, full path: specification, design, tests, code, review, commit |
 
@@ -22,13 +22,14 @@ The two paths of the workflow:
 Size does not choose the path.
 
 The workflow starts a separate agent for each role, so it uses more tokens and more time than
-the loop. Say which way you propose and why, in one or two sentences, and let the user choose.
+the loop: on two small tasks, one run each, about 5 and 39 times the tokens of a plain agent. Say
+which way you propose, why and at what cost, in one or two sentences, and let the user choose.
 Most tasks are small. Do not start the workflow for a task the first row describes.
 
 ## 2. Start it
 
-Load the skill `task` of this plugin with the user's request. In Claude Code that is
-`/kitsu:task` followed by the request. The skill makes you the coordinator: you start
+Load the skill `managed` of this plugin with the user's request. In Claude Code that is
+`/kitsu-team:managed` followed by the request. The skill makes you the coordinator: you start
 the roles, check what each one changed, keep the record, and ask the user for the approvals.
 You write no specification, test or code yourself.
 
@@ -50,7 +51,7 @@ $ kitsu change check add-discount
 add-discount: the files obey their rules
 ```
 
-When a folder like this already exists, do not start over. Load the skill `task`: it reads the
+When a folder like this already exists, do not start over. Load the skill `managed`: it reads the
 stage and continues there, and a finished stage is not repeated.
 
 ## 4. Specifications that already exist

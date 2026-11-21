@@ -104,10 +104,9 @@ integration.
 ## A larger task
 
 For new behaviour that deserves a written specification, or a change across several parts of
-the code, the plugin has a second skill, `task`: seven roles take the task from a specification
-through tests to code, a review and a gated commit. It uses more tokens and more time than the
-loop, so propose it and let the user choose. `kitsu change status` says where a task stands and
-`kitsu tokens` what it cost: [the role workflow](examples/role-workflow.md).
+the code, the opt-in plugin `kitsu-team` has the skill `managed`: seven roles take the task from a
+specification through tests to code, a review and a gated commit. It uses several times the tokens
+of the loop, so propose it and let the user choose.
 
 ## The examples
 
@@ -125,5 +124,3 @@ them are small on purpose. Take the method from them, not the names.
   checks or a gate and `kitsu status` says `the tree has no declaration`.
 - [A new clone](examples/fresh-clone.md): read it when `kitsu status` warns that the hooks are
   missing, or `kitsu init` wrote no hook.
-- [The role workflow](examples/role-workflow.md): read it when the task is larger than the
-  loop, or when `openspec/changes/` already holds a folder.

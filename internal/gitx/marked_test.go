@@ -133,6 +133,28 @@ func TestSnapshotMarkedCleanFilter(t *testing.T) {
 	}
 }
 
+// With text=auto, git keeps the line endings of a file that was committed
+// with CRLF. An untouched marked file must not read as changed for it.
+func TestSnapshotMarkedFileCommittedWithCRLF(t *testing.T) {
+	for _, mark := range []string{"assume-unchanged", "skip-worktree"} {
+		t.Run(mark, func(t *testing.T) {
+			dir := newRepo(t)
+			git(t, dir, "config", "core.autocrlf", "false")
+			write(t, dir, "crlf.txt", "a\r\nb\r\n")
+			git(t, dir, "add", "-A")
+			git(t, dir, "commit", "-qm", "content with CRLF")
+			write(t, dir, ".gitattributes", "* text=auto\n")
+			git(t, dir, "add", ".gitattributes")
+			git(t, dir, "commit", "-qm", "attributes")
+			git(t, dir, "update-index", "--"+mark, "crlf.txt")
+			repo := open(t, dir)
+			assertMarkedSnapshot(t, repo, "crlf.txt", mark, false)
+			write(t, dir, "crlf.txt", "a\r\nchanged\r\n")
+			assertMarkedSnapshot(t, repo, "crlf.txt", mark, true)
+		})
+	}
+}
+
 func TestSnapshotMarkedPresentSparseFile(t *testing.T) {
 	for _, mark := range []string{"assume-unchanged", "skip-worktree"} {
 		t.Run(mark, func(t *testing.T) {

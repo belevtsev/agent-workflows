@@ -70,7 +70,7 @@ fields and ignores the rest:
 | `transcript_path` | The record the host keeps of the session. |
 | `agent_id` | The role start that ended. When it is absent, the name of the file of `agent_transcript_path` is used. Absent at the end of the session. |
 | `agent_transcript_path` | The record the host keeps of that role start. Absent at the end of the session. |
-| `agent_type` | The name of the role as the host knows it, such as `architect` or `kitsu:architect`. `kitsu` takes the text after the last colon and keeps it only when it is one of the seven roles. Claude Code ends its own agents, such as a prompt suggestion, with an empty `agent_type`: such a notice of Claude Code stores no start. |
+| `agent_type` | The name of the role as the host knows it, such as `architect` or `kitsu-team:architect`. `kitsu` takes the text after the last colon and keeps it only when it is one of the seven roles. Claude Code ends its own agents, such as a prompt suggestion, with an empty `agent_type`: such a notice of Claude Code stores no start. |
 | `cwd` | The directory the host works in. `kitsu` finds the repository from it, and from its own working directory when it is empty. |
 
 For each notice, `kitsu` reads the record of the role when the notice names one, and the record of
@@ -390,7 +390,7 @@ What the report then says:
   unknown prints `unknown`.
 
 For example, with the record of the `architect` start replaced by an empty file and a notice that
-named `kitsu:architect`, the report of the worked example began:
+named `kitsu-team:architect`, the report of the worked example began:
 
 ```text
 add-greeting: at least 575,000 tokens in 12 starts of roles

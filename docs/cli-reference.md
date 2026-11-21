@@ -346,8 +346,9 @@ Options:
   --commit                 delivery includes a local commit
   --publish-to <remote/branch> authorized remote branch whose commit must be
                                confirmed
-  --pr-base <branch>       require confirmation of an open GitHub PR into this
-                           branch
+  --pr-base <[remote:]branch> require confirmation of an open GitHub PR into
+                              this branch of the pushed repository, or of the
+                              named remote's
   --review-base <revision> start commit of a read-only review range; requires
                            --review-head
   --review-head <revision> end commit of a read-only review range; requires
@@ -387,8 +388,9 @@ Options:
   --commit                 delivery includes a local commit
   --publish-to <remote/branch> authorized remote branch whose commit must be
                                confirmed
-  --pr-base <branch>       require confirmation of an open GitHub PR into this
-                           branch
+  --pr-base <[remote:]branch> require confirmation of an open GitHub PR into
+                              this branch of the pushed repository, or of the
+                              named remote's
   --require-review         require an independent review of the candidate
   --brief                  return next action, ticket and evidence references as
                            JSON

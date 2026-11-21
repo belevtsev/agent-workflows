@@ -8,7 +8,7 @@ Use the **managed role workflow** when you ask Kitsu to coordinate specialists o
 
 The host selects from seven [roles](roles.md) for the stages the task needs. A shared task record connects their work, and the Git gate checks commits and pushes.
 
-- **Instructions for the host.** The task skill loads the [managed coordinator instructions](../skills/task/references/managed.md). The host starts the roles and runs the tools. Read the same instructions with `kitsu role text coordinator`.
+- **Instructions for the host.** The `managed` skill of the [opt-in `kitsu-team` plugin](release-install.md#add-role-coordination) holds the [managed coordinator instructions](../plugins/kitsu-team/skills/managed/SKILL.md). The host starts the roles and runs the tools. Read the same instructions with `kitsu role text coordinator`.
 - **Commands that check files.** `kitsu task show` and `kitsu task check` read the record of a
   task under `openspec/changes/<task>/`, `kitsu role check` compares what a role changed with its
   limit, and the gate decides about commits. [What kitsu checks](#what-kitsu-checks) lists exactly what

@@ -3,14 +3,20 @@
   "name": "kitsu",
   "owner": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
   "metadata": {
-    "description": "Kitsu: coding-agent coordination with role instructions, shared task records and token reports, plus a Git check-evidence gate.",
+    "description": "Kitsu: verified coding tasks and a Git check-evidence gate, plus opt-in role coordination.",
     "version": "0.0.2"
   },
   "plugins": [
     {
       "name": "kitsu",
       "source": "./",
-      "description": "Coordinate specification, implementation, testing and review with seven role instructions, shared task records and token reports. The task workflow runs in Claude Code and remains experimental. The Git gate adds a safeguard for commits and pushes backed by recorded checks.",
+      "description": "Open, verify and commit a coding task with one command, with evidence bound to the exact Git tree. The Git gate adds a safeguard for commits and pushes backed by recorded checks.",
+      "category": "development"
+    },
+    {
+      "name": "kitsu-team",
+      "source": "./plugins/kitsu-team",
+      "description": "Opt-in and experimental: coordinate specification, implementation, testing and review with seven role agents, OpenSpec records and supervised runs. Needs the kitsu plugin. It costs several times the tokens of a daily task.",
       "category": "development"
     }
   ]

@@ -245,7 +245,7 @@ When you’re ready for the fix, reply in the same chat.
 
 ## Choose who does the work
 
-Start the [supervised workflow preview](docs/configured-workflow.md) from either plugin once a [trusted runner](docs/workflow-runner.md) is registered. For a new task in a repository without role settings, Kitsu uses the default host you chose at install. You can assign each role its own host, model, and reasoning effort.
+Role settings and the supervised workflow are opt-in: [add the `kitsu-team` plugin](docs/release-install.md#add-role-coordination) first. It costs several times the tokens of a daily task. Then start the [supervised workflow preview](docs/configured-workflow.md) from either host once a [trusted runner](docs/workflow-runner.md) is registered. For a new task in a repository without role settings, Kitsu uses the default host you chose at install. You can assign each role its own host, model, and reasoning effort.
 
 ```sh
 kitsu role init
@@ -254,11 +254,11 @@ kitsu role set developer --host claude --model sonnet --reasoning high
 kitsu role list
 ```
 
-`role init` creates `kitsu-roles.toml` in this repository. Omit it when you already have a version 2 roles file. Edit the TOML directly or ask either plugin to update it.
+`role init` creates `kitsu-roles.toml` in this repository. Omit it when you already have a version 2 roles file. Edit the TOML directly or ask either host to update it.
 
-> Use Kitsu’s task skill to set the architect to Codex with GPT-6.1 Sol at max reasoning, and the developer to Claude Code with Sonnet at high reasoning. Show me the role table.
+> Use Kitsu’s managed skill to set the architect to Codex with GPT-6.1 Sol at max reasoning, and the developer to Claude Code with Sonnet at high reasoning. Show me the role table.
 
-In Claude Code, start the same request with `/kitsu:task`. Install and sign in to both hosts if you assign roles to both. Role changes apply to new tasks. [All roles and TOML example](docs/configured-workflow.md#configure-the-roles)
+In Claude Code, start the same request with `/kitsu-team:managed`. Install and sign in to both hosts if you assign roles to both. Role changes apply to new tasks. [All roles and TOML example](docs/configured-workflow.md#configure-the-roles)
 
 ## How Kitsu works
 
@@ -266,7 +266,7 @@ Kitsu gives Codex and Claude Code one task record. Your role settings pick who p
 
 <img src="docs/diagrams/configured-workflow.svg" alt="Kitsu pins role assignments and the intake assertion. The trusted runner runs Codex and Claude Code roles in disposable jobs. Checks and required review return signed results to the same task record." width="100%">
 
-Once the [runner is configured](docs/workflow-runner.md), ask either plugin to use the supervised workflow. For a terminal start, use `kitsu task run "Fix CSV quoting" --until verify`. Resume the same work with `kitsu task run --resume TASK_ID`.
+Once the [runner is configured](docs/workflow-runner.md), ask either host to use the supervised workflow. For a terminal start, use `kitsu task run "Fix CSV quoting" --until verify`. Resume the same work with `kitsu task run --resume TASK_ID`.
 
 [See the workflow and its boundaries](docs/workflow.md) · [Follow a bug ticket to its verified commit](docs/task-harness.md#deliver-a-bug-ticket)
 

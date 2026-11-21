@@ -158,7 +158,7 @@ func runConfiguredWorkflow(ctx context.Context, cfg Config, args []string) error
 	}
 
 	if o.resume == "" {
-		fmt.Fprintf(cfg.Err, "Kitsu task %s. Resume with kitsu task run --resume %s\n", o.id, o.id)
+		fmt.Fprintf(cfg.Err, "Kitsu task %s. Resume with kitsu task run --resume %s\n%s Supervised runs are not measured.\n", o.id, o.id, optInCost)
 	}
 	for {
 		if err := ctx.Err(); err != nil {
@@ -181,7 +181,7 @@ func runConfiguredWorkflow(ctx context.Context, cfg Config, args []string) error
 }
 
 func workflowIntake(ctx context.Context, s *session, o workflowOptions) error {
-	l, err := openStageLedgerWait(ctx, s, workflowLedgerWait)
+	l, err := openStageLedgerWait(ctx, s, ledgerWait)
 	if err != nil {
 		return err
 	}

@@ -139,8 +139,8 @@ For a forwarding or serialization fix, include a value that can be lost while th
 
 These examples assume the named commands, fixtures and prerequisites already
 exist. Adapt the mapping and assertion to the repository; declaring a command
-does not install a tool or create missing coverage. See [selected skills](../skills/task/references/managed.md#existing-skills)
-and [the managed verification workflow](../skills/task/references/verification.md).
+does not install a tool or create missing coverage. See [selected skills](../plugins/kitsu-team/skills/managed/SKILL.md#existing-skills)
+and [the managed verification workflow](../plugins/kitsu-team/skills/managed/references/verification.md).
 
 ## Offline checks without model calls
 

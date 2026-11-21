@@ -30,7 +30,7 @@ func pinHostTask(ctx context.Context, cfg Config, o onboardingArgs, repo *gitx.R
 			return "", resumeLookupError(o.resume, err)
 		}
 	}
-	l, err := openStageLedger(ctx, s)
+	l, err := openStageLedgerWait(ctx, s, ledgerWait)
 	if err != nil {
 		return "", err
 	}

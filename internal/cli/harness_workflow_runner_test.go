@@ -301,6 +301,24 @@ func TestSupervisedResumeRetainsResultAndRequiresReleaseAuthorization(t *testing
 	}
 }
 
+// A person who starts a supervised run reads what the role workflow measured
+// before the first job. Resuming the saved run does not repeat it.
+func TestSupervisedRunStatesTheMeasuredCostBeforeItsFirstJob(t *testing.T) {
+	f := newWorkflowFixture(t, nil)
+	f.pause = true
+	started, _ := f.run("Plan a change", "--id", "case", "--until", "plan")
+	cost, job := strings.Index(started, optInCost), strings.Index(started, "Kitsu task case · ")
+	if cost < 0 || job >= 0 && job < cost || !strings.Contains(started, "Supervised runs are not measured.") {
+		t.Fatalf("a new run did not state its cost before its first job:\n%s", started)
+	}
+	f.mu.Lock()
+	f.pause = false
+	f.mu.Unlock()
+	if resumed, err := f.run("--resume", "case"); err != nil || strings.Contains(resumed, optInCost) {
+		t.Fatalf("resuming repeated the cost or failed: %v\n%s", err, resumed)
+	}
+}
+
 func TestSupervisedProofBindsCurrentAssertions(t *testing.T) {
 	f := newWorkflowFixture(t, nil)
 	if out, err := f.run("Fix the product", "--id", "case"); err != nil {

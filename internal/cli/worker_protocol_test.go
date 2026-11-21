@@ -57,7 +57,7 @@ func TestNativeDispatchPreservesCompleteContractForBothHosts(t *testing.T) {
 			if !strings.HasPrefix(prompt, d["label"].(string)+"\n") || !strings.Contains(prompt, strconv.Quote(d["path"].(string))) || !strings.Contains(prompt, d["sha256"].(string)) || !strings.Contains(prompt, "complete original") || !strings.Contains(prompt, "unverified") || !strings.HasSuffix(string(packet), "Original assignment:\nPreserve this original assignment exactly.\n") {
 				t.Fatal("original instructions or prompt integrity lost")
 			}
-			if host == "claude" && native["role"] != "kitsu:reviewer" {
+			if host == "claude" && native["role"] != "kitsu-team:reviewer" {
 				t.Fatal("native Claude role missing", native)
 			}
 			if host == "codex" && strings.Count(string(packet), body) != 1 || host == "claude" && strings.Contains(string(packet), body) {

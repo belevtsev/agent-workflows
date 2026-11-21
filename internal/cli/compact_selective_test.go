@@ -87,7 +87,7 @@ func TestSelectiveCompactSavedWorkersRetainPolicyAndOriginalInstructions(t *test
 				"noisy declared checks use kitsu check run --compact", "expand retained logs with context show",
 				"Expansion never reruns a check", "local rendered text, not provider prompt cache",
 				"all requests, responses and expansions", "never proves passing checks",
-				"ordinary kitsu check run for quiet declared checks", "Do not reread the coordinator's task skill",
+				"ordinary kitsu check run for quiet declared checks", "Do not reread the coordinator's managed skill",
 				"unless selected as a skill or needed by an explicit assignment reference",
 				"do not duplicate managed baseline or role checks",
 			} {
@@ -105,7 +105,7 @@ func TestSelectiveCompactSavedWorkersRetainPolicyAndOriginalInstructions(t *test
 			if test.host == "codex" && strings.Count(string(data), body) != 1 {
 				t.Fatal("full original role instructions were changed or repeated")
 			}
-			if test.host == "claude" && (b.NativeRole != "kitsu:"+test.role || strings.Contains(string(data), body)) {
+			if test.host == "claude" && (b.NativeRole != "kitsu-team:"+test.role || strings.Contains(string(data), body)) {
 				t.Fatal("native role instructions were duplicated or lost")
 			}
 			if test.role == "reviewer" && !strings.Contains(constraints, "Review sources independently") {

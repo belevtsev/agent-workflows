@@ -3,6 +3,8 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -36,6 +38,8 @@ func runHook(ctx context.Context, cfg Config, args []string) error {
 	case modeErr != nil:
 		rulings = []gate.Ruling{gate.Cannot(name, store.CauseStore,
 			fmt.Sprintf("the records in %s cannot be read: %v", s.store.Dir, modeErr))}
+	case name == "pre-push" && droppedInput(cfg.In):
+		rulings = []gate.Ruling{gate.Cannot(name, store.CauseInternal, "Git's list of pushed refs did not reach kitsu: standard input is closed or a device. Pass the hook's standard input on")}
 	case name == "pre-push":
 		remote := ""
 		if len(args) > 1 {
@@ -71,4 +75,15 @@ func runHook(ctx context.Context, cfg Config, args []string) error {
 		return exit(ExitDenied)
 	}
 	return nil
+}
+
+// droppedInput says whether in cannot carry Git's list of pushed refs. Git gives pre-push a pipe. A closed input,
+// a terminal or the null device comes from a wrapper that did not pass it on, and would read as a push of nothing.
+func droppedInput(in io.Reader) bool {
+	file, ok := in.(*os.File)
+	if !ok {
+		return false
+	}
+	info, err := file.Stat()
+	return err != nil || info.Mode()&(os.ModeCharDevice|os.ModeDir) != 0
 }
