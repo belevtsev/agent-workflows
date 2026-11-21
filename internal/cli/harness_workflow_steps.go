@@ -11,7 +11,7 @@ import (
 )
 
 func advanceWorkflow(ctx context.Context, s *session, o workflowOptions) (workflowStep, error) {
-	l, err := openStageLedgerWait(ctx, s, workflowLedgerWait)
+	l, err := openStageLedgerWait(ctx, s, ledgerWait)
 	if err != nil {
 		return workflowStep{}, err
 	}

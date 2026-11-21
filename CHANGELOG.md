@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Install the opt-in [`kitsu-team` plugin](docs/release-install.md#add-role-coordination) to keep the role agents and the managed workflow in your host. The CLI commands are unchanged.
 - Start managed work with the `managed` skill of `kitsu-team`. On Claude Code, the role agents are now named `kitsu-team:<role>`.
+- Name the remote of another base repository in [`--pr-base upstream:main`](docs/task-harness.md#delivery-and-limits). A plain `--pr-base main` now confirms only a PR in the pushed repository.
 - Register a [trusted runner](docs/workflow-runner.md) for `kitsu task run`. Continue a local-launch preview record by opening a new task with the original request and assertion.
 
 ### Added
@@ -61,6 +62,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - [Supervised imports](docs/workflow-runner.md) preserve returned bytes across Git line-ending settings. The guard gives specific diagnostics for aliases of protected files.
 - [Installers](docs/release-install.md) use the latest release for CLI-only installs and preserve the personal host unless explicitly replaced.
 - The [pre-push hook](docs/hooks.md#pre-push) rejects malformed ref updates and records empty input as a no-op.
+- The [pre-push hook](docs/hooks.md#pre-push) denies a push whose ref list a wrapper did not pass on, and records a push of nothing as `no_ref_updates`.
+- Task commands wait up to 10 seconds for another Kitsu command in the same checkout, then say that the task ledger is busy and what to do.
+- `kitsu run` no longer refuses an untouched `assume-unchanged` or `skip-worktree` file that was committed with CRLF line endings.
+- A cleanup in another worktree no longer removes an index copy in use, and a copy always holds one version of the index with its own time.
 
 - [Release installers](docs/release-install.md#install-from-a-release) stage the shell script before running. The release workflow tests and attests the exact bundle before publishing.
 

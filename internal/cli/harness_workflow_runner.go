@@ -13,8 +13,6 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/workflowrunner"
 )
 
-const workflowLedgerWait = 10 * time.Second
-
 func workflowReceiptFile(attempt string) string {
 	return "runner-result-" + attempt + ".json"
 }
@@ -165,7 +163,7 @@ func launchWorkflowAttempt(ctx context.Context, s *session, o workflowOptions, s
 	if err != nil {
 		return failf("runner attempt %s remains reserved: %v. Resume to check its status.", a.ID, err)
 	}
-	l, err := openStageLedgerWait(ctx, s, workflowLedgerWait)
+	l, err := openStageLedgerWait(ctx, s, ledgerWait)
 	if err != nil {
 		return err
 	}
@@ -218,7 +216,7 @@ func releaseWorkflowAttempt(ctx context.Context, s *session, o workflowOptions) 
 	if got.Job != a.Job || !got.Stopped || !got.Release || got.Status != "stopped" && got.Status != "failed" && got.Status != "returned" {
 		return failf("runner operator has not authorized release of this stopped attempt")
 	}
-	l, err = openStageLedgerWait(ctx, s, workflowLedgerWait)
+	l, err = openStageLedgerWait(ctx, s, ledgerWait)
 	if err != nil {
 		return err
 	}

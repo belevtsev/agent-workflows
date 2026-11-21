@@ -80,6 +80,11 @@ Malformed or incomplete input denies the push. An empty stream records
 `no_ref_updates` and allows Git’s no-op push. That outcome carries no tree or
 passing check evidence.
 
+Git supplies these lines on a pipe. A hook manager or wrapper that calls
+`kitsu hook pre-push` must pass its standard input on. When the input is
+closed, a terminal or the null device, the list did not arrive and `kitsu`
+denies the push.
+
 - A deletion of a ref is allowed.
 - A ref under `refs/notes/` is allowed and not judged: notes hold no content of
   the project.

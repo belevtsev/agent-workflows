@@ -140,9 +140,9 @@ func completeStoryIntake(ctx context.Context, s *session, l *stageLedger, task *
 		result = s.cfg.NativeExecute(ctx, call)
 	}
 
-	saveCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), workflowLedgerWait)
+	saveCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), ledgerWait)
 	defer cancel()
-	reopened, err := openStageLedgerWait(saveCtx, s, workflowLedgerWait)
+	reopened, err := openStageLedgerWait(saveCtx, s, ledgerWait)
 	if err != nil {
 		return err
 	}

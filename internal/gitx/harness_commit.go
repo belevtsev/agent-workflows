@@ -266,7 +266,8 @@ func (r *Repo) CommitOfTree(ctx context.Context, tip, tree, parents string) (str
 }
 
 // ConfirmPublication checks the verified commit on every configured push destination.
-// A requested PR must originate from one of those same destinations.
+// A requested PR must originate from one of those same destinations. It must be in one of
+// their repositories too, or in that of the remote named before the base branch as REMOTE:BRANCH.
 func (r *Repo) ConfirmPublication(ctx context.Context, remote, branch, head, base, link string) error {
 	ref := "refs/heads/" + branch
 	if _, err := r.git(ctx, nil, "check-ref-format", ref); err != nil {
@@ -296,7 +297,24 @@ func (r *Repo) ConfirmPublication(ctx context.Context, remote, branch, head, bas
 	if len(sources) == 0 {
 		return fmt.Errorf("cannot match pull request host and configured GitHub push remote %s", remote)
 	}
+	bases := destinations
+	if target, name, named := strings.Cut(base, ":"); named {
+		if bases, err = r.git(ctx, nil, "remote", "get-url", "--all", "--", target); err != nil {
+			return fmt.Errorf("unknown configured remote %q", target)
+		}
+		base = name
+	}
+	if !slices.ContainsFunc(strings.Split(bases, "\n"), func(url string) bool { return pullRequestIn(url, link) }) {
+		return fmt.Errorf("pull request is not in the pinned base repository; pin the remote of another one as REMOTE:BRANCH")
+	}
 	return r.confirmPullRequest(ctx, link, branch, base, head, sources)
+}
+
+// pullRequestIn says whether the pull request link is in the repository of a remote URL.
+func pullRequestIn(url, link string) bool {
+	owner, repo, ok := pullRequestSource(url, link)
+	parts := strings.Split(link, "/") // https://HOST/OWNER/REPO/pull/NUMBER
+	return ok && len(parts) == 7 && strings.EqualFold(owner+"/"+repo, parts[3]+"/"+parts[4])
 }
 
 // Accept common GitHub remote spellings without sending credentials to gh.

@@ -38,6 +38,10 @@ type stageRecord struct {
 	Managed  *managedStage       `json:"configured_stage,omitempty"`
 }
 
+// ledgerWait is how long a command of a task waits for another kitsu command
+// that holds the ledger. A longer holder is running an assertion.
+const ledgerWait = 10 * time.Second
+
 func openStageLedger(ctx context.Context, s *session) (*stageLedger, error) {
 	return openStageLedgerWait(ctx, s, fslock.NoWait)
 }
@@ -50,7 +54,10 @@ func openStageLedgerWait(ctx context.Context, s *session, wait time.Duration) (*
 	lock, err := privateStageLock(ctx, gitRoot, s.repo.GitDir, "kitsu-stages.lock", wait)
 	if err != nil {
 		_ = gitRoot.Close()
-		return nil, fmt.Errorf("stage ledger busy or unsafe: %w", err)
+		if errors.Is(err, fslock.ErrBusy) {
+			return nil, failf("the task ledger of this checkout is busy: another kitsu command, most likely a running assertion, still holds it. Run this command again when it ends")
+		}
+		return nil, fmt.Errorf("stage ledger unsafe: %w", err)
 	}
 	root, info, err := stageLedgerRoot(gitRoot)
 	if err != nil {

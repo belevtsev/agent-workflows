@@ -141,7 +141,10 @@ func removeOlder(dir string, limit time.Time, prune bool) {
 			return nil
 		}
 		if info, err := entry.Info(); err == nil && info.ModTime().Before(limit) && entry.Name() != "seq.lock" && entry.Name() != "write.lock" {
-			_ = os.Remove(path)
+			// An index copy carries the time of the index it was made from. The file its process holds next to it tells its age.
+			if hold, err := os.Stat(path + ".hold"); err != nil || hold.ModTime().Before(limit) {
+				_ = os.Remove(path)
+			}
 		}
 		return nil
 	})

@@ -53,3 +53,22 @@ func TestPullRequestSourceMatchesHostAndTransport(t *testing.T) {
 		}
 	}
 }
+
+func TestPullRequestIsInTheRepositoryOfTheRemote(t *testing.T) {
+	for _, tc := range []struct {
+		remote, link string
+		in           bool
+	}{
+		{"git@github.com:Owner/Repo.git", "https://github.com/owner/repo/pull/7", true},
+		{"https://github.com/owner/repo", "https://github.com/owner/repo/pull/7", true},
+		{"https://github.com/owner/repo", "https://github.com/attacker/other/pull/1", false},
+		{"https://github.com/owner/repo", "https://github.com/attacker/repo/pull/1", false},
+		{"https://github.com/owner/repo", "https://enterprise/owner/repo/pull/7", false},
+		{"https://github.com/owner/repo", "https://github.com/owner/repo/pull/7/files", false},
+		{"/some/local/directory", "https://github.com/owner/repo/pull/7", false},
+	} {
+		if got := pullRequestIn(tc.remote, tc.link); got != tc.in {
+			t.Errorf("%s holds %s: got %v, want %v", tc.remote, tc.link, got, tc.in)
+		}
+	}
+}

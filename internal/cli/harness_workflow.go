@@ -181,7 +181,7 @@ func runConfiguredWorkflow(ctx context.Context, cfg Config, args []string) error
 }
 
 func workflowIntake(ctx context.Context, s *session, o workflowOptions) error {
-	l, err := openStageLedgerWait(ctx, s, workflowLedgerWait)
+	l, err := openStageLedgerWait(ctx, s, ledgerWait)
 	if err != nil {
 		return err
 	}
