@@ -92,6 +92,7 @@ func (s Snapshot) SameBase(other Snapshot) bool {
 func (s Snapshot) Parents() string { return strings.TrimSpace(s.Head + " " + s.MergeHeads) }
 
 type Event struct {
+	FeatureRevision         string                    `json:"feature_revision,omitempty"`
 	NativeReview            *NativeReview             `json:"native_review,omitempty"`
 	PriorRepositoryFailures []RunResult               `json:"prior_repository_failures,omitempty"`
 	ReconfirmedAt           time.Time                 `json:"reconfirmed_at,omitzero"`
@@ -149,6 +150,7 @@ type Assertion struct {
 }
 
 type Proof struct {
+	FeatureRevision   string     `json:"feature_revision,omitempty"`
 	RepositoryPolicy  string     `json:"repository_policy,omitempty"`
 	PriorCommitTicket string     `json:"prior_commit_ticket,omitempty"`
 	IndexChecked      bool       `json:"index_checked,omitempty"`
@@ -208,6 +210,7 @@ type DeveloperAssignment struct {
 }
 
 type Task struct {
+	Feature            *FeatureBrief  `json:"feature_brief,omitempty"`
 	Workflow           *Workflow      `json:"workflow,omitempty"`
 	RepositoryPolicy   string         `json:"repository_policy,omitempty"`
 	VerifyOnlyFailure  *Snapshot      `json:"verify_only_failure,omitempty"`
@@ -377,7 +380,7 @@ func (t *Task) next(state Readiness) string {
 	if t.Workflow != nil {
 		return t.workflowNext(state)
 	}
-	if t.Scope.Entry == "plan" && t.Latest("plan") == nil {
+	if t.needsPlan() {
 		return "plan"
 	}
 	if t.Scope.Until == "plan" {
@@ -390,7 +393,7 @@ func (t *Task) next(state Readiness) string {
 		return action
 	}
 	implement := t.Scope.Entry == "implement" || t.Scope.Entry == "plan"
-	if implement && t.Latest("implement") == nil {
+	if implement && !t.CurrentFeatureEvent(t.Latest("implement")) {
 		return "implement"
 	}
 	required := t.requiresReview(state)
@@ -480,6 +483,9 @@ func (t *Task) reviewAction(state Readiness, required, implement bool) string {
 
 // Valid checks the record identity before the task can affect a checkout.
 func (t *Task) Valid(id string) bool {
+	if t.Feature != nil && (t.Bug != nil || t.Workflow != nil || t.Feature.Validate() != nil) {
+		return false
+	}
 	if t.ID != id || t.ReviewLimit < 0 || t.ReviewStarts < 0 || t.DeveloperStarts < 0 || t.FinishReserve < 0 || (t.FinishReserve > 0 && t.Deadline.IsZero()) {
 		return false
 	}

@@ -51,6 +51,40 @@ kitsu task start --resume review-export --host codex
 
 Choose the base you intend to compare. For a branch that diverged from main, use the merge base as the starting revision when you want the branch's changes since divergence. The reviewer receives the resolved commit IDs and commands to inspect their log and diff. Another session can recover that comparison after a branch moves while the original Git objects are available locally. Open a new task to review updated endpoints. For an ordinary staged or working-tree review, omit the two revision options. The first reviewer receives a `review_diff` command for the reserved working tree. When the index holds different content on a review-only task, `review_staged_diff` shows exactly what was staged. Use the comparison the developer requested. Both commands continue to address the reserved objects after the checkout changes.
 
+## Deliver a feature
+
+Open a daily task with the developer's request or the story from a saved ticket.
+For a clear feature, choose the implementation entry. For a story with unresolved
+behavior, choose the planning entry and record a brief with `"draft": true`.
+A planning-only task can finish with open questions, without editing the checkout.
+
+Save a UTF-8 JSON brief with `kitsu task record ID intake --ticket TICKET --actor SESSION --note "Acceptance agreed" --feature-brief FILE`.
+Use `-` for stdin. For a planning task or a revision, use `plan` in place of `intake`.
+A brief describes only the requested scope and uses IDs that stay stable through
+revisions. For example, when the repository declares a check named `test`:
+
+```json
+{
+  "version": 1,
+  "goal": "Support JSON export",
+  "scope": "Add the JSON option and keep the default text output",
+  "criteria": [
+    {"id": "empty", "expected_behavior": "Empty JSON output is []", "check": "check:test"},
+    {"id": "compat", "expected_behavior": "Default text bytes are unchanged", "check": "check:test"}
+  ]
+}
+```
+
+Use `check:ID` for a declared repository check, or `behavior` plus a top-level
+`"behavior": {"expected_behavior": "...", "argv": ["program", "arg"]}` for one focused assertion.
+Choose checks that actually exercise the named behavior. The person who owns the
+checkout approves declared commands with `kitsu check trust`. At verification,
+`kitsu task test ID --ticket TICKET --retry` runs the saved acceptance check and
+the repository's other required checks. A revised brief needs fresh verification
+and any required review. With authorized commit delivery, the checked tree and
+parents must match the commit. Export criterion IDs and recorded results with
+`kitsu task receipt ID --markdown`.
+
 ## Deliver a bug ticket
 
 From the target repository, open a task from a public link, a Markdown file, or a tracker connected through MCP or a plugin. The command authorizes a local repair and commit on the current branch. Ticket text supplies the problem statement. Publishing a branch, posting to the tracker and closing the issue require separate developer action.

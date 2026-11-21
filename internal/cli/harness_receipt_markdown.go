@@ -52,13 +52,19 @@ func printMarkdownReceipt(ctx context.Context, s *session, id string) error {
 	fmt.Fprintln(md, "- Repository declaration ·", receiptDeclaration(&task, result.proof, declarationErr))
 	fmt.Fprintln(md, "- Review ·", receiptReview(ctx, s, &task, result))
 	writeReceiptChecks(md, s, &task, result, declaration, declarationErr)
+	if b := task.Feature; b != nil && result.proof != nil {
+		fmt.Fprintf(md, "\n## Feature acceptance\n\n- Brief revision `%s`\n", b.Revision())
+		for _, c := range b.Criteria {
+			fmt.Fprintf(md, "- Criterion `%s` · %s\n", c.ID, receiptCheckRun(s, c.Evidence(result.proof), "Passed"))
+		}
+	}
 	_, err = fmt.Fprint(s.cfg.Out, md.String())
 	return err
 }
 
 func receiptVerification(ctx context.Context, s *session, task *harness.Task) savedVerification {
 	var result savedVerification
-	if p := task.Proof; p != nil && p.Outcome == store.Passed && p.PerRunInputs && p.IndexChecked && p.GateFailure == nil && p.FailedCheck == "" &&
+	if p := task.Proof; p != nil && (task.Feature == nil || task.Feature.Covers(p)) && p.Outcome == store.Passed && p.PerRunInputs && p.IndexChecked && p.GateFailure == nil && p.FailedCheck == "" &&
 		!p.CheckedAt.IsZero() && !task.NeedsReproduction() {
 		result.candidate, result.proof = p.Candidate, p
 	}
@@ -194,7 +200,7 @@ func receiptReview(ctx context.Context, s *session, task *harness.Task, result s
 	if receiptObjectID.MatchString(c.Head) {
 		tree, parents, _ = s.repo.CommitContents(ctx, c.Head)
 	}
-	if !review.ReviewMatches(c, task.Scope.Until, tree, parents) {
+	if !task.CurrentFeatureEvent(review) || !review.ReviewMatches(c, task.Scope.Until, tree, parents) {
 		return "Only an earlier candidate has a recorded review."
 	}
 	level := "Agent-reported review"

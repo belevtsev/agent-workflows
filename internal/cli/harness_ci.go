@@ -67,9 +67,8 @@ func approvedCICheck(ctx context.Context, s *session, tree, id string) (decl.Che
 			return decl.Check{}, "", err
 		}
 		if len(policy.Checks) > 0 {
-			approval, err := trustFile(s.repo, "")
-			if err != nil || string(approval.data) != fingerprint+"\n" {
-				return decl.Check{}, "", failf("review and approve the local declaration with kitsu check trust in your terminal")
+			if err := requireHarnessCheckApproval(s, fingerprint); err != nil {
+				return decl.Check{}, "", err
 			}
 		}
 		if check, found := policy.Check(id); found {

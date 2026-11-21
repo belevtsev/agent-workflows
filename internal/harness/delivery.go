@@ -29,7 +29,7 @@ func (t *Task) CompletedDelivery() *Completion {
 	if t.Completion != nil {
 		return t.Completion
 	}
-	if t.Scope.Until != "deliver" {
+	if t.Feature != nil || t.Scope.Until != "deliver" {
 		return nil
 	}
 	target := t.AuthorizedCommitTarget()

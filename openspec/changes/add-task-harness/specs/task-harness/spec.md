@@ -462,3 +462,28 @@ Source: failed PR check delivery goal.
 
 - **WHEN** metadata has no unique matching failure, the checkout differs from the PR, the check is unapproved or it fails to reproduce locally
 - **THEN** Kitsu cannot authorize a repair or issue a verified receipt from that input. A local pass retains a task at verification for a retry on the original candidate.
+
+### Requirement: Verify a feature against a saved acceptance brief
+
+Source: Approved production execution plan for verified feature delivery.
+
+The daily task harness SHALL accept a bounded, versioned feature brief with stable
+criterion IDs at intake or planning. Each accepted criterion SHALL name an
+observable expectation and a saved assertion or declared check.
+
+#### Scenario: Deliver JSON export
+
+- **WHEN** the task implements empty JSON output, quoting and unchanged text output
+- **THEN** the saved checks SHALL pass for the exact candidate and any required independent
+  review SHALL match before commit
+- **AND** a shareable receipt SHALL name the brief revision and each criterion's result
+
+#### Scenario: Revise scope or withdraw check approval
+
+- **WHEN** the brief, candidate or check authority changes before delivery
+- **THEN** prior results SHALL NOT authorize delivery of the changed task
+
+#### Scenario: Review an incomplete story
+
+- **WHEN** a planning-only task saves a draft brief
+- **THEN** it SHALL stop after the plan without source edits or a verification claim
