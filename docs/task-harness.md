@@ -98,6 +98,27 @@ and any required review. With authorized commit delivery, the checked tree and
 parents must match the commit. Export criterion IDs and recorded results with
 `kitsu task receipt ID --markdown`.
 
+### Verify before review
+
+For an implementation-entry feature with saved acceptance criteria mapped to
+declared checks, you can run those checks before the first required independent
+review. In your own terminal in the worktree:
+
+```sh
+kitsu check trust --verify-order before-review
+```
+
+Review the displayed declaration and confirm that its commands may execute the
+candidate's code before review. Approval is specific to this checkout and the
+exact declaration. A linked worktree needs its own ordering approval. A failed
+check returns to implementation or repair. A passing candidate still needs any
+required independent review before delivery.
+
+Use `kitsu check trust --verify-order review-first` to restore the default order.
+Existing check approval remains available. Revoking either approval stops new
+pre-review check launches, including retries and remaining checks in a suite.
+Review-only tasks follow their requested review scope.
+
 ## Deliver a bug ticket
 
 From the target repository, open a task from a public link, a Markdown file, or a tracker connected through MCP or a plugin. The command authorizes a local repair and commit on the current branch. Ticket text supplies the problem statement. Publishing a branch, posting to the tracker and closing the issue require separate developer action.

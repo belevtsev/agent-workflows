@@ -2,11 +2,8 @@ package cli
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/belevtsev/kitsu/v3/internal/advisers"
 	"github.com/belevtsev/kitsu/v3/internal/contextpack"
@@ -22,16 +19,7 @@ type storyApproval struct {
 }
 
 func storyApprovalFile(repo *gitx.Repo) (uxSnapshot, error) {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		return uxSnapshot{}, err
-	}
-	gitDir, err := filepath.EvalSymlinks(repo.GitDir)
-	if err != nil {
-		return uxSnapshot{}, err
-	}
-	name := fmt.Sprintf("%x.story-review.json", sha256.Sum256([]byte(gitDir)))
-	return uxReadFile(filepath.Join(dir, "kitsu", "check-trust", name))
+	return localTrustFile(repo.GitDir, ".story-review.json")
 }
 
 func storyDefinition(repo *gitx.Repo, name, checkPolicy string) (advisers.Definition, string, error) {

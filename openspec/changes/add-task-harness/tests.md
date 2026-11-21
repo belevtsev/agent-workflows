@@ -2,6 +2,8 @@
 
 | Scenario | Test file | Text |
 | --- | --- | --- |
+| Start required review after a repaired candidate passes | scenarios/harness/verify_before_review_test.go | TestVerifyFeatureBeforeFirstReview |
+| Keep early verification within the approved checkout and declaration | scenarios/harness/verify_before_review_test.go | TestVerifyBeforeReviewConsentChanges |
 | Resume configured story intake after a result or interruption | internal/cli/adviser_story_review_test.go | TestConfiguredStoryReviewIntake |
 | Resume saved verification in either host | scenarios/harness/feature_handoffs_test.go | TestFeatureHandoffReplaysInBothHosts |
 | Deliver JSON export | scenarios/harness/feature_delivery_test.go | TestVerifiedFeatureDelivery |
@@ -206,3 +208,12 @@ use fixed responses and fixture token counters. A signed-in host trial would
 measure captured input, cache, output, elapsed time and developer interventions
 on matching tasks, with Jev disabled first and then enabled on the same build.
 These local results establish the contract and give a prompt size comparison.
+
+
+## Early feature verification
+
+`TestVerifyFeatureBeforeFirstReview` replays a red feature, a repair and a passing
+candidate. The red path starts zero reviews. The passing path requires an
+independent review before the authorized commit. The consent tests exercise
+checkout isolation, a pending review, stale grants, retries and revocation
+between checks. Each scenario uses a real Git worktree and a local check.

@@ -295,7 +295,9 @@ func (v *harnessView) routeAction(ctx context.Context, s *session, t *harness.Ta
 	}
 	v.RepositoryReview = required
 	v.setReviewStatus(t.Scope.RequireReview || required)
-	v.Next, v.Pause = t.Next(time.Now(), v.readiness())
+	readiness := v.readiness()
+	readiness.VerifyBeforeReview = canVerifyBeforeReview(s, t, readiness)
+	v.Next, v.Pause = t.Next(time.Now(), readiness)
 	if v.Next == "review" && v.ReviewStatus == "" {
 		v.ReviewStatus = "pending"
 	}
@@ -689,6 +691,7 @@ func runHarnessTest(ctx context.Context, s *session, l *stageLedger, t *harness.
 		out = io.Discard
 	}
 	c := v.Candidate
+	early := needsEarlyCheckApproval(t, v.RepositoryReview)
 	p := t.Proof
 	reuse := false
 	if p != nil && c.Index == p.Candidate.Index && c.SameBase(p.Candidate) && c.SameSource(p.Candidate) && slices.Equal(o.argv, p.Argv) && o.expect == p.Expect {
@@ -700,7 +703,7 @@ func runHarnessTest(ctx context.Context, s *session, l *stageLedger, t *harness.
 	}
 	if !reuse {
 		var err error
-		p, err = executeHarnessAssertion(ctx, s, t, o, c, out)
+		p, err = executeHarnessAssertion(ctx, s, t, o, c, out, early)
 		if err != nil {
 			return err
 		}
@@ -718,7 +721,7 @@ func runHarnessTest(ctx context.Context, s *session, l *stageLedger, t *harness.
 		return err
 	}
 	if found {
-		if passed, err := runHarnessGate(ctx, s, l, t, out); err != nil || !passed {
+		if passed, err := runHarnessGate(ctx, s, l, t, out, early); err != nil || !passed {
 			return err
 		}
 	}
@@ -749,12 +752,12 @@ func finishHarnessTest(ctx context.Context, s *session, t *harness.Task, c harne
 	return nil
 }
 
-func executeHarnessAssertion(ctx context.Context, s *session, t *harness.Task, o harnessOptions, c harness.Snapshot, out io.Writer) (*harness.Proof, error) {
+func executeHarnessAssertion(ctx context.Context, s *session, t *harness.Task, o harnessOptions, c harness.Snapshot, out io.Writer, early bool) (*harness.Proof, error) {
 	check, key, shared, err := assertionCheck(ctx, s, t, o, c)
 	if err != nil {
 		return nil, err
 	}
-	record, err := s.executeJob(ctx, runner.Job{Check: check, Tree: c.Tree, Key: key, Out: out, Err: out, CheckInputs: s.checkHarnessInputs(c, t.CommitTarget)}, false)
+	record, err := executeHarnessCheck(ctx, s, t, early, runner.Job{Check: check, Tree: c.Tree, Key: key, Out: out, Err: out, CheckInputs: s.checkHarnessInputs(c, t.CommitTarget)}, false)
 	if err != nil {
 		return nil, err
 	}
@@ -875,7 +878,7 @@ func (v *harnessView) observeDelivery(ctx context.Context, s *session, t *harnes
 	return nil
 }
 
-func runHarnessGate(ctx context.Context, s *session, l *stageLedger, t *harness.Task, out io.Writer) (bool, error) {
+func runHarnessGate(ctx context.Context, s *session, l *stageLedger, t *harness.Task, out io.Writer, early bool) (bool, error) {
 	p := t.Proof
 	base := t.Start.Head
 	if base == "" {
@@ -900,7 +903,7 @@ func runHarnessGate(ctx context.Context, s *session, l *stageLedger, t *harness.
 		}
 	}
 	for _, id := range ids {
-		passed, err := runHarnessGateCheck(ctx, s, t, id, out)
+		passed, err := runHarnessGateCheck(ctx, s, t, id, out, early)
 		if err != nil {
 			return false, err
 		}
@@ -911,7 +914,7 @@ func runHarnessGate(ctx context.Context, s *session, l *stageLedger, t *harness.
 	return true, nil
 }
 
-func runHarnessGateCheck(ctx context.Context, s *session, t *harness.Task, id string, out io.Writer) (bool, error) {
+func runHarnessGateCheck(ctx context.Context, s *session, t *harness.Task, id string, out io.Writer, early bool) (bool, error) {
 	p := t.Proof
 	verdict, err := s.judgeWorktree(ctx, nil)
 	if err != nil {
@@ -930,7 +933,7 @@ func runHarnessGateCheck(ctx context.Context, s *session, t *harness.Task, id st
 		return false, err
 	}
 	check := verdict.Checks[idx]
-	record, err := s.executeJob(ctx, runner.Job{Check: check.Check, Key: check.Key, Tree: verdict.Tree, Out: out, Err: out, CheckInputs: checkInputs}, true)
+	record, err := executeHarnessCheck(ctx, s, t, early, runner.Job{Check: check.Check, Key: check.Key, Tree: verdict.Tree, Out: out, Err: out, CheckInputs: checkInputs}, true)
 	if err != nil {
 		return false, err
 	}

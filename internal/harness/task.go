@@ -347,6 +347,7 @@ type Pause struct {
 }
 
 type Readiness struct {
+	VerifyBeforeReview            bool
 	RepositoryReview              bool
 	Candidate                     Snapshot
 	Reviewed, Verified, Committed bool
@@ -474,6 +475,9 @@ func (t *Task) reviewAction(state Readiness, required, implement bool) string {
 		}
 	}
 	if !state.Reviewed || review == nil {
+		if state.VerifyBeforeReview {
+			return "verify"
+		}
 		return "review"
 	}
 	if t.Scope.Until == "review" {

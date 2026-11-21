@@ -131,3 +131,11 @@ type StoryAnswer struct {
 	Choice     string   `json:"choice"`
 	Confidence *float64 `json:"confidence,omitempty"`
 }
+
+// BeforeFirstFeatureReview identifies the daily declared-check delivery path
+// where separate checkout approval can change the order of checks and review.
+func (t *Task) BeforeFirstFeatureReview() bool {
+	return t.Version == CurrentVersion && t.Scope.Entry == "implement" && t.Scope.Until == "deliver" &&
+		t.Feature != nil && !t.Feature.Draft && t.Feature.PrimaryCheck() != "" &&
+		t.Claim == nil && t.StartedReviews() == 0
+}
