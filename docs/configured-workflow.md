@@ -2,15 +2,15 @@
 
 Kitsu coordinates Codex and Claude Code from one saved task. For supervised execution, an administrator registers a disposable runner for this worktree. The runner starts each assigned specialist, verifies the accepted files in isolation, and signs the result. Kitsu imports authorized edits, records evidence, and resumes the next step.
 
-[Set up a trusted runner](workflow-runner.md) before using `task run`. Use the [daily task skill](task-harness.md) for ordinary in-chat work.
+[Install the opt-in `kitsu-team` plugin](release-install.md#add-role-coordination) and [set up a trusted runner](workflow-runner.md) before using `task run`. Use the [daily task skill](task-harness.md) for ordinary in-chat work.
 
 ## Start and resume from either host
 
 **Codex** · “Use Kitsu’s configured workflow to fix CSV quoting and verify the exported value.”
 
-**Claude Code** · `/kitsu:task Use the configured workflow to fix CSV quoting and verify the exported value.`
+**Claude Code** · `/kitsu-team:managed Use the configured workflow to fix CSV quoting and verify the exported value.`
 
-Resume in the original worktree. In Codex, ask “Resume configured Kitsu task `TASK_ID`.” In Claude Code, enter `/kitsu:task Resume configured Kitsu task TASK_ID`. Both use the same saved assignments and runner.
+Resume in the original worktree. In Codex, ask “Resume configured Kitsu task `TASK_ID`.” In Claude Code, enter `/kitsu-team:managed Resume configured Kitsu task TASK_ID`. Both use the same saved assignments and runner.
 
 ```sh
 kitsu task run "Fix CSV quoting" --until verify

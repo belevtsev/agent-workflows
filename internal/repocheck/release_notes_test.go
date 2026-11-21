@@ -116,7 +116,9 @@ func TestPreparedReleaseVersions(t *testing.T) {
 	if !bytes.Contains(installation, []byte("$tag = \""+tag+"\"")) {
 		t.Errorf("the Windows recipe does not install %s", tag)
 	}
-	for _, file := range []string{".claude-plugin/plugin.json", ".claude-plugin/marketplace.json", ".codex-plugin/plugin.json"} {
+	const team = "plugins/kitsu-team/"
+	for file, name := range map[string]string{".claude-plugin/plugin.json": "kitsu", ".claude-plugin/marketplace.json": "kitsu", ".codex-plugin/plugin.json": "kitsu",
+		team + ".claude-plugin/plugin.json": "kitsu-team", team + ".codex-plugin/plugin.json": "kitsu-team"} {
 		data, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(file)))
 		if err != nil {
 			t.Fatal(err)
@@ -132,8 +134,8 @@ func TestPreparedReleaseVersions(t *testing.T) {
 		if version == "" {
 			version = manifest.Metadata.Version
 		}
-		if manifest.Name != "kitsu" || "v"+version != tag {
-			t.Errorf("%s names %s %s, want kitsu %s", file, manifest.Name, version, tag)
+		if manifest.Name != name || "v"+version != tag {
+			t.Errorf("%s names %s %s, want %s %s", file, manifest.Name, version, name, tag)
 		}
 	}
 	if tag == "v3.0.0-beta.1" {

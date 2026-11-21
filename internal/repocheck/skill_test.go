@@ -165,8 +165,9 @@ var (
 // metadata. The whole head stays far below the limit of a host's listing.
 func TestSkillHeads(t *testing.T) {
 	paths, err := filepath.Glob(filepath.Join(repoRoot, "skills", "*", "SKILL.md"))
-	if err != nil || len(paths) < 2 {
-		t.Fatalf("want the skills task and kitsu under skills/, got %v (%v)", paths, err)
+	opted, _ := filepath.Glob(filepath.Join(repoRoot, "plugins", "*", "skills", "*", "SKILL.md"))
+	if paths = append(paths, opted...); err != nil || len(paths) < 3 {
+		t.Fatalf("want the skills task and kitsu under skills/ and managed in the opt-in plugin, got %v (%v)", paths, err)
 	}
 	for _, path := range paths {
 		data, err := os.ReadFile(path)

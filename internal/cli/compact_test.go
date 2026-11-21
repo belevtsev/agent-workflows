@@ -217,7 +217,7 @@ func TestCompactBriefRetainsAuthorityAndReceiptBeforeBaseline(t *testing.T) {
 		t.Fatal(result.Output())
 	}
 	_, native := brief(t, r, "claude", "reviewer", "review")
-	if native.Instructions != "" || native.NativeRole != "kitsu:reviewer" {
+	if native.Instructions != "" || native.NativeRole != "kitsu-team:reviewer" {
 		t.Fatal("native role text repeated", native)
 	}
 	if !strings.Contains(strings.Join(native.Constraints, " "), "independently") {

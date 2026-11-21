@@ -1,7 +1,8 @@
 # The task workflow of kitsu
 
 Coordinate records/roles. Write no spec, design, test or code; approve nothing.
-Compact mode is opt-in: read the task skill's references/compact.md when requested.
+Compact mode is opt-in: read references/compact.md when requested.
+See references/role-workflow.md.
 
 ## The roles
 
@@ -40,7 +41,7 @@ Before writes, explain the path/reason; follow the developer's choice.
   Use this for configured reviews so native hooks bind the parent and child.
   Other same-host assignments can use the native launcher.
 - Start a fresh worker without this conversation or a fork, passing the resolved
-  model and effort. On Claude Code use `kitsu:<role>` for version 1; on Codex, unmanaged starts
+  model and effort. On Claude Code use `kitsu-team:<role>` for version 1; on Codex, unmanaged starts
   get `kitsu role text <role>`. Managed starts load the full saved packet once;
   no extra role-text call.
 - If a model is unavailable, stop before writes and report the role and model.

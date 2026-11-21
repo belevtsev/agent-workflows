@@ -17,7 +17,7 @@ func TestCoordinatorGuidedProtocol(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(filepath.Join(root(t), Skill, "references", "compact.md"))
+	data, err := os.ReadFile(filepath.Join(root(t), ManagedSkill, "references", "compact.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestCoordinatorGuidedProtocol(t *testing.T) {
 		},
 		{
 			name: "managed role body comes only from its packet", document: coordinator, heading: "Starting a role",
-			required:  []string{"On Claude Code use `kitsu:<role>`", "on Codex, unmanaged starts get `kitsu role text <role>`", "Managed starts load the full saved packet once; no extra role-text call"},
+			required:  []string{"On Claude Code use `kitsu-team:<role>`", "on Codex, unmanaged starts get `kitsu role text <role>`", "Managed starts load the full saved packet once; no extra role-text call"},
 			forbidden: []string{"otherwise give it `kitsu role text <role>`"},
 		},
 		{

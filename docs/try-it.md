@@ -325,8 +325,8 @@ No person has run this part. On 14 November 2026 a script ran some of it in
 Claude Code 2.1.311, with `claude -p` and the plugin of this branch, in
 scratch repositories:
 
-- **Step 1.** The plugin loaded: the session listed the seven roles and the
-  skills `kitsu` and `task`.
+- **Step 1.** The plugins loaded: the session listed the skills `kitsu` and `task` and, with
+  `kitsu-team` installed, the seven roles and the skill `managed`.
 - **Step 2.** The text of `kitsu context` reached the model at the start of the
   session.
 - **Step 3, in part.** A `git commit --no-verify` did not run. With nobody to
@@ -354,7 +354,7 @@ without a host: five runs, recorded in
    [`kitsu`](../skills/kitsu/SKILL.md) it should run `kitsu status` first, run
    `kitsu run` after the change, commit through the hook, and quote the last
    line of `kitsu run` in its answer.
-5. Ask `/kitsu:task` to use the **full managed role workflow**, for example to design a new
+5. Install `kitsu-team` and ask `/kitsu-team:managed` to use the **full managed role workflow**, for example to design a new
    check and add a file it guards. Watch whether it writes a record under
    `openspec/changes/<task>/`, whether it stops for your approval of the
    specification, and whether each role starts with the model `kitsu roles`

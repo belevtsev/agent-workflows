@@ -157,3 +157,39 @@ func writeFixture(t *testing.T, path string, data []byte) {
 		t.Fatal(err)
 	}
 }
+
+// A marketplace is Kitsu's own when it lists the default plugin at its root,
+// alone or followed by the opt-in plugin in its own directory.
+func TestMarketplaceListsTheDefaultPluginAndAtMostTheOptInOne(t *testing.T) {
+	entry := func(host, name, path string) string {
+		if host == "codex" {
+			return fmt.Sprintf(`{"name":%q,"source":{"source":"local","path":%q}}`, name, path)
+		}
+		return fmt.Sprintf(`{"name":%q,"source":%q}`, name, path)
+	}
+	for _, host := range []string{"codex", "claude"} {
+		kitsu, team := entry(host, "kitsu", "./"), entry(host, "kitsu-team", "./plugins/kitsu-team")
+		for plugins, want := range map[string]bool{
+			kitsu:               true,
+			kitsu + "," + team:  true,
+			"":                  false,
+			team:                false,
+			team + "," + kitsu:  false,
+			kitsu + "," + kitsu: false,
+			kitsu + "," + entry(host, "kitsu-team", "./"):                  false,
+			kitsu + "," + entry(host, "other", "./plugins/kitsu-team"):     false,
+			kitsu + "," + team + "," + entry(host, "third", "./plugins/x"): false,
+			entry(host, "kitsu", "./plugins/kitsu-team"):                   false,
+		} {
+			if got := isKitsuMarketplace(host, []byte(`{"name":"kitsu","plugins":[`+plugins+`]}`)); got != want {
+				t.Errorf("%s marketplace with [%s] accepted = %v, want %v", host, plugins, got, want)
+			}
+		}
+		if isKitsuMarketplace(host, []byte(`{"name":"other","plugins":[`+kitsu+`]}`)) {
+			t.Errorf("%s accepted a marketplace of another name", host)
+		}
+	}
+	if isKitsuMarketplace("codex", []byte(`{"name":"kitsu","plugins":[{"name":"kitsu","source":{"source":"git","path":"./"}}]}`)) {
+		t.Error("Codex accepted a plugin that is not local")
+	}
+}

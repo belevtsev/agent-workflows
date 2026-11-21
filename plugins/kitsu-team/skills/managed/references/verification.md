@@ -2,7 +2,8 @@
 
 Read this when a repository opts in to behavioral verification. Keep compact
 mode opt-in. Use `kitsu check plan --help` and `kitsu task verify --help` for
-the actual syntax; see the [guide](../../../docs/verification.md).
+the actual syntax; see the
+[guide](https://github.com/belevtsev/kitsu/blob/main/docs/verification.md).
 
 `when` schedules relevant declared checks first, `expect` describes observable
 behavior and `verify = true` requires applicable verification. `paths` keeps its

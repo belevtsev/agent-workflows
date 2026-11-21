@@ -7,6 +7,12 @@
       "source": { "source": "local", "path": "./" },
       "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
       "category": "Developer Tools"
+    },
+    {
+      "name": "kitsu-team",
+      "source": { "source": "local", "path": "./plugins/kitsu-team" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Developer Tools"
     }
   ]
 }

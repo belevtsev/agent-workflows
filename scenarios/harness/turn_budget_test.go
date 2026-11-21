@@ -37,8 +37,8 @@ var turnBudgets = map[string]turnBudget{
 // Text that every task or every session carries: the skills in words, as
 // `wc -w` counts them, and the session-start notice in bytes.
 const (
-	taskSkillWords    = 238
-	gateSkillWords    = 1478
+	taskSkillWords    = 227
+	gateSkillWords    = 1440
 	sessionStartBytes = 630
 )
 
