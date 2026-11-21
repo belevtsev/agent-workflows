@@ -38,6 +38,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Deliver a verified candidate with a plain `git commit`. The [receipt](docs/task-harness.md#do-a-daily-task-in-one-command) names that commit without another Kitsu command.
+
 - Deny an agent's shell the host's review notices, a terminal of its own for approvals and writes to the task ledger. [What the guard denies](docs/operations.md#kitsu-guard)
 
 - Name added authority, replaced assertions, revised briefs and supplied PR checks in the [verification receipt](docs/task-harness.md#share-a-verification-receipt).
@@ -50,6 +52,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- A task no longer stays blocked when a commit hook refuses Kitsu's commit and you then commit a corrected tree with Git.
 - [Failed PR check intake](docs/task-harness.md#repair-a-failed-pr-check) also recognizes failures reported through commit statuses by external CI.
 - [Failed PR repairs](docs/task-harness.md#repair-a-failed-pr-check) now pause when the checkout moves off the reproduced PR head before delivery.
 - [Supervised imports](docs/workflow-runner.md) preserve returned bytes across Git line-ending settings. The guard gives specific diagnostics for aliases of protected files.

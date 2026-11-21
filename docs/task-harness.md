@@ -38,8 +38,17 @@ The reply is one short JSON object. `next` is the action that remains and `then`
 
 - **A failing assertion or check** exits with status 5 and returns the path of its `log`. Correct the candidate and run the same command. On an unchanged candidate, the command repeats the assertion.
 - **A required review** returns the reservation and `review_input`. Launch the reviewer on it, then run the command again to record the review, verify and commit.
-- **A verified candidate without `--message`** waits at `commit`.
+- **A verified candidate without `--message`** waits at `commit`. Run the command again with `--message`, or commit the staged candidate with `git commit`.
 - **Staged content that differs from the verified candidate** is refused. Stage or set aside the other edits first.
+
+A plain `git commit` of the verified candidate is the delivery. Kitsu looks for a commit that puts the verified tree on the verified parents, on the branch the task may commit to:
+
+- `kitsu task receipt ID --markdown` names that commit without another command, also after later commits.
+- `kitsu task do ID`, run while that commit is checked out, records it and reports `done`.
+- A commit with another tree or another parent is not that delivery. The saved assertion runs again on the commit as it is, and the receipt then says that the commit was already checked out when verification ran.
+- A commit on another branch does not count until the task's branch holds it.
+
+A plain commit skips the `--include` confirmation, so check what you stage. If a commit hook refuses Kitsu's commit, the reply carries the hook's message, and the task waits at `commit` again.
 
 A saved task keeps its request and scope. To widen it, use `kitsu task extend`. Planning, feature briefs, failed PR checks and publication use the separate commands described below, and so does recovery after an interruption. Add `--brief` or `--json` for the same replies those commands give. [All options](cli-reference.md#kitsu-task-do)
 
@@ -331,7 +340,7 @@ The receipt also names what changed after the task opened:
 
 Scope flags and supplied metadata are the agent's report of what you asked for. Kitsu cannot tell your word from the agent's, so compare these lines with your request.
 
-Markdown reads saved evidence without running checks. For a ticket-linked bug, use `kitsu task receipt ID --json` on the delivered commit to run the final behavior check and save the complete local receipt. A later Markdown export includes that result.
+Markdown reads saved evidence without running checks. It also reads the branch history to find a plain commit of the verified candidate. For a ticket-linked bug, use `kitsu task receipt ID --json` on the delivered commit to run the final behavior check and save the complete local receipt. A later Markdown export includes that result.
 
 Use `commit_evidence` in `kitsu task next ID --json` for the programmatic verification order. `verified_existing_commit` means the commit was already checked out when the proof ran. `commit_matches_verified_tree` means Kitsu later observed the matching tree on the verified parents.
 

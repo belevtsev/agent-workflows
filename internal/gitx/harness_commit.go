@@ -252,6 +252,19 @@ func (r *Repo) CommitContents(ctx context.Context, rev string) (string, string, 
 	return tree, parents, err
 }
 
+// CommitOfTree finds the commit that put tree on parents, at tip or among its
+// first-parent ancestors. It names a plain git commit of a verified candidate,
+// also after later commits moved the branch on. It reads at most 100 commits.
+func (r *Repo) CommitOfTree(ctx context.Context, tip, tree, parents string) (string, error) {
+	out, err := r.git(ctx, nil, "log", "--first-parent", "-n", "100", "--no-notes", "--no-show-signature", "--format=%H %T %P", tip, "--")
+	for _, line := range strings.Split(out, "\n") {
+		if commit, rest, _ := strings.Cut(strings.TrimSpace(line), " "); rest == strings.TrimSpace(tree+" "+parents) {
+			return commit, err
+		}
+	}
+	return "", err
+}
+
 // ConfirmPublication checks the verified commit on every configured push destination.
 // A requested PR must originate from one of those same destinations.
 func (r *Repo) ConfirmPublication(ctx context.Context, remote, branch, head, base, link string) error {

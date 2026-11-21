@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -99,6 +100,11 @@ func receiptVerifiedCommit(ctx context.Context, s *session, task *harness.Task, 
 		if err == nil && tree == c.Tree && parents == c.Parents() {
 			return a.Commit, "commit_matches_verified_tree"
 		}
+	}
+	// A plain git commit of the verified candidate needs no Kitsu command to count.
+	tip := cmp.Or(task.AuthorizedCommitTarget(), "HEAD")
+	if commit, err := s.repo.CommitOfTree(ctx, tip, c.Tree, c.Parents()); err == nil && receiptObjectID.MatchString(commit) {
+		return commit, "commit_matches_verified_tree"
 	}
 	return "", ""
 }
