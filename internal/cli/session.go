@@ -19,7 +19,7 @@ type session struct {
 	repo           *gitx.Repo
 	store          *store.Store
 	compact        *compactCheckCapture
-	workflowRunner *workflowrunner.Client
+	workflowRunner workflowrunner.Runner
 }
 
 // open finds the repository of the working directory. A command other than

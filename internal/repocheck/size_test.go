@@ -23,7 +23,7 @@ const (
 	maxStateLines        = 750  // Bounded coordinator projections, retained baselines and section deltas.
 	maxVerificationLines = 2200 // Behavioral plans, shared history and current local task observations.
 	maxInsightLines      = 3000 // Read-only workflow diagnostics, optional notes and explicit budget metadata.
-	maxConfiguredLines   = 2994 // Persisted role orchestration and the supervised runner protocol.
+	maxConfiguredLines   = 3004 // Persisted role orchestration, the supervised runner protocol and the interface a runner implements.
 )
 
 // rolesCode says whether a Go file belongs to the role workflow.

@@ -71,8 +71,8 @@ func workflowAssignment(ctx context.Context, s *session, task *harness.Task, v h
 	input := map[string]any{
 		"task": task.ID, "attempt": a.ID, "candidate": a.Candidate, "request": task.Request,
 		"scope": task.Scope, "plan": w.Plan, "intake_assertion": w.Intake, "assertion": w.Test,
-		"reviewed_checks": s.workflowRunner.Policy.Checks, "test_paths": w.TestPolicy,
-		"code_paths": s.workflowRunner.Policy.CodePaths,
+		"reviewed_checks": s.workflowRunner.Offer().Policy.Checks, "test_paths": w.TestPolicy,
+		"code_paths": s.workflowRunner.Offer().Policy.CodePaths,
 	}
 	if plan := task.Latest("plan"); plan != nil {
 		input["design"] = plan.Note

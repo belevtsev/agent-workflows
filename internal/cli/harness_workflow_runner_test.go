@@ -189,7 +189,7 @@ func (f *signedRunnerFixture) run(args ...string) (string, error) {
 	f.t.Helper()
 	var out bytes.Buffer
 	cfg := Config{Out: &out, Err: &out, In: strings.NewReader(""),
-		workflowRunner: func(context.Context, string) (*workflowrunner.Client, error) { return f.client, nil }}
+		workflowRunner: func(context.Context, string) (workflowrunner.Runner, error) { return f.client, nil }}
 	err := Execute(f.t.Context(), append([]string{"task", "run"}, args...), cfg)
 	return out.String(), err
 }

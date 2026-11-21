@@ -30,11 +30,23 @@ type Registration struct {
 	ReceiptKey        []byte `json:"receipt_key"`
 }
 
+// Runner starts jobs and returns their signed results. The client of a registered service is one runner.
+type Runner interface {
+	Run(ctx context.Context, job Job) (Signed, Receipt, error)
+	Resume(ctx context.Context, attempt, binding, job string) (Signed, Receipt, error)
+	Status(ctx context.Context, attempt, binding string) (Signed, Receipt, error)
+	Verify(signed Signed, attempt, binding string) (Receipt, error)
+	Authority() string
+	Offer() Capabilities // the platform, profile and reviewed policy it runs jobs under
+}
+
 type Client struct {
 	cfg  Registration
 	http *http.Client
 	Capabilities
 }
+
+func (c *Client) Offer() Capabilities { return c.Capabilities }
 
 func Open(ctx context.Context, root string) (*Client, error) {
 	c, err := Load(root)

@@ -147,7 +147,7 @@ func runConfiguredWorkflow(ctx context.Context, cfg Config, args []string) error
 	if err != nil {
 		return failf("configured workflow paused: %v", err)
 	}
-	if err := validateWorkflowPolicy(s.workflowRunner.Policy); err != nil {
+	if err := validateWorkflowPolicy(s.workflowRunner.Offer().Policy); err != nil {
 		return err
 	}
 	if o.release != "" {
@@ -240,7 +240,7 @@ func bindWorkflowIntake(ctx context.Context, s *session, task *harness.Task, o w
 		if !validWorkflowArgv(o.argv) || len(o.expect) > 4096 {
 			return usagef("intake assertion exceeds its argv or expectation limit")
 		}
-		if _, err := approvedWorkflowCheck(s.workflowRunner.Policy, task.Workflow.Intake); err != nil {
+		if _, err := approvedWorkflowCheck(s.workflowRunner.Offer().Policy, task.Workflow.Intake); err != nil {
 			return err
 		}
 	}
@@ -251,18 +251,18 @@ func bindWorkflowIntake(ctx context.Context, s *session, task *harness.Task, o w
 	}
 	task.Workflow.Candidate = &task.Start
 	task.Workflow.Authority, task.Workflow.Profile, task.Workflow.Policy =
-		s.workflowRunner.Authority(), s.workflowRunner.Profile, workflowrunner.Digest(s.workflowRunner.Policy)
-	if testPaths != nil && !slices.Equal(testPaths, s.workflowRunner.Policy.TestPaths) {
+		s.workflowRunner.Authority(), s.workflowRunner.Offer().Profile, workflowrunner.Digest(s.workflowRunner.Offer().Policy)
+	if testPaths != nil && !slices.Equal(testPaths, s.workflowRunner.Offer().Policy.TestPaths) {
 		return failf("the roles file's test paths must match the reviewed runner policy")
 	}
-	task.Workflow.TestPolicy = s.workflowRunner.Policy.TestPaths
+	task.Workflow.TestPolicy = s.workflowRunner.Offer().Policy.TestPaths
 	if err = pinHarnessCommitTarget(ctx, s, task); err != nil {
 		return err
 	}
 	if err = pinHarnessPolicy(ctx, s, task); err != nil {
 		return err
 	}
-	if task.RepositoryPolicy != s.workflowRunner.Policy.Declaration {
+	if task.RepositoryPolicy != s.workflowRunner.Offer().Policy.Declaration {
 		return failf("the opening kitsu.toml differs from the runner's reviewed check declaration")
 	}
 	if o.scope.Until != "plan" && o.scope.Until != "review" && o.scope.Entry != "verify" && len(task.Workflow.TestPolicy) == 0 {
