@@ -48,13 +48,13 @@ func TestTextsHoldTheRulesOfTheFlow(t *testing.T) {
 }
 
 // The two paths are defined in the same words by the coordinator's text and
-// by the example of the skill kitsu.
+// by the example of the managed skill.
 func TestThePathsHaveOneDefinition(t *testing.T) {
 	text, err := Text(Coordinator)
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(filepath.Join(root(t), "skills", "kitsu", "examples", "role-workflow.md"))
+	data, err := os.ReadFile(filepath.Join(root(t), ManagedSkill, "references", "role-workflow.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestThePathsHaveOneDefinition(t *testing.T) {
 			t.Errorf("the coordinator's text does not define under \"The two paths\": %s", words)
 		}
 		if !strings.Contains(example, words) {
-			t.Errorf("skills/kitsu/examples/role-workflow.md does not hold: %s", words)
+			t.Errorf("%s/references/role-workflow.md does not hold: %s", ManagedSkill, words)
 		}
 	}
 }

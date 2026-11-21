@@ -23,7 +23,7 @@ const (
 	maxStateLines        = 750  // Bounded coordinator projections, retained baselines and section deltas.
 	maxVerificationLines = 2200 // Behavioral plans, shared history and current local task observations.
 	maxInsightLines      = 3000 // Read-only workflow diagnostics, optional notes and explicit budget metadata.
-	maxConfiguredLines   = 4100 // Persisted role orchestration and the supervised runner protocol.
+	maxConfiguredLines   = 2994 // Persisted role orchestration and the supervised runner protocol.
 )
 
 // rolesCode says whether a Go file belongs to the role workflow.
@@ -41,7 +41,7 @@ func rolesCode(file string) bool {
 
 func configuredWorkflowCode(file string) bool {
 	for _, prefix := range []string{
-		"internal/harness/workflow", "internal/gitx/harness_workflow", "internal/onboarding/workflow",
+		"internal/harness/workflow", "internal/gitx/harness_workflow",
 		"internal/cli/harness_workflow", "internal/cli/worker_managed", "internal/workflowrunner/",
 	} {
 		if strings.HasPrefix(file, prefix) {

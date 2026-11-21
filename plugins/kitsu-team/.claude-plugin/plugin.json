@@ -1,0 +1,19 @@
+{
+  "name": "kitsu-team",
+  "version": "0.0.2",
+  "description": "Opt-in and experimental: coordinate a coding task through seven specialist roles, OpenSpec records, role settings and supervised runs. Needs the kitsu plugin. It costs several times the tokens of a daily task.",
+  "author": {
+    "name": "Pavlo Belevtsev",
+    "url": "https://github.com/belevtsev"
+  },
+  "homepage": "https://github.com/belevtsev/kitsu",
+  "repository": "https://github.com/belevtsev/kitsu",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "coding-agents",
+    "agent-coordination",
+    "workflow"
+  ]
+}

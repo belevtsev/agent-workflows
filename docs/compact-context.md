@@ -27,7 +27,7 @@ kitsu task start "Fix login retries" --host claude --compact --print
 
 The second command prepares a handoff for an existing session. Neither `--print` nor `--json`
 launches a host or writes task records. You can also ask an existing coordinator to use compact
-mode; it loads the task skill's [on-demand reference](../skills/task/references/compact.md).
+mode; it loads the [on-demand reference](../plugins/kitsu-team/skills/managed/references/compact.md) of the `managed` skill in the opt-in `kitsu-team` plugin.
 Default onboarding and session-hook output remain as before. Help works before any setup:
 
 ```sh
@@ -191,12 +191,12 @@ The role must match the stage: `spec` → `spec-writer`, `design` → `architect
 The saved brief includes constraints, writes, test patterns, selected original skill paths
 and hashes, allowed advisers, factual task state and source references. Codex receives the
 original role instructions exactly once. On Claude, start the named native role
-(`kitsu:<role>`); its definition supplies the role body once. Each worker still loads the
+(`kitsu-team:<role>`); its definition supplies the role body once. Each worker still loads the
 selected original skills and reports what loaded; a selection receipt proves no loading.
 Keep those full original instructions and skill bodies uncompressed. The saved packet
 already includes the worker's selective policy. Assign the complete original behavioral
 contract and role-specific work; keep coordinator scheduling, budgets and state bookkeeping
-out of worker assignments. Do not require another read of the coordinator task skill or
+out of worker assignments. Do not require another read of the coordinator's managed skill or
 compact reference unless selected as a skill or needed by an explicit task reference.
 Kitsu preserves assignment bytes exactly; it never strips user instructions automatically.
 

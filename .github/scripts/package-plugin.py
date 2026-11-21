@@ -8,10 +8,10 @@ def package(root, output):
     files = [
         ".agents/plugins/marketplace.json", ".claude-plugin/marketplace.json",
         ".claude-plugin/plugin.json", ".codex-plugin/plugin.json",
-        "hooks/codex-hooks.json", "hooks/hooks.json", "docs/brand/kitsu-mascot.png",
-        "docs/verification.md", "LICENSE",
+        "hooks/codex-hooks.json", "hooks/hooks.json", "docs/brand/kitsu-mascot.png", "LICENSE",
+        "plugins/kitsu-team/.claude-plugin/plugin.json", "plugins/kitsu-team/.codex-plugin/plugin.json",
     ]
-    for pattern in ("agents/*.md", "skills/**/*.md"):
+    for pattern in ("skills/**/*.md", "plugins/kitsu-team/agents/*.md", "plugins/kitsu-team/skills/**/*.md"):
         files.extend(p.relative_to(root).as_posix() for p in root.glob(pattern))
     output.parent.mkdir(parents=True, exist_ok=True)
     with ZipFile(output, "w") as archive:

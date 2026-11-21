@@ -54,8 +54,9 @@ func TestMatchedPluginArtifact(t *testing.T) {
 	}
 
 	files := []string{".agents/plugins/marketplace.json", ".claude-plugin/marketplace.json", ".claude-plugin/plugin.json",
-		".codex-plugin/plugin.json", "hooks/hooks.json", "hooks/codex-hooks.json", "docs/brand/kitsu-mascot.png", "docs/verification.md", "LICENSE"}
-	for _, dir := range []string{"agents", "skills"} {
+		".codex-plugin/plugin.json", "hooks/hooks.json", "hooks/codex-hooks.json", "docs/brand/kitsu-mascot.png", "LICENSE",
+		"plugins/kitsu-team/.claude-plugin/plugin.json", "plugins/kitsu-team/.codex-plugin/plugin.json"}
+	for _, dir := range []string{"skills", "plugins/kitsu-team/agents", "plugins/kitsu-team/skills"} {
 		err := fs.WalkDir(os.DirFS(root), dir, func(path string, entry fs.DirEntry, err error) error {
 			if err == nil && !entry.IsDir() && strings.HasSuffix(path, ".md") {
 				files = append(files, path)

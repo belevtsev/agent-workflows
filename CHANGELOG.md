@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Breaking
 
+- Install the opt-in [`kitsu-team` plugin](docs/release-install.md#add-role-coordination) to keep the role agents and the managed workflow in your host. The CLI commands are unchanged.
+- Start managed work with the `managed` skill of `kitsu-team`. On Claude Code, the role agents are now named `kitsu-team:<role>`.
 - Register a [trusted runner](docs/workflow-runner.md) for `kitsu task run`. Continue a local-launch preview record by opening a new task with the original request and assertion.
 
 ### Added
@@ -38,6 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- State the [measured token cost](docs/benchmarks.md#what-an-agent-spends) of the role workflow before a new `kitsu task run` and in the `managed` skill.
 - Deliver a verified candidate with a plain `git commit`. The [receipt](docs/task-harness.md#do-a-daily-task-in-one-command) names that commit without another Kitsu command.
 
 - Deny an agent's shell the host's review notices, a terminal of its own for approvals and writes to the task ledger. [What the guard denies](docs/operations.md#kitsu-guard)

@@ -1,26 +1,26 @@
 {
   "name": "kitsu",
   "version": "0.0.2",
-  "description": "Coordinate coding tasks across Codex and Claude Code. Configure each specialist's host, model and reasoning, resume saved tasks, and keep verification evidence with the worktree.",
+  "description": "Verify a coding task with one command in Codex or Claude Code, resume saved tasks, and keep verification evidence with the worktree.",
   "author": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
   "homepage": "https://github.com/belevtsev/kitsu",
   "repository": "https://github.com/belevtsev/kitsu",
   "license": "MIT",
-  "keywords": ["codex", "plugin", "coding-agents", "agent-coordination", "workflow", "git-hooks", "quality-gate"],
+  "keywords": ["codex", "plugin", "coding-agents", "verification", "git-hooks", "quality-gate"],
   "skills": "./skills/",
   "hooks": "./hooks/codex-hooks.json",
   "interface": {
     "displayName": "Kitsu",
     "logo": "./docs/brand/kitsu-mascot.png",
-    "shortDescription": "Coordinate coding roles and verify their work",
-    "longDescription": "Start or resume a task in either coding host. Choose a host, model, and reasoning for each specialist. A registered runner supervises configured jobs and signs verification results. Kitsu saves the task's scope, assignments, checks and review evidence in the worktree. An optional Git gate checks evidence before commits and pushes.",
+    "shortDescription": "Verify coding tasks and gate commits",
+    "longDescription": "Start or resume a task in either coding host. One command opens the task, runs its assertion and commits the verified change. Kitsu saves the task's scope, checks and review evidence in the worktree. An optional Git gate checks evidence before commits and pushes. Role coordination and supervised runs are in the opt-in kitsu-team plugin.",
     "developerName": "Pavlo Belevtsev",
     "category": "Developer Tools",
     "capabilities": ["Interactive", "Write"],
     "websiteURL": "https://github.com/belevtsev/kitsu",
     "defaultPrompt": [
-      "Use the task skill to plan and implement a change with specialist coding agents",
-      "Show the role settings and how to assign the developer to Claude Code"
+      "Use the task skill to implement a change and verify it before the commit",
+      "Set up the checks and the Git gate for this repository"
     ]
   }
 }

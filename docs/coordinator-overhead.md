@@ -43,7 +43,7 @@ response. Both save the complete assignment and order selections before baseline
 | `native.prompt` | Pass this exact label-first message. It names the full packet and contains the required return shape. |
 | `native.model`, `native.effort` | Apply the effective selection; stop if unavailable. |
 | `native.fresh_context`, `native.fork_turns` | Require a fresh worker without coordinator conversation inheritance. |
-| `native.role` | Select the `kitsu:<role>` native role on Claude Code. |
+| `native.role` | Select the `kitsu-team:<role>` native role on Claude Code. |
 | `native_prompt_sha256` | Identify the generated prompt; this cannot prove equality to an encrypted host message. |
 
 This is a launch description, not an executable command or universal host API.
