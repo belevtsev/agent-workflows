@@ -422,7 +422,10 @@ behavior, testability, failure cases and compatibility. Kitsu sends at most
 to ten seconds. See the [TypeSafe System One schema](https://api.typesafe.ai/openapi.json).
 
 The task keeps the result and any provider usage on the intake brief revision.
-The host uses it to spot gaps and can save a revised brief after clarifying
+During intake, brief status shows the revision, review status and named
+`gap` or `uncertain` results. An unavailable result carries the local diagnostic.
+Use `kitsu task show ID --json` for all answers, model and usage.
+The host uses the advice to spot gaps and can save a revised brief after clarifying
 the request. If the provider is unavailable or the call is interrupted, local
 planning can continue. Replaying an intake uses its existing record. Review
 and verification requirements still apply. Read older advice with

@@ -56,17 +56,27 @@ func TestConfiguredStoryReviewIntake(t *testing.T) {
 			return
 		}
 		choice := "clear"
-		if strings.Contains(batch.State, "Which output?") {
+		switch {
+		case strings.Contains(batch.State, "Which output?"):
 			choice = "gap"
+		case strings.Contains(batch.State, "Maybe JSON"):
+			choice = "uncertain"
 		}
 		answers := map[string]any{}
 		for _, id := range []string{"goal_actor", "scope", "behavior", "testability", "failure_cases", "compatibility"} {
 			if len(batch.Questions[id]) == 0 {
 				t.Errorf("missing dimension %s", id)
 			}
+			selected := "clear"
+			switch id {
+			case "scope":
+				selected = choice
+			case "compatibility":
+				selected = "not_applicable"
+			}
 			probs := map[string]float64{"clear": 0.03, "gap": 0.03, "uncertain": 0.03, "not_applicable": 0.03}
-			probs[choice] = 0.91
-			answers[id] = map[string]any{"type": "choice", "choice": choice, "probabilities": probs}
+			probs[selected] = 0.91
+			answers[id] = map[string]any{"type": "choice", "choice": selected, "probabilities": probs}
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"model": advisers.StoryModel, "answers": answers,
 			"usage": map[string]int{"input_tokens": 37, "output_tokens": 4}})
@@ -123,42 +133,93 @@ func TestConfiguredStoryReviewIntake(t *testing.T) {
 	for i, c := range []struct{ id, story, choice string }{
 		{"clear-story", "Export books with JSON", "clear"},
 		{"gap-story", "Which output?", "gap"},
+		{"uncertain-story", "Maybe JSON or text", "uncertain"},
 	} {
 		args := startStoryFixture(f, c.id, c.story)
-		var view struct {
-			Review *harness.StoryReview `json:"story_review"`
-			Next   string               `json:"next"`
-		}
+		var brief *briefStoryReview
 		for range 2 {
-			output := f.run(storyFixture, true, args...)
-			err := json.Unmarshal([]byte(output), &view)
-			if err != nil || view.Next != "implement" || view.Review == nil || view.Review.Status != "available" ||
-				len(view.Review.Answers) != 6 || view.Review.Answers["scope"].Choice != c.choice ||
-				view.Review.Answers["scope"].Confidence != nil || view.Review.InputTokens == nil ||
-				*view.Review.InputTokens != 37 || f.calls.Load() != int32(i+1) {
-				t.Fatalf("unexpected intake: %s (%v)", output, err)
-			}
+			assertStoryReviewBrief(t, f.run(storyFixture, true, args...), c.choice)
+			brief = assertStoryReviewBrief(t, f.run("", true, "task", "next", c.id, "--brief"), c.choice)
+		}
+		review := savedStoryReview(f, c.id)
+		fullJSON, _ := json.Marshal(review)
+		briefJSON, _ := json.Marshal(brief)
+		t.Logf("%s story bytes full=%d brief=%d", c.choice, len(fullJSON), len(briefJSON))
+		if len(review.Answers) != 6 || review.Answers["scope"].Choice != c.choice ||
+			review.Answers["scope"].Confidence != nil || review.InputTokens == nil ||
+			*review.InputTokens != 37 || f.calls.Load() != int32(i+1) {
+			t.Fatalf("incomplete story evidence or unexpected call count: %#v", review)
 		}
 	}
+	checkStoryRevisionAfterPlanning(f)
 	f.status.Store(http.StatusServiceUnavailable)
 	args := startStoryFixture(f, "outage", "Export books")
 	for range 2 {
 		output := f.run(storyFixture, true, args...)
-		if !strings.Contains(output, "\"unavailable\"") || !strings.Contains(output, "\"implement\"") || f.calls.Load() != 3 {
+		if !strings.Contains(output, "\"unavailable\"") || !strings.Contains(output, "\"implement\"") || f.calls.Load() != 4 {
 			t.Fatalf("outage blocked intake or retried: %s", output)
 		}
 	}
 
 	args = startStoryFixture(f, "lost-result", "Export books")
 	loseStoryResult(t, args)
-	if output := f.run(storyFixture, true, args...); !strings.Contains(output, "did not complete") || f.calls.Load() != 3 {
+	if output := f.run(storyFixture, true, args...); !strings.Contains(output, "did not complete") || f.calls.Load() != 4 {
 		t.Fatalf("an interrupted attempt relaunched: %s", output)
 	}
 
 	f.write(advisers.FileName, strings.Replace(f.configuration, "coordinator = ['jev']", "coordinator = []", 1))
 	output := f.run(storyFixture, true, startStoryFixture(f, "policy-change", "Export books")...)
-	if !strings.Contains(output, "re-enable story review") || f.calls.Load() != 3 {
+	if !strings.Contains(output, "re-enable story review") || f.calls.Load() != 4 {
 		t.Fatalf("changed approval sent a story: %s", output)
+	}
+}
+
+func assertStoryReviewBrief(t *testing.T, output, choice string) *briefStoryReview {
+	t.Helper()
+	var view struct {
+		Review *briefStoryReview `json:"story_review"`
+		Next   string            `json:"next"`
+	}
+	if err := json.Unmarshal([]byte(output), &view); err != nil || view.Next != "implement" ||
+		view.Review == nil || view.Review.Status != "available" || view.Review.Revision == "" {
+		t.Fatal(output)
+	}
+	gaps := view.Review.Gaps
+	if choice == "clear" && len(gaps) != 0 || choice != "clear" && (len(gaps) != 1 || gaps["scope"] != choice) {
+		t.Fatalf("unexpected story gaps: %v", gaps)
+	}
+	for _, field := range []string{`"answers"`, `"input_tokens"`, `"duration_ns"`, `"actual_model"`} {
+		if strings.Contains(output, field) {
+			t.Fatalf("brief repeated full story field %s", field)
+		}
+	}
+	return view.Review
+}
+
+func savedStoryReview(f *nativeCLIFixture, id string) *harness.StoryReview {
+	f.t.Helper()
+	full := f.run("", true, "task", "show", id, "--json")
+	var record uxTaskView
+	if err := json.Unmarshal([]byte(full), &record); err != nil || record.Harness == nil || record.Harness.StoryReview == nil {
+		f.t.Fatal(full)
+	}
+	return record.Harness.StoryReview
+}
+
+func checkStoryRevisionAfterPlanning(f *nativeCLIFixture) {
+	f.t.Helper()
+	const id = "gap-story"
+	before := savedStoryReview(f, id).Revision
+	out := f.run("", true, "task", "next", id, "--brief")
+	var pending struct{ Ticket string }
+	if err := json.Unmarshal([]byte(out), &pending); err != nil || pending.Ticket == "" {
+		f.t.Fatal(out)
+	}
+	revision := strings.Replace(storyFixture, "Keep the default format", "Keep the default and support CSV", 1)
+	updated := f.run(revision, true, "task", "record", id, "plan", "--ticket", pending.Ticket, "--actor", "host",
+		"--note", "Clarified output format", "--feature-brief", "-", "--brief")
+	if strings.Contains(updated, `"story_review"`) || savedStoryReview(f, id).Revision != before || f.calls.Load() != 3 {
+		f.t.Fatalf("planning replaced historical advice or presented it as current: %s", updated)
 	}
 }
 

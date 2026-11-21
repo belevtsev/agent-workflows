@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Show actionable [Jev story review results](docs/advisers.md#review-feature-stories-at-intake-with-jev) in brief task status.
+
 - Give reviewers the original request, acceptance criteria and current checks in a [shorter feature handoff](docs/task-harness.md#choose-independent-review).
 
 - Opt in to [verification before independent review](docs/task-harness.md#verify-before-review) for eligible feature deliveries.
