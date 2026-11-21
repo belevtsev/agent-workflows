@@ -510,6 +510,14 @@ intake revision. Verification and required independent review SHALL remain in fo
 - **THEN** the persisted intake SHALL allow local planning and prevent a replayed HTTP attempt
 - **AND** a changed configuration SHALL require approval before another intake can send a request
 
+#### Scenario: Resume intake with actionable story advice
+
+- **WHEN** a brief status read sees current story advice at intake
+- **THEN** it SHALL show the status, revision and dimensions marked gap or uncertain
+- **AND** full answers and usage SHALL remain available in the saved record
+- **AND** replaying intake or reading status SHALL incur zero new requests
+- **AND** a revised brief SHALL keep prior advice only as historical evidence
+
 ### Requirement: Check a declared feature before its first required review when approved
 
 Source: Approved token-reduction plan for checkout-local verify-before-review.

@@ -2,6 +2,7 @@
 
 | Scenario | Test file | Text |
 | --- | --- | --- |
+| Resume intake with actionable story advice | internal/cli/adviser_story_review_test.go | TestConfiguredStoryReviewIntake |
 | Read a concise feature review assignment in either host | scenarios/harness/feature_review_brief_test.go | TestFeatureReviewBrief |
 | Start required review after a repaired candidate passes | scenarios/harness/verify_before_review_test.go | TestVerifyFeatureBeforeFirstReview |
 | Keep early verification within the approved checkout and declaration | scenarios/harness/verify_before_review_test.go | TestVerifyBeforeReviewConsentChanges |
@@ -223,3 +224,10 @@ between checks. Each scenario uses a real Git worktree and a local check.
 The Codex fixture used 2,644 and 1,823 output bytes with current evidence.
 The Claude Code fixture used 2,537 and 1,716 with a stale proof. Both keep the
 request, criteria, pinned comparison and full-record reference.
+
+The local Jev fixture compares the saved response with its status projection.
+In one replay the clear, gap and uncertain objects were 457, 455 and 461 bytes
+in the full record and 108, 131 and 137 bytes in brief status. These figures
+measure the story object alone. The fixture checks that repeated reads and
+planning revisions add zero provider calls, and that the saved response still
+contains all six answers and usage.

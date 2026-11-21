@@ -175,3 +175,30 @@ func completeStoryIntake(ctx context.Context, s *session, l *stageLedger, task *
 	}
 	return printHarnessResult(s.cfg, "record", o, view)
 }
+
+type briefStoryReview struct {
+	Status   string            `json:"status"`
+	Revision string            `json:"feature_revision"`
+	Gaps     map[string]string `json:"gaps,omitempty"`
+	Detail   string            `json:"detail,omitempty"`
+}
+
+func (v harnessView) addBriefStoryReview(reply map[string]any) {
+	review := v.StoryReview
+	if review == nil || v.Feature == nil || review.Revision != v.Feature.Revision() || v.Last == nil || v.Last.Action != "intake" {
+		return
+	}
+	summary := briefStoryReview{Status: review.Status, Revision: review.Revision}
+	switch review.Status {
+	case "available":
+		summary.Gaps = make(map[string]string)
+		for dimension, answer := range review.Answers {
+			if answer.Choice == "gap" || answer.Choice == "uncertain" {
+				summary.Gaps[dimension] = answer.Choice
+			}
+		}
+	case "unavailable":
+		summary.Detail = review.Detail
+	}
+	reply["story_review"] = summary
+}

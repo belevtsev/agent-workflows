@@ -14,3 +14,4 @@
 - [x] 1.11 Opt in to one revision-bound Jev assessment at feature intake, with replay and unavailable outcomes. Size: M. Depends on: 1.9. Check: test. Source: Review new feature stories with an explicitly approved adviser.
 - [x] 1.12 Verify opted-in declared features before their first required review. Size: M. Depends on: 1.9, 1.10. Check: test. Source: Check a declared feature before its first required review when approved.
 - [x] 1.13 Expose a shorter ticket-bound feature review handoff with current evidence. Size: S. Depends on: 1.9, 1.10. Check: test. Source: Read the reserved feature criteria and current verification in one handoff.
+- [x] 1.14 Project current story gaps in brief status and retain full advice on demand. Size: S. Depends on: 1.11. Check: test. Source: Review new feature stories with an explicitly approved adviser.

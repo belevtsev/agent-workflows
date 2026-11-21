@@ -499,6 +499,7 @@ func (v harnessView) brief() map[string]any {
 	if v.Feature != nil {
 		reply["feature_revision"] = v.Feature.Revision()
 	}
+	v.addBriefStoryReview(reply)
 	v.addBriefNextCommand(reply)
 	v.addBriefTicket(reply)
 	if v.ReviewPolicyError != "" {
@@ -554,9 +555,6 @@ func (v harnessView) brief() map[string]any {
 }
 
 func (v harnessView) addBriefNextCommand(reply map[string]any) {
-	if v.StoryReview != nil && v.StoryReview.Revision == v.Feature.Revision() && v.Last != nil && v.Last.Action == "intake" {
-		reply["story_review"] = v.StoryReview
-	}
 	if v.Feature != nil && v.Verified {
 		reply["delivery_receipt"] = []string{"kitsu", "task", "receipt", v.Task, "--markdown"}
 	}
