@@ -93,4 +93,7 @@ func TestAssertionCorrectionRetainsOriginalFailure(t *testing.T) {
 	if last.Reason != reason || last.Replaced == nil || last.Replaced.Run != original || !strings.Contains(strings.Join(last.Replaced.Argv, " "), "incorrect-pattern") {
 		t.Fatal("the correction lost its origin or reason", last)
 	}
+	body := readReceiptMarkdown(f)
+	markdownContains(t, body, "A failing assertion, run ` "+original+" `, was replaced by another command.")
+	markdownOmits(t, body, reason, "incorrect-pattern", "Authority added")
 }

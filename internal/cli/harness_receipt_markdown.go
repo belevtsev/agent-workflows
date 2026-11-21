@@ -45,6 +45,7 @@ func printMarkdownReceipt(ctx context.Context, s *session, id string) error {
 	md := &strings.Builder{}
 	fmt.Fprintf(md, "# Kitsu task receipt\n\n- Task `%s`\n- Verified tree `%s`\n", id, result.candidate.Tree)
 	result.writeDelivery(md, &task)
+	writeReceiptChanges(md, &task)
 	if task.Bug != nil {
 		writeReceiptTicket(md, task.Bug.Source)
 	}
@@ -136,6 +137,25 @@ func (r savedVerification) writeDelivery(md *strings.Builder, task *harness.Task
 	}
 }
 
+// writeReceiptChanges names what was added or replaced after the task opened:
+// the rest of the receipt shows only the last criteria and authority.
+func writeReceiptChanges(md *strings.Builder, t *harness.Task) {
+	if len(t.ScopeAdded) > 0 {
+		fmt.Fprintln(md, "- Authority added after the task opened ·", strings.Join(t.ScopeAdded, ", "))
+	}
+	last := ""
+	for _, e := range t.Events {
+		if e.Replaced == nil || e.Replaced.Run == last {
+			continue
+		}
+		if last = e.Replaced.Run; e.Action == "plan" {
+			fmt.Fprintln(md, "- The feature brief was revised before run", markdownCode(last), "passed its criteria.")
+		} else {
+			fmt.Fprintln(md, "- A failing assertion, run", markdownCode(last)+", was replaced by another command.")
+		}
+	}
+}
+
 func writeReceiptTicket(md *strings.Builder, source harness.TicketSource) {
 	link := tickets.CanonicalIssueLink(source.URL)
 	pr := tickets.CanonicalPullRequestLink(source.URL)
@@ -143,6 +163,9 @@ func writeReceiptTicket(md *strings.Builder, source harness.TicketSource) {
 	case source.Check != nil && pr != "":
 		fmt.Fprintf(md, "- Pull request <%s>\n", pr)
 		fmt.Fprintln(md, "- Reported failed check", markdownCode(source.Check.Name), "on commit", markdownCode(source.Check.Head))
+		if source.Check.Supplied {
+			fmt.Fprintln(md, "- The caller supplied the failed check. Kitsu did not read it from GitHub.")
+		}
 	case link != "":
 		fmt.Fprintf(md, "- Ticket <%s>\n", link)
 	case source.Kind == "markdown":

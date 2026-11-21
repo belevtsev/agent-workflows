@@ -87,7 +87,8 @@ func TestVerifiedFeatureDelivery(t *testing.T) {
 	body := readReceiptMarkdown(f)
 	markdownContains(t, body, "Verified commit `"+r.Git("rev-parse", "HEAD")+"`", brief.Revision(),
 		"Criterion `json-empty`", "Criterion `json-quotes`", "Criterion `text-compatible`", "Host-observed review", "| `unit` | Passed |")
-	markdownOmits(t, body, "private feature request", "private scope text", r.Path(""), "^TestJSONExport$")
+	// This brief was revised after its criteria had passed: nothing was replaced.
+	markdownOmits(t, body, "private feature request", "private scope text", r.Path(""), "^TestJSONExport$", "was revised before")
 }
 
 func TestFeatureDraftAndNamedCheck(t *testing.T) {
@@ -113,6 +114,30 @@ func TestFeatureDraftAndNamedCheck(t *testing.T) {
 	f.call(0, "test", "--ticket", f.state.Ticket, "--retry")
 	f.want("done")
 	markdownContains(t, readReceiptMarkdown(f), "Criterion `export`")
+}
+
+// A brief that asks for less lets the same candidate pass. The receipt shows
+// only the last criteria, so it must keep the attempt they replaced in view.
+func TestReceiptKeepsTheVerificationARevisedBriefReplaced(t *testing.T) {
+	r := kitsutest.Demo(t)
+	approveCIRepo(t, r)
+	f := flow{t: t, repo: r, id: "weakened-brief"}
+	f.call(0, "open", "--entry", "implement", "--until", "verify", "--request", "Export rows")
+	brief := harness.FeatureBrief{Version: 1, Goal: "Export rows", Scope: "One format",
+		Criteria: []harness.Criterion{{ID: "export", Expected: "The export is tracked", Check: "behavior"}},
+		Behavior: &harness.FeatureBehavior{Expect: "export.txt is tracked", Argv: []string{"git", "ls-files", "--error-unmatch", "export.txt"}}}
+	f.record("intake", "host", "Ready for implementation", "--feature-brief", writeFeatureFixture(t, brief))
+	f.record("implement", "host", "Nothing was exported")
+	f.call(5, "test", "--ticket", f.state.Ticket, "--retry")
+	failed := f.state.Proof.Run
+	brief.Behavior = &harness.FeatureBehavior{Expect: "Git runs", Argv: []string{"git", "version"}}
+	f.call(0, "record", "plan", "--feature-brief", writeFeatureFixture(t, brief), "--actor", "host", "--note", "Asked for less", "--ticket", f.state.Ticket)
+	f.record("implement", "host", "The candidate is unchanged")
+	f.call(0, "test", "--ticket", f.state.Ticket, "--retry")
+	f.want("done")
+	body := readReceiptMarkdown(f)
+	markdownContains(t, body, "The feature brief was revised before run ` "+failed+" ` passed its criteria.", "Criterion `export` · Passed")
+	markdownOmits(t, body, "was replaced by another command", "export.txt")
 }
 
 func writeFeatureFixture(t *testing.T, brief harness.FeatureBrief) string {

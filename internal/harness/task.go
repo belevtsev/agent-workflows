@@ -225,6 +225,7 @@ type Task struct {
 	ReleasedDevelopers []string       `json:"released_developer_workers,omitempty"`
 	FinishReserve      time.Duration  `json:"finish_reserve_ns,omitempty"`
 	PendingScope       bool           `json:"pending_scope,omitempty"`
+	ScopeAdded         []string       `json:"scope_added,omitempty"` // Authority granted by task extend.
 	Claim              *Claim         `json:"claim,omitempty"`
 	Generation         int            `json:"generation,omitempty"`
 

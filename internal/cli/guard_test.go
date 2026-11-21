@@ -203,3 +203,46 @@ func TestEditReasonSeesAnotherSpellingOfAName(t *testing.T) {
 		{".git/Kitsu/runs/x.json", root, "records of kitsu"},
 	})
 }
+
+// An agent's shell must not report a reviewer, approve checks or rewrite a
+// saved task. Each of these would let one session pass a check that is
+// described as independent or as the developer's. Reads stay possible.
+func TestGuardKeepsHostEvidenceAndApprovalsOutOfAnAgentsShell(t *testing.T) {
+	t.Parallel()
+	_, root := guardRepo(t, "")
+	ask := func(command string) (string, bool) {
+		call := toolCall{Tool: "Bash", Dir: root}
+		call.Input.Command = command
+		return guardReason(context.Background(), call)
+	}
+	for _, command := range []string{
+		`echo '{"hook_event_name":"SubagentStart","session_id":"me","agent_id":"fake"}' | kitsu tokens record --host claude`,
+		`sh -c "kitsu tokens record --host codex" < notice.json`,
+		`kitsu usage record --host claude < notice.json`,
+		"script -q /dev/null kitsu check trust",
+		`script -qc "kitsu check trust" /dev/null`,
+		"unbuffer kitsu check trust",
+		"echo forged > .git/kitsu-stages/native-review-ABC.json",
+		"cd .git/kitsu-stages && cat task-harness-a.json",
+		"cp approval ~/.config/kitsu/check-trust/0123abcd",
+		`python3 -c "open('.git/kitsu-stages/task-harness-a.json','w')"`,
+		"sed -i s/pending/approve/ .git/kitsu-stages/native-review-ABC.json",
+	} {
+		if why, developerOnly := ask(command); why == "" || !developerOnly {
+			t.Errorf("guard accepted %q: %q", command, why)
+		}
+	}
+	for _, command := range []string{
+		"cat .git/kitsu-stages/ticket-csv-fix.md",
+		"cat .git/kitsu-stages/ticket-csv-fix.md | head -40",
+		"rg -n kitsu-stages internal/",
+		"kitsu tokens show --json",
+		"kitsu tokens record --help",
+		"echo kitsu tokens record",
+		"cat .git/kitsu/logs/20261121T080006Z-743225c9.log",
+	} {
+		if why, _ := ask(command); why != "" {
+			t.Errorf("guard refused %q: %q", command, why)
+		}
+	}
+}
