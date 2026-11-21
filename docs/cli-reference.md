@@ -139,6 +139,7 @@ Options:
                            styling
   --review-ticket <id>     read the reserved candidate, findings and work notes
                            for the independent reviewer as JSON
+  --review-brief           read the shorter handoff for the reserved reviewer
   --compact                return a full coordinator snapshot with references;
                            always JSON
   --since <snapshot-id>    return only sections changed since a retained

@@ -13,3 +13,4 @@
 - [x] 1.10 Resume with a short shared host brief and reuse a saved verification command. Size: S. Depends on: 1.9. Check: test. Source: Verify a feature against a saved acceptance brief.
 - [x] 1.11 Opt in to one revision-bound Jev assessment at feature intake, with replay and unavailable outcomes. Size: M. Depends on: 1.9. Check: test. Source: Review new feature stories with an explicitly approved adviser.
 - [x] 1.12 Verify opted-in declared features before their first required review. Size: M. Depends on: 1.9, 1.10. Check: test. Source: Check a declared feature before its first required review when approved.
+- [x] 1.13 Expose a shorter ticket-bound feature review handoff with current evidence. Size: S. Depends on: 1.9, 1.10. Check: test. Source: Read the reserved feature criteria and current verification in one handoff.

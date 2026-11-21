@@ -38,6 +38,7 @@ func runCoordinatorTaskShow(ctx context.Context, cfg Config, args []string) erro
 	flags := newFlags("task show")
 	compact := flags.Bool("compact", false, "")
 	review := flags.String("review-ticket", "", "")
+	reviewBrief := flags.Bool("review-brief", false, "")
 	since := flags.String("since", "", "")
 	budget := flags.Int("max-bytes", contextpack.DefaultBytes, "")
 	flags.Bool("json", false, "")
@@ -52,7 +53,10 @@ func runCoordinatorTaskShow(ctx context.Context, cfg Config, args []string) erro
 		if !stageValidID(*review) || uxFlagPresent(args, "compact") || uxFlagPresent(args, "since") || uxFlagPresent(args, "max-bytes") {
 			return usagef("--review-ticket requires a reservation ticket and a separate view from --compact, --since or --max-bytes")
 		}
-		return printReservedReview(ctx, cfg, p.pos[0], *review)
+		return printReservedReview(ctx, cfg, p.pos[0], *review, *reviewBrief)
+	}
+	if uxFlagPresent(args, "review-brief") {
+		return usagef("--review-brief requires --review-ticket")
 	}
 	if !*compact && !uxFlagPresent(args, "since") {
 		if uxFlagPresent(args, "max-bytes") {

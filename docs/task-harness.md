@@ -206,6 +206,12 @@ require_review = true
 
 The CLI checks the declaration in the committed and working snapshots at intake and at the current checkout. Removing the policy during a task cannot waive the original requirement. An invalid declaration leaves the review policy unknown. The task can record implementation work, then blocks with a diagnostic before verification. Correct the declaration or explicitly request review if the saved baseline is invalid. Executable repository checks still need a valid current declaration. A plan-only task can still finish with a plan. When verification is the starting stage, Kitsu checks the supplied behavior first. Required review must still finish before delivery. Tasks saved by earlier CLI versions retain their original review routing. The managed workflow keeps its own role and approval rules.
 
+For an accepted feature, the review reservation's `review_input` command
+selects the shorter handoff. It includes the original request, saved criteria,
+reserved Git comparison, unresolved findings and current check evidence. Use
+the handoff's `details` command for earlier work notes. Both reads use the same
+reservation ticket, even if the checkout has moved.
+
 ## Inspect or resume
 
 ```sh
