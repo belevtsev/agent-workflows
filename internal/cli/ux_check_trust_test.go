@@ -58,13 +58,13 @@ func TestReviewExactCheckDeclarationBeforeAgentExecution(t *testing.T) {
 		t.Fatalf("invalid approval saved: %v, %t", err, before.exists)
 	}
 	r.Write("kitsu.toml", policy+"# Review this changed declaration\n")
-	if err := confirmCheckTrust(t.Context(), cfg, repo, fingerprint); err == nil || !strings.Contains(err.Error(), "declaration changed") {
+	if err := confirmCheckTrust(t.Context(), cfg, repo, fingerprint, false); err == nil || !strings.Contains(err.Error(), "declaration changed") {
 		t.Fatalf("a change during the prompt must invalidate approval: %v", err)
 	}
 
 	r.Write("kitsu.toml", policy)
 	cfg.In = strings.NewReader("yes\n")
-	if err := confirmCheckTrust(t.Context(), cfg, repo, fingerprint); err != nil {
+	if err := confirmCheckTrust(t.Context(), cfg, repo, fingerprint, false); err != nil {
 		t.Fatal(err)
 	}
 	shared := filepath.Join(t.TempDir(), "shared")
@@ -131,5 +131,54 @@ func TestLocalCIApprovalRequiresDeveloperInUnconfiguredRepo(t *testing.T) {
 	write.Input.Path = local.path
 	if reason, developerOnly := guardReason(t.Context(), write); !developerOnly || !strings.Contains(reason, "local check approvals") {
 		t.Fatalf("guard allowed direct approval file creation: %s", reason)
+	}
+}
+
+func TestVerificationOrderGrantIsCheckoutLocal(t *testing.T) {
+	r := kitsutest.Demo(t)
+	t.Chdir(r.Dir)
+	t.Setenv("HOME", r.Home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(r.Home, ".config"))
+	t.Setenv("APPDATA", filepath.Join(r.Home, "AppData", "Roaming"))
+	repo, err := gitx.Open(t.Context(), r.Dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, digest, err := workingCheckPolicy(t.Context(), repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{In: strings.NewReader("yes\n"), Out: io.Discard, Err: io.Discard}
+	for _, args := range [][]string{{"--verify-order", beforeReview}, {"--verify-order", reviewFirst}, {"--verify-order", beforeReview, "--ci", "unit"}} {
+		if err := runUXCheckTrust(t.Context(), cfg, args); ExitCode(err) != ExitUsage {
+			t.Fatalf("expected usage error for %q: %v", args, err)
+		}
+	}
+	cfg.In = strings.NewReader("yes\n")
+	if err := confirmCheckTrust(t.Context(), cfg, repo, digest, true); err != nil {
+		t.Fatal(err)
+	}
+	s := &session{repo: repo}
+	if !verificationOrderApproved(s, digest) {
+		t.Fatal("confirmed approval is unavailable")
+	}
+	linked := filepath.Join(t.TempDir(), "linked-order")
+	r.Git("worktree", "add", "-qb", "other-order", linked)
+	other, err := gitx.Open(t.Context(), linked)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verificationOrderApproved(&session{repo: other}, digest) {
+		t.Fatal("shared Git directory inherited early verification")
+	}
+	path, err := verificationOrderFile(repo)
+	if err != nil || editReason(t.Context(), repo, r.Dir, []string{path.path}) != checkTrustEditReason {
+		t.Fatalf("unprotected verification order file: %v", err)
+	}
+	for _, host := range []string{"codex", "claude"} {
+		command := "kitsu check run && kitsu check trust --verify-order review-first"
+		if notice := checkApprovalNotice(t, host, r.Dir, command); !strings.Contains(notice, "their own terminal") {
+			t.Fatalf("%s did not protect the order change: %s", host, notice)
+		}
 	}
 }

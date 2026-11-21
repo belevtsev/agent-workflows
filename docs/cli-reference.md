@@ -1653,12 +1653,13 @@ Exit statuses: 0 success; 1 operation failed; 2 invalid arguments;
 ### kitsu check trust
 
 ```text
-usage: kitsu check trust [--ci ID [options] -- PROGRAM ARGS...]
+usage: kitsu check trust [--verify-order before-review|review-first] [--ci ID [options] -- PROGRAM ARGS...]
 
-Approve repository checks or a private local CI reproduction.
+Approve checks, verification order, or a private local CI reproduction.
 
 Options:
   --ci <id>                approve a named local reproduction command
+  --verify-order <order>   approve or revoke early verification in this checkout
   --help, -h               show this command's help without executing it
 
 Examples:

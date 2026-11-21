@@ -509,3 +509,25 @@ intake revision. Verification and required independent review SHALL remain in fo
 - **WHEN** a configured intake sends its one batch and reports success, failure, or no result
 - **THEN** the persisted intake SHALL allow local planning and prevent a replayed HTTP attempt
 - **AND** a changed configuration SHALL require approval before another intake can send a request
+
+### Requirement: Check a declared feature before its first required review when approved
+
+Source: Approved token-reduction plan for checkout-local verify-before-review.
+
+Before the first independent review of an implementation-entry, declared-check
+feature delivery, the daily harness SHALL offer verification when the checkout
+and exact declaration have current check and timing approvals. It SHALL require
+both approvals before every early check launch.
+
+#### Scenario: Start required review after a repaired candidate passes
+
+- **WHEN** an approved early check fails on the staged candidate
+- **THEN** the task SHALL return to coding without reserving a reviewer
+- **AND** a repaired candidate SHALL pass its checks and receive any required
+  independent review before delivery
+
+#### Scenario: Keep early verification within the approved checkout and declaration
+
+- **WHEN** the ordering approval is absent, revoked, or out of date
+- **THEN** the task SHALL preserve review-first scheduling and refuse stale
+  authority to run checks before review
