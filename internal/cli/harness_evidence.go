@@ -625,7 +625,11 @@ func (v harnessView) addBriefClaim(reply map[string]any) {
 			reply["review_round"] = v.ReviewStarts
 		}
 		if claim.Candidate != nil && claim.Ticket == v.Ticket && v.Next == "review" {
-			reply["review_input"] = []string{"kitsu", "task", "show", v.Task, "--review-ticket", v.Ticket}
+			input := []string{"kitsu", "task", "show", v.Task, "--review-ticket", v.Ticket}
+			if v.Feature != nil && !v.Feature.Draft {
+				input = append(input, "--review-brief")
+			}
+			reply["review_input"] = input
 		}
 		claim.Candidate = nil
 		reply["claim"] = claim

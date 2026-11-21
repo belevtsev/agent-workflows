@@ -2,6 +2,7 @@
 
 | Scenario | Test file | Text |
 | --- | --- | --- |
+| Read a concise feature review assignment in either host | scenarios/harness/feature_review_brief_test.go | TestFeatureReviewBrief |
 | Start required review after a repaired candidate passes | scenarios/harness/verify_before_review_test.go | TestVerifyFeatureBeforeFirstReview |
 | Keep early verification within the approved checkout and declaration | scenarios/harness/verify_before_review_test.go | TestVerifyBeforeReviewConsentChanges |
 | Resume configured story intake after a result or interruption | internal/cli/adviser_story_review_test.go | TestConfiguredStoryReviewIntake |
@@ -217,3 +218,8 @@ candidate. The red path starts zero reviews. The passing path requires an
 independent review before the authorized commit. The consent tests exercise
 checkout isolation, a pending review, stale grants, retries and revocation
 between checks. Each scenario uses a real Git worktree and a local check.
+
+`TestFeatureReviewBrief` compares full and short reads of the same reservation.
+The Codex fixture used 2,644 and 1,823 output bytes with current evidence.
+The Claude Code fixture used 2,537 and 1,716 with a stale proof. Both keep the
+request, criteria, pinned comparison and full-record reference.

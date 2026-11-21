@@ -531,3 +531,18 @@ both approvals before every early check launch.
 - **WHEN** the ordering approval is absent, revoked, or out of date
 - **THEN** the task SHALL preserve review-first scheduling and refuse stale
   authority to run checks before review
+
+### Requirement: Read the reserved feature criteria and current verification in one handoff
+
+Source: Approved token-reduction plan for acceptance-aware review.
+
+A feature's reserved reviewer input SHALL retain the original developer
+request, accepted criteria, applicable findings and pinned comparison.
+The brief SHALL link to the full ticket-bound input. Passing check references
+SHALL require valid evidence for the reserved candidate and brief revision.
+
+#### Scenario: Read a concise feature review assignment in either host
+
+- **WHEN** a Codex or Claude Code reviewer obtains a reserved feature handoff
+- **THEN** it SHALL receive the request and criteria with the pinned comparison
+- **AND** stale evidence SHALL be reported as unverified

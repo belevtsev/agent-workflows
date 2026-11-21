@@ -48,7 +48,7 @@ func harnessCandidate(ctx context.Context, s *session, t *harness.Task) (harness
 
 // Read the reservation as recorded. A read-only reviewer can open this view
 // with its entire checkout mounted read-only. Recording the review checks the live candidate.
-func printReservedReview(ctx context.Context, cfg Config, id, ticket string) error {
+func printReservedReview(ctx context.Context, cfg Config, id, ticket string, brief bool) error {
 	s, err := open(ctx, cfg, true)
 	if err != nil {
 		return err
@@ -71,6 +71,9 @@ func printReservedReview(ctx context.Context, cfg Config, id, ticket string) err
 	}
 	assignment := "Review the reserved candidate read-only. Check the requested behavior and affected callers. " +
 		"Return approval or each unresolved finding with severity, location and a reproducible case to the coordinator."
+	if brief {
+		assignment = "Review the reserved candidate read-only against the request and criteria. Check affected callers and report unresolved findings with severity, location and a reproducer."
+	}
 	input := map[string]any{
 		"task": id, "request": t.Request, "scope": t.Scope,
 		"reserved_candidate": c, "review_round": t.StartedReviews(),
@@ -89,6 +92,20 @@ func printReservedReview(ctx context.Context, cfg Config, id, ticket string) err
 	if !t.Deadline.IsZero() {
 		input["review_return_by"] = t.Deadline.Add(-t.FinishReserve)
 	}
+	if prior != nil {
+		input["prior_findings"] = prior.Findings
+		addReviewChanges(input, prior, t.Scope.Until, c)
+	}
+	if brief {
+		input["details"] = []string{"kitsu", "task", "show", id, "--review-ticket", ticket}
+	} else {
+		addReviewWorkHistory(input, &t, prior)
+	}
+	addReviewFeatureEvidence(ctx, s, &t, c, input)
+	return json.NewEncoder(cfg.Out).Encode(input)
+}
+
+func addReviewWorkHistory(input map[string]any, t *harness.Task, prior *harness.Event) {
 	for _, action := range []string{"intake", "plan"} {
 		if e := t.Latest(action); e != nil {
 			input[action] = e.Note
@@ -99,13 +116,43 @@ func printReservedReview(ctx context.Context, cfg Config, id, ticket string) err
 		input["reported_work_tree"] = work.Candidate.Tree
 	}
 	if prior != nil {
-		input["prior_review"], input["prior_findings"] = prior.Note, prior.Findings
-		addReviewChanges(input, prior, t.Scope.Until, c)
+		input["prior_review"] = prior.Note
 	}
 	if p := t.Proof; p != nil && (p.Outcome != "passed" || p.GateFailure != nil || p.FailedCheck != "") {
 		input["prior_assertion"] = p
 	}
-	return json.NewEncoder(cfg.Out).Encode(input)
+}
+
+func addReviewFeatureEvidence(ctx context.Context, s *session, t *harness.Task, c harness.Snapshot, input map[string]any) {
+	feature := t.Feature
+	if feature == nil || feature.Draft {
+		return
+	}
+	input["feature_revision"] = feature.Revision()
+	input["feature_goal"], input["feature_scope"] = feature.Goal, feature.Scope
+	input["acceptance_criteria"] = feature.Criteria
+	input["verification"] = reservedFeatureVerification(ctx, s, t, c)
+}
+
+func reservedFeatureVerification(ctx context.Context, s *session, t *harness.Task, c harness.Snapshot) map[string]any {
+	result := map[string]any{"status": "unverified"}
+	p := t.Proof
+	if p == nil || p.Candidate != c || p.CheckedAt.IsZero() || checkHarnessPolicy(ctx, s, t, c.Tree) != nil {
+		return result
+	}
+	valid, err := harnessProofValid(s, t)
+	if err != nil || !valid {
+		return result
+	}
+	view := harnessView{Candidate: c}
+	if err := view.observeDailyGate(ctx, s, t); err != nil || !view.Verified {
+		return result
+	}
+	runs := make(map[string]string, len(p.GateRuns))
+	for id, run := range p.GateRuns {
+		runs[id] = run.ID
+	}
+	return map[string]any{"status": "passed", "assertion_run": p.Run, "repository_runs": runs}
 }
 
 // Supply a full comparison on first review or when an incremental comparison
