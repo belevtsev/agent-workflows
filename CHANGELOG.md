@@ -36,6 +36,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A shorter task skill supports the [same-worktree handoff preview](docs/verified-handoff-preview.md) across Codex and Claude Code.
 - Direct ticket imports connect only to public addresses. Use a host connector to [supply a private ticket](docs/task-harness.md#deliver-a-bug-ticket).
 
+### Changed
+
+- Deny an agent's shell the host's review notices, a terminal of its own for approvals and writes to the task ledger. [What the guard denies](docs/operations.md#kitsu-guard)
+
+- Name added authority, replaced assertions, revised briefs and supplied PR checks in the [verification receipt](docs/task-harness.md#share-a-verification-receipt).
+
+- State what a host-observed review and a terminal approval prove: evidence, not authentication. [A guardrail, not a sandbox](SECURITY.md#a-guardrail-not-a-sandbox)
+
+- Review a daily task with a [cheaper default reviewer](docs/task-harness.md#choose-independent-review). A reviewer that you set in `kitsu-roles.toml` still applies.
+
+- Load a shorter task skill and session notice in every session. The [step-by-step commands](skills/task/references/steps.md) are read only when a task needs them.
+
 ### Fixed
 
 - [Failed PR check intake](docs/task-harness.md#repair-a-failed-pr-check) also recognizes failures reported through commit statuses by external CI.

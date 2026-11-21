@@ -22,13 +22,13 @@ func TestSessionContextInAGatedRepository(t *testing.T) {
 			if result.Code != 0 {
 				t.Errorf("the SessionStart command exited %d, want 0:\n%s", result.Code, result.Output())
 			}
-			for _, want := range []string{"Kitsu coordinates coding tasks", "kitsu agent check --host " + host, "kitsu task start", "kitsu run", "kitsu status"} {
+			for _, want := range []string{"Kitsu verifies coding tasks", "kitsu agent check --host " + host, "kitsu run", "kitsu status"} {
 				if !strings.Contains(result.Stdout, want) {
 					t.Errorf("the context does not hold %q:\n%s", want, result.Stdout)
 				}
 			}
-			if n := len([]rune(result.Stdout)); n > 1000 {
-				t.Errorf("the context is %d characters, want at most 1,000:\n%s", n, result.Stdout)
+			if n := len([]rune(result.Stdout)); n > 620 {
+				t.Errorf("the context is %d characters, want at most 620:\n%s", n, result.Stdout)
 			}
 		})
 	}
@@ -98,7 +98,7 @@ func TestSessionContextWithoutADeclaration(t *testing.T) {
 					}
 					return
 				}
-				for _, want := range []string{"Kitsu coordinates coding tasks", "kitsu agent check --host " + host, "kitsu task start", "no kitsu.toml declaration", "Ask before declaring checks"} {
+				for _, want := range []string{"Kitsu verifies coding tasks", "kitsu agent check --host " + host, "no kitsu.toml declaration", "Ask before declaring checks"} {
 					if !strings.Contains(result.Stdout, want) {
 						t.Errorf("missing onboarding guidance %q:\n%s", want, result.Stdout)
 					}

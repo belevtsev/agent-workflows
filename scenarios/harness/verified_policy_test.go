@@ -107,4 +107,6 @@ func TestChangedVerifyOnlyCandidateNeedsRepairAuthority(t *testing.T) {
 	f.want("commit")
 	f.call(0, "commit", "--ticket", f.state.Ticket, "--message", "Deliver answer after repair")
 	f.want("done")
+	// The agent can grant itself repair, so the receipt says the task did not open with it.
+	markdownContains(t, readReceiptMarkdown(f), "Authority added after the task opened · repair\n")
 }

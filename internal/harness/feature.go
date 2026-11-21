@@ -103,6 +103,17 @@ func (b *FeatureBrief) Covers(p *Proof) bool {
 	return !slices.ContainsFunc(b.Criteria, func(c Criterion) bool { return c.Evidence(p).ID == "" })
 }
 
+// ReplacedBrief names the verification that had not passed under the criteria
+// a revised brief replaces, so that the receipt can keep that attempt in view.
+func (t *Task) ReplacedBrief(revised *FeatureBrief) *Assertion {
+	p, old := t.Proof, t.Feature.Revision()
+	if p == nil || old == "" || old == revised.Revision() || p.FeatureRevision != old ||
+		p.Outcome == "passed" && p.GateFailure == nil && p.FailedCheck == "" && !p.CheckedAt.IsZero() {
+		return nil
+	}
+	return &Assertion{Run: p.Run, Expect: p.Expect, Argv: p.Argv}
+}
+
 func (t *Task) CurrentFeatureEvent(e *Event) bool {
 	return e != nil && (t.Feature == nil || e.FeatureRevision == t.Feature.Revision())
 }

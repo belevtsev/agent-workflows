@@ -267,7 +267,7 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 					// command itself runs kitsu.
 					control := runCmd(t, way, filepath.Dir(systemPath()), installed, askCmd, notice)
 					switch found := strings.HasPrefix(strings.TrimSpace(control.Stdout), "kitsu "); {
-					case found && (said || !strings.Contains(result.Stdout, "declared in kitsu.toml")):
+					case found && (said || !strings.Contains(result.Stdout, "every kitsu.toml check")):
 						t.Errorf("cmd.exe finds kitsu through this PATH, and the command did not print what `kitsu context` prints:\n%s", result.Output())
 					case !found && first != "":
 						t.Errorf("cmd.exe finds no kitsu through this PATH:\n%s", control.Output())

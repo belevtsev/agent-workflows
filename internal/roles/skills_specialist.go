@@ -37,13 +37,15 @@ func (c *Config) SpecialistHost(host, id string) (string, error) {
 	return host, nil
 }
 
-// ResolveSpecialist returns the role's requested settings and original skills.
+// ResolveSpecialist returns the requested settings and original skills of a
+// role that a daily task starts.
 func ResolveSpecialist(root, host, id string) (*SpecialistSettings, error) {
 	cfg, err := Load(root)
 	if err != nil {
 		return nil, err
 	}
-	return cfg.resolveSpecialist(root, host, id, map[string]skills.Catalog{})
+	settings, err := cfg.resolveSpecialist(root, host, id, map[string]skills.Catalog{})
+	return cfg.daily(id, settings), err
 }
 
 // ResolveWorkflow resolves the complete version 2 repository role assignment.

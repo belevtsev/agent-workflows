@@ -121,6 +121,9 @@ cat .git/ci-metadata.json
 	if f.state.Proof.Run != red {
 		t.Fatal("reopening did not reuse the original failure")
 	}
+	if saved := r.Read(".git/kitsu-stages/task-harness-ci-repair.json"); !strings.Contains(saved, `"head"`) || strings.Contains(saved, `"supplied"`) {
+		t.Fatal("a check read from GitHub was saved as supplied by the caller:", saved)
+	}
 }
 
 func TestFailedPRCheckReachesVerifiedCommit(t *testing.T) {
@@ -199,7 +202,8 @@ func TestFailedPRCheckReachesVerifiedCommit(t *testing.T) {
 		receipt.RepositoryChecks != "passed" || len(receipt.RepositoryRuns) != 2 || receipt.OnCommit.ID == receipt.BeforeCommit.ID {
 		t.Fatalf("receipt lost source or verification evidence: %+v", receipt)
 	}
-	markdownContains(t, readReceiptMarkdown(f), "<"+ciPR+">", head, committed, "CI / unit", "Behavior on the delivered commit · Passed")
+	markdownContains(t, readReceiptMarkdown(f), "<"+ciPR+">", head, committed, "CI / unit", "Behavior on the delivered commit · Passed",
+		"The caller supplied the failed check. Kitsu did not read it from GitHub.")
 	f.call(0, finish...)
 	again := r.Kitsu("task", "receipt", f.id, "--json")
 	if r.Git("rev-parse", "HEAD") != committed || again.Stdout != result.Stdout {

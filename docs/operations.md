@@ -512,14 +512,11 @@ Without `--host`, `kitsu context` reads nothing and judges the working directory
 
 ```text
 $ kitsu context
-Kitsu coordinates coding tasks with specialist roles and shared records.
-To start, select Kitsu's task skill in your host.
-Setup: `kitsu agent check --host <host>`. Terminal: `kitsu task start "<request>" --host <host>`.
+Kitsu verifies coding tasks: select Kitsu's task skill in your host. Setup: `kitsu agent check --host <host>`.
 
-This repository is gated by kitsu. git allows a commit or a push only when every check declared in kitsu.toml has a recorded passing run on exactly the content that is committed or pushed.
-- `kitsu run` records missing checks on current content; run it before committing.
-- `kitsu status` shows missing evidence.
-- A denied commit or push needs passing evidence for the staged content; never bypass hooks.
+This repository is gated by kitsu. git allows a commit or a push only when every kitsu.toml check has a passing run on exactly that content.
+- `kitsu run` records missing checks and `kitsu status` lists them. Approval is the developer's: `kitsu check trust`.
+- Never bypass a denied commit or push.
 The hooks are installed.
 ```
 
@@ -528,12 +525,13 @@ are not installed in this clone, the workflow introduction stays first, and the 
 paragraph is this one; the installed-hooks line is left out:
 
 ```text
-This repository declares checks for kitsu, but the hooks are not installed in this clone, so nothing is gated here yet; `kitsu init` installs them. Once they are installed, git allows a commit or a push only when every check declared in kitsu.toml has a recorded passing run on exactly the content that is committed or pushed.
+This repository declares checks for kitsu, but the hooks are not installed in this clone, so nothing is gated here yet; `kitsu init` installs them. Once they are installed, git allows a commit or a push only when every kitsu.toml check has a passing run on exactly that content.
 ```
 
 Without `kitsu.toml`, a Git repository still gets the workflow introduction, followed by a line
-that no checks are declared and passing evidence has not been established. Context stays within
-1,000 characters. Outside a Git repository, it prints nothing.
+that no checks are declared and passing evidence has not been established. The introduction and
+the gate paragraph stay within 620 characters. A host session adds one line with its ID. Outside a
+Git repository, it prints nothing.
 
 Exit statuses: 0 always, also outside a repository; 2 an argument.
 
@@ -580,6 +578,12 @@ kitsu guard [--host claude|codex]
 
 Both hosts deny check execution when the declaration still needs developer approval. Run `kitsu check trust` in your terminal and inspect its commands before approving.
 
+Both hosts also deny these shell commands of an agent, in any repository:
+
+- `kitsu check trust`, which is the developer's approval;
+- `kitsu tokens record` and `kitsu usage record`, which only the host's hooks run to report sessions and reviewers;
+- a command line that names the task ledger (`kitsu-stages` in the git directory) or the approvals folder (`kitsu/check-trust` in your user configuration) and does more than read it. Reading means `cat`, `head`, `tail`, `less`, `more`, `grep`, `rg`, `ls`, `wc`, `jq`, `stat`, `diff` or `cmp` with no redirection. Any other command on the same line counts as a write.
+
 The notice is a JSON object on standard input with `tool_name`, `cwd` and
 `tool_input`. The guard reads `command` of the tools `Bash` and `PowerShell`,
 also when it is a list of words, `file_path` of the tools `Edit`, `Write` and
@@ -592,9 +596,10 @@ prints nothing.
 The guard splits a shell command into simple commands and words, as a shell
 does: quotes, backslashes, `;`, `&&`, `||`, `|`, `&`, newlines, `(`, `)`, `$(`
 and backticks. It steps over `NAME=value` words and the wrappers `env`,
-`command`, `sudo`, `time`, `nice`, `xargs`, `timeout`, `exec` and `nohup`. It
-reads the words after `eval`, and the text after `-c` of `sh`, `bash`, `zsh`
-and `dash`, as a command, to a depth of three. A command speaks up when:
+`command`, `sudo`, `time`, `nice`, `xargs`, `timeout`, `exec`, `nohup`,
+`script`, `unbuffer`, `setsid` and `stdbuf`. It reads the words after `eval`,
+the text after `-c` of `sh`, `bash`, `zsh` and `dash`, and a wrapper's quoted
+command such as `script -c "…"`, as a command, to a depth of three. A command speaks up when:
 
 - a call of `git`, `/path/git` or `git.exe` skips the hooks:
   - a word after the subcommand is `--no-verify`, or a prefix of it at least
@@ -643,7 +648,12 @@ The guard reads words; it runs nothing and expands nothing. It misses, on
 purpose:
 
 - a shell command that writes a guarded file itself, such as a redirection
-  (`echo x >> kitsu.toml`), `sed -i` or an editor;
+  (`echo x >> kitsu.toml`), `sed -i` or an editor. The task ledger and the
+  approvals folder are the exception: a command line that names them is denied;
+- a program or script that the agent writes and then runs. The guard reads the
+  command line, not the file, so such a script can send a review notice or
+  write the ledger. A host-observed review and a terminal approval are
+  evidence, not proof against an agent that sets out to forge them;
 - a file of another repository named by an absolute path: only the files of
   the repository of the notice's `cwd` are guarded;
 - input sent to a program that already runs, such as `write_stdin` on Codex,

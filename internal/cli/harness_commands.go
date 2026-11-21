@@ -671,7 +671,7 @@ func extendHarness(ctx context.Context, s *session, task *harness.Task, o harnes
 }
 
 func extendHarnessScope(ctx context.Context, s *session, task *harness.Task, o harnessOptions) error {
-	previousCommit := task.Scope.Commit
+	old := task.Scope
 	task.Scope.RequireReview = task.Scope.RequireReview || o.scope.RequireReview || (task.Scope.Until == "review" && o.scope.Until != "" && o.scope.Until != "review")
 	if o.scope.Until != "" {
 		if slices.Index(harness.Outcomes, o.scope.Until) < slices.Index(harness.Outcomes, task.Scope.Until) {
@@ -687,9 +687,16 @@ func extendHarnessScope(ctx context.Context, s *session, task *harness.Task, o h
 	if err := validateWorkflowExtension(task, o.scope); err != nil {
 		return err
 	}
-	if !previousCommit && task.Scope.Commit {
+	if !old.Commit && task.Scope.Commit {
 		if err := pinHarnessCommitTarget(ctx, s, task); err != nil {
 			return err
+		}
+	}
+	// The receipt names authority that the task did not open with.
+	added := map[string]bool{"repair": !old.Repair && task.Scope.Repair, "commit": !old.Commit && task.Scope.Commit, "publish": old.Publish == "" && task.Scope.Publish != ""}
+	for _, name := range []string{"repair", "commit", "publish"} {
+		if added[name] {
+			task.ScopeAdded = append(task.ScopeAdded, name)
 		}
 	}
 	return o.setLimits(task)
@@ -756,6 +763,7 @@ func recordHarness(ctx context.Context, s *session, l *stageLedger, task *harnes
 	reviewIndex := o.action == "review" && task.Scope.Until == "review" && task.Scope.ReviewBase == ""
 	event := harness.Event{Action: o.action, ReviewIndex: reviewIndex, Note: o.note, Actor: o.actor, Findings: o.findings, Ticket: o.ticket, Candidate: view.Candidate, At: time.Now().UTC()}
 	if o.feature != nil {
+		event.Replaced = task.ReplacedBrief(o.feature)
 		task.Feature = o.feature
 	}
 	event.FeatureRevision = task.Feature.Revision()

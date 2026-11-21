@@ -74,7 +74,8 @@ func judge(line string, depth int, roleConfig bool, rules []CommandRule) string 
 }
 
 var (
-	wrappers = []string{"env", "command", "sudo", "time", "nice", "xargs", "timeout", "exec", "nohup"}
+	// The last four give a command a terminal of its own or detach it from this one.
+	wrappers = []string{"env", "command", "sudo", "time", "nice", "xargs", "timeout", "exec", "nohup", "script", "unbuffer", "setsid", "stdbuf"}
 	// Options of git before the subcommand, and of commit, that take the next word.
 	globalValued = []string{"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env", "--super-prefix"}
 	longValued   = []string{"--message", "--file", "--author", "--date", "--template", "--reuse-message",
@@ -106,6 +107,11 @@ func simple(words []string, depth int, roleConfig bool, rules []CommandRule) str
 			return "sets core.hooksPath in the environment of git"
 		case !wrapped && !strings.Contains(w, "=") && !slices.Contains(wrappers, name):
 			return ""
+		case wrapped && depth > 0:
+			// A wrapper may take its command as one word, as `script -c` does.
+			if why := judge(w, depth-1, roleConfig, rules); why != "" {
+				return why
+			}
 		}
 		wrapped = wrapped || slices.Contains(wrappers, name)
 	}

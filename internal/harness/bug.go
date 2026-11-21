@@ -18,6 +18,7 @@ type PullRequestCheck struct {
 	Head           string `json:"head"`
 	LocalCheck     string `json:"local_check"`
 	ApprovalSHA256 string `json:"approval_sha256,omitempty"`
+	Supplied       bool   `json:"supplied,omitempty"` // The caller supplied the check metadata; GitHub was not asked.
 }
 
 type BugDelivery struct {

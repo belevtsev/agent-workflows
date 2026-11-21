@@ -44,6 +44,8 @@ or configure them.
 | `reviewer` | `opus` | `max` | `gpt-6.1-sol` | `max` |
 | `git` | `haiku` | `low` | `gpt-6-luna` | `low` |
 
+The review of a [daily task](task-harness.md#choose-independent-review) starts cheaper: `sonnet` at `high` in Claude Code and `gpt-6.1-sol` at `high` in Codex. A reviewer model or reasoning that you set applies to both.
+
 Start the coordinator with your host session's defaults unless you explicitly
 choose another model or effort. Kitsu does not configure that session;
 `kitsu-roles.toml` configures specialist models and can select skills for

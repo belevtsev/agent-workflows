@@ -14,8 +14,9 @@ import (
 	"github.com/belevtsev/kitsu/v3/internal/store"
 )
 
-// MaxContext is the most characters `kitsu context` prints.
-const MaxContext = 1000
+// MaxContext is the most characters `kitsu context` prints. Every session
+// carries this text on every turn, so the limit only goes down.
+const MaxContext = 620
 
 // runContext introduces the workflow and reports the supporting gate's state.
 // Outside a repository it prints nothing and exits 0. For a host it reads the host's notice from
@@ -44,7 +45,7 @@ func runContext(ctx context.Context, cfg Config, args []string) error {
 	}
 	fmt.Fprint(cfg.Out, workflowContext(*host))
 	if nativeSessionID.MatchString(notice.Session) {
-		fmt.Fprintf(cfg.Out, "Kitsu host session for review reservations: %s\n", notice.Session)
+		fmt.Fprintf(cfg.Out, "Kitsu session ID for --actor: %s\n", notice.Session)
 	}
 	if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -70,9 +71,7 @@ func workflowContext(host string) string {
 	if host == "" {
 		host = "<host>"
 	}
-	return "Kitsu coordinates coding tasks with specialist roles and shared records.\n" +
-		"To start, " + invocation + ".\n" +
-		"Setup: `kitsu agent check --host " + host + "`. Terminal: `kitsu task start \"<request>\" --host " + host + "`.\n\n"
+	return "Kitsu verifies coding tasks: " + invocation + ". Setup: `kitsu agent check --host " + host + "`.\n\n"
 }
 
 // contextText is the text for one state of the gate. configured says that
@@ -88,8 +87,7 @@ func contextText(hooks, mode string, configured bool) string {
 	case mode == store.Observe:
 		state = "The hooks are installed. The gate only observes here: it records what it would deny and allows the operation.\n"
 	}
-	return intro + " allows a commit or a push only when every check declared in kitsu.toml has a recorded passing run on exactly the content that is committed or pushed.\n" +
-		"- `kitsu run` records missing checks. Ask the developer to run `kitsu check trust` if approval is needed.\n" +
-		"- `kitsu status` shows missing evidence.\n" +
-		"- A denied commit or push needs passing evidence for the staged content; never bypass hooks.\n" + state
+	return intro + " allows a commit or a push only when every kitsu.toml check has a passing run on exactly that content.\n" +
+		"- `kitsu run` records missing checks and `kitsu status` lists them. Approval is the developer's: `kitsu check trust`.\n" +
+		"- Never bypass a denied commit or push.\n" + state
 }
